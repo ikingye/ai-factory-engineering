@@ -1,6 +1,7 @@
 site_name: AI Factory Engineering
 site_description: AI Factory 工程：从应用到 GPU 基础设施
 site_author: king ye
+site_url: https://ikingye.github.io/ai-factory-engineering/
 repo_name: ai-factory-engineering
 repo_url: https://github.com/ikingye/ai-factory-engineering
 exclude_docs: |
