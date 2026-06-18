@@ -20,6 +20,8 @@
 
 扩写 AI workload、Kubernetes、Slurm、Volcano、Kueue、Ray、裸金属 GPU 云、虚拟化隔离、GPU 资源池、镜像驱动、AI 网络和存储系统。重点补充拓扑、配额、gang scheduling、RDMA、checkpoint 和数据读取路径。
 
+当前状态：已完成第 20-33 章的系统化初稿，后续需要补充官方引用、网络/存储 benchmark 示例和跨章节故障树。
+
 ## Phase 5：物理基础设施、可靠性、验收
 
 扩写 GPU 服务器、GPU 芯片与系统架构、AI 数据中心工程、AI Factory 可观测性、准入测试、故障诊断和 SRE 运维体系。重点沉淀验收基线、故障树和运行手册。
