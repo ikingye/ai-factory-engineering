@@ -14,6 +14,8 @@
 
 扩写大模型基础、预训练、后训练、微调、评测、模型服务、推理引擎、训练框架、分布式并行、通信原语和 GPU 软件栈。重点讲清模型机制如何影响显存、通信、吞吐和稳定性。
 
+当前状态：已完成第 9-19 章的系统化初稿，后续需要补充官方引用、图表精修和更细的配置案例。
+
 ## Phase 4：调度、GPU IaaS、网络存储
 
 扩写 AI workload、Kubernetes、Slurm、Volcano、Kueue、Ray、裸金属 GPU 云、虚拟化隔离、GPU 资源池、镜像驱动、AI 网络和存储系统。重点补充拓扑、配额、gang scheduling、RDMA、checkpoint 和数据读取路径。
