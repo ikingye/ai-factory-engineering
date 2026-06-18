@@ -42,63 +42,69 @@ markdown_extensions:
 plugins:
   - search
 nav:
-  - 首页: index.md
-  - 前言: preface.md
-  - 写作路线图: roadmap.md
-  - 术语表: glossary.md
-  - Part 0：导论 —— 什么是 AI Factory:
-      - 第 0 章：从 Data Center 到 AI Factory: part-00-introduction/chapter-00-from-datacenter-to-ai-factory.md
-  - Part 1：Application 层 —— AI 应用如何消耗 token:
-      - 第 1 章：从一个 Chat 请求开始: part-01-applications/chapter-01-chat-request.md
-      - 第 2 章：RAG 应用: part-01-applications/chapter-02-rag.md
-      - 第 3 章：Agent 应用: part-01-applications/chapter-03-agent.md
-      - 第 4 章：行业应用: part-01-applications/chapter-04-industry-applications.md
-  - Part 2：Platform 层 —— MaaS、网关、计费与应用平台:
-      - 第 5 章：MaaS 平台: part-02-platform/chapter-05-maas.md
-      - 第 6 章：AI Gateway: part-02-platform/chapter-06-ai-gateway.md
-      - 第 7 章：计量与计费: part-02-platform/chapter-07-metering-billing.md
-      - 第 8 章：AI 平台可观测性: part-02-platform/chapter-08-platform-observability.md
-  - Part 3：Model 层 —— 模型如何被训练、后训练、评测和服务化:
-      - 第 9 章：大模型基础: part-03-models/chapter-09-llm-basics.md
-      - 第 10 章：预训练: part-03-models/chapter-10-pretraining.md
-      - 第 11 章：后训练: part-03-models/chapter-11-post-training.md
-      - 第 12 章：微调与模型定制: part-03-models/chapter-12-fine-tuning.md
-      - 第 13 章：模型评测: part-03-models/chapter-13-model-evaluation.md
-      - 第 14 章：模型服务: part-03-models/chapter-14-model-serving.md
-  - Part 4：AI Runtime 层 —— 训练推理运行时:
-      - 第 15 章：推理引擎: part-04-runtime/chapter-15-inference-engines.md
-      - 第 16 章：训练框架: part-04-runtime/chapter-16-training-frameworks.md
-      - 第 17 章：分布式并行: part-04-runtime/chapter-17-distributed-parallelism.md
-      - 第 18 章：通信原语: part-04-runtime/chapter-18-collective-communication.md
-      - 第 19 章：CUDA、驱动与 GPU 软件栈: part-04-runtime/chapter-19-gpu-software-stack.md
-  - Part 5：资源编排与作业调度层:
-      - 第 20 章：AI Workload 的形态: part-05-orchestration/chapter-20-ai-workloads.md
-      - 第 21 章：容器与 Kubernetes: part-05-orchestration/chapter-21-containers-kubernetes.md
-      - 第 22 章：GPU on Kubernetes: part-05-orchestration/chapter-22-gpu-on-kubernetes.md
-      - 第 23 章：AI 作业队列与调度: part-05-orchestration/chapter-23-ai-job-scheduling.md
-      - 第 24 章：Slurm 与 HPC 调度: part-05-orchestration/chapter-24-slurm.md
-      - 第 25 章：多集群与混部: part-05-orchestration/chapter-25-multi-cluster.md
-  - Part 6：GPU IaaS 层:
-      - 第 26 章：裸金属 GPU 云: part-06-gpu-iaas/chapter-26-bare-metal-gpu-cloud.md
-      - 第 27 章：GPU 虚拟化与隔离: part-06-gpu-iaas/chapter-27-gpu-virtualization-isolation.md
-      - 第 28 章：GPU 资源池: part-06-gpu-iaas/chapter-28-gpu-resource-pool.md
-      - 第 29 章：镜像、驱动与初始化: part-06-gpu-iaas/chapter-29-image-driver-bootstrap.md
-  - Part 7：网络与存储层:
-      - 第 30 章：AI 网络基础: part-07-network-storage/chapter-30-ai-networking-basics.md
-      - 第 31 章：Scale-up 网络: part-07-network-storage/chapter-31-scale-up-networking.md
-      - 第 32 章：Scale-out 网络: part-07-network-storage/chapter-32-scale-out-networking.md
-      - 第 33 章：AI 存储系统: part-07-network-storage/chapter-33-ai-storage.md
-  - Part 8：物理层 —— 机房、电力、制冷、硬件:
-      - 第 34 章：GPU 服务器: part-08-physical-infrastructure/chapter-34-gpu-server.md
-      - 第 35 章：GPU 芯片与系统架构: part-08-physical-infrastructure/chapter-35-gpu-architecture.md
-      - 第 36 章：AI 数据中心工程: part-08-physical-infrastructure/chapter-36-ai-datacenter-engineering.md
-  - Part 9：可靠性、观测与验收:
-      - 第 37 章：AI Factory 可观测性: part-09-reliability-observability/chapter-37-ai-factory-observability.md
-      - 第 38 章：准入测试与验收: part-09-reliability-observability/chapter-38-acceptance-testing.md
-      - 第 39 章：故障诊断: part-09-reliability-observability/chapter-39-troubleshooting.md
-      - 第 40 章：SRE 与运维体系: part-09-reliability-observability/chapter-40-sre-operations.md
-  - Part 10：AI Factory 经济学与产业案例:
-      - 第 41 章：Token Factory 视角: part-10-economics-cases/chapter-41-token-factory.md
-      - 第 42 章：AI Factory 商业模式: part-10-economics-cases/chapter-42-business-models.md
-      - 第 43 章：案例研究: part-10-economics-cases/chapter-43-case-studies.md
-      - 第 44 章：从 0 到 1 建设 AI Factory: part-10-economics-cases/chapter-44-building-ai-factory.md
+  - 入门:
+      - 首页: index.md
+      - 前言: preface.md
+      - 写作路线图: roadmap.md
+      - Part 0：导论:
+          - 第 0 章：从 Data Center 到 AI Factory: part-00-introduction/chapter-00-from-datacenter-to-ai-factory.md
+  - 应用平台:
+      - Part 1：Application 层:
+          - 第 1 章：从一个 Chat 请求开始: part-01-applications/chapter-01-chat-request.md
+          - 第 2 章：RAG 应用: part-01-applications/chapter-02-rag.md
+          - 第 3 章：Agent 应用: part-01-applications/chapter-03-agent.md
+          - 第 4 章：行业应用: part-01-applications/chapter-04-industry-applications.md
+      - Part 2：Platform 层:
+          - 第 5 章：MaaS 平台: part-02-platform/chapter-05-maas.md
+          - 第 6 章：AI Gateway: part-02-platform/chapter-06-ai-gateway.md
+          - 第 7 章：计量与计费: part-02-platform/chapter-07-metering-billing.md
+          - 第 8 章：AI 平台可观测性: part-02-platform/chapter-08-platform-observability.md
+  - 模型运行时:
+      - Part 3：Model 层:
+          - 第 9 章：大模型基础: part-03-models/chapter-09-llm-basics.md
+          - 第 10 章：预训练: part-03-models/chapter-10-pretraining.md
+          - 第 11 章：后训练: part-03-models/chapter-11-post-training.md
+          - 第 12 章：微调与模型定制: part-03-models/chapter-12-fine-tuning.md
+          - 第 13 章：模型评测: part-03-models/chapter-13-model-evaluation.md
+          - 第 14 章：模型服务: part-03-models/chapter-14-model-serving.md
+      - Part 4：AI Runtime 层:
+          - 第 15 章：推理引擎: part-04-runtime/chapter-15-inference-engines.md
+          - 第 16 章：训练框架: part-04-runtime/chapter-16-training-frameworks.md
+          - 第 17 章：分布式并行: part-04-runtime/chapter-17-distributed-parallelism.md
+          - 第 18 章：通信原语: part-04-runtime/chapter-18-collective-communication.md
+          - 第 19 章：CUDA、驱动与 GPU 软件栈: part-04-runtime/chapter-19-gpu-software-stack.md
+  - 调度基础设施:
+      - Part 5：资源编排与作业调度层:
+          - 第 20 章：AI Workload 的形态: part-05-orchestration/chapter-20-ai-workloads.md
+          - 第 21 章：容器与 Kubernetes: part-05-orchestration/chapter-21-containers-kubernetes.md
+          - 第 22 章：GPU on Kubernetes: part-05-orchestration/chapter-22-gpu-on-kubernetes.md
+          - 第 23 章：AI 作业队列与调度: part-05-orchestration/chapter-23-ai-job-scheduling.md
+          - 第 24 章：Slurm 与 HPC 调度: part-05-orchestration/chapter-24-slurm.md
+          - 第 25 章：多集群与混部: part-05-orchestration/chapter-25-multi-cluster.md
+      - Part 6：GPU IaaS 层:
+          - 第 26 章：裸金属 GPU 云: part-06-gpu-iaas/chapter-26-bare-metal-gpu-cloud.md
+          - 第 27 章：GPU 虚拟化与隔离: part-06-gpu-iaas/chapter-27-gpu-virtualization-isolation.md
+          - 第 28 章：GPU 资源池: part-06-gpu-iaas/chapter-28-gpu-resource-pool.md
+          - 第 29 章：镜像、驱动与初始化: part-06-gpu-iaas/chapter-29-image-driver-bootstrap.md
+      - Part 7：网络与存储层:
+          - 第 30 章：AI 网络基础: part-07-network-storage/chapter-30-ai-networking-basics.md
+          - 第 31 章：Scale-up 网络: part-07-network-storage/chapter-31-scale-up-networking.md
+          - 第 32 章：Scale-out 网络: part-07-network-storage/chapter-32-scale-out-networking.md
+          - 第 33 章：AI 存储系统: part-07-network-storage/chapter-33-ai-storage.md
+      - Part 8：物理层:
+          - 第 34 章：GPU 服务器: part-08-physical-infrastructure/chapter-34-gpu-server.md
+          - 第 35 章：GPU 芯片与系统架构: part-08-physical-infrastructure/chapter-35-gpu-architecture.md
+          - 第 36 章：AI 数据中心工程: part-08-physical-infrastructure/chapter-36-ai-datacenter-engineering.md
+  - 可靠性经济:
+      - Part 9：可靠性、观测与验收:
+          - 第 37 章：AI Factory 可观测性: part-09-reliability-observability/chapter-37-ai-factory-observability.md
+          - 第 38 章：准入测试与验收: part-09-reliability-observability/chapter-38-acceptance-testing.md
+          - 第 39 章：故障诊断: part-09-reliability-observability/chapter-39-troubleshooting.md
+          - 第 40 章：SRE 与运维体系: part-09-reliability-observability/chapter-40-sre-operations.md
+      - Part 10：经济学与产业案例:
+          - 第 41 章：Token Factory 视角: part-10-economics-cases/chapter-41-token-factory.md
+          - 第 42 章：AI Factory 商业模式: part-10-economics-cases/chapter-42-business-models.md
+          - 第 43 章：案例研究: part-10-economics-cases/chapter-43-case-studies.md
+          - 第 44 章：从 0 到 1 建设 AI Factory: part-10-economics-cases/chapter-44-building-ai-factory.md
+  - 参考资料:
+      - 术语表: glossary.md
