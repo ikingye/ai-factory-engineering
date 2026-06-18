@@ -6,6 +6,20 @@
 - Pod、Deployment、Job、StatefulSet、Service、Scheduler、CNI、CSI、CRI 如何协同？
 - 为什么 Kubernetes 是资源编排与作业调度层的一部分，而不是简单的 AI PaaS？
 
+## 一个真实场景
+
+一个模型服务在开发环境运行正常，迁到生产 Kubernetes 后启动失败。容器里缺少匹配的 CUDA 用户态库，节点驱动版本和镜像基线不一致，Service 超时又导致 streaming 被中断。问题跨越 image、runtime、GPU 注入、Service 和网关。
+
+容器与 Kubernetes 提供了标准化底座，但 AI workload 对镜像、设备、网络和存储的要求更严格。
+
+## 核心概念
+
+容器负责封装运行环境，Kubernetes 负责编排 Pod、控制器、Service、调度和扩展资源。它们位于资源编排与作业调度层，向上支撑 MaaS、模型服务、训练任务和平台组件，向下依赖 GPU IaaS、网络、存储和物理节点。
+
+## 系统架构
+
+Kubernetes 的核心关系可以理解为：API Server 接收期望状态，Scheduler 选择节点，kubelet 调用 CRI/CNI/CSI 准备运行环境，控制器维持 Deployment、Job 和 StatefulSet 等工作负载状态。
+
 ## 21.1 container runtime
 
 Container runtime 负责拉取镜像、创建容器、挂载文件系统、设置 namespace/cgroup，并启动进程。Kubernetes 通过 CRI 与 containerd、CRI-O 等 runtime 交互。AI workload 对 runtime 的要求更高，因为容器需要访问 GPU、RDMA 设备、共享内存、模型权重和高速存储。
@@ -72,6 +86,48 @@ flowchart TB
 ```
 
 AI 场景下，CNI、CSI、CRI 的选择不是底层细节。网络路径会影响 NCCL 和服务延迟，存储路径会影响数据读取和 checkpoint，runtime 兼容性会影响 GPU 是否能被容器正确使用。
+
+## 工程实现
+
+一个生产推理 Pod 至少应显式声明镜像、资源、健康检查和模型加载状态：
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+spec:
+  template:
+    spec:
+      containers:
+        - name: model-server
+          image: registry.example.com/inference:baseline
+          resources:
+            limits:
+              nvidia.com/gpu: 1
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8080
+```
+
+实际生产还应加入节点选择、拓扑标签、模型缓存、Service 和观测标签。
+
+## 常见故障
+
+- 镜像和主机驱动版本不兼容，容器内无法使用 GPU。
+- Pod Ready 只代表进程启动，不代表模型权重加载完成。
+- Service 超时不适合 streaming，导致长输出中断。
+- Job 重试策略不理解训练 checkpoint，失败后重复浪费 GPU。
+
+## 性能指标
+
+- Pod 启动时间、镜像拉取时间、模型加载时间。
+- Deployment rollout 成功率、回滚次数、Ready 延迟。
+- Job 成功率、重试次数、运行时长。
+- CNI 网络延迟、CSI I/O 延迟、CRI 容器启动错误。
+
+## 设计取舍
+
+Kubernetes 生态强、扩展能力好，但默认语义面向通用服务。AI workload 需要在 Kubernetes 之上补充 GPU、队列、拓扑、gang scheduling 和模型生命周期。对 HPC 风格任务，Slurm 仍可能是更合适的选择。
 
 ## 小结
 

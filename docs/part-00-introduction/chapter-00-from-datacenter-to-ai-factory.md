@@ -6,6 +6,22 @@
 - AI Factory 和传统 Data Center、GPU 集群、MaaS 平台分别是什么关系？
 - 推理请求和训练任务如何贯穿从应用到物理基础设施的所有层次？
 
+## 一个真实场景
+
+一个团队采购了一批 GPU 服务器，机房、网络和 Kubernetes 集群都已经准备好。应用团队很快接入 Chat API，但用户看到的第一个 token 很慢；训练团队提交大任务后经常 pending；财务团队无法解释每个业务线消耗了多少成本。硬件已经存在，但还没有形成 AI Factory。
+
+这个场景说明，本书讨论的不是单点 GPU 运维，而是从应用请求到 token 产出、从训练任务到模型发布的完整生产系统。
+
+## 核心概念
+
+AI Factory 是把应用、平台、模型、运行时、调度、GPU IaaS、网络存储和物理基础设施组织在一起的生产系统。Data Center 提供物理和云资源，GPU 集群提供加速计算资源，MaaS 提供模型 API 产品形态；AI Factory 则把这些层次连成可运行、可计量、可诊断、可商业化的系统。
+
+Token Factory 是经济性视角，强调 token 产能、能效、成本和收入。它不是 AI Factory 的全部，但能帮助团队把基础设施效率和业务价值连接起来。
+
+## 系统架构
+
+本章使用的分层图描述全书主线：上层应用提出体验和业务需求，中间平台与模型层把需求变成模型调用和训练流程，下层运行时、调度、GPU、网络存储与物理设施提供生产能力。
+
 ## 0.1 云计算时代的数据中心
 
 云计算时代的数据中心主要生产通用计算资源。用户关心的是虚拟机、容器、负载均衡、数据库、对象存储和网络连通性。平台团队关心的是资源池化、弹性伸缩、故障隔离、自动化运维和成本摊销。这个时代的核心抽象是“通用工作负载”：Web 服务、批处理任务、数据库、缓存、消息队列和数据分析作业都可以被放进相对统一的云资源模型里。
@@ -97,6 +113,53 @@ AI Factory 的难点在于局部正确不等于整体可用。模型可以在单
 ## 0.9 本书阅读路径
 
 如果你从应用或平台进入，可以先读 Part 1 和 Part 2，理解 token、请求治理、计量和平台可观测性，再读模型服务和推理引擎。如果你负责调度或 GPU 集群，可以从 Part 5、Part 6 和 Part 9 开始，建立 workload、GPU on Kubernetes、准入验收和故障诊断框架。如果你负责技术战略或商业化，应重点阅读第 0 章、第 41 章和第 44 章，把系统能力和经济性连接起来。
+
+## 工程实现
+
+建设 AI Factory 的第一步不是采购某个组件，而是建立端到端对象模型：
+
+```yaml
+ai_factory:
+  request_path:
+    - gateway
+    - model_routing
+    - inference_runtime
+    - gpu
+    - metering
+  training_path:
+    - queue
+    - quota
+    - gang_scheduling
+    - data_loading
+    - nccl
+    - checkpoint
+    - model_registry
+  shared_capabilities:
+    - observability
+    - acceptance
+    - cost_accounting
+    - sre
+```
+
+这份模型可以用于拆解团队边界、平台模块、指标体系和建设路线。
+
+## 常见故障
+
+- 把 AI Factory 简化为 GPU 集群，缺少模型服务、计量、调度和 SRE。
+- 只建设 MaaS API，不理解底层 GPU、网络和存储约束。
+- 应用层要求长上下文和低延迟，但基础设施没有容量和成本模型。
+- 训练任务能启动，但没有准入基线和故障诊断链路。
+
+## 性能指标
+
+- 推理：TTFT、TPOT、tokens/s、错误率、cost per token。
+- 训练：队列等待时间、step time、NCCL 性能、checkpoint 时长、作业成功率。
+- 基础设施：GPU 利用率、HBM、网络丢包、存储吞吐、准入通过率。
+- 经济性：tokens/W、revenue per token、训练 ROI、资源闲置成本。
+
+## 设计取舍
+
+从应用向下设计更容易对齐业务价值，但可能低估基础设施交付周期；从硬件向上设计更容易快速采购，但容易建成不可运营的 GPU 孤岛。AI Factory 的合理路径是先定义业务和模型目标，再反推容量、平台和物理基础设施。
 
 ## 小结
 

@@ -6,6 +6,32 @@
 - 在线推理、批量推理、训练、微调、评测、数据处理和 HPC-style job 的调度需求有什么差异？
 - 为什么 AI workload 不能简单套用普通微服务的资源模型？
 
+## 一个真实场景
+
+一个 GPU 集群同时运行在线推理、批量 embedding、LoRA 微调和 32 卡训练。白天在线服务扩容失败，夜间训练任务半启动，存储在 checkpoint 高峰抖动。平台最初只用“Pod + GPU request”统一管理所有任务，结果每类 workload 的失败模式都不一样。
+
+AI Factory 必须先识别 workload 形态，再设计调度、队列、隔离和观测。
+
+## 核心概念
+
+AI workload 是消耗模型、数据和 GPU 资源的工作负载。它们可以是长期在线服务，也可以是运行到完成的批任务；可以是单 GPU 推理，也可以是多节点同步训练；可以重试，也可能对低延迟强敏感。不同 workload 对调度层的要求完全不同。
+
+## 系统架构
+
+```mermaid
+flowchart TB
+  Workload["AI Workload"] --> Online["Online Inference"]
+  Workload --> Batch["Batch Inference"]
+  Workload --> Train["Distributed Training"]
+  Workload --> Tune["Fine-tuning"]
+  Workload --> Eval["Evaluation"]
+  Workload --> Data["Data Processing"]
+  Workload --> HPC["HPC-style Job"]
+  Online --> SLO["Latency / SLO"]
+  Train --> Gang["Gang / NCCL / Checkpoint"]
+  Batch --> Throughput["Throughput / Cost"]
+```
+
 ## 20.1 online inference
 
 Online inference 是面向用户实时请求的在线推理。它关注 TTFT、TPOT、端到端延迟、错误率、可用性和成本。在线推理通常需要常驻服务、弹性扩缩容、灰度发布、模型路由、限流、熔断和 token 计量。
@@ -59,6 +85,44 @@ HPC-style job 强调批式提交、队列、资源独占、拓扑、长时间运
 普通微服务通常可以独立副本扩缩容，失败后快速重启，资源以 CPU/内存为主，网络通信以请求响应为主。AI workload 则经常需要 GPU、HBM、RDMA、拓扑、长启动时间、模型权重加载、KV Cache、数据集、checkpoint 和多副本同步。
 
 这导致调度系统必须表达更多语义：资源组、gang、队列、配额、优先级、拓扑、健康状态、镜像版本、驱动版本和存储路径。AI Factory 的调度层不是普通 Kubernetes Scheduler 的简单使用，而是围绕 AI workload 特征构建的资源编排与作业调度层。
+
+## 工程实现
+
+平台应在任务提交时显式声明 workload 类型：
+
+```yaml
+workload:
+  type: distributed-training
+  gpu:
+    count: 64
+    topology: same-fabric
+  scheduling:
+    gang: true
+    queue: training-prod
+  storage:
+    dataset: dataset-v3
+    checkpoint: required
+```
+
+调度器、计费和观测系统都应使用这份声明。
+
+## 常见故障
+
+- 在线推理和批量推理混部，离线任务影响 TTFT。
+- 分布式训练没有 gang scheduling，部分 worker 启动后空占 GPU。
+- 数据处理任务被当成普通 CPU Job，实际拖慢训练数据准备。
+- 评测任务没有固定模型和数据版本，结果不可复现。
+
+## 性能指标
+
+- Online inference：TTFT、TPOT、错误率、tokens/s。
+- Batch inference：完成时间、吞吐、单位 token 成本。
+- Training：队列等待、step time、NCCL 时间、checkpoint 时间。
+- Data processing：吞吐、数据新鲜度、失败重试、存储 I/O。
+
+## 设计取舍
+
+统一抽象能降低平台复杂度，但容易掩盖 workload 差异。按 workload 细分资源池能提升稳定性，但可能带来资源碎片。实践中通常用统一入口提交任务，在调度和资源层按类型做差异化策略。
 
 ## 小结
 

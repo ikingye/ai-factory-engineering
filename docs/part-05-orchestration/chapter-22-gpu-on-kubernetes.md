@@ -6,6 +6,20 @@
 - GPU device plugin、GPU Operator、MIG、time-slicing、Topology Manager、NUMA 和 RDMA device 如何协同？
 - 容器访问 GPU 和 NIC 时，哪些地方最容易出问题？
 
+## 一个真实场景
+
+一个训练 Pod 申请到了 8 张 GPU，但 NCCL 性能远低于预期。容器内 `nvidia-smi` 正常，GPU device plugin 也没有报错。继续排查后发现，Pod 没有拿到对应 RDMA device，GPU 与 NIC 也跨 NUMA。Kubernetes 成功分配了 GPU，但没有保证完整的 AI 通信路径。
+
+GPU on Kubernetes 的关键不是“让 Pod 看到 GPU”，而是让容器获得正确的 GPU、NIC、拓扑、驱动和观测能力。
+
+## 核心概念
+
+GPU on Kubernetes 通过 device plugin、GPU Operator、container runtime、Topology Manager、节点标签和调度策略，把物理 GPU 暴露为 Kubernetes 可调度资源。生产环境还要同时处理 MIG、time-slicing、RDMA、NUMA 和版本兼容。
+
+## 系统架构
+
+本章的架构图放在 22.9 中，它展示了 API Server、Scheduler、GPU Operator、kubelet、device plugin、runtime、GPU 和 RDMA NIC 的关系。
+
 ## 22.1 GPU device plugin
 
 Kubernetes 原生只理解 CPU、memory、ephemeral storage 等通用资源。GPU 这类特殊硬件需要通过 Device Plugin 机制暴露给 kubelet。NVIDIA GPU device plugin 会发现节点上的 GPU 或 MIG 实例，并把它们注册成 `nvidia.com/gpu` 或更细粒度的扩展资源。
@@ -87,6 +101,45 @@ flowchart TB
 ```
 
 排障时应沿着这条路径逐层检查：节点是否识别 GPU，驱动是否加载，device plugin 是否注册资源，Pod 是否申请资源，runtime 是否注入设备，容器内是否能执行 `nvidia-smi`，RDMA 设备是否可见，NCCL 是否选择了正确网卡。
+
+## 工程实现
+
+GPU 节点应同时暴露资源和能力标签：
+
+```yaml
+metadata:
+  labels:
+    accelerator.ai-factory/gpu: h100
+    topology.ai-factory/nvlink-domain: node-local
+    topology.ai-factory/rdma: enabled
+spec:
+  taints:
+    - key: nvidia.com/gpu
+      value: present
+      effect: NoSchedule
+```
+
+任务提交系统应根据模型需求选择整卡、MIG、time-slicing 或专属节点。
+
+## 常见故障
+
+- Device plugin 注册资源正常，但容器 runtime 没有正确注入设备。
+- MIG profile 配置变化后，调度器仍按旧资源形态放置任务。
+- Time-slicing 被用于生产低延迟推理，导致延迟抖动。
+- RDMA device 未注入容器，NCCL 回退或直接失败。
+- NUMA 与 GPU/NIC 拓扑不匹配，通信性能差。
+
+## 性能指标
+
+- GPU allocatable/allocated、MIG profile 使用率、共享 GPU 租户数。
+- GPU Pod 启动成功率、设备注入失败率。
+- NCCL 单节点和跨节点基线。
+- NUMA 亲和命中率、GPU/NIC 拓扑匹配率。
+- DCGM 指标、Xid、ECC、NVLink error。
+
+## 设计取舍
+
+整卡分配隔离强、性能稳定，但利用率可能低。MIG 粒度更细、隔离较好，但 profile 管理复杂。Time-slicing 利用率高，但隔离和延迟稳定性弱。是否由 GPU Operator 管驱动，也要在自动化和版本可控之间取舍。
 
 ## 小结
 

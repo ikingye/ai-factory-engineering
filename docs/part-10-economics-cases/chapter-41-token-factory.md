@@ -6,6 +6,20 @@
 - tokens/s、tokens/W、cost/token、revenue/token 分别回答什么问题？
 - 如何把 GPU 利用率、推理毛利和训练 ROI 放到同一个经济模型中？
 
+## 一个真实场景
+
+一个 MaaS 平台请求量持续增长，但财务发现收入增长慢于 GPU 成本增长。平台看 QPS 是健康的，SRE 看 GPU 利用率也不低，业务看客户还在增长。进一步拆分后发现，长上下文请求和 reasoning 输出占比上升，output token 成本高于定价假设，失败重试也没有计入成本。
+
+Token Factory 视角的价值，就是把 token 产量、能效、成本、收入和质量放在同一个模型里看。
+
+## 核心概念
+
+Token Factory 是 AI Factory 的经济性和产出度量视角。它关注在满足模型质量、安全和 SLO 的前提下，系统以多高吞吐、多低成本和多稳定体验生产可计量 token。
+
+## 系统架构
+
+本章在 41.7 中给出 Token Factory 经济模型图。它把业务需求、billable tokens、revenue/token、cost/token、GPU 利用率、tokens/W、SLO、质量和推理毛利连接起来。
+
 ## 41.1 token 是 AI Factory 的产出
 
 对在线推理业务来说，token 是最细粒度、最容易计量的产出。用户请求进入 AI Factory，经过网关、模型服务、推理引擎、GPU 计算和流式返回，最终得到的是一串输出 token。平台可以记录 input token、output token、reasoning token、缓存命中、模型版本、租户和费用。
@@ -81,6 +95,46 @@ flowchart TB
 训练 ROI 比推理毛利更难度量，因为训练成本发生在前，收益可能通过模型质量、产品能力、推理收入或内部效率长期体现。训练成本包括 GPU 时间、数据处理、失败重跑、评测、人力和机会成本。收益可能体现为更高转化率、更低推理成本、更强私有化交付能力或更高客户留存。
 
 评估训练 ROI 时，应把训练任务纳入产品和平台闭环：训练目标是什么，评测指标是否能预测业务收益，模型上线后是否降低 cost/token 或提升 revenue/token，失败训练是否沉淀了数据、流程或平台能力。没有评测和上线闭环的训练，很难证明 ROI。
+
+## 工程实现
+
+Token Factory 报表应至少按模型和租户聚合：
+
+```yaml
+token_factory_report:
+  model: example-llm
+  tenant: team-a
+  input_tokens: measured
+  output_tokens: measured
+  tokens_per_second: measured
+  cost_per_token: calculated
+  revenue_per_token: calculated
+  slo:
+    ttft: measured
+    tpot: measured
+  quality_gate: passed
+```
+
+没有质量和 SLO 约束的 token 报表会误导决策。
+
+## 常见故障
+
+- 只看 QPS，不看 token 长度和 output token 成本。
+- 只统计 GPU 成本，忽略电力、存储、失败重试和平台运维成本。
+- 把免费额度、失败重试和内部调用排除在成本之外。
+- 追求 tokens/s，牺牲质量、安全和用户体验。
+
+## 性能指标
+
+- tokens/s、tokens/W、input/output token 占比。
+- cost per token、revenue per token、推理毛利。
+- GPU 利用率、HBM 使用、KV Cache 使用、功耗。
+- TTFT、TPOT、错误率、限流率。
+- 训练 GPU 小时、模型上线收益、训练 ROI。
+
+## 设计取舍
+
+更高 batch 可以降低 cost per token，但可能损害 TTFT。更小模型成本低，但质量可能不足。更强模型收入潜力高，但 GPU 成本和延迟更高。Token Factory 优化必须在质量、安全、SLO 和毛利之间共同决策。
 
 ## 小结
 
