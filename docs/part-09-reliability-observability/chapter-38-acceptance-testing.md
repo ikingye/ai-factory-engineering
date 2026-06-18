@@ -6,6 +6,18 @@
 - GPU、网络、存储、NCCL 和节点稳定性分别应该如何验收？
 - 如何把测试结果沉淀成 acceptance baseline，并用于后续异常检测？
 
+## 一个真实场景
+
+一批新节点刚进入训练集群，第一天就有多个 64 卡任务卡在 NCCL init。单节点 GPU burn-in 都通过，操作系统也能识别所有 GPU，但跨节点 NCCL test 没有在交付前覆盖同 rack、跨 rack 和多 rail 组合。业务任务承担了本该由准入测试承担的风险。
+
+准入测试的价值，就是在资源进入生产池之前，用可重复的测试暴露硬件、拓扑、驱动、网络和存储问题。
+
+## 核心概念
+
+准入测试是资源从“安装完成”到“可生产调度”的质量门禁。它不属于单纯运维脚本，而是 AI Factory 生命周期的一部分：新节点交付、维修回池、驱动升级、网络变更、存储扩容和大版本升级后，都应重新执行相应准入。
+
+验收结果应形成 acceptance baseline。Baseline 既是交付凭证，也是后续异常检测、升级回归和故障复盘的比较对象。
+
 ## 38.1 为什么 AI 集群必须准入
 
 AI 集群的单点异常很容易在大规模训练中被放大。一块 GPU 的 ECC 异常、一条 NVLink 降速、一张 NIC 配置错误、一个存储挂载抖动，都可能让几百张 GPU 的训练任务挂起或性能下降。如果没有准入测试，这些问题往往在业务任务运行数小时后才暴露，定位成本极高。
@@ -69,6 +81,52 @@ Acceptance baseline 是可交付基线，不是一次性测试记录。它应该
 准入测试的结果应进入异常检测系统。新节点和历史同型号节点对比，如果出现显著偏离，应自动标记。生产运行中，也可以把 DCGM、NCCL 错误、网络 telemetry、存储延迟和训练吞吐与验收基线对比，提前发现退化。
 
 异常检测不能只依赖固定阈值。更有效的做法是结合批次、型号、机架、拓扑和 workload 类型做分组比较。比如某个机架 NCCL all_reduce 带宽整体低于其他机架，可能是网络配置或线缆问题，而不是单节点故障。
+
+## 工程实现
+
+准入流水线应由状态机驱动，而不是人工复制命令：
+
+```yaml
+acceptance_pipeline:
+  scope: rack-12
+  trigger: new-delivery
+  stages:
+    - inventory_and_topology
+    - gpu_burn_in
+    - hpl
+    - nvbandwidth
+    - nccl_single_node
+    - nccl_multi_node
+    - storage_benchmark
+    - network_benchmark
+    - baseline_publish
+  on_failure:
+    mark_unschedulable: true
+    create_repair_ticket: true
+    require_retest: true
+```
+
+流水线产物应包含测试参数、工具版本、节点列表、拓扑、原始结果、汇总结果和是否进入资源池。
+
+## 常见故障
+
+- 只跑单节点测试，没有覆盖多节点 NCCL 和网络 fabric。
+- 只记录“pass/fail”，没有保存参数和原始结果，后续无法复现。
+- 准入阈值按理想峰值写死，导致不同批次资源误报或漏报。
+- 节点维修后直接回池，没有重新跑相关测试。
+- 验收结果没有进入调度标签，故障节点仍被分配任务。
+
+## 性能指标
+
+- 准入通过率、失败原因分布、平均交付时长。
+- GPU burn-in 错误数、Xid、ECC、温度和功耗范围。
+- HPL、nvbandwidth、NCCL test 相对同批次偏离。
+- 存储 benchmark 吞吐、IOPS、延迟和 checkpoint 耗时。
+- 网络 benchmark 带宽、延迟、丢包、RDMA error 和多 rail 均衡度。
+
+## 设计取舍
+
+验收越全面，交付越慢；验收越粗糙，生产风险越高。大规模集群通常需要分层验收：单节点必跑，rack 级抽样或全量跑，多 rack 和全集群在关键变更时跑。阈值也要分层：硬失败阈值用于阻止入池，软偏离阈值用于观察和复测。
 
 ## 小结
 

@@ -26,6 +26,8 @@
 
 扩写 GPU 服务器、GPU 芯片与系统架构、AI 数据中心工程、AI Factory 可观测性、准入测试、故障诊断和 SRE 运维体系。重点沉淀验收基线、故障树和运行手册。
 
+当前状态：已完成第 34-40 章的系统化初稿，后续需要补充官方引用、runbook 示例、更多故障树和运维模板。
+
 ## Phase 6：经济性与案例
 
 扩写 Token Factory 经济模型、AI Factory 商业模式、产业案例和从 0 到 1 建设路径。重点把 tokens/s、tokens/W、cost per token、revenue per token 与业务模型连接起来。
