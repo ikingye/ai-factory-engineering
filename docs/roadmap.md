@@ -32,6 +32,8 @@
 
 扩写 Token Factory 经济模型、AI Factory 商业模式、产业案例和从 0 到 1 建设路径。重点把 tokens/s、tokens/W、cost per token、revenue per token 与业务模型连接起来。
 
+当前状态：已完成第 41-44 章的系统化初稿，后续需要补充公开案例引用、财务模型模板和建设检查清单。
+
 ## Phase 7：审校、图表、索引和发布
 
 统一术语、补充官方文档和经典论文链接、完善 Mermaid 图、增加索引与交叉引用，配置 GitHub Pages 发布流程，并进行全站构建检查。
