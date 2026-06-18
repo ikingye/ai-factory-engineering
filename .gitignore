@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# MkDocs
+site/
+
+# macOS / editors
+.DS_Store
+.idea/
+.vscode/
+
+# Local Codex handoff state
+docs/codex-handoff.md
