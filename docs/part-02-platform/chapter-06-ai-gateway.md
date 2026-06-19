@@ -305,6 +305,68 @@ endpoint_admission_decision:
 
 这个对象的价值在三类场景最明显。第一，用户投诉首 token 慢时，可以回放当时是否错误地把长上下文请求送进短上下文池。第二，runtime canary 出现 guardrail breach 时，可以证明 Gateway 是否停止扩大新 engine profile 的流量。第三，账单或 SLA 争议时，可以说明请求是被正常 admission、被 shed、被 fallback，还是在尚未产生 token 前被拒绝。它让 AI Gateway 的策略从“配置存在”变成“决策可审计”。
 
+模型服务进入生产后，Gateway 还必须把路由策略绑定到具体 release 组合，而不是只绑定到 endpoint 名称。`serving_route_release_contract` 描述一个模型名在某个租户、task slice 和服务等级下，哪些 release 可以作为 primary、canary、shadow、fallback 或 rollback 目标；每个目标必须满足 capability、质量门禁、数据边界、计量 schema、runtime baseline 和容量约束。没有这个合同，Gateway 看到的只是“af-chat-large-prod 可用”，无法判断这个 endpoint 背后是不是同一组 weights、tokenizer、template、engine config 和 usage 语义。
+
+```yaml
+serving_route_release_contract:
+  contract_id: srrc-af-chat-large-20260620
+  gateway_policy_version: 2026-06-20.7
+  scope:
+    model_alias: af-chat-large
+    tenant: enterprise-a
+    task_slices: [support_chat, rag_citation, tool_call_json]
+    service_tier: premium_interactive
+  primary:
+    endpoint: af-chat-large-prod
+    serving_release_bundle: srb-af-chat-large-20260619-r3
+    serving_quality_contract: sqc-af-chat-20260619-r3
+    engine_admission_health_required: true
+  canary:
+    endpoint: af-chat-large-canary
+    serving_release_bundle: srb-af-chat-large-20260620-r1
+    max_traffic_percent: 5
+    required_guardrails: [quality, protocol, token_drift, ttft_tpot, cost]
+  fallback:
+    allowed_before_first_token: true
+    targets:
+      - endpoint: af-chat-large-prod-backup
+        serving_release_bundle: srb-af-chat-large-20260612-r9
+        require_same_capabilities: true
+        require_same_usage_schema: true
+        require_data_boundary_compatible: true
+    forbidden_after:
+      - first_token_streamed
+      - tool_side_effect_committed
+  rollback:
+    route_restore_target: af-chat-large-prod-backup
+    serving_rollback_drill: srd-af-chat-20260620
+    cache_residency_required: warm_or_prevalidated
+  observability:
+    emit_contract_id: true
+    emit_release_bundle_id: true
+    emit_route_reason: true
+    emit_fallback_stage: true
+```
+
+这个合同把 fallback 从“后端失败时换一个服务”变成“在同一业务语义下换一个可证明等价或可接受降级的 release”。例如一个支持 tool calling 的请求，不能 fallback 到不支持同一 tool schema 的模型；一个已经开始 streaming 的请求，不能换模型继续输出；一个使用新 tokenizer 的 canary release，如果 usage schema 与稳定版不同，必须在计量系统完成兼容后才允许进商业流量。Gateway 的路由选择应引用合同，而不是把这些规则散落在代码分支里。
+
+```mermaid
+flowchart LR
+  Req["request\nmodel alias + tenant + task slice"] --> Contract["serving_route_release_contract"]
+  Contract --> Primary["primary release bundle"]
+  Contract --> Canary["canary release bundle"]
+  Contract --> Fallback["fallback release bundle"]
+  Primary --> Health["engine_admission_health"]
+  Canary --> Guard["quality / protocol / cost guardrails"]
+  Fallback --> Compat["capability + usage + data boundary compatibility"]
+  Health --> Decision["endpoint_admission_decision"]
+  Guard --> Decision
+  Compat --> Decision
+  Decision --> Trace["trace + metering + audit"]
+```
+
+排障时，这个对象也能缩小范围。若 fallback 后质量下降，先检查 fallback release 是否通过同一 `serving_quality_contract` 和 capability gate；若回滚后仍未恢复，检查 route restore 是否真的指向 baseline release bundle，而不是只改了 Kubernetes Service；若账单争议出现在 canary 流量，检查 `require_same_usage_schema` 是否被豁免。Gateway 不应只回答“请求去了哪个 endpoint”，还应回答“它基于哪个 release 合同被允许去那里”。
+
 更完整的策略应把 capability 和 fallback 写成显式约束，避免“可用性提升”变成“能力降级”。下面的例子中，fallback 目标必须满足同样的 streaming 和 tool calling 能力，并且只允许在尚未产生 token 前触发。
 
 ```yaml

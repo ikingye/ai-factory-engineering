@@ -583,6 +583,60 @@ quality_evidence_validity:
 
 这个对象让质量观测从“事故现场”扩展到“证据可信度”。如果 feedback pipeline 关联失败率很高，线上负反馈不能可靠进入回归；如果 judge drift 未校准，自动评测分数不能作为放量依据；如果 contamination invalidation 仍 open，PRR 应阻断高价值客户。质量证据的有效性本身需要被观测，不能依赖人工记忆。
 
+模型服务发布事故还需要专门的 `serving_release_evidence_bundle`。它介于质量证据包和 runtime 诊断包之间，冻结的是“线上到底运行并路由到了哪一组发布组合”。许多事故同时有质量、延迟和计费症状：新 release 输出格式漂移，Gateway fallback 到旧 release，cache 中仍有旧 tokenizer，usage schema 没被计费系统识别，回滚时旧容量没有预热。若只看质量证据，容易忽略 route/fallback；若只看 runtime 诊断包，容易忽略 artifact/template/usage 组合漂移。
+
+```yaml
+serving_release_evidence_bundle:
+  bundle_id: sreb-af-chat-large-20260620-001
+  trigger:
+    source: release_guardrail_or_quality_or_slo_or_billing_alert
+    symptom: canary_regression_fallback_quality_drop_or_rollback_not_recovering
+  scope:
+    endpoint: af-chat-large-prod
+    tenants: [enterprise-a]
+    task_slices: [support_chat, rag_citation, tool_call_json]
+    incident_window: recorded
+  release_evidence:
+    serving_release_bundle: srb-af-chat-large-20260619-r3
+    serving_route_release_contract: srrc-af-chat-large-20260620
+    serving_quality_contract: sqc-af-chat-20260619-r3
+    model_artifact_provenance: map-af-chat-large-20260619-r3
+    model_artifact_distribution: mad-af-chat-large-20260619-r3
+    cache_residency: sampled_for_serving_nodes
+    cache_invalidation_record: linked_if_recent
+  route_and_runtime:
+    endpoint_admission_decisions: sampled
+    routing_quality_decision_records: sampled_if_quality_route
+    engine_admission_health: sampled
+    engine_canary_record: linked_if_recent
+    engine_canary_guardrail_action: linked_if_triggered
+  rollback_and_accounting:
+    serving_rollback_record: optional_if_mitigated
+    serving_rollback_drill: required_for_high_sla
+    metering_events: request_admitted_first_token_usage_closed
+    usage_schema: usage-openai-compatible-v6
+    serving_release_cost_record: generated_if_cost_or_rollback_impact
+  verdict:
+    suspected_gap: release_bundle_or_route_contract_or_cache_or_runtime_or_metering
+    evidence_completeness: sufficient_or_gap
+```
+
+```mermaid
+flowchart TB
+  Alert["release / quality / SLO / billing alert"] --> Bundle["serving_release_evidence_bundle"]
+  Rel["serving_release_bundle"] --> Bundle
+  Route["serving_route_release_contract"] --> Bundle
+  Quality["serving_quality_contract"] --> Bundle
+  Cache["cache_residency / invalidation"] --> Bundle
+  Runtime["engine_canary / admission health"] --> Bundle
+  Meter["usage schema / metering events"] --> Bundle
+  Bundle --> Fault["serving_release_fault_tree_execution"]
+  Bundle --> Cost["serving_release_cost_record"]
+  Bundle --> PRR["serving release PRR drill / gate update"]
+```
+
+这类 bundle 的重点是“组合事实”。例如回滚后质量仍未恢复，bundle 能证明 Gateway route 是否真的回到 baseline bundle、RAG/tool policy 是否仍指向新模板、cache 是否仍在服务旧 tokenizer、计量系统是否仍按新 usage schema 解释请求。对资深工程师来说，这比“回滚命令执行成功”更重要。发布系统每改一次 route、canary weight、fallback target 或 usage schema，都应让 bundle 能回放当时的组合状态。
+
 多模态场景还应生成 `multimodal_evidence_bundle`。它和普通质量证据包不同，必须冻结媒体文件和派生产物的事实：原始对象 digest、`media_artifact_manifest`、`media_processing_pipeline_record`、OCR/ASR/layout/embedding 版本、模型服务契约、source region、人工复核和计量事件。没有这个 bundle，事故复盘会在应用、对象存储、预处理服务、模型服务和评测平台之间来回跳转，最后仍无法回答“模型看到的究竟是什么”。
 
 ```yaml

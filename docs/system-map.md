@@ -228,6 +228,12 @@ flowchart TB
 | `baseline_invalidation_record` | 记录某次变更、维修或事故让哪些 baseline 失效，资源池如何降级以及如何复测恢复。 | 第 38、44 章 | `change_safety_case`、`capacity_activation_record`、`production_readiness_review` |
 | `reliability_evidence_bundle` | 在事故触发时冻结跨层证据，避免 Pod、端口计数、日志和缓存状态消失后无法复盘。 | 第 37、39 章 | `incident_record`、`slo_budget_ledger`、`reliability_cost_ledger` |
 | `quality_evidence_bundle` | 在质量退化触发时冻结反馈、路由、门禁、serving、评测 lineage、回滚和影响证据。 | 第 37、40 章 | `quality_cost_ledger`、`incident_record`、`production_readiness_review` |
+| `serving_release_bundle` | 把 weights、tokenizer、template、runtime、quality contract、route contract、usage schema、cache 和 rollback 打成发布组合。 | 第 14、37、39、41、44 章 | `serving_route_release_contract`、`serving_release_evidence_bundle`、`production_readiness_review` |
+| `serving_route_release_contract` | 规定 Gateway primary、canary、fallback 和 rollback 只能指向兼容 release bundle，并绑定 capability、usage、数据边界和质量门禁。 | 第 6、14、37、39、44 章 | `endpoint_admission_decision`、`serving_release_fault_tree_execution` |
+| `serving_release_evidence_bundle` | 在发布、fallback、rollback、cache 或 usage schema 事故时冻结 release、route、quality、runtime、metering 和 rollback 证据。 | 第 37、39、41、44 章 | `serving_release_fault_tree_execution`、`serving_release_cost_record` |
+| `serving_release_fault_tree_execution` | 记录回滚未恢复、fallback 质量下降、发布账单漂移或旧产物误用的故障树执行。 | 第 39、44 章 | `serving_release_cost_record`、`production_readiness_review` |
+| `serving_release_cost_record` | 把发布组合事故的低质量 token、半回滚、cache rewarm、usage replay、billing hold 和客户 credit 写入成本账本。 | 第 41、44 章 | `quality_cost_ledger`、`inference_runtime_cost_ledger`、`billing_dispute_replay` |
+| `serving_release_prr_drill` | 演练 release bundle、Gateway route/fallback、rollback、cache、usage schema、故障树和成本账本。 | 第 44 章 | `production_readiness_review`、`serving_release_cost_record` |
 | `tool_security_incident_record` | 记录 RAG/Agent 高风险工具、越权、敏感数据或 denial-of-wallet 安全事件。 | 第 40 章 | `security_audit_event`、`production_readiness_review` |
 | `incident_record` | 记录事故时间线、影响面、根因证据、止血动作和行动项。 | 第 39、40 章 | `slo_budget_ledger`、`reliability_cost` |
 | `heterogeneous_gpu_pool_profile` | 描述多代 GPU、HBM、互联、runtime baseline、准入状态、entitlement 和 workload tier 组成的异构资源池。 | 第 28、35、44 章 | `model_hardware_fit_record`、`heterogeneous_pool_acceptance_matrix`、`production_readiness_review` |
@@ -254,12 +260,13 @@ flowchart TB
 | PD 分离上线后 TTFT 长尾变差 | 第 14、15、37、39、44 章 | pd_disaggregation_contract、pd_transfer_evidence、endpoint_admission_decision、engine_admission_health | 判断慢在 prefill queue、KV transfer、decode admission 还是容量比例，必要时切回 monolithic endpoint。 |
 | Speculative decoding 开启后格式/成本回归 | 第 15、37、39、41、44 章 | speculative_decoding_report、speculative_decoding_regression_record、engine_canary_guardrail_action、quality_cost_ledger | 按 workload slice 关闭 speculative、更新 runtime gate，并计算 draft overhead、质量回归和 prevention cost。 |
 | Engine canary 触发但影响面不清 | 第 14、15、37、39、41、44 章 | engine_canary_record、engine_canary_guardrail_action、endpoint_admission_decision、inference_runtime_cost_ledger | 检查是否冻结放量、降权、回滚或关闭 feature，并确认动作是否恢复 SLO 与成本。 |
+| 发布后 fallback 返回 200 但业务失败 | 第 6、14、37、39、41、44 章 | serving_route_release_contract、serving_release_bundle、endpoint_admission_decision、routing_quality_decision_record、serving_release_fault_tree_execution、serving_release_cost_record | 先确认 fallback release 是否满足同等 capability、usage schema、质量门禁和数据边界；不兼容时关闭 fallback、hold 账单并更新 PRR。 |
 | output token 便宜但用户不满意 | 第 1、13、14、41 章 | quality_feedback_event、quality_regression_record、quality_cost_ledger | 用 cost per successful answer 替代原始 cost/token 做决策。 |
 | 模型上线后质量退化 | 第 6、13、14、37、40、41 章 | quality_gate_execution、eval_slice_contract、golden_set_governance_record、serving_quality_contract、quality_evidence_bundle、quality_cost_ledger | 先冻结质量证据，再判断是评测覆盖不足、golden set 失效、serving 组合漂移、路由策略变化、RAG/Agent 依赖变化还是模型本身退化。 |
 | 质量门禁证据失效 | 第 13、37、40、41、44 章 | eval_contamination_invalidation_record、judge_drift_calibration_record、quality_feedback_intake_pipeline、quality_evidence_validity、quality_evidence_prr_invalidation_drill | 先停止使用失效 gate 作为放量依据，重跑或替换评测集，校准 judge，修复反馈关联和 replay，再更新 PRR 与质量成本账本。 |
 | A/B 结果争议 | 第 6、13、14、37、40 章 | online_experiment_record、online_experiment_guardrail、routing_quality_decision_record、quality_gate_execution、randomization unit | 检查随机化单元、会话粘性、排除范围、护栏指标、停止规则、统计窗口和是否混入 fallback 流量。 |
 | 便宜模型导致人工接管上升 | 第 6、7、13、37、41 章 | routing_quality_decision_record、routing_quality_scorecard、human_feedback_evidence、quality_cost_ledger | 按 task slice 计算 cost per successful answer，必要时调整路由权重、capability gate 或商业定价。 |
-| 回滚后仍未恢复质量 | 第 14、37、39、40、44 章 | serving_rollback_record、serving_rollback_drill、serving_quality_contract、quality_evidence_bundle、release diff、Gateway route | 检查是否只回滚权重但未回滚 tokenizer、template、engine config、RAG 索引、tool policy 或 Gateway route，并确认回滚演练是否覆盖目标组件。 |
+| 回滚后仍未恢复质量 | 第 14、37、39、40、44 章 | serving_release_bundle、serving_release_evidence_bundle、serving_rollback_record、serving_rollback_drill、serving_quality_contract、Gateway route、cache_residency | 检查是否只回滚权重但未回滚 tokenizer、template、engine config、RAG 索引、tool policy、cache、usage schema 或 Gateway route，并确认演练是否覆盖完整 bundle。 |
 | 多模态回答引用页码或区域错误 | 第 4、13、14、33、37、41、44 章 | multimodal_workload_profile、media_artifact_manifest、media_processing_pipeline_record、multimodal_serving_contract、multimodal_quality_gate_execution、multimodal_evidence_bundle | 先回放 source region，确认坐标系、OCR/layout 版本、processor config、模型输出和客户端渲染是否一致；不要直接归因给模型。 |
 | PDF/OCR/视频预处理成本异常 | 第 20、33、37、41、44 章 | media_processing_workload、media_processing_pipeline_record、multimodal_metering_event、multimodal_cost_ledger | 按 stage 拆分 upload、scan、render、OCR/ASR、layout、embedding、model inference 和 storage，检查重复重试、派生产物保留和计量 hold。 |
 | 删除原始媒体后仍有派生产物 | 第 33、37、41、44 章 | media_artifact_manifest、storage_security_boundary、multimodal_evidence_bundle、multimodal_prr_drill | 从 manifest 找到 OCR、frame、embedding、layout、index 和 audit 引用，确认 delete-with-source 策略、retention、训练使用边界和导出审计。 |
@@ -316,7 +323,7 @@ flowchart TB
 | 数据/模型产物供应链链路 | 第 10、14、33、37、38、39、41、44 章 | 能从训练数据来源追到 dataset lineage、checkpoint restore、artifact provenance、cache residency、cache invalidation、storage security boundary、PRR 和供应链成本。 |
 | 可靠性链路 | 第 28、29、36、37、38、39、40、41、44 章 | 能把 health、maintenance、baseline invalidation、change、fault domain、evidence bundle、incident、error budget、capacity activation、PRR 和经济损失串起来。 |
 | 安全多租户链路 | 第 5、6、7、8、21、22、27、28、33、37、40、41、44 章 | 能从 API Key、策略决策和数据边界追到 tenant isolation evidence、provider 外联决策、trace 脱敏、secret 边界、安全证据包、denial-of-wallet、账单争议回放和 secure cost/token。 |
-| 质量与发布链路 | 第 6、13、14、37、40、41、44 章 | 能从线上质量退化追到 eval dataset lineage、quality gate execution、routing decision、serving contract、evidence bundle、rollback record、quality cost ledger 和 PRR。 |
+| 质量与发布链路 | 第 6、13、14、37、39、40、41、44 章 | 能从线上质量退化或发布异常追到 eval dataset lineage、quality gate execution、routing decision、serving release bundle、route/fallback contract、evidence bundle、fault tree、rollback record、cost ledger 和 PRR。 |
 | RAG/Agent 生产控制链路 | 第 2、3、5、6、13、37、40、41、44 章 | 能从用户任务追到 admission context、检索权限、context 快照、工具副作用策略、工具执行记录、预算账本、证据包、安全事故、成本归因和 PRR。 |
 | 行业建设链路 | 第 4、42、43、44 章 | 能把应用想法转成 profile、商业模式、案例诊断、建设计划、ADR、质量门禁和 PRR。 |
 

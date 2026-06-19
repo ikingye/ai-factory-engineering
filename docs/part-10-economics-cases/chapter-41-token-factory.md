@@ -456,6 +456,53 @@ runtime_prevention_cost:
 
 这个账本让 runtime 团队和业务团队能讨论同一个问题：一次自动止血到底是“过度保守”还是“避免更大损失”。如果 guardrail 经常触发但没有避免实际损失，阈值可能过严；如果每次触发都避免了高价值租户事故，预留 canary 容量和诊断采样就是合理成本。
 
+模型服务发布组合事故应生成 `serving_release_cost_record`。它和 `inference_runtime_incident_cost_record` 的边界不同：runtime 成本关注 KV、PD、decode、streaming 和引擎状态；release 成本关注 weights、tokenizer、template、route、fallback、cache、usage schema、rollback 和质量门禁是否作为一个组合工作。一次发布事故可能没有 GPU 故障，也没有引擎 OOM，但仍然造成低质量 token、不可计费 token、fallback 到更贵 provider、回滚占用热容量、cache rewarm 和客户 credit。
+
+```yaml
+serving_release_cost_record:
+  record_id: srcr-20260620-release-001
+  incident_id: inc-20260620-release-001
+  linked_evidence:
+    serving_release_evidence_bundle: sreb-af-chat-large-20260620-001
+    serving_release_fault_tree_execution: srft-20260620-001
+    serving_release_bundle: srb-af-chat-large-20260619-r3
+    serving_route_release_contract: srrc-af-chat-large-20260620
+    serving_rollback_record: srr-20260620-001_if_any
+  affected_scope:
+    endpoints: [af-chat-large-prod]
+    tenants: [enterprise-a]
+    task_slices: [support_chat, rag_citation, tool_call_json]
+    release_window: measured
+    affected_requests: measured_or_sampled
+  cost_breakdown:
+    wrong_release_low_quality_token_cost: calculated_if_quality_regressed
+    incompatible_fallback_success_cost: calculated_if_http_success_business_failure
+    partial_rollback_extended_incident_cost: calculated_if_rollback_incomplete
+    cache_rewarm_and_capacity_loss_cost: calculated_if_artifact_or_tokenizer_changed
+    usage_schema_replay_and_billing_hold_cost: calculated_if_metering_changed
+    canary_or_shadow_capacity_cost: calculated
+    customer_credit_or_support_cost: calculated_if_customer_visible
+  ledger_updates:
+    quality_cost_ledger: append_if_quality_or_tool_schema_regressed
+    inference_runtime_cost_ledger: append_if_runtime_or_cache_impact
+    storage_cost_ledger: append_if_cache_rewarm_or_artifact_recall
+    billing_dispute_replay: opened_if_chargeability_unclear
+    production_readiness_review: update_if_gap_found
+```
+
+```mermaid
+flowchart LR
+  Bundle["serving_release_evidence_bundle"] --> Fault["serving_release_fault_tree_execution"]
+  Fault --> Cost["serving_release_cost_record"]
+  Cost --> Quality["quality_cost_ledger"]
+  Cost --> Runtime["inference_runtime_cost_ledger"]
+  Cost --> Storage["storage_cost_ledger"]
+  Cost --> Billing["billing hold / dispute replay"]
+  Cost --> PRR["serving release PRR gate update"]
+```
+
+这个对象能纠正两个经济误判。第一个误判是“fallback 成功所以没有损失”：如果 fallback 模型返回 200 但工具调用格式不同、引用质量下降或输出更长，用户价值和毛利都可能下降。第二个误判是“回滚完成所以事故结束”：若只回滚 route，没有回滚 tokenizer/template/cache/usage schema，低质量或账单漂移可能继续发生。Token Factory 需要把这些组合损失写出来，才能判断下一次发布是否需要更严格 bundle gate、更多热回滚容量或更窄 canary。
+
 数据和模型产物供应链事故也会改变 token 经济性。旧权重、旧 tokenizer、旧 RAG 索引或受限数据缓存继续被调度使用时，问题不一定表现为 5xx；它可能表现为 token 计量漂移、质量回归、合规风险、冷启动变慢、回滚失败或客户账单争议。`supply_chain_incident_cost_record` 应把这些成本从普通存储费用中拆出来：
 
 ```yaml

@@ -79,6 +79,8 @@
 | OpenTelemetry / GenAI telemetry 语义 | 第 8 章 | 说明通用语义与 AI Factory 自定义标签如何组合 |
 | 模型服务 endpoint/replica 生命周期 | 第 14 章 | 说明 warming、ready、canary、stable、draining、rollback 状态 |
 | serving release 组合版本 | 第 14 章 | 绑定 weights、tokenizer、chat template、runtime、engine config 和 rollback |
+| `serving_release_bundle` | 第 14、37、39、41、44 章 | 说明 serving release 如何绑定 provenance、distribution、quality contract、route contract、runtime gate、usage schema、rollback 和成本对象，成为最小可审计发布单元 |
+| `serving_route_release_contract` | 第 6、14、37、39、44 章 | 说明 Gateway route、canary、fallback 和 rollback 如何引用具体 release bundle，并验证 capability、usage schema、数据边界和质量门禁兼容 |
 | 推理引擎 admission model | 第 15 章 | 说明 input tokens、max output、KV block、deadline 和 queue class |
 | continuous batching 与 KV Cache 状态流 | 第 15 章 | 说明 waiting、prefill、active decode、release、usage 的阶段 |
 | `engine_request_state_ledger` | 第 15、39、41、44 章 | 说明单个推理请求从 admission、prefill、decode、streaming 到 usage close 的状态、KV 和计量对账 |
@@ -97,6 +99,10 @@
 | `inference_runtime_cost_ledger` | 第 41 章 | 说明 speculative decoding、PD 分离、KV block、取消浪费和质量成本如何共同决定成功回答成本 |
 | `inference_runtime_fault_tree_execution` | 第 39、44 章 | 说明推理 runtime 故障树如何记录 admission、prefill、decode、KV、PD、canary、streaming 和 metering 分支判断 |
 | `inference_runtime_incident_cost_record` | 第 41、44 章 | 说明推理 runtime 事故如何把未交付 token、取消浪费、KV 泄漏、PD retry、canary rollback 和账单修正写入经济账本 |
+| `serving_release_evidence_bundle` | 第 37、39、41、44 章 | 说明发布、fallback、回滚、cache 或 usage schema 事故时如何冻结 release bundle、route contract、quality contract、cache、runtime、metering 和 rollback 证据 |
+| `serving_release_fault_tree_execution` | 第 39、44 章 | 说明回滚未恢复、fallback 质量下降、发布后账单漂移或旧产物误用时如何拆分 bundle、route、cache、runtime、rollback 和 metering 分支 |
+| `serving_release_cost_record` | 第 41、44 章 | 说明发布组合事故如何把低质量 token、不兼容 fallback、半回滚、cache rewarm、usage replay、billing hold 和客户 credit 写入经济账本 |
+| `serving_release_prr_drill` | 第 44 章 | 说明高 SLA endpoint 上线前如何演练 release bundle、Gateway route/fallback、cache、rollback、usage schema、故障树和成本账本 |
 | Token Factory ledger | 第 41 章 | 说明 token ledger、resource ledger、阶段成本和毛利约束指标 |
 
 ## 多模态与媒体链路覆盖矩阵
@@ -309,8 +315,14 @@
 | `agent_budget_ledger` | 第 3 章、第 6 章、第 37 章、第 41 章 | 说明 Agent run 的模型调用、工具调用、token、沙箱、外部 API、人工接管和预算控制动作如何计量 |
 | `rag_agent_evidence_bundle` | 第 37 章、第 40 章、第 41 章 | 说明 RAG/Agent 事故时如何冻结权限、上下文、工具执行、预算、安全审计和成本证据 |
 | `serving_quality_contract` | 第 14 章、第 15 章 | 说明 serving release 中 weights、tokenizer、template、engine、参数和质量门禁的绑定关系 |
+| `serving_release_bundle` | 第 14 章、第 37 章、第 39 章、第 41 章、第 44 章 | 说明模型发布组合如何把产物、route、fallback、runtime、usage、cache、rollback 和成本证据打成最小生产单元 |
+| `serving_route_release_contract` | 第 6 章、第 14 章、第 39 章、第 44 章 | 说明 Gateway 的 primary、canary、fallback 和 rollback 目标必须引用兼容 release bundle，而不是只引用 endpoint 名称 |
 | `serving_rollback_record` | 第 14 章、第 40 章、第 44 章 | 说明一次质量或 runtime 回滚到底回滚了权重、tokenizer、template、engine、Gateway 路由还是配置，并保留事故证据 |
 | `serving_rollback_drill` | 第 14 章、第 37 章、第 40 章、第 41 章、第 44 章 | 说明高 SLA endpoint 是否预先演练过权重、tokenizer、template、runtime、Gateway route、cache、drain、计量和质量探针的完整回滚 |
+| `serving_release_evidence_bundle` | 第 37 章、第 39 章、第 41 章 | 说明发布事故时如何冻结 release bundle、route contract、cache、runtime、metering、rollback 和质量证据 |
+| `serving_release_fault_tree_execution` | 第 39 章、第 44 章 | 说明发布后质量/协议/计费/回滚异常如何按 bundle、route、cache、runtime、rollback 和 billing 分支执行故障树 |
+| `serving_release_cost_record` | 第 41 章、第 44 章 | 说明发布事故如何把 fallback 质量损失、半回滚延长事故、cache rewarm、usage replay、billing hold 和客户 credit 计入毛利 |
+| `serving_release_prr_drill` | 第 44 章 | 说明 release bundle、Gateway route/fallback、rollback、cache、metering 和成本账本上线前如何演练 |
 | `routing_quality_scorecard` | 第 6 章、第 13 章 | 说明 Gateway 如何把质量、安全、成本、延迟和能力用于模型路由，而不是只看健康 |
 | `routing_quality_decision_record` | 第 6 章、第 37 章、第 41 章 | 说明某个请求或流量切片为什么选择、拒绝或 fallback 到某个模型，并能回放质量、SLO、成本、能力和数据边界依据 |
 | `quality_evidence_bundle` | 第 37 章、第 40 章、第 41 章 | 说明质量事故时如何冻结反馈、人工评审、路由、serving contract、gate execution、slice contract、golden governance、实验护栏、回滚和成本证据 |

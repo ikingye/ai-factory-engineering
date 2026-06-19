@@ -572,6 +572,15 @@ production_readiness_review:
       engine_canary_guardrail_action: machine_enforced
       inference_runtime_fault_tree_execution_dry_run: pass
       inference_runtime_incident_cost_record_pipeline: configured
+    serving_release:
+      serving_release_bundle: pass_for_target_endpoint
+      serving_route_release_contract: pass
+      release_bundle_integrity_check: pass
+      fallback_release_compatibility: pass_if_fallback_enabled
+      rollback_bundle_warm_capacity: pass_if_high_sla
+      serving_release_evidence_bundle_trigger: configured
+      serving_release_fault_tree_execution_dry_run: pass
+      serving_release_cost_record_pipeline: configured
     container_gpu_runtime:
       gpu_resource_claim_contract: pass_if_gpu_or_dra_resource_used
       resource_claim_acceptance_matrix: pass_if_gpu_or_dra_resource_used
@@ -638,6 +647,7 @@ production_readiness_review:
       energy_ledger: initialized_if_power_or_cooling_relevant
       heterogeneous_gpu_cost_scorecard: required_if_route_across_gpu_classes
       resource_claim_incident_cost_record_pipeline: configured_if_gpu_or_dra_resource_used
+      serving_release_cost_record_pipeline: configured_if_serving_release_or_fallback_used
       quality_cost_ledger: initialized
       multimodal_metering_event: configured_if_multimodal
       multimodal_cost_ledger: initialized_if_multimodal
@@ -706,6 +716,13 @@ production_readiness_review:
       - recent_engine_canary_guardrail_failure_unresolved
       - inference_runtime_fault_tree_dry_run_failed
       - inference_runtime_incident_cost_record_pipeline_missing
+      - serving_release_bundle_missing_or_invalid
+      - serving_route_release_contract_missing
+      - fallback_release_without_capability_usage_or_boundary_compatibility
+      - high_sla_serving_without_warm_rollback_bundle
+      - serving_release_evidence_bundle_trigger_missing
+      - serving_release_fault_tree_dry_run_failed
+      - serving_release_cost_record_pipeline_missing
       - gpu_resource_without_claim_contract
       - resource_claim_acceptance_matrix_not_passed
       - resource_claim_admission_replay_failed
@@ -839,6 +856,60 @@ training_prr_failure_drill:
 ```
 
 这个演练能把“训练平台可观测”变成可验收事实。很多团队在建设阶段能展示 dashboard，却无法在事故发生时拿到 rank、容器注入、RDMA、checkpoint 和成本的同一条证据链；也有团队能定位技术根因，却无法说明浪费了多少 GPU 小时、是否影响模型发布日期、是否应该暂停扩容。PRR 要求演练这些路径，是为了避免昂贵训练任务成为第一次真实集成测试。
+
+在 runtime 事故演练之前，还应做 `serving_release_prr_drill`。它验证的不是某个引擎指标，而是一个 release bundle 是否能被 Gateway 正确路由、被 fallback 正确降级、被 rollback 完整恢复、被 cache 和 usage schema 正确对账。很多上线事故来自“单项都通过，组合不一致”：权重和 tokenizer 通过了，Gateway fallback 却指向不兼容 release；quality gate 通过了，usage schema 没进入计费；rollback drill 通过了镜像回退，但没有恢复 route、template 和 cache。PRR 必须让这些组合问题在受控窗口暴露。
+
+```yaml
+serving_release_prr_drill:
+  drill_id: sr-prr-drill-20260620-001
+  production_readiness_review: prr-maas-chat-prod-2026-06
+  scope:
+    endpoint: af-chat-large-prod
+    candidate_bundle: srb-af-chat-large-20260619-r3
+    baseline_bundle: srb-af-chat-large-20260612-r9
+    gateway_contract: srrc-af-chat-large-20260620
+    task_slices:
+      - short_chat
+      - rag_citation
+      - tool_call_json
+      - long_context_streaming
+  injected_or_simulated_scenarios:
+    - candidate_tokenizer_digest_mismatch
+    - fallback_target_lacks_tool_call_schema
+    - usage_schema_changed_without_metering_replay
+    - cache_residency_contains_invalid_template
+    - rollback_route_restored_but_engine_config_not_restored
+  required_outputs:
+    serving_release_evidence_bundle: generated
+    serving_release_fault_tree_execution: generated_by_controlled_failure
+    endpoint_admission_decision: replayed_for_primary_canary_fallback
+    serving_rollback_record: generated_for_rollback_scenario
+    serving_release_cost_record: generated_if_failure_injected
+    billing_dispute_replay: opened_if_usage_schema_unclear
+    prr_gate_update: generated_if_gap_found
+  pass_criteria:
+    incompatible_fallback_blocked_before_first_token: true
+    full_bundle_rollback_restores_quality_protocol_and_usage: true
+    invalid_cache_prevents_new_replica_or_route: true
+    metering_hold_applied_when_usage_schema_unknown: true
+    route_decisions_reference_release_contract: true
+    cost_ledger_append_verified: true
+```
+
+```mermaid
+flowchart LR
+  Drill["serving_release_prr_drill"] --> Bundle["serving_release_bundle"]
+  Drill --> Route["serving_route_release_contract"]
+  Bundle --> Evidence["serving_release_evidence_bundle"]
+  Route --> Evidence
+  Evidence --> Fault["serving_release_fault_tree_execution"]
+  Fault --> Rollback["serving_rollback_record"]
+  Fault --> Cost["serving_release_cost_record"]
+  Fault --> Billing["billing hold / replay"]
+  Cost --> PRR["PRR serving release gate"]
+```
+
+这个演练让“可以回滚”和“可以正确回滚”分开。正确回滚至少要恢复 release bundle 中声明的 weights、tokenizer、template、runtime profile、Gateway route、cache 状态、usage schema 和 drain 语义；如果业务只做局部 route 回退，也必须证明剩余组合仍与质量契约一致。对高 SLA endpoint，缺少这类 drill 时，PRR 不应接受口头承诺，因为事故窗口内很难再临时确认每个组件是否等价。
 
 在线推理资源池也需要 runtime 事故演练。演练应覆盖一条真实请求从 Gateway admission 到 engine request state、KV block、streaming close、metering close 和成本记录的闭环。常见演练包括客户端取消、长上下文 KV pressure、PD transfer timeout、engine canary guardrail breach 和 usage close drift。目标不是制造复杂事故，而是证明系统能在短窗口内冻结证据、执行故障树、止血并对账。
 

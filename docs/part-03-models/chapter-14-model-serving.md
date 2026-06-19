@@ -242,6 +242,68 @@ serving_release:
   rollback_to: af-chat-large-20260612-r9
 ```
 
+在高 SLA MaaS 中，`serving_release` 还应被打包成 `serving_release_bundle`。前者描述一次部署的核心组合，后者描述这个组合进入生产所需的所有可验证外部依赖：模型目录、Gateway 路由合同、质量契约、runtime gate、artifact 分发、cache 状态、计量 schema、rollback/drain 语义和成本对象。发布事故常常不是某个单项错误，而是组合边界断裂：模型目录指向新 release，Gateway fallback 仍指旧能力，计量 schema 没同步，cache 里有旧 tokenizer，rollback 只恢复权重没有恢复 template。Bundle 的目标是让这些关系在发布前就成为显式证据。
+
+```yaml
+serving_release_bundle:
+  bundle_id: srb-af-chat-large-20260619-r3
+  release_id: af-chat-large-20260619-r3
+  model_registry:
+    model_alias: af-chat-large
+    registry_entry: model-registry/af-chat-large/20260619-r3
+    model_artifact_provenance: map-af-chat-large-20260619-r3
+  serving_contracts:
+    serving_quality_contract: sqc-af-chat-20260619-r3
+    serving_route_release_contract: srrc-af-chat-large-20260620
+    multimodal_serving_contract: optional_if_multimodal
+  artifacts:
+    model_artifact_distribution: mad-af-chat-large-20260619-r3
+    cache_residency_policy: prewarm_primary_and_rollback
+    cache_invalidation_record: required_if_replacing_or_revoking
+  runtime:
+    runtime_quality_gate: rqg-vllm-prod-h100-v7
+    engine_canary_record: engine-canary-20260620-001
+    engine_admission_health_schema: eah-schema-v3
+    usage_schema: usage-openai-compatible-v6
+  rollout:
+    canary_plan: 1_5_25_50_100
+    stop_conditions:
+      - protocol_contract_failure
+      - token_count_drift_unexplained
+      - quality_guardrail_breach
+      - cost_per_successful_answer_regression
+    drain_contract: dc-af-chat-large-v3
+  rollback:
+    rollback_to_bundle: srb-af-chat-large-20260612-r9
+    serving_rollback_drill: srd-af-chat-20260620
+    route_restore_verified: true
+    warm_capacity_available: true
+  economics:
+    inference_runtime_cost_ledger: ircl-af-chat-large-202606
+    quality_cost_ledger: qcost-support-202606
+    serving_release_cost_record: required_on_incident_or_rollback
+```
+
+这份 bundle 让发布系统有了最小不可拆单元。上线审批不应只看 release id，而要检查 bundle 中每个引用是否 valid：provenance 是否来自批准训练，quality contract 是否绑定同一 tokenizer/template/runtime，route contract 是否只把兼容 release 作为 fallback，usage schema 是否被计量系统识别，rollback bundle 是否仍有热容量。任何一个引用缺失，都意味着发布不是“有风险”，而是“无法证明风险边界”。
+
+```mermaid
+flowchart TB
+  Bundle["serving_release_bundle"] --> Release["serving_release"]
+  Bundle --> Provenance["model_artifact_provenance"]
+  Bundle --> Dist["model_artifact_distribution"]
+  Bundle --> Quality["serving_quality_contract"]
+  Bundle --> Route["serving_route_release_contract"]
+  Bundle --> Runtime["runtime_quality_gate\nengine_canary_record"]
+  Bundle --> Usage["usage schema\nmetering"]
+  Bundle --> Rollback["serving_rollback_drill\nrollback bundle"]
+  Route --> Gateway["AI Gateway"]
+  Runtime --> Serving["Model Serving"]
+  Usage --> Billing["Billing"]
+  Rollback --> PRR["production readiness review"]
+```
+
+Bundle 还可以减少“半回滚”。如果一次事故触发 rollback，系统应恢复 `rollback_to_bundle` 中声明的 route、weights、tokenizer、template、runtime profile、usage schema、cache 和 drain 语义，而不是让操作者手工挑组件。若业务只需要回滚 route 或关闭 canary，也应在 `serving_rollback_record` 中记录是局部回滚，并证明其余 bundle 仍与质量门禁一致。回滚粒度可以细，但证据必须仍按 bundle 对齐。
+
 工程流程应包括预检、部署、预热、灰度、扩大、稳定和清理。预检查模型 artifact、tokenizer、runtime 兼容性和资源配额；部署后先做健康检查和 warmup；灰度期间观察指标；通过后逐步扩大；稳定后再清理旧版本。每个阶段都应有自动状态和人工可见性。发布不是一次 kubectl apply。
 
 实现中还要标准化错误处理。模型加载失败、请求超限、OOM、后端超时、streaming 取消、tokenizer 错误和引擎异常，都应映射为可解释错误码，并进入 trace 和指标。上游 Gateway 和 MaaS 需要这些信息做 fallback、计量和用户提示。模型服务不能把所有异常都变成 500。

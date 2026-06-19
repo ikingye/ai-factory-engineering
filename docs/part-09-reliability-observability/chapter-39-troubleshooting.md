@@ -589,6 +589,79 @@ flowchart TB
 
 这个执行记录让“推理慢”不再是单一故障。TTFT 异常可能需要预热权重或拆长上下文；TPOT 异常可能要调 decode active sequence；streaming gap 可能是客户端背压或 server flush；取消后 HBM 不降可能是 KV 释放；PD 分离超时可能要切回 monolithic endpoint；canary 触发可能只需要关闭 speculative decoding 的某个 slice。动作越贴近分支，影响面越小。
 
+模型服务发布事故需要另一棵故障树。它的入口症状不是“引擎慢”本身，而是发布组合相关异常：canary 通过后全量质量下降，fallback 后格式或工具调用失败，回滚后仍未恢复，某些节点加载旧权重或旧 tokenizer，usage 字段变化导致账单 hold，Gateway route 指向的 release 与模型目录不一致。这类问题跨越 Gateway、Model Serving、artifact cache、runtime、计量和质量门禁，如果只按单层排障，很容易把组合漂移误判成模型能力问题或 runtime 问题。
+
+```yaml
+serving_release_fault_tree_execution:
+  execution_id: srft-20260620-001
+  incident_id: inc-20260620-release-001
+  serving_release_evidence_bundle: sreb-af-chat-large-20260620-001
+  entry:
+    symptom: rollback_not_recovering_or_fallback_quality_drop_or_release_billing_drift
+    affected_endpoint: af-chat-large-prod
+    affected_tenants: [enterprise-a]
+    affected_task_slices: [support_chat, rag_citation, tool_call_json]
+  required_evidence:
+    serving_release_bundle: srb-af-chat-large-20260619-r3
+    serving_route_release_contract: srrc-af-chat-large-20260620
+    serving_quality_contract: sqc-af-chat-20260619-r3
+    endpoint_admission_decisions: sampled
+    cache_residency: sampled
+    metering_events: sampled
+  branches:
+    release_bundle_integrity:
+      verdict: ruled_out_or_confirmed_or_unknown
+      evidence: [weights_digest, tokenizer_digest, chat_template_version, engine_config_digest]
+      action_if_confirmed: freeze_release_and_restore_baseline_bundle
+    gateway_route_and_fallback:
+      verdict: ruled_out_or_confirmed_or_unknown
+      evidence: [serving_route_release_contract, endpoint_admission_decision, routing_quality_decision_record]
+      action_if_confirmed: patch_route_or_disable_incompatible_fallback
+    artifact_cache_and_distribution:
+      verdict: ruled_out_or_confirmed_or_unknown
+      evidence: [model_artifact_distribution, cache_residency, cache_invalidation_record]
+      action_if_confirmed: block_nodes_with_invalid_cache_and_rewarm
+    runtime_and_protocol:
+      verdict: ruled_out_or_confirmed_or_unknown
+      evidence: [runtime_quality_gate, engine_canary_record, protocol_contract_test, usage_schema]
+      action_if_confirmed: rollback_engine_or_usage_adapter
+    rollback_path:
+      verdict: ruled_out_or_confirmed_or_unknown
+      evidence: [serving_rollback_record, serving_rollback_drill, warm_capacity, drain_contract]
+      action_if_confirmed: execute_full_bundle_rollback_or_declare_partial_rollback
+    metering_and_billing:
+      verdict: ruled_out_or_confirmed_or_unknown
+      evidence: [metering_events, usage_schema, token_count_drift, billing_dispute_replay]
+      action_if_confirmed: hold_billing_and_replay_usage
+  outputs:
+    serving_release_cost_record: generated_if_customer_or_capacity_impact
+    quality_cost_ledger: append_if_quality_regressed
+    inference_runtime_cost_ledger: append_if_runtime_or_cache_impact
+    prr_gate_update: generated_if_preventable_gap
+```
+
+```mermaid
+flowchart TB
+  Symptom["release / fallback / rollback symptom"] --> Bundle["serving_release_evidence_bundle"]
+  Bundle --> Tree["serving_release_fault_tree_execution"]
+  Tree --> Integrity["bundle integrity\nweights / tokenizer / template / config"]
+  Tree --> Route["Gateway route + fallback contract"]
+  Tree --> Cache["artifact distribution + cache"]
+  Tree --> Runtime["runtime / protocol / usage schema"]
+  Tree --> Rollback["rollback path + drain + warm capacity"]
+  Tree --> Meter["metering + billing replay"]
+  Integrity --> Action["freeze / route patch / full bundle rollback"]
+  Route --> Action
+  Cache --> Action
+  Runtime --> Action
+  Rollback --> Action
+  Meter --> Action
+  Action --> Cost["serving_release_cost_record"]
+  Action --> PRR["serving_release_prr_drill update"]
+```
+
+这棵故障树的 stop rule 是：没有 `serving_release_bundle`，不能声称线上组合一致；没有 `serving_route_release_contract` 和 `endpoint_admission_decision`，不能声称 Gateway 路由正确；没有 `cache_residency` 和 invalidation 证据，不能声称节点没有加载旧产物；没有 `usage_schema` 和 metering replay，不能声称账单正确；没有 `serving_rollback_drill`，不能把回滚能力当作既定事实。发布事故的关键不是更快猜根因，而是防止“半回滚”“半兼容”“半计量”进入生产。
+
 安全和成本型事故也需要故障树。典型症状包括：某个租户预算在短时间内被打满，同一 API Key 出现多地域来源，第三方 provider 成本突增，长上下文请求比例异常，Agent run 步数失控，或者高敏请求被错误 fallback 到外部 provider。它们与传统服务故障不同：HTTP 可能都是 2xx，模型质量也可能正常，但平台的身份边界、数据边界或经济边界已经失控。若仍用“服务是否可用”作为入口，事故会等到账单或客户投诉时才暴露。
 
 `security_policy_fault_tree_execution` 用来把这类事故拆成可验证分支。第一分支是 credential：key 是否泄露、是否新建、来源是否异常、是否绕过 rotation 或禁用策略。第二分支是 policy：Gateway 是否按正确版本执行 `policy_decision_record`，是否有 dry-run 漏放或实例配置漂移。第三分支是 egress：`egress_provider_decision` 是否存在、provider 合同和区域是否允许、fallback 是否越过数据边界。第四分支是 spend：请求形态和成本速度是否符合租户历史和审批。第五分支是 observability：trace、prompt、RAG context、tool 参数是否被正确脱敏。每个分支都要能指向证据和止血动作。
