@@ -257,6 +257,120 @@ agent_trajectory_record:
     total_cost_ref: cost-ledger-link
 ```
 
+工具执行前必须先有 `tool_side_effect_policy`。它描述每个工具在特定租户、项目、用户身份和任务类型下是否只读、是否有副作用、是否幂等、是否需要 dry-run、是否需要人工确认、是否允许自动重试、失败后如何补偿、审计保留多久。没有这类策略，平台只能靠工具名字猜风险：`send_email`、`submit_ticket`、`apply_patch`、`run_sql`、`restart_service` 的风险完全不同，同一个工具在只读查询和生产写操作中的策略也不同。
+
+```yaml
+tool_side_effect_policy:
+  policy_id: tsep-20260620-codefix
+  scope:
+    tenant: enterprise-a
+    agent_type: code_repair_agent
+    environment: production
+  tools:
+    read_file:
+      side_effect: none
+      auto_execute: true
+      retry: safe_with_backoff
+      output_redaction: source_policy
+    apply_patch:
+      side_effect: workspace_write
+      auto_execute: true
+      requires_diff_summary: true
+      idempotency_key_required: true
+      rollback: reverse_patch_required
+    run_tests:
+      side_effect: compute_and_temp_files
+      auto_execute: true
+      max_duration_seconds: policy_defined
+      retry: bounded_by_error_class
+    push_to_remote:
+      side_effect: external_write
+      auto_execute: false
+      requires_human_approval: true
+      default_decision: deny
+  global_guards:
+    deny_secret_read_without_allowlist: true
+    deny_network_write_from_sandbox: true
+    require_policy_decision_record: true
+```
+
+每次实际调用工具，都应生成 `agent_tool_execution_record`。它把模型提出的 tool intent、策略决策、参数校验、凭据注入、执行环境、幂等键、输入输出摘要、错误类别、重试、成本、审计和副作用结果绑定在一起。这个记录不是为了保存所有原始输出，而是为了回答生产问题：模型为什么选这个工具，策略为什么放行，工具到底做了什么，是否修改了外部状态，失败后是否可重试或回滚，成本应该归到哪个 run。
+
+```yaml
+agent_tool_execution_record:
+  execution_id: ater-20260620-0001
+  run_id: run-20260619-0001
+  step_id: s7
+  tool:
+    name: apply_patch
+    schema_version: apply-patch-v3
+    side_effect_policy: tsep-20260620-codefix
+  intent:
+    model_call_id: mc-s6
+    requested_action: modify_workspace
+    argument_hash: sha256:example
+  policy:
+    decision: allow
+    policy_decision_record: pdr-agent-20260620-0001
+    approval_id: not_required_for_workspace_write
+    idempotency_key: run-20260619-0001:s7
+  execution:
+    sandbox_profile: codefix-no-network-write
+    credential_mode: scoped_ephemeral
+    started_at: recorded
+    completed_at: recorded
+    result_class: patch_applied
+    output_ref: object://redacted-tool-output
+  side_effects:
+    external_write: false
+    workspace_diff_ref: object://diff/run-20260619-0001/s7
+    rollback_ref: object://reverse-diff/run-20260619-0001/s7
+  accounting:
+    tool_runtime_ms: measured
+    sandbox_cost: calculated
+    emitted_tokens_to_next_step: measured
+```
+
+`agent_tool_execution_record` 应成为 Agent trace 的主干，而不是调试日志的附属品。安全团队用它审计越权动作，SRE 用它定位工具超时和外部依赖故障，评测平台用它比较轨迹质量，账单系统用它计算工具和沙箱成本，用户界面用它展示“已执行”和“待确认”动作。若记录里没有幂等键和副作用摘要，自动重试就不可靠；若没有 policy decision，工具调用就无法证明合规；若没有 rollback ref，高风险任务就不能安全放量。
+
+Agent 的预算也应落成 `agent_budget_ledger`。它不是月底账单，而是 run 执行过程中的实时控制账本：每一步消耗了多少 input/output token、工具时间、沙箱资源、外部 API、检索和人工接管成本；预算阈值在何时被触发；是否因为预算不足改变了计划；最终成本是否与任务价值匹配。没有这个账本，Agent 成本只能事后粗略归因，orchestrator 也无法在执行中做理性停止。
+
+```yaml
+agent_budget_ledger:
+  ledger_id: abl-20260620-0001
+  run_id: run-20260619-0001
+  tenant: enterprise-a
+  project: developer-assistant
+  budget_policy:
+    max_model_calls: 12
+    max_tool_calls: 40
+    max_total_tokens: 120000
+    max_wall_time_seconds: 1800
+    max_estimated_cost: policy_defined
+  consumption:
+    model_calls: 7
+    tool_calls: 18
+    input_tokens: measured
+    output_tokens: measured
+    retrieval_cost: calculated
+    sandbox_runtime_cost: calculated
+    external_api_cost: calculated
+    human_handoff_cost: optional
+  control_actions:
+    - step_id: s8
+      action: compress_observations
+      reason: context_budget_pressure
+    - step_id: s10
+      action: require_user_confirmation
+      reason: cost_threshold_near_limit
+  outcome:
+    task_success: true
+    cost_per_successful_task: calculated
+    failed_run_waste: none
+```
+
+这个账本会把 Agent 从“不可预测的多轮调用”变成可运营 workload。Gateway 可以用它限制每租户并发 run 和任务预算，SRE 可以用它识别循环和外部依赖成本，评测平台可以比较新旧模型的轨迹效率，Token Factory 可以把 Agent 的内部 token、工具成本和人工接管折算成每成功任务成本。预算账本也能保护用户体验：预算耗尽时，Agent 应返回已完成步骤、剩余风险和继续所需预算，而不是直接失败或静默停止。
+
 线上失败应进入 `quality_feedback_event`，再归并成 `agent_regression_case`。Agent 的反馈来源比 Chat 更多：用户取消、人工接管、工具审批拒绝、预算耗尽、循环检测、测试失败、外部系统拒绝、审计告警和最终结果被用户撤销。Regression case 需要记录失败层级：planning、tool_selection、tool_schema、policy、tool_runtime、memory、reflection、budget、human_handoff 或 final_answer。没有层级，团队会把所有失败归因给“模型不够聪明”，忽略工具、权限和编排缺陷。
 
 ```mermaid

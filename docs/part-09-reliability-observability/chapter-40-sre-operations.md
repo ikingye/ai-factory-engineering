@@ -154,6 +154,40 @@ flowchart LR
 
 安全 incident 也要计算成本。泄露 key 造成的 token、免费额度被刷、异常长上下文攻击、Agent 循环调用、隔离池停用、审计取证和客户赔付，都应进入 incident cost。这样安全治理才能和 Token Factory 经济模型连接，而不是只停留在合规报告。
 
+RAG 越权和 Agent 工具越权应使用专门的 `tool_security_incident_record` 或数据访问安全记录。它记录安全信号、涉及的身份、权限决策、工具执行、证据冻结、止血动作、影响评估和防复发门禁。这个对象的重点不是把所有事件都定性为严重事故，而是让高风险工具和检索链路有统一复盘格式。没有它，RAG 文档权限绕过会停留在知识库团队，Agent 工具越权会停留在应用团队，SRE 无法推动平台级控制面修复。
+
+```yaml
+tool_security_incident_record:
+  incident_id: tsi-20260620-0001
+  trigger:
+    source: security_audit_event
+    symptom: high_risk_tool_policy_bypass_attempt
+  scope:
+    tenant: enterprise-a
+    application: support-copilot
+    agent_run: run-20260619-0001
+    affected_tools: [create_refund_ticket]
+  evidence:
+    rag_agent_evidence_bundle: raeb-20260620-001
+    policy_decision_records: sampled
+    agent_tool_execution_records: [ater-20260620-0001]
+    retrieval_permission_decisions: optional
+    tool_side_effect_policy: tsep-support-agent-prod
+  containment:
+    actions: [freeze_high_risk_tool, require_manual_approval, rotate_scoped_credential]
+    route_or_model_change: optional
+  impact:
+    data_exposure: none_or_under_review
+    external_side_effect: prevented_or_executed
+    cost_impact: calculated
+  follow_up:
+    policy_update_required: true
+    regression_case_required: true
+    prr_blocker_if_unresolved: true
+```
+
+安全复盘必须改变控制面。若事故来自 RAG 权限过滤缺失，应要求 `retrieval_permission_decision` 成为该知识库的强制证据；若来自工具副作用策略过宽，应更新 `tool_side_effect_policy` 并回放历史工具调用；若来自预算或 denial-of-wallet，应把 `agent_budget_ledger` 纳入 Gateway admission；若来自 trace 泄露，应修改 `data_boundary_policy` 和观测导出审批。安全 incident 的关闭条件不是“没有继续报警”，而是相关门禁已更新并通过回放验证。
+
 模型质量也会形成 incident。质量事故不一定有 5xx：新模型回答风格错误导致客服投诉，RAG 引用过期政策，Agent 工具轨迹反复失败，安全策略误拒核心业务，runtime 升级导致 JSON schema 失败率升高，都可能是生产事故。SRE 需要定义 `quality_incident_record`，把质量退化、影响面、回滚、样本沉淀和门禁更新纳入同一流程。否则质量问题会被当成“模型效果不好”的普通反馈，无法进入可靠性治理。
 
 ```yaml
@@ -418,13 +452,15 @@ flowchart TB
 
 质量事故也应消耗 error budget，但口径要独立于可用性。一个模型持续返回低质量答案，HTTP 可用性可能仍然达标，却已经伤害用户任务成功率和客户信任。SRE 可以为核心应用定义 quality SLO，例如任务成功率、引用正确率、工具轨迹成功率、人工接管率或投诉率，并把严重质量回归写入 `slo_budget_ledger`。这样模型质量会影响发布节奏和变更策略，而不是只影响离线评测报告。
 
-质量事故的控制回路应和技术事故同级。`quality_evidence_bundle` 冻结线上质量现场，`quality_gate_execution` 说明发布前门禁依据，`routing_quality_decision_record` 说明 Gateway 为什么选择某个模型，`serving_rollback_record` 说明如何止血，`quality_cost_ledger` 说明低质量 token 的经济影响。SRE 不能只问“是否 5xx”，而要问“用户任务是否成功，质量预算是否被消耗，是否需要冻结模型或路由变更”。
+质量事故的控制回路应和技术事故同级。`quality_evidence_bundle` 冻结线上质量现场，`rag_agent_evidence_bundle` 补充 RAG 权限、context、Agent 工具和预算证据，`quality_gate_execution` 说明发布前门禁依据，`routing_quality_decision_record` 说明 Gateway 为什么选择某个模型，`serving_rollback_record` 说明如何止血，`quality_cost_ledger` 说明低质量 token 的经济影响。SRE 不能只问“是否 5xx”，而要问“用户任务是否成功，质量预算是否被消耗，是否需要冻结模型或路由变更”。
 
 ```mermaid
 flowchart TB
   QAlert["quality SLO / feedback spike"] --> QEvidence["quality_evidence_bundle"]
+  QEvidence --> RAEB["rag_agent_evidence_bundle"]
   QEvidence --> QIncident["quality_incident_record"]
   QEvidence --> QBudget["quality error budget"]
+  RAEB --> QIncident
   Gate["quality_gate_execution"] --> QIncident
   Route["routing_quality_decision_record"] --> QIncident
   QIncident --> Rollback["serving_rollback_record / route freeze"]

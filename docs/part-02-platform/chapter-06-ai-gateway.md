@@ -310,6 +310,40 @@ gateway_policy:
 
 工程实现还应提供策略审计和回放能力。给定一个历史请求，平台应能用当时的策略版本解释它为什么被允许、拒绝、路由或 fallback。策略回放能帮助事故复盘，也能在发布新策略前做 dry-run，评估会影响哪些租户和模型。没有回放能力，网关策略变更只能靠线上试错。
 
+对 RAG 和 Agent 请求，Gateway 还应生成 `rag_agent_admission_context`。它不是新的业务对象，而是把入口处已经确认的身份、权限、预算、数据边界、工具边界和观测要求传递给下游。RAG 服务用它生成 `retrieval_permission_decision`，Agent Orchestrator 用它选择 `tool_side_effect_policy` 和初始化 `agent_budget_ledger`，观测系统用它决定 trace 脱敏级别。没有这个上下文，下游服务只能各自查权限，最终一定会出现口径漂移。
+
+```yaml
+rag_agent_admission_context:
+  context_id: raac-20260620-0001
+  request_id: req-support-0001
+  identity:
+    tenant: enterprise-a
+    project: support-copilot-prod
+    application_principal: svc-support-copilot
+    user_principal: user-42
+    delegation_mode: require_user_context_for_retrieval_and_tools
+  data_boundary:
+    policy: dbp-20260610.3
+    prompt_logging: redacted
+    retrieval_text_logging: disabled
+    third_party_provider_allowed: false
+  rag:
+    allowed_knowledge_bases: [support-kb]
+    require_retrieval_permission_decision: true
+    require_rag_context_snapshot: true
+  agent:
+    allowed_tool_scopes: [read_customer_ticket, search_docs, create_draft_reply]
+    side_effect_policy_selector: support-agent-prod
+    require_agent_budget_ledger: true
+    high_risk_tool_requires_approval: true
+  budgets:
+    request_max_input_tokens: policy_defined
+    run_max_total_tokens: policy_defined_if_agent
+    run_max_tool_calls: policy_defined_if_agent
+```
+
+这个 admission context 应被写入 `policy_decision_record` 或与其关联。它能解释很多跨层事故：RAG 检索为什么没有看到某个文档，Agent 工具为什么被拒绝，为什么某个请求不能 fallback 到第三方 provider，为什么 trace 里没有明文 chunk，为什么 run 在预算未耗尽前就进入人工确认。Gateway 的职责不是执行检索或工具，而是把入口策略变成下游必须消费的事实。
+
 `policy_decision_record` 是 Gateway 最关键的安全证据对象。它记录一次请求在 identity、capability、budget、data boundary、safety、route 和 commit 阶段的输入事实、命中规则、决策结果和策略版本。它不应包含完整 prompt 或敏感响应，而应包含足够解释策略的引用和摘要。这样既能保护数据边界，又能回答“为什么这个请求被允许、拒绝、限流、fallback 或路由到某个资源池”。
 
 ```mermaid

@@ -181,6 +181,11 @@
 | `runtime_privilege_profile` | 第 21 章、第 22 章 | 说明 container privilege、hostPath、capability、seccomp、device 注入、RDMA device 和 debug 豁免 |
 | `gpu_isolation_matrix` | 第 22 章、第 27 章 | 说明整卡、MIG、time-slicing、vGPU、PCIe passthrough 和容器共享的隔离边界 |
 | `data_boundary_policy` | 第 5 章、第 6 章、第 37 章 | 说明 prompt、response、RAG 文档、模型权重、日志、trace、cache 和导出数据的边界 |
+| `rag_agent_admission_context` | 第 6 章、第 5 章 | 说明 Gateway 如何把入口身份、用户代理、数据边界、检索范围、工具范围和任务预算传给 RAG/Agent 下游 |
+| `retrieval_permission_decision` | 第 2 章、第 5 章、第 6 章、第 37 章 | 说明 RAG 检索时哪些文档/chunk 在当前租户、用户、ACL、数据边界和缓存策略下被允许或拒绝 |
+| `tool_side_effect_policy` | 第 3 章、第 5 章、第 40 章、第 44 章 | 说明 Agent 工具是否只读、是否有副作用、是否幂等、是否需要确认、是否允许重试和如何回滚 |
+| `agent_tool_execution_record` | 第 3 章、第 37 章、第 40 章、第 41 章 | 说明一次工具调用的模型意图、策略决策、参数校验、执行环境、副作用、输出摘要、成本和回滚引用 |
+| `tool_security_incident_record` | 第 40 章、第 37 章 | 说明 RAG 越权、Agent 工具越权、敏感数据暴露或高风险工具异常如何冻结证据、止血、评估影响和更新门禁 |
 | `bmc_driver_access_policy` | 第 27 章、第 28 章 | 说明 BMC、driver、kernel、MIG 配置、节点维护和资源池状态变更的特权边界 |
 | `security_audit_event` | 第 28 章、第 37 章、第 40 章 | 说明租户、操作者、策略、资源、时间线、证据和影响面如何进入不可变审计事件 |
 
@@ -196,13 +201,18 @@
 | `quality_gate_execution` | 第 13 章、第 6 章、第 14 章、第 40 章、第 44 章 | 说明某次门禁执行的输入、环境、数据 lineage、judge/rubric、结果、豁免和发布动作，避免只保存静态 pass/fail |
 | `online_experiment_record` | 第 6 章、第 13 章、第 14 章 | 说明 A/B、canary、流量切分、护栏指标、统计窗口、回滚和影响范围 |
 | `quality_feedback_event` | 第 1 章、第 2 章、第 3 章、第 37 章 | 说明用户反馈、人工接管、引用错误、工具失败和投诉如何进入质量事实层 |
+| `rag_context_snapshot` | 第 2 章、第 13 章、第 37 章 | 说明 RAG 最终进入 prompt 的证据、引用、token 预算、截断原因、冲突处理和无答案策略如何被冻结 |
+| `rag_quality_regression_record` | 第 2 章、第 13 章、第 37 章 | 说明 RAG 线上反馈如何绑定权限决策、context 快照、索引版本、失败层级、owner 和复测门禁 |
 | `quality_regression_record` | 第 13 章、第 37 章、第 40 章 | 说明线上事故和评测失败如何沉淀为回归样本、owner、修复策略和复测状态 |
+| `agent_budget_ledger` | 第 3 章、第 6 章、第 37 章、第 41 章 | 说明 Agent run 的模型调用、工具调用、token、沙箱、外部 API、人工接管和预算控制动作如何计量 |
+| `rag_agent_evidence_bundle` | 第 37 章、第 40 章、第 41 章 | 说明 RAG/Agent 事故时如何冻结权限、上下文、工具执行、预算、安全审计和成本证据 |
 | `serving_quality_contract` | 第 14 章、第 15 章 | 说明 serving release 中 weights、tokenizer、template、engine、参数和质量门禁的绑定关系 |
 | `serving_rollback_record` | 第 14 章、第 40 章、第 44 章 | 说明一次质量或 runtime 回滚到底回滚了权重、tokenizer、template、engine、Gateway 路由还是配置，并保留事故证据 |
 | `routing_quality_scorecard` | 第 6 章、第 13 章 | 说明 Gateway 如何把质量、安全、成本、延迟和能力用于模型路由，而不是只看健康 |
 | `routing_quality_decision_record` | 第 6 章、第 37 章、第 41 章 | 说明某个请求或流量切片为什么选择、拒绝或 fallback 到某个模型，并能回放质量、SLO、成本、能力和数据边界依据 |
 | `quality_evidence_bundle` | 第 37 章、第 40 章、第 41 章 | 说明质量事故时如何冻结反馈、路由、serving contract、gate execution、评测 lineage、回滚和成本证据 |
 | `quality_cost_ledger` | 第 41 章 | 说明低质量 token、人工接管、退款、重试、投诉、评测成本、路由决策和回滚收益如何影响毛利 |
+| `rag_agent_cost_attribution` | 第 41 章 | 说明 RAG embedding/search/rerank/context 与 Agent model/tool/sandbox/external API 成本如何归因到每成功答案或任务 |
 
 ## 行业案例与建设方法链路覆盖矩阵
 

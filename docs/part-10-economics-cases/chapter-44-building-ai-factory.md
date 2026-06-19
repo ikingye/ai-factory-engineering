@@ -473,6 +473,12 @@ production_readiness_review:
       routing_quality_scorecard: rqs-20260619-support
       serving_rollback_record_template: ready
       quality_evidence_bundle_trigger: configured
+      rag_agent_evidence_bundle_trigger: configured_if_applicable
+      retrieval_permission_decision_replay: pass_if_rag
+      rag_context_snapshot_replay: pass_if_rag
+      tool_side_effect_policy: approved_if_agent
+      agent_tool_execution_record_template: ready_if_agent
+      agent_budget_ledger: initialized_if_agent
     sre_and_economics:
       slo_budget_ledger: initialized
       reliability_cost_ledger: initialized
@@ -488,12 +494,15 @@ production_readiness_review:
       - no_valid_quality_gate_execution
       - no_eval_dataset_lineage_for_required_task_slices
       - no_quality_rollback_or_freeze_path
+      - rag_without_permission_or_context_replay
+      - agent_without_tool_side_effect_policy
+      - agent_without_budget_ledger
     conditional_approve_if:
       - limited_capacity_with_explicit_canary_scope
       - noncritical_observability_gap_with_due_date
 ```
 
-这份门禁会迫使上线讨论从“服务能不能访问”转为“证据是否足以承受生产风险”。例如资源池有 GPU，但 `baseline_invalidation_record` 仍然 open，就只能批准单节点低风险 canary，不能批准 premium inference；模型质量门禁通过，但评测集没有 lineage 或没有覆盖目标 task slice，就不能进入高价值租户；token 计量未对账，就不能进入商业化计费；容量激活记录显示 cooling_limited，就不能承诺持续满载训练。PRR 的价值在于把这些限制提前暴露，而不是等事故后再解释。
+这份门禁会迫使上线讨论从“服务能不能访问”转为“证据是否足以承受生产风险”。例如资源池有 GPU，但 `baseline_invalidation_record` 仍然 open，就只能批准单节点低风险 canary，不能批准 premium inference；模型质量门禁通过，但评测集没有 lineage 或没有覆盖目标 task slice，就不能进入高价值租户；RAG 没有权限决策回放和 context 快照，就不能接入敏感知识库；Agent 没有工具副作用策略和预算账本，就不能自动执行有副作用动作；token 计量未对账，就不能进入商业化计费；容量激活记录显示 cooling_limited，就不能承诺持续满载训练。PRR 的价值在于把这些限制提前暴露，而不是等事故后再解释。
 
 从验收到上线的流水线可以用下面的图表示：
 
@@ -507,7 +516,10 @@ flowchart LR
   ModelGate -->|pass| ServingRelease["serving release\nweights + tokenizer + runtime"]
   ModelGate -->|fail| ModelFix["model / prompt / eval fix"]
   ModelFix --> ModelGate
-  ServingRelease --> PRR["production readiness review"]
+  ServingRelease --> RAGAgentGate["RAG / Agent gate\npermission / context / tools / budget"]
+  RAGAgentGate -->|pass| PRR["production readiness review"]
+  RAGAgentGate -->|fail| AppFix["fix retrieval / tool policy / budget"]
+  AppFix --> RAGAgentGate
   PRR -->|approve_canary| Canary["canary\nlimited tenants / traffic"]
   PRR -->|block| FixGap["close evidence gaps"]
   FixGap --> PRR

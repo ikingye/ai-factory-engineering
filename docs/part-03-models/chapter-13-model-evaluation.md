@@ -141,6 +141,32 @@ eval_dataset_lineage_record:
 
 这个 record 的价值是让评测分数可解释。若候选模型在 RAG citation 上下降，同时 lineage 显示该版本新增了大量高风险投诉样本，下降未必是模型退化；若 judge model 升级后所有模型分数一起变化，问题可能是评审口径；若 overlap check 失败，门禁分数不应进入发布决策。评测数据在 AI Factory 中是生产控制面的一部分，必须像模型和镜像一样有 lineage。
 
+RAG 和 Agent 的 lineage 还应引用生产证据对象。RAG 样本应记录 `retrieval_permission_decision`、`rag_context_snapshot` 和 `rag_quality_regression_record`，因为问题不只是答案是否正确，还包括用户是否有权看到证据、正确证据是否进入 prompt、无答案和冲突场景是否被正确处理。Agent 样本应记录 `agent_tool_execution_record`、`tool_side_effect_policy`、`agent_budget_ledger` 和轨迹结果，因为最终任务成功不能掩盖越权工具、重复副作用或成本失控。
+
+```yaml
+eval_dataset_lineage_record:
+  lineage_id: edl-rag-agent-20260620
+  dataset_id: rag-agent-production-gates
+  version: v20260620
+  evidence_bindings:
+    rag:
+      context_snapshots: [rcs-20260620-0001]
+      retrieval_permission_decisions: [rpd-20260620-0001]
+      rag_quality_regression_records: [rqr-20260619-0007]
+    agent:
+      tool_execution_records: [ater-20260620-0001]
+      side_effect_policies: [tsep-20260620-codefix]
+      budget_ledgers: [abl-20260620-0001]
+      trajectory_records: [agent-traj-20260619-0001]
+  gate_requirements:
+    rag_permission_replay: required
+    rag_context_replay: required
+    agent_tool_policy_replay: required
+    agent_budget_replay: required
+```
+
+这让评测可以检查系统行为，而不只是模型输出。RAG gate 可以重放同一用户权限下的检索和 context assembly，确认没有越权证据进入模型；Agent gate 可以重放工具策略，确认高风险动作被确认或拒绝，预算控制没有被绕过。若离线评测样本缺少这些绑定，只能测“模型看到一段文本后怎么答”，不能测 AI Factory 真实生产链路。
+
 `quality_gate_record` 是把评测结果转成发布决策的对象。它应记录候选、基线、门禁维度、阈值、通过或失败、豁免、owner、审批和后续动作。门禁不应只说 pass/fail，还要表达“在哪些任务切片通过，哪些指标观察，哪些风险被接受”。这样第 14 章的 serving release、第 6 章的 Gateway 路由和第 40 章的 SRE 变更管理才能消费同一事实。
 
 ```yaml

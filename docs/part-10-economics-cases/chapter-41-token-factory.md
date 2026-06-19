@@ -452,6 +452,8 @@ request_cost =
   + cache_cost(cached_input_tokens, kv_cache_lifetime)
   + decode_cost(output_generated_tokens)
   + gateway_platform_cost(request_count, stream_duration)
+  + rag_cost(embedding, vector_search, rerank, context_tokens)
+  + agent_cost(model_calls, tool_calls, sandbox_runtime, external_api)
   + model_artifact_distribution_cost(cache_miss, model_load_time)
   + failure_waste_cost(failure_stage, retry_count)
   + reliability_risk_cost(error_budget_burn, incident_impact)
@@ -462,6 +464,39 @@ gross_margin =
 ```
 
 这个公式不要求一开始精确到每个 kernel，但要求团队承认不同阶段成本不同。长上下文 RAG 的问题通常在 prefill 和 KV Cache，长文生成的问题通常在 decode，Agent 的问题通常在多次调用和失败重试。成本模型若能按阶段切开，工程优化才会指向正确位置。
+
+RAG/Agent 成本尤其不能被平均到 LLM token 里。RAG 的成本包括 query embedding、向量检索、关键词检索、metadata/ACL filter、rerank、context assembly、额外 input token、引用校验和索引维护；Agent 的成本包括多次模型调用、工具执行、沙箱运行、外部 API、重试、人工确认、回滚和安全审计。一个请求最终只输出 200 个 token，但内部可能消耗了数万 input token 和几十次工具调用。若报表只展示 output token 成本，业务会低估 Agent 的真实经济负担。
+
+```yaml
+rag_agent_cost_attribution:
+  attribution_id: rac-20260620-0001
+  scope:
+    tenant: enterprise-a
+    application: support-copilot
+    task_slice: rag_agent_support
+    window: 2026-06-20T00:00Z/2026-06-20T01:00Z
+  rag_inputs:
+    retrieval_permission_decisions: sampled
+    rag_context_snapshots: sampled
+    embedding_requests: measured
+    rerank_pairs: measured
+    selected_context_tokens: measured
+    truncated_context_tokens: measured
+  agent_inputs:
+    agent_budget_ledgers: sampled
+    agent_tool_execution_records: sampled
+    model_calls_per_successful_task: measured
+    tool_calls_per_successful_task: measured
+    sandbox_runtime_seconds: measured
+    external_api_calls: measured
+  derived:
+    rag_cost_per_successful_answer: calculated
+    agent_cost_per_successful_task: calculated
+    permission_filter_cost: calculated_or_allocated
+    failed_run_waste_cost: calculated
+```
+
+这个归因表能支持两类决策。第一类是架构决策：某个客服任务到底该用强模型直接回答，还是用 RAG + 小模型，还是用 Agent + 工具；比较时必须用每成功任务成本，而不是单次 LLM cost。第二类是治理决策：若某个 Agent 的 `failed_run_waste_cost` 很高，应该优化 planning、工具 schema 或预算停止条件；若 RAG 的 `truncated_context_tokens` 很高，应该优化 chunk、rerank 或 context budget，而不是盲目增加上下文窗口。
 
 训练成本也应拆出存储路径：
 
@@ -573,20 +608,28 @@ quality_cost_ledger:
     serving_quality_contract: sqc-af-chat-20260619-r3
   evidence:
     quality_evidence_bundle: qeb-20260620-support-001
+    rag_agent_evidence_bundle: raeb-20260620-001
     quality_gate_execution: qge-af-chat-20260620-001
     routing_quality_decision_records: sampled
     serving_rollback_records: [srr-20260620-001]
+    rag_quality_regression_records: [rqr-20260619-0007]
+    agent_budget_ledgers: sampled
+    agent_tool_execution_records: sampled
   production:
     billable_tokens: measured
     low_quality_tokens: estimated_from_feedback_and_eval
     repeated_prompt_tokens: measured
     regeneration_tokens: measured
+    selected_context_tokens: measured_if_rag
+    failed_agent_run_tokens: measured_if_agent
   quality_losses:
     human_handoff_cost: calculated
     refund_or_credit: calculated_if_applicable
     support_ticket_cost: calculated
     churn_risk_cost: estimated_policy
     rework_cost: calculated
+    failed_tool_execution_cost: calculated_if_agent
+    security_containment_cost: calculated_if_tool_incident
   prevention_cost:
     evaluation_run_cost: measured
     human_labeling_cost: measured

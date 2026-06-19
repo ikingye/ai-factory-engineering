@@ -161,6 +161,97 @@ retrieval_trace:
   context_chunks: [chunk-123-05, chunk-456-02]
 ```
 
+企业 RAG 必须把权限过滤从“代码里做了”提升为 `retrieval_permission_decision`。它记录本次检索使用了谁的身份、哪些权限策略版本、哪些索引和数据域、候选证据为何被允许或拒绝、缓存是否可用、结果是否允许进入日志和 prompt。这个对象不应保存明文文档，但要保存 chunk id、策略版本、ACL snapshot、过滤统计和拒绝原因。没有它，RAG 权限事故通常只能靠重放线上请求，而重放时权限、索引和文档状态往往已经变化。
+
+```yaml
+retrieval_permission_decision:
+  decision_id: rpd-20260620-0001
+  request_id: req-support-0001
+  tenant_id: enterprise-a
+  effective_principal:
+    application: support-copilot
+    user: user-42
+    delegation_mode: user_context_required
+  policy_versions:
+    tenant_boundary: tb-enterprise-a-202606
+    data_boundary_policy: dbp-20260610.3
+    document_acl_policy: acl-v8
+  retrieval_scope:
+    knowledge_base: support-kb
+    index_version: kb-index-20260618.3
+    allowed_domains: [published_policy, troubleshooting]
+    denied_domains: [draft, legal_hold]
+  candidate_summary:
+    vector_candidates: 50
+    keyword_candidates: 20
+    allowed_after_acl: 37
+    denied_by_acl: 12
+    denied_by_data_boundary: 1
+  cache_and_logging:
+    cache_key_includes_acl_snapshot: true
+    prompt_logging: redacted
+    chunk_text_logging: disabled
+  decision:
+    result: allow_with_filtered_candidates
+    deny_reasons_sampled: [document_not_visible_to_user, draft_domain_blocked]
+```
+
+`retrieval_permission_decision` 的关键价值是让权限成为可回放的检索事实。RAG 的危险不只在最终答案泄露，还在中间链路泄露：向量库候选、rerank 输入、debug trace、缓存、告警通知和评测样本都可能携带无权限片段。权限决策记录应贯穿这些阶段，说明哪些片段可以进入模型，哪些只能进入计数指标，哪些连中间服务都不应看到。这样第 5 章的 `tenant_boundary`、第 6 章的 Gateway 策略、第 37 章的观测脱敏和第 40 章的安全事故复盘才能使用同一证据。
+
+最终进入模型的证据还应冻结成 `rag_context_snapshot`。它不是完整 prompt 备份，而是上下文构造的可审计摘要：用户问题引用、权限快照、索引版本、检索与 rerank 版本、入选 chunk、证据角色、token 预算、截断原因、引用映射、冲突处理和无答案策略。线上用户投诉“引用不对”时，团队不应猜测模型当时看到了什么；应能直接打开 snapshot，看到哪些证据被放入 prompt、哪些证据被截断、哪些旧文档或冲突文档参与了生成。
+
+```yaml
+rag_context_snapshot:
+  snapshot_id: rcs-20260620-0001
+  request_id: req-support-0001
+  query_ref: object://redacted-query/sha256:example
+  permission_decision: rpd-20260620-0001
+  retrieval_pipeline:
+    query_rewrite_version: qr-v5
+    embedding_model: embed-domain-202606
+    rerank_model: rerank-support-202606
+    index_version: kb-index-20260618.3
+  token_budget:
+    max_context_tokens: policy_defined
+    reserved_output_tokens: policy_defined
+    selected_evidence_tokens: measured
+    truncated_evidence_tokens: measured
+  selected_evidence:
+    - chunk_id: chunk-123-05
+      document_version: doc-123@20260618
+      evidence_role: primary_answer
+      citation_id: C1
+      token_count: measured
+    - chunk_id: chunk-456-02
+      document_version: doc-456@20260617
+      evidence_role: constraint_or_exception
+      citation_id: C2
+      token_count: measured
+  excluded_after_rerank:
+    - reason: duplicate_semantic_evidence
+    - reason: lower_freshness_than_selected
+  answer_policy:
+    require_citation: true
+    no_answer_when_no_primary_evidence: true
+    conflict_behavior: cite_conflict_and_refuse_if_unresolved
+```
+
+这个 snapshot 会改变 RAG 排障方式。若正确证据没有出现在 snapshot，问题在召回、权限、rerank 或 token budget；若正确证据在 snapshot 中但答案仍错，问题可能在 prompt、模型或引用格式；若 snapshot 引用了用户无权访问的 chunk，问题在权限链路；若 snapshot 中只剩约束片段而缺少主证据，问题在 context assembly。它把“RAG 不准”拆成一组可定位的工程事实，也让线上失败样本可以稳定进入第 13 章的评测门禁。
+
+```mermaid
+flowchart LR
+  Identity["tenant / app / user"] --> Perm["retrieval_permission_decision"]
+  Policy["tenant_boundary / data_boundary / ACL"] --> Perm
+  Query["query + rewrite"] --> Retrieve["vector + keyword retrieval"]
+  Perm --> Retrieve
+  Retrieve --> Rerank["rerank + diversity"]
+  Rerank --> Context["rag_context_snapshot"]
+  Budget["token budget / prompt template"] --> Context
+  Context --> LLM["LLM generation"]
+  LLM --> Feedback["quality_feedback_event"]
+  Feedback --> Regression["rag_quality_regression_record"]
+```
+
 RAG 质量要用专门的 `eval_dataset_manifest` 管理，而不是把几百个问答样本放进表格。Manifest 需要说明样本来源、知识库版本、任务切片、证据标注、权限边界、无答案样本、污染控制、标注规则和评测方式。RAG 的评测样本不只是 question/answer pair，至少还应包含 `golden_evidence`：哪些文档、chunk、段落或表格单元支持答案；哪些相似文档是干扰项；用户在什么权限下应该看到哪些证据。没有证据级标注，就无法区分“模型不会答”和“系统没检到”。
 
 ```yaml
@@ -206,16 +297,17 @@ flowchart LR
   Regression --> Index["chunking / embedding / rerank / prompt update"]
 ```
 
-线上 `quality_feedback_event` 进入 RAG 后，也要变成可复现的 `rag_regression_case`。这个对象需要保存当时的 query、用户权限、索引版本、召回候选、被过滤候选、rerank 排序、最终 context 和答案引用。它还要记录修复层级：是文档缺失、ACL 错误、chunk 破碎、embedding 召回差、rerank 误排、context 截断、prompt 指令弱，还是模型没有遵守证据。只有修复层级明确，回归样本才不会每次都被推给模型团队。
+线上 `quality_feedback_event` 进入 RAG 后，也要变成可复现的 `rag_quality_regression_record`。这个对象需要保存当时的 query 引用、用户权限决策、索引版本、召回候选摘要、被过滤候选统计、rerank 排序、最终 context 快照和答案引用。它还要记录修复层级：是文档缺失、ACL 错误、chunk 破碎、embedding 召回差、rerank 误排、context 截断、prompt 指令弱，还是模型没有遵守证据。只有修复层级明确，回归样本才不会每次都被推给模型团队。
 
 ```yaml
-rag_regression_case:
-  case_id: rag-reg-20260619-0007
+rag_quality_regression_record:
+  regression_id: rqr-20260619-0007
   discovered_by: quality_feedback_event
   feedback_event: qfe-20260619-0001
   replay_binding:
     query_ref: object://redacted-query
-    user_acl_snapshot: acl-snapshot-abc
+    permission_decision: rpd-20260620-0001
+    context_snapshot: rcs-20260620-0001
     index_version: kb-index-20260618.3
     prompt_template_version: rag-answer-v9
   failure:
@@ -228,8 +320,11 @@ rag_regression_case:
     team: knowledge-platform
   retest:
     status: pending
-    target_gate: rag_retrieval_and_generation
+    target_gate: rag_retrieval_context_generation
+    added_to_eval_dataset_lineage: edl-rag-support-20260620
 ```
+
+`rag_quality_regression_record` 是 RAG 质量闭环的最小工作单元。它不是客服投诉原文，也不是模型团队的 bug 单，而是把失败样本、权限、证据、上下文、生成结果和修复层级固定下来。关闭条件应至少包括：能在相同 snapshot 或重建环境中复现，owner layer 明确，修复方案执行，回归评测通过，权限和引用没有引入新风险，必要时进入 `eval_dataset_lineage_record`。若只在知识库里改一段文档而不补 regression record，下一次索引、prompt 或 rerank 变更仍可能复发。
 
 ## 常见故障
 

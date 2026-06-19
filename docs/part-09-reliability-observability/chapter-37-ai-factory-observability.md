@@ -461,6 +461,39 @@ quality_evidence_bundle:
 
 这个 bundle 能把“用户说不好”变成可复盘的工程证据。SRE 可以判断是否要冻结 canary，评测团队可以把样本加入 regression，Gateway 团队可以检查路由是否误选小模型，模型服务团队可以检查 serving contract 是否和 gate execution 一致，商业团队可以看到低质量 token 的成本。质量观测不是满意度看板，而是质量控制面的输入。
 
+RAG 和 Agent 还需要更细的证据包，因为它们的失败通常发生在模型之外。`rag_agent_evidence_bundle` 应冻结 RAG 权限决策、context 快照、Agent 工具执行、工具副作用策略、预算账本和安全审计。它不替代 `quality_evidence_bundle`，而是后者在 RAG/Agent task slice 下必须引用的子证据。没有这些引用，质量事故很容易被误判成“模型回答不好”，实际根因可能是检索越权、context 截断、工具 schema 漂移、外部系统超时或预算策略过早停止。
+
+```yaml
+rag_agent_evidence_bundle:
+  bundle_id: raeb-20260620-001
+  trigger:
+    source: quality_or_security_signal
+    symptoms:
+      - citation_failure_rate_increase
+      - agent_policy_block_spike
+  scope:
+    tenant: enterprise-a
+    application: support-copilot
+    task_slices: [rag_citation, support_agent_tooling]
+  rag_evidence:
+    retrieval_permission_decisions: sampled
+    rag_context_snapshots: sampled
+    index_versions: [kb-index-20260618.3]
+    rag_quality_regression_records: [rqr-20260619-0007]
+  agent_evidence:
+    tool_side_effect_policies: [tsep-20260620-codefix]
+    agent_tool_execution_records: sampled
+    agent_budget_ledgers: sampled
+    agent_trajectory_records: sampled
+  security_and_cost:
+    policy_decision_records: sampled
+    security_audit_events: sampled
+    quality_cost_ledger: qcost-20260620-support
+    agent_cost_estimate: calculated
+```
+
+这个 bundle 应在两类场景自动生成。第一类是质量类：引用失败、无答案误答、Agent 任务失败、人工接管突增、预算耗尽突增。第二类是安全类：越权检索被拦截、工具策略拒绝突增、高风险工具请求异常、敏感数据脱敏失败。它让 SRE、知识平台、Agent 平台、安全和成本团队使用同一组事实，而不是各自截图。对资深工程师来说，RAG/Agent 观测的成熟度不在 dashboard 数量，而在能否把一次用户任务的权限、证据、动作、预算和结果完整串起来。
+
 ## 工程实现
 
 工程实现的第一步是统一标签规范。所有采集系统都应使用同一套实体标识：tenant、project、model、model_version、endpoint、job、rank、pod、node、gpu_uuid、nic、rack、rail、storage_path、power_domain 和 cooling_domain。标签不统一，后续 dashboard、告警、trace 和成本归因都会变成手工拼接。

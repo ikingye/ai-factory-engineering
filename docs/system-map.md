@@ -84,6 +84,14 @@ flowchart TB
 | `production_readiness_review` | 聚合资源、模型、平台、安全、SRE 和经济证据，决定是否上线。 | 第 44 章 | `online_experiment_record`、`incident_record` |
 | `tenant_boundary` | 定义租户在身份、数据、模型、资源和账单中的边界。 | 第 5、6、27 章 | `policy_decision_record`、`security_audit_event` |
 | `policy_decision_record` | 让 Gateway 的 allow/deny/route/fallback 可回放。 | 第 6 章 | `api_key_audit_event`、`routing_quality_scorecard` |
+| `rag_agent_admission_context` | 把入口身份、数据边界、RAG 范围、工具范围和预算传给下游执行链路。 | 第 6 章 | `retrieval_permission_decision`、`agent_budget_ledger` |
+| `retrieval_permission_decision` | 证明 RAG 在当前用户和数据边界下允许或拒绝哪些候选证据。 | 第 2、6 章 | `rag_context_snapshot`、`tool_security_incident_record` |
+| `rag_context_snapshot` | 冻结最终进入 prompt 的证据、引用、token 预算、截断和冲突处理。 | 第 2、37 章 | `rag_quality_regression_record`、`quality_evidence_bundle` |
+| `rag_quality_regression_record` | 把 RAG 线上失败绑定到权限、context、索引、失败层级和复测门禁。 | 第 2、13 章 | `eval_dataset_lineage_record`、`quality_gate_execution` |
+| `tool_side_effect_policy` | 定义 Agent 工具的副作用、幂等、确认、重试、回滚和审计要求。 | 第 3、40 章 | `agent_tool_execution_record`、`tool_security_incident_record` |
+| `agent_tool_execution_record` | 记录一次工具调用的意图、策略、执行环境、副作用、输出、成本和回滚。 | 第 3、37 章 | `agent_budget_ledger`、`tool_security_incident_record` |
+| `agent_budget_ledger` | 记录 Agent run 的模型、工具、token、沙箱、外部 API、控制动作和成本。 | 第 3、41 章 | `rag_agent_cost_attribution`、`quality_cost_ledger` |
+| `rag_agent_evidence_bundle` | 冻结 RAG/Agent 质量或安全事故所需的权限、上下文、工具、预算和审计证据。 | 第 37、40 章 | `quality_incident_record`、`tool_security_incident_record` |
 | `routing_quality_decision_record` | 让一次模型路由选择能按质量、SLO、成本、能力和数据边界回放。 | 第 6 章 | `quality_evidence_bundle`、`quality_cost_ledger` |
 | `eval_dataset_lineage_record` | 记录评测数据版本如何生成、清洗、标注、切片、排污和变更。 | 第 13 章 | `quality_gate_execution`、`production_readiness_review` |
 | `quality_gate_execution` | 记录一次质量门禁执行的输入、环境、结果、豁免和发布动作。 | 第 13、44 章 | `routing_quality_decision_record`、`serving_rollback_record` |
@@ -118,9 +126,11 @@ flowchart TB
 | `baseline_invalidation_record` | 记录某次变更、维修或事故让哪些 baseline 失效，资源池如何降级以及如何复测恢复。 | 第 38、44 章 | `change_safety_case`、`capacity_activation_record`、`production_readiness_review` |
 | `reliability_evidence_bundle` | 在事故触发时冻结跨层证据，避免 Pod、端口计数、日志和缓存状态消失后无法复盘。 | 第 37、39 章 | `incident_record`、`slo_budget_ledger`、`reliability_cost_ledger` |
 | `quality_evidence_bundle` | 在质量退化触发时冻结反馈、路由、门禁、serving、评测 lineage、回滚和影响证据。 | 第 37、40 章 | `quality_cost_ledger`、`incident_record`、`production_readiness_review` |
+| `tool_security_incident_record` | 记录 RAG/Agent 高风险工具、越权、敏感数据或 denial-of-wallet 安全事件。 | 第 40 章 | `security_audit_event`、`production_readiness_review` |
 | `incident_record` | 记录事故时间线、影响面、根因证据、止血动作和行动项。 | 第 39、40 章 | `slo_budget_ledger`、`reliability_cost` |
 | `capacity_activation_record` | 把 planned、installed、accepted、allocatable 和 workload-fit 产能及受限原因写成投产事实。 | 第 36、40、41 章 | `capacity_activation_review`、`reliability_cost_ledger` |
 | `reliability_cost_ledger` | 把事故、SLO 预算、基线失效、容量延迟和预防成本折算进成功 token 成本。 | 第 41 章 | `Token Factory ledger`、`production_readiness_review` |
+| `rag_agent_cost_attribution` | 把 RAG 检索/重排/context 和 Agent 工具/沙箱/外部 API 成本归到成功任务。 | 第 41 章 | `Token Factory ledger`、`business_model_profile` |
 | `Token Factory ledger` | 把 token、GPU、能耗、质量、安全、可靠性和收入放到同一账本。 | 第 41 章 | `business_model_profile`、`capacity_activation_review` |
 
 ## 按故障症状进入
@@ -134,8 +144,11 @@ flowchart TB
 | A/B 结果争议 | 第 6、13、14、37、40 章 | online_experiment_record、routing_quality_decision_record、quality_gate_execution、task slice、randomization unit | 检查随机化单元、样本污染、会话粘性、护栏指标、统计窗口和是否混入 fallback 流量。 |
 | 便宜模型导致人工接管上升 | 第 6、7、13、37、41 章 | routing_quality_decision_record、routing_quality_scorecard、quality_feedback_event、quality_cost_ledger | 按 task slice 计算 cost per successful answer，必要时调整路由权重、capability gate 或商业定价。 |
 | 回滚后仍未恢复质量 | 第 14、37、39、40、44 章 | serving_rollback_record、serving_quality_contract、quality_evidence_bundle、release diff、Gateway route | 检查是否只回滚权重但未回滚 tokenizer、template、engine config、RAG 索引、tool policy 或 Gateway route。 |
-| RAG 答案引用错 | 第 2、4、13、37 章 | eval_dataset_manifest、rag_regression_case、permission test、retrieval trace | 分解为文档权限、chunk、rerank、context 拼接和生成忠实性问题。 |
-| Agent 任务成本失控 | 第 3、7、42、41 章 | agent_trajectory_record、tool cost、retry reason、task budget | 加最大步数、预算、人工接管和任务级计费。 |
+| RAG 答案引用错 | 第 2、4、13、37 章 | retrieval_permission_decision、rag_context_snapshot、rag_quality_regression_record、eval_dataset_lineage_record | 分解为文档权限、chunk、rerank、context 拼接、证据冲突和生成忠实性问题。 |
+| RAG 检索越权或证据泄露 | 第 2、5、6、37、40 章 | retrieval_permission_decision、data_boundary_policy、rag_agent_evidence_bundle、tool_security_incident_record | 先冻结证据并阻断相关索引/缓存，再回放 ACL、日志脱敏、rerank 输入和评测样本流向。 |
+| Agent 工具越权或重复副作用 | 第 3、5、6、37、40 章 | tool_side_effect_policy、agent_tool_execution_record、policy_decision_record、tool_security_incident_record | 冻结高风险工具、检查幂等键和审批链路，必要时回滚外部状态并更新工具策略。 |
+| Agent 任务成本失控 | 第 3、6、37、41 章 | agent_budget_ledger、agent_tool_execution_record、rag_agent_cost_attribution、quality_cost_ledger | 加最大步数、预算、人工接管和任务级计费，并定位是规划循环、工具失败、context 膨胀还是外部 API 成本。 |
+| Agent 完成任务但轨迹不可接受 | 第 3、13、37、40、41 章 | agent_trajectory_record、agent_tool_execution_record、agent_budget_ledger、quality_gate_execution | 比较轨迹效率、安全边界和每成功任务成本，不只看最终成功率。 |
 | 训练任务长期 pending | 第 20、23、24、28 章 | pending reason、job_admission_event、queue_fairness_ledger、quota、gang、topology | 区分配额不足、拓扑不可满足、借用策略、镜像/数据预检失败和资源池状态问题。 |
 | GPU 空闲但任务启动不了 | 第 22、23、28、31、32 章 | gpu_assignment_record、NUMA/NIC topology、queue policy、fragmentation | 检查拓扑碎片、MIG/整卡边界、RDMA device 和 gang scheduling。 |
 | NCCL hang | 第 17、18、32、38、39 章 | rank mapping、placement_commit_record、NCCL env、RDMA counters、switch telemetry、fabric baseline、rail_balance_report | 先确定 rank 退出、collective mismatch、放置降级、GPU/NVLink、RDMA/fabric、rail 失衡或容器 runtime。 |
@@ -163,6 +176,7 @@ flowchart TB
 | 可靠性链路 | 第 28、29、36、37、38、39、40、41、44 章 | 能把 health、maintenance、baseline invalidation、change、fault domain、evidence bundle、incident、error budget、capacity activation、PRR 和经济损失串起来。 |
 | 安全多租户链路 | 第 5、6、7、21、22、27、28、37、40、41 章 | 能解释租户边界、策略决策、runtime privilege、GPU 隔离、审计和成本隔离。 |
 | 质量与发布链路 | 第 6、13、14、37、40、41、44 章 | 能从线上质量退化追到 eval dataset lineage、quality gate execution、routing decision、serving contract、evidence bundle、rollback record、quality cost ledger 和 PRR。 |
+| RAG/Agent 生产控制链路 | 第 2、3、5、6、13、37、40、41、44 章 | 能从用户任务追到 admission context、检索权限、context 快照、工具副作用策略、工具执行记录、预算账本、证据包、安全事故、成本归因和 PRR。 |
 | 行业建设链路 | 第 4、42、43、44 章 | 能把应用想法转成 profile、商业模式、案例诊断、建设计划、ADR、质量门禁和 PRR。 |
 
 ## 使用方法
