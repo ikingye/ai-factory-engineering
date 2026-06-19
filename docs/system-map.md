@@ -224,7 +224,13 @@ flowchart TB
 | `quality_evidence_bundle` | 在质量退化触发时冻结反馈、路由、门禁、serving、评测 lineage、回滚和影响证据。 | 第 37、40 章 | `quality_cost_ledger`、`incident_record`、`production_readiness_review` |
 | `tool_security_incident_record` | 记录 RAG/Agent 高风险工具、越权、敏感数据或 denial-of-wallet 安全事件。 | 第 40 章 | `security_audit_event`、`production_readiness_review` |
 | `incident_record` | 记录事故时间线、影响面、根因证据、止血动作和行动项。 | 第 39、40 章 | `slo_budget_ledger`、`reliability_cost` |
+| `heterogeneous_gpu_pool_profile` | 描述多代 GPU、HBM、互联、runtime baseline、准入状态、entitlement 和 workload tier 组成的异构资源池。 | 第 28、35、44 章 | `model_hardware_fit_record`、`heterogeneous_pool_acceptance_matrix`、`production_readiness_review` |
 | `gpu_generation_readiness_gate` | 判断新 GPU 或新系统形态是否能进入指定生产等级。 | 第 35、44 章 | `gpu_capability_scorecard`、`production_readiness_review` |
+| `model_hardware_fit_record` | 证明某个模型或 endpoint 的精度、context、engine、HBM、互联、SLO 和质量门禁是否适合某个 GPU class。 | 第 35、38、44 章 | `gpu_generation_route_decision`、`production_readiness_review` |
+| `gpu_generation_route_decision` | 记录 Gateway/Serving 为什么选择、拒绝或 fallback 到某个 GPU class，并绑定 entitlement、健康、质量、成本和策略版本。 | 第 35、41、44 章 | `heterogeneous_gpu_cost_scorecard`、`billing_dispute_replay`、`production_readiness_review` |
+| `heterogeneous_pool_acceptance_matrix` | 验证 GPU class × workload slice 的 runtime、质量、能效、训练通信、多模态和调度标签是否可交付。 | 第 38、44 章 | `acceptance_baseline`、`model_hardware_fit_record`、`production_readiness_review` |
+| `heterogeneous_gpu_cost_scorecard` | 比较不同 GPU class 在同一 workload slice 上的 tokens/s、tokens/W、cost/token、成功任务成本、质量、SLO 和回滚成本。 | 第 41、44 章 | `gpu_generation_route_decision`、`Token Factory ledger`、`production_readiness_review` |
+| `heterogeneous_gpu_prr_drill` | 演练异构 GPU 或新代际上线前的 canary 失败、fallback、标签降级、路由回放、质量门禁和成本账本更新。 | 第 44 章 | `production_readiness_review`、`heterogeneous_gpu_cost_scorecard` |
 | `capacity_derating_record` | 记录 power/cooling/thermal 约束导致的临时产能降额、调度限制和复测条件。 | 第 34、36、38、40、41、44 章 | `rack_capacity_unit`、`energy_ledger` |
 | `cooling_degradation_record` | 记录 cooling domain 退化、液冷/风冷信号、GPU 降频、workload 影响和恢复复测。 | 第 36、40、41、44 章 | `capacity_derating_record`、`reliability_cost_ledger` |
 | `capacity_activation_record` | 把 planned、installed、accepted、allocatable 和 workload-fit 产能及受限原因写成投产事实。 | 第 36、40、41 章 | `capacity_activation_review`、`reliability_cost_ledger` |
@@ -271,7 +277,8 @@ flowchart TB
 | GPU runtime 变更后 Pod 创建失败 | 第 21、22、38、39、41、44 章 | container_runtime_change_record、gpu_operator_upgrade_evidence、container_runtime_change_acceptance、oci_runtime_injection_diff、container_gpu_runtime_fault_tree_execution、container_runtime_incident_cost_record | 先冻结变更范围和 OCI/CDI 注入差异，按 runtime handler、CDI/hook、device plugin strategy、可见性对账和 RDMA 拓扑分支排查，必要时回滚并刷新 baseline。 |
 | 容器里 RDMA 不通 | 第 22、32、38 章 | RDMA device、CNI、NUMA、container smoke test、gpu_nic_topology_evidence、fabric baseline | 宿主机 RDMA 正常不代表容器内 RDMA 可用，先对账 GPU/NIC/NUMA/NCCL interface，再进入 fabric 分支。 |
 | GPU 降频或 tokens/W 下降 | 第 34、35、36、38、41 章 | power_thermal_envelope、capacity_derating_record、cooling_degradation_record、rack_capacity_unit、energy_ledger | 检查 power、cooling、液冷、机柜降额、GPU throttle、调度限制和有效 token 产出。 |
-| 新 GPU 上线后收益不达预期 | 第 35、38、41、44 章 | gpu_capability_scorecard、gpu_generation_readiness_gate、energy_ledger、quality_gate_execution、runtime baseline | 区分硬件潜力、runtime 未适配、质量门禁、power/thermal 约束和流量形态问题。 |
+| 新 GPU 上线后收益不达预期 | 第 28、35、38、41、44 章 | heterogeneous_gpu_pool_profile、gpu_capability_scorecard、gpu_generation_readiness_gate、model_hardware_fit_record、heterogeneous_pool_acceptance_matrix、heterogeneous_gpu_cost_scorecard | 区分硬件潜力、runtime 未适配、模型硬件不匹配、质量门禁、power/thermal 约束、流量形态和 fallback 成本。 |
+| 长上下文请求被路由到错误 GPU class | 第 28、35、38、41、44 章 | model_hardware_fit_record、gpu_generation_route_decision、heterogeneous_pool_acceptance_matrix、resource_pool_entitlement、engine_admission_health、heterogeneous_gpu_cost_scorecard | 先回放路由决策，确认 HBM、runtime baseline、entitlement、SLO、质量门禁和成本 scorecard 是否支持该 GPU class；缺证据时降级到成熟池。 |
 | 网络退化导致 GPU 空转 | 第 18、30、32、37、39、41 章 | network_path_evidence、congestion_event_record、rail_balance_report、network_cost_ledger | 先量化 exposed communication time 和 idle GPU hours，再决定隔离、避让、限流或扩容。 |
 | 变更后随机故障 | 第 29、37、38、39、40 章 | change_safety_case、baseline_invalidation_record、reliability_evidence_bundle、recent changes | 检查变更是否失效了准入基线、资源池是否降级、复测是否覆盖真实 workload。 |
 | 扩容后产能没增长 | 第 28、36、38、40、41 章 | capacity_activation_record、rack_capacity_unit、physical/fabric/storage acceptance、workload-fit capacity | 区分 installed、accepted、allocatable 和 workload-fit GPU，定位 power、cooling、fabric、storage 或 baseline 失效限制。 |

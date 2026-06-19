@@ -165,6 +165,68 @@ energy_ledger:
 
 能效治理不应鼓励牺牲 SLO。降低 power cap 可能改善短期功耗，但如果 TTFT、TPOT、训练 step time 或质量回归，单位成功任务成本可能上升。更可靠的做法是把 power cap、降额、冷却恢复、batch 策略和模型路由放进同一张报表，比较 energy cost saving 与 reliability/quality loss。Token Factory 关注的是有效 token，而不是最低瓦数。
 
+异构 GPU 资源池需要更进一步的 `heterogeneous_gpu_cost_scorecard`。单个 `energy_ledger` 解释某个资源池或 rack 在某个窗口的能效，但模型路由和扩容决策需要比较不同 GPU class 在同一 workload slice 上的有效产出。比较口径必须包含 tokens/s、tokens/W、cost/token、TTFT/TPOT、质量门禁、可用容量、失败率和回滚成本，否则“新 GPU 更快”或“旧 GPU 更便宜”都会变成片面结论。
+
+```yaml
+heterogeneous_gpu_cost_scorecard:
+  scorecard_id: hgc-code-assistant-20260620
+  workload_slice:
+    endpoint: chat-code-prod
+    request_shape: long_context_medium_output
+    quality_slice: code_generation_enterprise
+  compared_classes:
+    h100-full-card-prod:
+      production_state: production
+      tokens_per_second: measured
+      tokens_per_watt: measured
+      cost_per_token: calculated
+      cost_per_successful_answer: calculated
+      ttft_tpot_slo: pass
+      quality_gate: pass
+      available_capacity: constrained_by_long_context_hbm
+      rollback_cost: low
+    h200-long-context-prod:
+      production_state: validated
+      tokens_per_second: measured
+      tokens_per_watt: measured
+      cost_per_token: calculated
+      cost_per_successful_answer: calculated
+      ttft_tpot_slo: pass
+      quality_gate: pass
+      available_capacity: preferred_for_long_context
+      rollback_cost: medium
+    b200-canary:
+      production_state: canary
+      tokens_per_second: measured_in_canary
+      tokens_per_watt: measured_in_canary
+      cost_per_token: provisional
+      cost_per_successful_answer: provisional
+      ttft_tpot_slo: under_observation
+      quality_gate: limited_slice_passed
+      available_capacity: canary_cap_only
+      rollback_cost: high_until_runtime_matures
+  decision_support:
+    preferred_for_premium_long_context: h200-long-context-prod
+    preferred_for_internal_batch: b200-canary_if_quality_not_customer_visible
+    keep_h100_as_fallback: true
+    update_gpu_generation_route_decision: true
+```
+
+这个 scorecard 的重点是把硬件选择和用户价值绑定。H200 在长上下文上可能因为 HBM 余量降低 TPOT 和重试，`cost_per_successful_answer` 优于 H100；B200 canary 可能 tokens/W 更好，但因为 runtime、质量门禁或回滚成本未稳定，暂时只适合内部批量或低风险流量；H100 单位 token 成本不一定最低，却可能因为成熟度和 fallback 成本低而保留在高价值路径里。Token Factory 需要这种“带约束的经济比较”，而不是只比较平均 cost/token。
+
+```mermaid
+flowchart LR
+  Energy["energy_ledger\npower + tokens"] --> Score["heterogeneous_gpu_cost_scorecard"]
+  Meter["metering events\nshape + model + tenant"] --> Score
+  Quality["quality gate\nsuccessful answer"] --> Score
+  SLO["TTFT / TPOT / errors"] --> Score
+  Route["gpu_generation_route_decision"] --> Score
+  Score --> Actions["route weight / price / canary cap / capacity purchase"]
+  Actions --> Route
+```
+
+异构成本 scorecard 也能解释扩容优先级。若新 GPU 的 tokens/W 更好但可用容量受液冷或 runtime gate 限制，扩容动作可能不是继续采购，而是投资机房、driver/engine 适配或质量门禁；若旧 GPU 在短请求上毛利仍然健康，就不必为了统一代际而提前退役；若某类 GPU 的 `cost_per_successful_answer` 长期高于价格，就需要路由降权、调价、限制上下文或迁移模型。异构池的经营目标不是让所有请求跑在最新 GPU 上，而是让每类请求跑在最适合的生产资源上。
+
 ## 41.4 cost/token
 
 cost/token 是生产单个 token 的单位成本。最简单的公式是 total cost 除以 total tokens，但真正可用的成本模型必须拆分成本项和 token 口径。GPU 折旧或租赁、电力、制冷、机房、网络、存储、平台研发、运维、准入、故障、失败重试、闲置冗余和免费额度都会影响真实成本。

@@ -241,8 +241,14 @@
 | 知识点 | 主要章节 | 覆盖要求 |
 | --- | --- | --- |
 | `gpu_server_profile` | 第 34 章、第 28 章 | 说明 CPU/GPU/HBM/PCIe/NVLink/NIC/NVMe/BMC/power/cooling 如何组成可调度服务器画像 |
+| `heterogeneous_gpu_pool_profile` | 第 28 章、第 35 章、第 44 章 | 说明多代 GPU、HBM、互联、runtime baseline、准入状态、entitlement 和 workload tier 如何形成可调度异构资源池画像 |
 | `gpu_capability_scorecard` | 第 35 章、第 41 章 | 说明芯片能力、runtime 验证、模型适配、能效和生产成熟度的评分口径 |
 | `gpu_generation_readiness_gate` | 第 35 章、第 44 章 | 说明新 GPU 或新系统形态进入生产前需要硬件、runtime、质量、能效、回滚和热验证门禁 |
+| `model_hardware_fit_record` | 第 35 章、第 38 章、第 44 章 | 说明模型 artifact、精度、context、engine、SLO、HBM、互联和 runtime 如何匹配或拒绝某个 GPU class |
+| `gpu_generation_route_decision` | 第 35 章、第 41 章、第 44 章 | 说明 Gateway/Serving 如何按模型硬件匹配、entitlement、健康、质量、SLO、成本和 fallback 选择 GPU class，并保留可回放决策 |
+| `heterogeneous_pool_acceptance_matrix` | 第 38 章、第 44 章 | 说明 GPU class × workload slice 的准入矩阵如何输出 pass、limited、canary 或 block，并写回资源池和路由策略 |
+| `heterogeneous_gpu_cost_scorecard` | 第 41 章、第 44 章 | 说明不同 GPU class 在同一 workload slice 上的 tokens/s、tokens/W、cost/token、cost per successful answer、质量、SLO 和回滚成本如何比较 |
+| `heterogeneous_gpu_prr_drill` | 第 44 章 | 说明异构 GPU 或新代际上线前如何演练 canary 失败、fallback、标签降级、路由回放、质量门禁和成本账本更新 |
 | `power_thermal_envelope` | 第 34 章、第 36 章、第 38 章 | 说明功耗、温度、液冷、降额、满载验收和调度限制 |
 | `capacity_derating_record` | 第 34 章、第 36 章、第 38 章、第 40 章、第 41 章、第 44 章 | 说明 power/cooling/thermal 风险如何把 allocatable capacity 临时降为 limited，并触发复测和成本归因 |
 | `cooling_degradation_record` | 第 36 章、第 40 章、第 41 章、第 44 章 | 说明 cooling domain 退化、液冷/风冷信号、GPU 降频、workload 影响和恢复复测 |

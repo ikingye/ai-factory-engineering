@@ -272,6 +272,113 @@ gpu_generation_readiness_gate:
 
 这类 gate 能把“硬件导入”变成跨团队发布。设施团队证明 power/cooling，Runtime 团队证明引擎和训练框架，模型团队证明质量，SRE 证明回滚和证据采集，经济系统证明 tokens/W 和 cost/token。任何一项不成熟，都可以允许低风险灰度，但不应直接进入高价值租户或长周期大训练。硬件代际迁移本质上是生产变更，不是采购完成后的自然结果。
 
+能力画像最终要落到模型和 endpoint。`gpu_capability_scorecard` 说某类 GPU 能力如何，`gpu_generation_readiness_gate` 说这类 GPU 是否能进入生产，而 `model_hardware_fit_record` 则回答“某个模型、某个 serving profile 或某类训练任务，应该跑在哪些 GPU class 上，不能跑在哪些 GPU class 上”。没有这个对象，模型路由会退化成按空闲率、价格或人工经验选择资源。
+
+```yaml
+model_hardware_fit_record:
+  fit_id: mhf-code-assistant-20260620
+  model:
+    name: code-assistant-large
+    artifact: model-artifact-digest-recorded
+    precision_profiles:
+      - bf16
+      - fp8_candidate
+    context_window_class: long
+    serving_engine: vllm-or-tensorrt-llm-profile
+  requirements:
+    hbm_capacity: must_fit_target_context_and_concurrency
+    hbm_bandwidth: latency_sensitive_decode
+    tensor_core_precision:
+      bf16: required
+      fp8: allowed_only_if_quality_gate_passed
+    interconnect:
+      multi_gpu: required_if_tensor_parallel
+      nvswitch_or_equivalent: preferred_for_low_tpot
+    runtime:
+      engine_config: exact_profile_required
+      tokenizer_template: bound_to_artifact
+    slo:
+      ttft: target_defined
+      tpot: target_defined
+      error_budget: production_policy
+  fit_results:
+    h100-full-card-prod:
+      decision: allowed
+      reason: mature_runtime_and_quality_gate_passed
+      constraints: [short_and_medium_context_preferred]
+    h200-long-context-prod:
+      decision: preferred
+      reason: hbm_capacity_and_decode_bandwidth_better_for_long_context
+      constraints: [canary_until_route_cost_scorecard_stable]
+    b200-canary:
+      decision: canary_only
+      reason: runtime_and_quality_evidence_not_yet_production
+      constraints: [traffic_cap, automatic_fallback_required]
+  evidence:
+    gpu_capability_scorecard: nextgen-scorecard-20260620
+    quality_gate_execution: qge-code-assistant-20260620
+    inference_runtime_gate: inf-runtime-code-20260620
+    energy_ledger_window: energy-20260620-01
+```
+
+这份记录的关键是同时表达硬约束、偏好和禁止条件。HBM 不足、runtime 不支持、精度未验收、质量门禁未通过、回滚路径缺失，都是 hard block；tokens/W 更好、冷启动更快、TPOT 更稳，是 preference；新代际 canary 则可以带流量上限和自动 fallback。模型硬件匹配不能只产出一个“推荐 GPU”，而应产出可审计的决策理由。
+
+在线推理还需要 `gpu_generation_route_decision`。它不是普通模型路由的重复，而是把 GPU class 作为路由维度，决定一次请求或一个流量切片应该走成熟池、长上下文池、新代际 canary 池还是 fallback 池。它要同时看 capability、SLO、cost、quality、energy、availability 和 tenant entitlement。若路由只看 cost/token，可能把高敏租户送到未验证共享池；若只看最新 GPU，可能把稳定业务暴露给 runtime canary 风险。
+
+```yaml
+gpu_generation_route_decision:
+  decision_id: ggrd-chat-prod-20260620-0001
+  request_or_slice:
+    tenant: enterprise-a
+    endpoint: chat-code-prod
+    workload_shape:
+      input_tokens_bucket: long
+      output_tokens_budget: medium
+      latency_tier: premium
+  candidates:
+    - h100-full-card-prod
+    - h200-long-context-prod
+    - b200-canary
+  inputs:
+    model_hardware_fit_record: mhf-code-assistant-20260620
+    resource_pool_entitlement: ent-enterprise-a-premium
+    engine_admission_health: healthy_for_h100_and_h200
+    heterogeneous_gpu_cost_scorecard: hgc-code-assistant-20260620
+    quality_gate_execution: qge-code-assistant-20260620
+  decision:
+    selected_class: h200-long-context-prod
+    fallback_class: h100-full-card-prod
+    rejected:
+      b200-canary: canary_not_allowed_for_premium_without_explicit_approval
+    reason:
+      - long_context_hbm_headroom
+      - lower_tpot_under_target_shape
+      - entitlement_allows_dedicated_pool
+      - cost_per_successful_answer_within_policy
+  audit:
+    replayable: true
+    price_version: pricing-202606
+    policy_version: route-gpu-gen-20260620
+```
+
+这个对象把“新 GPU 上线”从资源运维问题拉回产品控制面。Gateway 或 Serving 可以根据请求形态选择 GPU class，但每次选择都要能回放：当延迟变差、质量回退、客户质疑价格或成本异常时，团队能看到当时为什么选择这类硬件，哪些候选被拒绝，是否存在更便宜但不满足 SLO 的选择，是否存在更快但不满足数据边界的选择。
+
+```mermaid
+flowchart TB
+  Artifact["model artifact\nprecision / context / engine"] --> Fit["model_hardware_fit_record"]
+  Score["gpu_capability_scorecard"] --> Fit
+  Gate["gpu_generation_readiness_gate"] --> Fit
+  Fit --> Decision["gpu_generation_route_decision"]
+  Ent["resource_pool_entitlement"] --> Decision
+  Health["engine_admission_health"] --> Decision
+  Cost["heterogeneous_gpu_cost_scorecard"] --> Decision
+  Decision --> Endpoint["endpoint placement / request route"]
+  Endpoint --> Metrics["TTFT / TPOT / quality / tokens/W / cost"]
+  Metrics --> Score
+```
+
+这张图说明，硬件能力、模型要求和经济结果必须形成反馈环。新 GPU 不是一次性通过验收后永久可用；当 runtime 升级、模型 context 增长、精度策略改变或机房降额时，fit record 和 route decision 都要重新计算。异构 GPU 管理的成熟度，不在于标签数量，而在于这些标签是否能驱动模型路由并接受生产指标校正。
+
 能力画像还应定期刷新。driver、engine、模型版本和 kernel 优化变化后，同一 GPU 的生产能力也会变化。画像如果不随软件演进更新，就会逐渐变成过期文档。
 
 刷新不一定全量重测，但关键 runtime 和关键模型必须保留基线。这样升级收益和回归风险才可比较。
@@ -330,5 +437,6 @@ gpu_generation_readiness_gate:
 ## 延伸阅读
 
 - [NVIDIA Hopper Architecture Whitepaper](https://resources.nvidia.com/en-us-tensor-core/nvidia-hopper-architecture-whitepaper)
+- [NVIDIA Multi-Instance GPU User Guide](https://docs.nvidia.com/datacenter/tesla/mig-user-guide/)
 - [CUDA C++ Programming Guide](https://docs.nvidia.com/cuda/cuda-c-programming-guide/)
 - [NVIDIA TensorRT documentation](https://docs.nvidia.com/deeplearning/tensorrt/latest/)

@@ -535,6 +535,10 @@ production_readiness_review:
       open_capacity_derating_records: none_for_required_scope
       open_cooling_degradation_records: none_for_required_scope
       gpu_generation_readiness_gate: pass_if_new_gpu_generation
+      heterogeneous_gpu_pool_profile: required_if_multiple_gpu_classes
+      heterogeneous_pool_acceptance_matrix: pass_for_required_workload_slices
+      model_hardware_fit_record: required_for_target_models
+      gpu_generation_route_decision: dry_run_passed_if_route_across_gpu_classes
     change_safety:
       recent_high_risk_changes: reviewed
       canary_stop_conditions: machine_enforced
@@ -629,6 +633,7 @@ production_readiness_review:
       slo_budget_ledger: initialized
       reliability_cost_ledger: initialized
       energy_ledger: initialized_if_power_or_cooling_relevant
+      heterogeneous_gpu_cost_scorecard: required_if_route_across_gpu_classes
       quality_cost_ledger: initialized
       multimodal_metering_event: configured_if_multimodal
       multimodal_cost_ledger: initialized_if_multimodal
@@ -657,6 +662,11 @@ production_readiness_review:
       - open_capacity_derating_record_for_required_capacity
       - open_cooling_degradation_record_for_required_capacity
       - new_gpu_generation_without_readiness_gate
+      - heterogeneous_pool_without_pool_profile
+      - heterogeneous_pool_without_acceptance_matrix_for_required_slice
+      - model_without_hardware_fit_record
+      - route_across_gpu_classes_without_replayable_decision
+      - heterogeneous_route_without_cost_scorecard
       - no_rollback_path
       - platform_release_without_release_train_record
       - long_lived_customer_pool_without_lts_policy
@@ -741,6 +751,57 @@ production_readiness_review:
 ```
 
 这份门禁会迫使上线讨论从“服务能不能访问”转为“证据是否足以承受生产风险”。例如资源池有 GPU，但 `baseline_invalidation_record` 仍然 open，就只能批准单节点低风险 canary，不能批准 premium inference；模型质量门禁通过，但评测集没有 lineage、没有 `eval_slice_contract` 或没有覆盖目标 task slice，就不能进入高价值租户；golden set 被污染或过期，门禁分数就不能作为生产证据；线上实验没有 guardrail，就不能把真实客户当作无边界试验场；高 SLA endpoint 没有近期 `serving_rollback_drill`，就不能承诺快速回滚；训练产物没有 `dataset_lineage_record`、`checkpoint_restore_drill` 和 `model_artifact_provenance`，就不能证明模型来自被批准的数据、可恢复 checkpoint 和合格转换链路；缓存撤销不能回放，就不能保证旧 tokenizer、旧权重或旧 RAG 索引已离开生产路径；RAG 没有权限决策回放和 context 快照，就不能接入敏感知识库；Agent 没有工具副作用策略和预算账本，就不能自动执行有副作用动作；token 计量未对账，就不能进入商业化计费；容量激活记录显示 cooling_limited，就不能承诺持续满载训练。PRR 的价值在于把这些限制提前暴露，而不是等事故后再解释。
+
+异构 GPU 或新代际资源池上线前，应增加 `heterogeneous_gpu_prr_drill`。它的目标不是证明新 GPU benchmark 漂亮，而是证明模型硬件匹配、资源池 entitlement、异构验收矩阵、路由决策、fallback、质量门禁和经济账本能在一个受控窗口内闭环。演练应至少覆盖三类失败：新 GPU canary 触发 runtime 或质量护栏；长上下文请求从成熟池迁移到高 HBM 池后成本或 TPOT 偏离；某类 GPU 因 thermal derating 或 baseline invalidation 被降级后，Gateway 和调度器是否停止把目标 workload 路由过去。
+
+```yaml
+heterogeneous_gpu_prr_drill:
+  drill_id: hgpu-prr-drill-20260620-001
+  production_readiness_review: prr-maas-chat-prod-2026-06
+  scope:
+    heterogeneous_gpu_pool_profile: gpu-prod-mixed-202606
+    target_models:
+      - code-assistant-large
+    gpu_classes:
+      - h100-full-card-prod
+      - h200-long-context-prod
+      - b200-canary
+  injected_scenarios:
+    - b200_runtime_error_rate_above_baseline
+    - h200_long_context_tpot_regression
+    - h100_pool_capacity_derating
+    - model_precision_profile_not_validated_on_candidate_class
+  required_evidence:
+    heterogeneous_pool_acceptance_matrix: hpa-mixed-prod-202606
+    model_hardware_fit_record: mhf-code-assistant-20260620
+    gpu_generation_route_decision: replayed_for_each_scenario
+    heterogeneous_gpu_cost_scorecard: hgc-code-assistant-20260620
+    quality_gate_execution: pass_or_block_by_slice
+    energy_ledger: collected_for_compared_classes
+  pass_criteria:
+    canary_route_disabled_when_guardrail_fails: true
+    fallback_to_mature_pool_verified: true
+    premium_tenant_not_routed_to_unapproved_class: true
+    schedulable_labels_removed_when_matrix_invalidated: true
+    cost_scorecard_updated_after_route_change: true
+    production_readiness_review: updated_if_gap_found
+```
+
+```mermaid
+flowchart LR
+  Drill["heterogeneous_gpu_prr_drill"] --> Pool["heterogeneous_gpu_pool_profile"]
+  Pool --> Matrix["heterogeneous_pool_acceptance_matrix"]
+  Matrix --> Fit["model_hardware_fit_record"]
+  Fit --> Route["gpu_generation_route_decision"]
+  Route --> Serving["serving route / fallback"]
+  Serving --> Quality["quality + SLO gate"]
+  Serving --> Energy["energy_ledger"]
+  Quality --> Cost["heterogeneous_gpu_cost_scorecard"]
+  Energy --> Cost
+  Cost --> PRR["PRR gate update"]
+```
+
+这类演练能避免多代 GPU 上线时最常见的三种错觉。第一种是“新 GPU 跑分高，所以可以接高价值流量”；真正需要证明的是目标模型、目标精度、目标 context、目标 runtime 和目标租户都被批准。第二种是“路由有 fallback，所以风险可控”；真正需要证明的是 fallback 后不会突破成熟池容量、不会错计费、不会让质量门禁失效。第三种是“异构池提高利用率”；真正需要证明的是它降低了 `cost_per_successful_answer`，而不是把低质量、重试、回滚和支持成本藏进平均 cost/token。
 
 训练资源池的 PRR 还应做一次故障树演练。演练不需要真的破坏生产任务，但必须能用一条受控 smoke training job 触发 `training_debug_bundle`，执行 `training_fault_tree_execution`，生成 `training_incident_record` 和 `training_incident_cost_record` 的演练版本。若 bundle 缺少 rank mapping、NCCL env、checkpoint overlap 或资源健康记录，说明事故时无法定位；若故障树只能输出 unknown 且没有 evidence gaps，说明 runbook 没有表达不确定性；若成本记录无法写入 `training_roi_ledger`，说明技术事故和经济账本仍然割裂。
 

@@ -79,6 +79,71 @@ resource_pool_entitlement:
 
 Entitlement 不等同于 quota。Quota 说“最多能用多少”，entitlement 说“允许用什么类型、在什么边界下使用”。一个租户可能有 100 张 GPU quota，但只允许使用专属节点池；另一个租户 quota 较小，却可以使用 best-effort 共享池。把两者混在一起，会导致安全租户被调度到不该使用的共享资源，或低风险任务占用高隔离资源造成浪费。
 
+在真实 AI Factory 中，资源池通常还是异构的。同一个平台可能同时拥有多代 GPU、不同 HBM 容量、不同互联域、MIG profile、不同驱动基线、不同液冷条件和不同电力约束。若资源池只暴露 `gpu=1` 或单一型号标签，调度和模型路由会把不同能力的资源当成等价商品，结果是长上下文模型落到 HBM 不足的池子，FP8 runtime 落到未验收节点，大训练跨过不合适的 fabric，或者高 SLA 推理被路由到尚处 canary 状态的新硬件。
+
+因此，资源池应维护 `heterogeneous_gpu_pool_profile`。它不是资产清单，而是把 GPU 代际、系统形态、runtime baseline、准入状态、适用 workload、故障域和经济口径放在同一个可查询对象里。Kubernetes 传统 device plugin 常用 extended resource 表达整数设备数量，适合简单整卡分配；DRA（Dynamic Resource Allocation）则提供按设备类、属性和 claim 进行声明和分配的更细粒度路径。无论底层使用哪种机制，资源池都应先把能力事实表达清楚，再让调度器消费。
+
+```yaml
+heterogeneous_gpu_pool_profile:
+  pool_id: gpu-prod-mixed-202606
+  purpose: mixed_inference_and_batch
+  resource_classes:
+    - class_id: h100-full-card-prod
+      gpu_family: h100-class
+      partitioning: full_card
+      hbm_capacity_class: large
+      interconnect: nvswitch_or_pcie_recorded
+      runtime_baseline: rb-h100-202606
+      acceptance_baseline: acc-h100-prod-202606
+      production_state: production
+      allowed_workload_tiers:
+        - premium_chat_short_context
+        - batch_inference
+        - selected_finetuning
+    - class_id: h200-long-context-prod
+      gpu_family: h200-class
+      partitioning: full_card
+      hbm_capacity_class: extra_large
+      runtime_baseline: rb-h200-202606
+      acceptance_baseline: acc-h200-long-context-202606
+      production_state: validated
+      allowed_workload_tiers:
+        - long_context_inference_canary
+        - retrieval_heavy_generation
+    - class_id: b200-canary
+      gpu_family: b200-or-newer-class
+      partitioning: full_card_or_mig_if_validated
+      runtime_baseline: rb-b200-canary-202606
+      acceptance_baseline: acc-b200-canary-202606
+      production_state: canary
+      blocked_workload_tiers:
+        - premium_inference_without_route_fallback
+        - large_pretraining_without_full_thermal_soak
+  governance:
+    entitlement_required: true
+    model_hardware_fit_required: true
+    gpu_generation_route_decision_required_for_serving: true
+    heterogeneous_pool_acceptance_matrix: hpa-mixed-prod-202606
+```
+
+这个对象把“异构”从口头事实变成调度事实。`production_state` 决定资源能否进入生产、灰度或测试；`allowed_workload_tiers` 决定哪些业务形态可以使用；`runtime_baseline` 和 `acceptance_baseline` 决定能力是否经过验证；`model_hardware_fit_required` 则强制模型服务不能只按价格或空闲率路由。资源池不需要替代 Kubernetes、Slurm 或 Gateway，但要为它们提供同一份能力边界。
+
+异构池的核心风险是“隐性降级”。同一模型在成熟 GPU 上满足 TPOT，在新 GPU canary 上因为 runtime 未适配反而更慢；某个旧 GPU 单卡吞吐低，但对低价批量任务毛利更好；某个高 HBM 资源池适合长上下文，却被短请求抢占。资源池要把这些差异暴露给模型路由和容量系统，否则优化会被平均值掩盖。
+
+```mermaid
+flowchart LR
+  ModelReq["model requirements\ncontext / precision / engine / SLO"] --> Fit["model_hardware_fit_record"]
+  Pool["heterogeneous_gpu_pool_profile\nclasses / baselines / entitlement"] --> Fit
+  Fit --> Route["gpu_generation_route_decision"]
+  Route --> Serving["serving placement / endpoint"]
+  Serving --> Meter["metering events"]
+  Meter --> Cost["heterogeneous_gpu_cost_scorecard"]
+  Cost --> Pool
+  Fit --> PRR["production_readiness_review"]
+```
+
+这条链路能解释为什么“有 GPU”不等于“适合这个模型”。模型要求先和硬件能力匹配，匹配结果再进入路由、服务、计量和成本 scorecard。PRR 消费的是匹配证据，而不是只消费库存数量。后续第 35 章会说明模型硬件匹配，第 38 章会说明异构池验收，第 41 章会说明不同 GPU class 的经济比较，第 44 章会把它们纳入上线门禁。
+
 ```mermaid
 flowchart LR
   Inventory["inventory / asset"] --> State["health & maintenance state"]
@@ -420,5 +485,6 @@ gpu:
 ## 延伸阅读
 
 - [Kubernetes Nodes documentation](https://kubernetes.io/docs/concepts/architecture/nodes/)；[Device Plugins documentation](https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/device-plugins/)
+- [Kubernetes Dynamic Resource Allocation documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/dynamic-resource-allocation/)
 - [NVIDIA DCGM documentation](https://docs.nvidia.com/datacenter/dcgm/latest/)
 - [Karpenter documentation](https://karpenter.sh/docs/)

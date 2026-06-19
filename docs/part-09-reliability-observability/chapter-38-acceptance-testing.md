@@ -380,6 +380,87 @@ training_communication_acceptance_matrix:
 
 这张矩阵能阻止一类昂贵事故：每个子系统单独验收都通过，组合起来却失败。NCCL baseline 通过但框架模板选择了错误接口，短训练通过但 checkpoint 与通信叠加后抖动，调度 dry-run 通过但实际 rank mapping 违反 tensor group 约束，都会在组合矩阵中暴露。大型训练资源池只有通过这类矩阵，才应标记为可承载长周期预训练。
 
+异构 GPU 资源池还需要单独的验收矩阵。原因是多代 GPU 不是“同一个测试跑多次”这么简单：不同代际的 HBM、低精度路径、互联域、功耗、液冷、driver、NCCL、推理引擎和训练框架成熟度不同；同一个 workload 在不同 GPU class 上的通过标准也不同。短 Chat 可能看 TTFT 和成本，长上下文更看 HBM 与 KV Cache，批量推理更看吞吐和 tokens/W，训练更看通信与 checkpoint，多模态还要看 media encoder 和预处理成本。
+
+`heterogeneous_pool_acceptance_matrix` 应以 GPU class × workload slice 为核心维度。它不只验证硬件可用，还验证模型硬件匹配、runtime、质量、能效、fallback 和调度标签是否一致。矩阵通过后，资源池才能把某个 class 标记为 `schedulable_for=long_context_inference` 或 `schedulable_for=distributed_training`；矩阵未通过时，GPU 仍然可以作为实验资源，但不应被平台当作生产可交付容量。
+
+```yaml
+heterogeneous_pool_acceptance_matrix:
+  matrix_id: hpa-mixed-prod-202606
+  pool_profile: gpu-prod-mixed-202606
+  dimensions:
+    gpu_class:
+      - h100-full-card-prod
+      - h200-long-context-prod
+      - b200-canary
+    workload_slice:
+      - short_chat
+      - long_context_chat
+      - batch_inference
+      - distributed_training
+      - multimodal_document_review
+  required_evidence:
+    common:
+      - inventory_and_topology
+      - physical_acceptance_matrix
+      - container_gpu_runtime_acceptance_matrix
+      - dcgm_diagnostics
+      - runtime_baseline
+    inference:
+      - model_hardware_fit_record
+      - engine_admission_health
+      - quality_gate_execution
+      - energy_ledger_window
+      - gpu_generation_route_decision_dry_run
+    training:
+      - training_communication_acceptance_matrix
+      - checkpoint_restore_drill
+      - rank_topology_contract
+      - first_effective_step_record
+    multimodal:
+      - multimodal_serving_contract
+      - multimodal_quality_gate_execution
+      - media_processing_pipeline_record
+  results:
+    h100-full-card-prod:
+      short_chat: pass
+      long_context_chat: limited
+      batch_inference: pass
+      distributed_training: pass_if_topology_available
+      multimodal_document_review: pass
+    h200-long-context-prod:
+      short_chat: pass
+      long_context_chat: pass
+      batch_inference: pass
+      distributed_training: limited_until_training_matrix_passed
+      multimodal_document_review: pass
+    b200-canary:
+      short_chat: canary_only
+      long_context_chat: canary_only
+      batch_inference: pass_for_internal_batch
+      distributed_training: block_until_full_power_thermal_soak
+      multimodal_document_review: block_until_quality_gate_passed
+  output_labels:
+    schedulable_labels_written: true
+    limited_labels_include_reason: true
+    route_decision_requires_matrix_pass: true
+```
+
+矩阵的输出必须进入调度和路由。若 `b200-canary` 对 premium chat 只是 canary，不应因为 GPU 空闲就承载高价值租户；若 `h100-full-card-prod` 对长上下文是 limited，Gateway 可以在短上下文走 H100、长上下文走 H200，而不是按平均成本路由。矩阵还应给出失败分类：是硬件、runtime、质量、能效、调度标签还是回滚路径不足。不同失败分类对应不同 owner。
+
+```mermaid
+flowchart LR
+  Classes["GPU classes\nH100 / H200 / B200"] --> Matrix["heterogeneous_pool_acceptance_matrix"]
+  Slices["workload slices\nshort / long / batch / train / multimodal"] --> Matrix
+  Evidence["runtime + quality + energy + physical + communication evidence"] --> Matrix
+  Matrix --> Labels["schedulable labels\npass / limited / canary / block"]
+  Labels --> Pool["GPU resource pool"]
+  Labels --> Route["Gateway / Serving route policy"]
+  Matrix --> PRR["production_readiness_review evidence"]
+```
+
+这张图强调矩阵不是报告，而是控制面输入。异构池真正可控，取决于矩阵能否把不同 GPU class 对不同 workload 的适配状态写回资源池、路由策略和 PRR。没有这一步，异构资源池会变成“更多可选项”，而不是“更精确的生产能力”。
+
 ## 38.8 acceptance baseline
 
 Acceptance baseline 是可交付基线，不是一次性测试记录。它包含硬件信息、软件版本、拓扑、测试工具版本、测试参数、通过阈值、实际结果、原始日志、异常说明、责任团队和资源状态。后续升级 driver、kernel、CUDA、NCCL、OFED、CNI、CSI、推理引擎或训练框架时，都应与基线对比。
