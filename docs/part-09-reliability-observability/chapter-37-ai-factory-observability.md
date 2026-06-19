@@ -241,6 +241,12 @@ storage_evidence:
   workload_type: training_inference_evaluation_data_processing
   path_kind: dataset_checkpoint_artifact_cache
   manifest_id: required
+  supply_chain_refs:
+    dataset_lineage_record: optional_if_dataset
+    checkpoint_restore_drill: optional_if_checkpoint
+    model_artifact_provenance: optional_if_artifact
+    cache_invalidation_record: optional_if_cache_or_artifact
+    storage_security_boundary: required_for_sensitive_data
   storage_intent_id: required
   client:
     node: required

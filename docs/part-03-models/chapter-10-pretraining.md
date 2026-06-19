@@ -283,6 +283,43 @@ dataset_manifest:
 
 训练框架启动前应校验 manifest digest、shard checksum、reader 版本、缓存状态和权限；进入 first effective step 后，应把实际消费的 shard range 写入训练 telemetry。这样 loss 异常可以定位到数据版本和 shard，checkpoint 恢复也能验证 dataloader state 是否回到同一位置。数据 manifest 是训练控制面的一部分，不是存储目录旁边的说明文件。
 
+`dataset_manifest` 描述训练数据“应该是什么”，还需要 `dataset_lineage_record` 说明它“实际如何生成”。Lineage 应记录原始来源、抓取时间、清洗和去重版本、安全过滤、tokenization、sharding、采样权重、人工审核、删除请求处理、数据许可证和生成者。没有 lineage，训练后发现某类能力退化或合规问题时，只能知道用了 `corpus-v3.2`，却不知道哪些来源、新增规则或删除动作改变了数据分布。
+
+```yaml
+dataset_lineage_record:
+  lineage_id: dlr-corpus-v3-2-20260620
+  dataset_id: corpus-v3.2
+  manifest_digest: sha256:dataset-manifest
+  source_inputs:
+    - source: web_crawl
+      snapshot: crawl-20260601
+      license_policy: reviewed
+    - source: code_corpus
+      snapshot: code-20260605
+      license_policy: restricted_allowlist
+  transformations:
+    parse_pipeline: parse-v11@sha256:example
+    pii_filter: pii-filter-v6
+    safety_filter: safety-filter-v9
+    dedup_profile: dedup-v4
+    tokenizer: tokenizer-v3@sha256:tokenizer
+    packer: fixed_length_with_document_boundary
+  output_stats:
+    documents_in: measured
+    documents_removed: measured
+    tokens_out: measured
+    shard_count: 8192
+    language_distribution: recorded
+    source_mixture_weights: versioned
+  governance:
+    data_classification: restricted
+    deletion_requests_applied: [dr-20260618-001]
+    training_exclusion_registry: updated
+    reviewer: data-governance-owner
+```
+
+这个 record 让训练异常能回到数据供应链。若某次 loss spike 集中在一组 shard，平台可以从 shard 追到 parse、filter、tokenizer 和源 snapshot；若模型上线后出现某类版权或隐私风险，可以定位哪些数据版本和 checkpoint 受影响；若删除请求要求追踪衍生产物，lineage 能回答哪些 checkpoint、adapter、评测集和模型 artifact 依赖了该数据。数据 lineage 不是合规团队的文档，而是训练恢复、质量解释和模型发布的事实基础。
+
 Checkpoint manifest 应被平台标准化。每次写入 checkpoint 后，训练进程或 sidecar 不应只留下一个目录，而应写入 manifest，说明包含哪些 rank 分片、优化器和 scheduler 状态、数据读取位置、随机状态、校验和、评测状态和可恢复性。
 
 ```yaml
@@ -339,6 +376,40 @@ checkpoint_commit_record:
 ```
 
 这个记录是训练恢复和成本账本的共同证据。若 checkpoint 写入拉长 step time，平台可以从 commit record 看到长尾来自 rank 写入、manifest 校验还是 latest 指针更新；若恢复失败，平台可以证明失败发生在 checkpoint 本身、恢复配置还是数据位置。Checkpoint 不是文件夹，而是一个有提交协议的训练状态对象。
+
+Checkpoint 还必须通过 `checkpoint_restore_drill`。恢复演练不是事故发生后的临时动作，而是持续验收：定期从真实 checkpoint 拉起短窗口训练，验证 manifest、rank shard、optimizer、scheduler、rng、dataloader state、并行配置和评测探针。很多 checkpoint 在写入时看起来完整，真正恢复时才发现权限、路径、world size、依赖镜像或 reader 版本不匹配。恢复演练能把这类问题提前暴露。
+
+```yaml
+checkpoint_restore_drill:
+  drill_id: crd-20260620-ckpt-120000
+  checkpoint: ckpt-step-120000
+  training_job: exp-20260619-001
+  trigger:
+    type: scheduled_or_preemption_readiness
+    policy: every_n_checkpoints_for_critical_training
+  restore_environment:
+    container_image: registry/train-runtime@sha256:example
+    world_size: 512
+    parallelism:
+      data: 16
+      tensor: 8
+      pipeline: 4
+    resource_pool: acceptance-or-spare-pool
+  validation:
+    manifest_read: pass
+    shard_checksums: pass
+    optimizer_scheduler_rng: pass
+    dataloader_position: pass
+    first_effective_step_after_restore: pass
+    short_eval_smoke: pass
+  outcome:
+    restorable: true
+    restore_duration_ms: measured
+    rollback_distance_tokens: calculated
+    block_latest_pointer_if_failed: true
+```
+
+`checkpoint_restore_drill` 应进入训练门禁和 SRE 例会。关键训练任务至少要知道最近几个 checkpoint 中哪些真正可恢复，恢复需要多久，回滚距离是多少，是否需要跨故障域复制。若 drill 失败，平台应阻止删除更早的健康 checkpoint，并把任务标记为恢复风险升高。训练可靠性不是“写 checkpoint”，而是“能在可接受损失内恢复训练进度”。
 
 预训练任务还应把数据路径纳入运行时自检。`dataset_manifest_digest`、实际挂载路径、缓存命中、shard 数量、reader 版本和 data loader 指标，都应在 first effective step 之前上报。若数据路径不可达、manifest checksum 不匹配或缓存预热未完成，任务应停在 preflight，而不是进入训练后让 GPU 等待。数据自检失败是平台问题，不应由训练 step 承担。
 

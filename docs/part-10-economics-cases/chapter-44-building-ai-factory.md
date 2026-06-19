@@ -479,6 +479,13 @@ production_readiness_review:
       tool_side_effect_policy: approved_if_agent
       agent_tool_execution_record_template: ready_if_agent
       agent_budget_ledger: initialized_if_agent
+    data_and_artifact_supply_chain:
+      dataset_lineage_record: required_for_training_or_rag
+      checkpoint_restore_drill: required_for_model_release_from_training
+      model_artifact_provenance: required_for_serving_release
+      cache_invalidation_record_replay: pass_for_release_and_rollback
+      storage_security_boundary: valid_for_sensitive_data
+      supply_chain_acceptance_matrix: pass_for_production_scope
     sre_and_economics:
       slo_budget_ledger: initialized
       reliability_cost_ledger: initialized
@@ -497,12 +504,18 @@ production_readiness_review:
       - rag_without_permission_or_context_replay
       - agent_without_tool_side_effect_policy
       - agent_without_budget_ledger
+      - no_dataset_lineage_for_training_or_rag
+      - checkpoint_without_restore_drill
+      - artifact_without_provenance_or_signature
+      - invalid_cache_not_blocked_from_scheduling
+      - missing_storage_security_boundary_for_sensitive_data
+      - supply_chain_acceptance_matrix_not_passed
     conditional_approve_if:
       - limited_capacity_with_explicit_canary_scope
       - noncritical_observability_gap_with_due_date
 ```
 
-这份门禁会迫使上线讨论从“服务能不能访问”转为“证据是否足以承受生产风险”。例如资源池有 GPU，但 `baseline_invalidation_record` 仍然 open，就只能批准单节点低风险 canary，不能批准 premium inference；模型质量门禁通过，但评测集没有 lineage 或没有覆盖目标 task slice，就不能进入高价值租户；RAG 没有权限决策回放和 context 快照，就不能接入敏感知识库；Agent 没有工具副作用策略和预算账本，就不能自动执行有副作用动作；token 计量未对账，就不能进入商业化计费；容量激活记录显示 cooling_limited，就不能承诺持续满载训练。PRR 的价值在于把这些限制提前暴露，而不是等事故后再解释。
+这份门禁会迫使上线讨论从“服务能不能访问”转为“证据是否足以承受生产风险”。例如资源池有 GPU，但 `baseline_invalidation_record` 仍然 open，就只能批准单节点低风险 canary，不能批准 premium inference；模型质量门禁通过，但评测集没有 lineage 或没有覆盖目标 task slice，就不能进入高价值租户；训练产物没有 `dataset_lineage_record`、`checkpoint_restore_drill` 和 `model_artifact_provenance`，就不能证明模型来自被批准的数据、可恢复 checkpoint 和合格转换链路；缓存撤销不能回放，就不能保证旧 tokenizer、旧权重或旧 RAG 索引已离开生产路径；RAG 没有权限决策回放和 context 快照，就不能接入敏感知识库；Agent 没有工具副作用策略和预算账本，就不能自动执行有副作用动作；token 计量未对账，就不能进入商业化计费；容量激活记录显示 cooling_limited，就不能承诺持续满载训练。PRR 的价值在于把这些限制提前暴露，而不是等事故后再解释。
 
 从验收到上线的流水线可以用下面的图表示：
 
@@ -516,7 +529,10 @@ flowchart LR
   ModelGate -->|pass| ServingRelease["serving release\nweights + tokenizer + runtime"]
   ModelGate -->|fail| ModelFix["model / prompt / eval fix"]
   ModelFix --> ModelGate
-  ServingRelease --> RAGAgentGate["RAG / Agent gate\npermission / context / tools / budget"]
+  ServingRelease --> SupplyChainGate["supply chain gate\ndataset / checkpoint / provenance / cache"]
+  SupplyChainGate -->|pass| RAGAgentGate["RAG / Agent gate\npermission / context / tools / budget"]
+  SupplyChainGate -->|fail| SupplyFix["fix lineage / restore / provenance / cache"]
+  SupplyFix --> SupplyChainGate
   RAGAgentGate -->|pass| PRR["production readiness review"]
   RAGAgentGate -->|fail| AppFix["fix retrieval / tool policy / budget"]
   AppFix --> RAGAgentGate

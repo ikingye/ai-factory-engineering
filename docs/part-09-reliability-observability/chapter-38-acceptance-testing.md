@@ -219,6 +219,38 @@ storage_composite_regression_gate:
 
 这个门禁的价值是暴露“单项都好，组合变坏”的情况。AI Factory 中存储、网络和 GPU 通常共享故障域；checkpoint 与 NCCL 重叠、权重加载与对象存储限流、数据预热与训练通信叠加，都可能让生产任务退化。准入矩阵应把组合门禁结果写入资源池能力，而不是只保存测试报告。
 
+存储准入还应覆盖数据和模型产物供应链，而不是只测 I/O。`supply_chain_acceptance_matrix` 应验证 dataset lineage、manifest、checkpoint restore drill、model artifact provenance、cache residency、cache invalidation 和 storage security boundary。它回答的是：这条数据路径能否安全地产生训练数据，训练能否恢复，模型产物是否来自被批准的 checkpoint，缓存是否能被撤销，存储访问是否符合租户和数据边界。
+
+```yaml
+supply_chain_acceptance_matrix:
+  baseline_id: supply-chain-prod-20260620
+  scope:
+    resource_pool: training-and-serving-prod
+    dataset_domains: [pretraining, fine_tuning, rag]
+    artifact_domains: [base_model, lora_adapter, tokenizer, chat_template]
+  required_evidence:
+    dataset_lineage_record: required
+    dataset_manifest_digest_verify: required
+    checkpoint_commit_record: required
+    checkpoint_restore_drill: required
+    model_artifact_provenance: required
+    model_artifact_distribution: required
+    cache_residency: required_for_premium_serving
+    cache_invalidation_record_replay: required
+    storage_security_boundary: required
+  pass_criteria:
+    lineage_replay: pass
+    restore_drill_success_rate: within_policy
+    artifact_signature_valid: true
+    invalid_cache_blocked_from_scheduling: true
+    unauthorized_path_access_denied: true
+  scheduling_until_pass:
+    deny_workload: [production_training, premium_inference, regulated_rag]
+    allow_workload: [dev_experiment_with_synthetic_data]
+```
+
+这个矩阵避免两种高成本错误。第一种是“训练能跑，但产物不能证明”：数据 lineage 不完整、checkpoint 没演练、模型 artifact 没签名，最终无法进入受监管或商业化上线。第二种是“服务能启动，但缓存不可信”：旧权重或旧 tokenizer 仍在本地 NVMe，被错误 release 复用。供应链准入把数据治理、存储安全、模型发布和调度状态连接起来，保证生产资源不只是快，而且可追溯、可撤销。
+
 物理设施也需要独立准入矩阵。GPU burn-in、NCCL 和存储都通过，并不代表 rack 可以长期满载运行；BMC 不可达、PDU 冗余异常、液冷流量不足或线缆映射缺失，都会让资源不适合进入生产池。
 
 ```yaml

@@ -535,6 +535,31 @@ storage_diagnosis:
 
 存储故障树还要避免一个常见错误：把所有 GPU idle 都归到存储。只有当 `storage_evidence` 能证明 data loader wait、checkpoint pause、model load delay 或 cache miss 与 GPU idle 在同一时间窗口、同一 workload 和同一 path kind 上相关，才能把事故归入存储域。若 evidence 只显示存储端平均延迟升高，但没有 workload impact，最多说明有风险，不能直接作为根因。
 
+模型产物供应链也需要独立排障分支。模型服务进程 ready 不代表产物可信；checkpoint 目录存在不代表可恢复；cache 命中不代表版本正确。供应链故障常表现为模型行为异常、回滚失败、推理冷启动慢、某些节点加载旧权重、训练恢复后 loss 漂移，或者合规要求下无法证明产物来源。排障时应沿 dataset -> checkpoint -> artifact -> cache -> serving release 的证据链检查。
+
+```mermaid
+flowchart TB
+  S["behavior drift / rollback fail / old weights / restore fail"] --> Kind{"供应链路径?"}
+  Kind --> Data["dataset lineage"]
+  Kind --> Ckpt["checkpoint restore"]
+  Kind --> Artifact["artifact provenance"]
+  Kind --> Cache["cache invalidation"]
+  Data --> D1["dataset_lineage_record\nsource / transform / deletion"]
+  Data --> D2["dataset_manifest\nshard checksum / tokenizer"]
+  Ckpt --> C1["checkpoint_manifest\nstate / shard / dataloader"]
+  Ckpt --> C2["checkpoint_restore_drill\nfirst effective step after restore"]
+  Artifact --> A1["model_artifact_provenance\nsource checkpoint / build / gate / signature"]
+  Artifact --> A2["model_artifact_distribution\ndigest / registry / readiness"]
+  Cache --> K1["cache_residency\nnode / rack / warmup / state"]
+  Cache --> K2["cache_invalidation_record\nrevoked / evicted / replaced"]
+  D1 --> Verdict["supply_chain_verdict"]
+  C2 --> Verdict
+  A1 --> Verdict
+  K2 --> Verdict
+```
+
+一个实用规则是：没有 provenance，不能把行为漂移直接归因给模型；没有 restore drill，不能把 checkpoint 当作可恢复点；没有 cache invalidation record，不能断言旧版本已从生产路径移除；没有 dataset lineage，不能解释数据分布变化。供应链排障的目标不是收集更多文件，而是证明每个产物在正确时间、正确版本、正确权限下被使用。
+
 第四步，是把诊断结果回写系统。坏节点进入维修，坏 rail 降级，缺失指标进入可观测性 backlog，准入漏测项进入 acceptance pipeline，重复事故进入 SRE 复盘。诊断闭环不完成，故障知识就无法转化为系统能力。
 
 第五步，是把诊断工具放到值班路径里。告警页面应直接提供诊断包入口、相关 runbook、最近变更、影响面和建议止血动作，而不是只给一条 Prometheus 表达式。事故中最稀缺的是注意力，工具应减少人工跳转和重复查询。

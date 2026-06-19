@@ -167,6 +167,8 @@ fine_tuning_job:
 
 实现流程可以拆成五步。第一步是数据准入，生成数据报告和版本；第二步是任务计划，估算资源和成本；第三步是训练执行，记录日志、指标和 checkpoint；第四步是评测门禁，执行质量、安全和回归测试；第五步是注册发布，写入 registry 并配置服务策略。每一步都应有状态和审计记录。
 
+微调产物还应进入模型产物供应链。LoRA、QLoRA、adapter、prompt tuning 权重和合并后的 full model 都应写入 `model_artifact_provenance`：记录 base model digest、微调数据 lineage、训练配置、adapter 格式、merge 脚本、tokenizer/template 版本、评测门禁和签名。它们同时要受 `storage_security_boundary` 管控，因为 adapter 往往携带企业私有数据分布和业务能力，不能被当作普通小文件在共享对象桶中复制。没有 provenance 和边界，微调平台很容易出现“线上加载了哪个 adapter 不清楚”“客户数据训练出的 adapter 被错误复用”“回滚只回滚 base model 未回滚 adapter”这类事故。
+
 平台还应提供自助能力和专家兜底。常见 LoRA 微调可以产品化为表单、API 和模板；复杂 full fine-tuning 或高风险数据需要专家审核。这样既能支持规模化，又能避免让普通用户接触过多底层训练细节。微调平台的目标是把正确流程默认化，而不是把所有开关暴露给用户。
 
 实现时还应把评测自动绑定到任务模板。用户不应每次手工选择安全评测、格式评测和领域评测；平台应根据任务类型和风险等级自动生成最小评测矩阵。这样既减少遗漏，也让不同微调任务之间可以比较。评测模板是平台化的关键。

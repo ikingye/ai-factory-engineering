@@ -130,12 +130,18 @@
 | 知识点 | 主要章节 | 覆盖要求 |
 | --- | --- | --- |
 | `dataset_manifest` | 第 10 章、第 20 章、第 33 章 | 说明数据来源、处理版本、shard、checksum、统计、权限和缓存策略 |
+| `dataset_lineage_record` | 第 10 章、第 33 章、第 38 章、第 44 章 | 说明训练数据从原始来源、清洗、去重、安全过滤、tokenization、sharding、删除请求到 manifest 的可追溯链路 |
 | `workload_storage_intent` | 第 20、33、37 章 | 说明训练、推理、评测和数据处理如何声明 dataset、checkpoint、artifact、cache 和观测需求 |
 | `checkpoint_commit_record` | 第 10 章、第 33 章、第 41 章 | 说明分片写入、校验、manifest commit、latest valid、恢复候选和 GPU idle 成本 |
+| `checkpoint_restore_drill` | 第 10 章、第 38 章、第 39 章、第 41 章、第 44 章 | 说明 checkpoint 不是存在即可用，必须用真实镜像、并行配置、reader 版本和短窗口训练验证可恢复性 |
+| `model_artifact_provenance` | 第 14 章、第 33 章、第 38 章、第 39 章、第 41 章、第 44 章 | 说明模型产物从 checkpoint、adapter、tokenizer、template、转换工具、评测门禁到签名发布的来源证明 |
 | `model_artifact_distribution` | 第 14 章、第 33 章 | 说明权重、tokenizer、template、digest、缓存预热和 readiness 的关系 |
 | `cache_residency` | 第 14 章、第 33 章、第 41 章 | 说明本地 NVMe、rack cache、权重 cache 与调度、冷启动和成本归因的关系 |
+| `cache_invalidation_record` | 第 14 章、第 33 章、第 38 章、第 39 章、第 41 章、第 44 章 | 说明权重、tokenizer、template、RAG 索引和数据缓存撤销后如何阻止调度复用旧缓存，并如何重新预热 |
+| `storage_security_boundary` | 第 33 章、第 37 章、第 38 章、第 41 章、第 44 章 | 说明训练数据、checkpoint、模型权重、adapter、prompt log、trace 和导出路径的命名空间、权限、加密、审计和删除边界 |
 | `data_path_evidence` / `storage_evidence` | 第 33 章、第 37 章、第 39 章、第 41 章 | 说明 workload 到 path、manifest、client、cache、backend、telemetry 和 impact 的证据链 |
 | `storage_acceptance_matrix` / `storage_composite_regression_gate` | 第 38 章 | 说明 dataset read、checkpoint write/restore、model load、cache miss 以及 NCCL+checkpoint+artifact 并发门禁 |
+| `supply_chain_acceptance_matrix` | 第 38 章、第 44 章 | 说明 dataset lineage、checkpoint restore、artifact provenance、cache invalidation 和 storage security boundary 如何成为生产资源和模型上线门禁 |
 | 存储故障树 | 第 39 章 | 说明 GPU idle、checkpoint slow、model load slow 如何定位到 dataset/checkpoint/artifact/cache，并要求 workload impact 证据 |
 | `storage_cost_ledger` | 第 41 章 | 说明 dataset read、checkpoint、artifact retention、cache miss、local NVMe 保留和 storage-induced GPU idle 的成本归因 |
 

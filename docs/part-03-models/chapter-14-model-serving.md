@@ -280,6 +280,37 @@ model_artifact_distribution:
 
 Artifact 分发协议是推理冷启动治理的基础。没有它，autoscaler 只能看到副本还没 ready，却不知道是在拉镜像、拉权重、校验 digest、初始化 engine，还是被存储限流。
 
+Artifact 分发之前还要有 `model_artifact_provenance`。它说明一个线上可加载产物从哪个 checkpoint、base model、LoRA/adapter、tokenizer、chat template、量化配置、转换工具、评测门禁和签名流程生成。Digest 只能证明文件没有被改，不能证明它应该被使用；provenance 才能证明产物来源、转换链路和发布资格。没有 provenance，团队看到一个权重 digest 只能知道“它是什么文件”，无法知道“它是否来自批准的训练、是否通过评测、是否允许服务这个租户”。
+
+```yaml
+model_artifact_provenance:
+  provenance_id: map-af-chat-large-20260619-r3
+  release_id: af-chat-large-20260619-r3
+  source:
+    base_checkpoint: ckpt-step-120000
+    checkpoint_restore_drill: crd-20260620-ckpt-120000
+    dataset_lineage_records: [dlr-corpus-v3-2-20260620]
+    fine_tune_artifacts: []
+  build:
+    conversion_tool: hf-to-runtime-v8@sha256:example
+    quantization_profile: none_or_recorded
+    tokenizer_digest: sha256:tokenizer
+    chat_template_digest: sha256:template
+    engine_config_digest: sha256:engine-config
+  governance:
+    quality_gate_execution: qge-af-chat-20260620-001
+    safety_gate: pass
+    license_review: pass
+    signed_by: model-release-owner
+    signature: sigstore-or-internal-signature
+  output_artifacts:
+    weights_digest: sha256:weights
+    manifest_digest: sha256:example
+    registry_entry: model-registry/af-chat-large/20260619-r3
+```
+
+这个对象是 model registry、serving release 和 PRR 的共同证据。若某个线上回答质量退化，评测平台可以沿 provenance 找到训练数据、checkpoint、转换工具和模板；若某个产物被发现许可证或安全问题，平台可以找出所有依赖它的 serving release、cache 和租户；若转换工具升级导致 token drift，release gate 可以要求重新生成 provenance。模型产物供应链应像容器镜像供应链一样可追溯、可签名、可撤销。
+
 Artifact 分发还需要状态机和 `cache_residency`。同一个 release 在不同节点上可能处于未下载、下载中、校验中、已缓存、已预热、可服务或失效状态。Autoscaler 和调度器如果不知道这些状态，就会把副本调度到完全冷的节点，扩容窗口被权重拉取和校验放大。模型服务控制面应把 artifact cache 当成资源状态，而不是让 Pod 启动脚本临时处理。
 
 ```mermaid
@@ -318,6 +349,35 @@ cache_residency:
 ```
 
 这份状态能直接改变扩容策略。若某个 rack 的 `cache_residency` 已经 ready，调度器可以优先放置新 replica；若 cache miss 正在高峰期集中发生，Gateway 应降低新流量导入速度或提前扩容；若 digest mismatch，发布系统应冻结 canary，而不是让副本反复重启。模型冷启动不是单一耗时指标，而是 artifact 分发、校验、缓存、warmup 和 readiness 的组合路径。
+
+缓存还需要 `cache_invalidation_record`。模型权重、tokenizer、chat template、engine config、LoRA、RAG 索引和数据 shard 一旦版本、权限、签名或安全状态变化，旧缓存可能从性能资产变成风险。Invalidation record 说明为什么失效、影响哪些节点和资源池、是否需要停止调度到这些节点、是否要保留证据、何时重新预热。没有失效记录，发布回滚、许可证撤销、数据删除和 digest mismatch 都可能留下“热但不可信”的缓存。
+
+```yaml
+cache_invalidation_record:
+  invalidation_id: cir-20260620-001
+  target:
+    artifact_digest: sha256:weights
+    release_id: af-chat-large-20260619-r3
+    cache_scopes:
+      - resource_pool: inference-prod-h100
+        racks: [rack-11, rack-12]
+  trigger:
+    reason: manifest_revoked_or_template_changed
+    linked_records:
+      model_artifact_provenance: map-af-chat-large-20260619-r3
+      serving_rollback_record: optional
+  action:
+    mark_cache_state: invalid
+    block_new_replica_on_invalid_cache: true
+    preserve_for_forensics: true
+    prewarm_replacement_release: af-chat-large-20260612-r9
+  outcome:
+    affected_nodes: measured
+    eviction_completed: true_or_false
+    replacement_cache_ready: measured
+```
+
+`cache_invalidation_record` 让缓存进入发布和安全控制面。若某个 tokenizer 修复了严重 tokenization bug，旧 tokenizer cache 必须失效；若某个模型 artifact 被撤销，所有节点的 cache residency 都要从 ready 变成 invalid；若回滚需要旧版本热容量，失效策略又不能把旧稳定版本提前清理。缓存不是简单 LRU，它承载发布安全和恢复时间目标。
 
 模型服务还应提供 drain contract。Drain contract 至少说明：停止接收新请求的信号是什么，已有 streaming 请求最大等待多久，超时后如何关闭，已生成 token 如何计量，KV Cache 如何释放，副本退出前必须上报哪些事件。没有 drain contract，滚动升级、节点维护和缩容都会随机打断用户。
 

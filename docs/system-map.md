@@ -111,11 +111,17 @@ flowchart TB
 | `training_accounting_reconciliation` | 对齐 Slurm、Kubernetes、训练框架和成本系统的 GPU 小时口径。 | 第 24、41 章 | `training_roi_ledger`、`Token Factory ledger` |
 | `training_incident_record` | 把训练事故回指 admission、placement、rank、checkpoint、健康和成本影响。 | 第 39、41 章 | `incident_record`、`training_roi_ledger` |
 | `dataset_manifest` | 固定数据处理、shard、采样、权限和缓存策略。 | 第 10、20、33 章 | `workload_storage_intent`、`storage_evidence` |
+| `dataset_lineage_record` | 记录训练数据如何从原始来源经过清洗、过滤、tokenization、sharding、删除请求和治理动作生成 manifest。 | 第 10、33、38 章 | `model_artifact_provenance`、`supply_chain_acceptance_matrix` |
 | `workload_storage_intent` | 让 workload 在 admission 前声明数据、checkpoint、artifact、cache 和观测需求。 | 第 20、33、37 章 | `storage_acceptance_matrix`、`storage_evidence` |
 | `checkpoint_manifest` | 证明 checkpoint 分片、状态和恢复候选有效。 | 第 10、33 章 | `checkpoint_commit_record`、`storage_evidence` |
 | `checkpoint_commit_record` | 记录 checkpoint 写入、校验、latest 指针和恢复门禁。 | 第 10、33、41 章 | `training_roi_ledger`、`storage_cost_ledger` |
+| `checkpoint_restore_drill` | 用真实镜像、并行配置、reader 版本和短窗口训练证明 checkpoint 能恢复，而不是只证明目录存在。 | 第 10、38、39 章 | `model_artifact_provenance`、`production_readiness_review` |
+| `model_artifact_provenance` | 证明线上产物来自哪个 checkpoint、adapter、tokenizer、template、转换工具、评测门禁和签名流程。 | 第 14、33、38 章 | `serving_quality_contract`、`cache_invalidation_record` |
 | `model_artifact_distribution` | 绑定权重、tokenizer、template、digest、预热和回滚对象。 | 第 14、33 章 | `cache_residency`、`serving_quality_contract` |
 | `cache_residency` | 描述模型或数据在 node/rack/pool 的缓存状态。 | 第 14、33、41 章 | `storage_evidence`、`storage_cost_ledger` |
+| `cache_invalidation_record` | 记录模型、tokenizer、template、RAG 索引或数据缓存为何失效、影响哪些节点、如何阻断复用和重新预热。 | 第 14、33、38、39 章 | `storage_evidence`、`production_readiness_review` |
+| `storage_security_boundary` | 定义训练数据、checkpoint、模型权重、adapter、日志和 trace 的命名空间、权限、加密、审计、导出和删除边界。 | 第 33、37、38、41 章 | `security_audit_event`、`supply_chain_acceptance_matrix` |
+| `supply_chain_acceptance_matrix` | 验证数据 lineage、checkpoint restore、模型 provenance、缓存撤销和存储安全边界是否满足生产门禁。 | 第 38、44 章 | `production_readiness_review`、`storage_cost_ledger` |
 | `network_path_evidence` | 把 job/request 映射到 GPU、NIC、rail、switch port 和 baseline。 | 第 30、32、37 章 | `network_diagnostic_bundle`、`fabric_baseline` |
 | `rail_balance_report` | 证明多 rail 设计在真实 rank 和端口流量中被正确使用。 | 第 32、37、38 章 | `fabric_change_record`、`network_cost_ledger` |
 | `congestion_event_record` | 把 ECN/PFC、队列、水位、流量类别和 workload 影响串成拥塞证据。 | 第 30、37、39 章 | `network_diagnostic_bundle`、`incident_record` |
@@ -152,8 +158,13 @@ flowchart TB
 | 训练任务长期 pending | 第 20、23、24、28 章 | pending reason、job_admission_event、queue_fairness_ledger、quota、gang、topology | 区分配额不足、拓扑不可满足、借用策略、镜像/数据预检失败和资源池状态问题。 |
 | GPU 空闲但任务启动不了 | 第 22、23、28、31、32 章 | gpu_assignment_record、NUMA/NIC topology、queue policy、fragmentation | 检查拓扑碎片、MIG/整卡边界、RDMA device 和 gang scheduling。 |
 | NCCL hang | 第 17、18、32、38、39 章 | rank mapping、placement_commit_record、NCCL env、RDMA counters、switch telemetry、fabric baseline、rail_balance_report | 先确定 rank 退出、collective mismatch、放置降级、GPU/NVLink、RDMA/fabric、rail 失衡或容器 runtime。 |
+| 训练 loss spike 但数据不可追溯 | 第 10、13、33、39 章 | dataset_lineage_record、dataset_manifest、shard checksum、tokenizer、data loader telemetry | 先把异常 step/rank/shard 追到数据来源和处理版本，再判断是数据分布、tokenization、采样权重、模型变更还是 runtime 问题。 |
 | checkpoint 很慢 | 第 10、33、37、39 章 | checkpoint_manifest、checkpoint_commit_record、storage_evidence、backend telemetry、GPU idle | 区分 rank 写入长尾、manifest commit、metadata、并行文件系统、对象存储和网络重叠。 |
+| checkpoint 存在但恢复失败 | 第 10、33、38、39 章 | checkpoint_manifest、checkpoint_commit_record、checkpoint_restore_drill、image/runtime version、dataloader state | 检查 rank 分片、optimizer/scheduler/rng、reader 版本、world size、权限和 restore drill，失败前不要删除更早健康 checkpoint。 |
+| 模型产物来源无法证明 | 第 13、14、33、38、44 章 | model_artifact_provenance、quality_gate_execution、dataset_lineage_record、checkpoint_restore_drill、signature | 阻止进入高价值租户或商业化发布，补齐 checkpoint、转换、评测、签名和发布证据。 |
+| 模型服务加载旧权重 | 第 14、33、37、39 章 | model_artifact_distribution、cache_residency、cache_invalidation_record、serving_rollback_record、node cache state | 区分 registry 指针、节点缓存、RuntimeClass、启动脚本和 Gateway 路由，必要时阻断调度到 invalid cache 节点。 |
 | 模型冷启动慢 | 第 14、15、33、41 章 | model_artifact_distribution、cache_residency、storage_evidence、load time、storage_cost_ledger | 优化权重分发、预热、缓存驻留、调度放置和多模型路由。 |
+| 缓存撤销后仍被调度使用 | 第 14、33、38、39、44 章 | cache_invalidation_record、cache_residency、scheduler placement、serving release、storage_security_boundary | 检查失效事件是否进入调度和 autoscaler，确认旧 cache 从 ready 变成 invalid 并完成替代版本预热。 |
 | 容器里看不到 GPU | 第 19、21、22、29、38 章 | runtime_privilege_profile、device plugin state、RuntimeClass/CDI、NVIDIA_VISIBLE_DEVICES、Toolkit config | 区分 Kubernetes 分配、OCI runtime 注入、CDI spec、driver/library mount 和容器权限。 |
 | 容器里 RDMA 不通 | 第 22、32、38 章 | RDMA device、CNI、NUMA、container smoke test、fabric baseline | 宿主机 RDMA 正常不代表容器内 RDMA 正常，必须做容器路径验收。 |
 | GPU 降频或 tokens/W 下降 | 第 34、35、36、38、41 章 | power_thermal_envelope、rack_capacity_unit、energy_ledger | 检查 power、cooling、液冷、机柜降额和调度限制。 |
@@ -173,6 +184,7 @@ flowchart TB
 | GPU 容器链路 | 第 19、21、22、29、38 章 | 能解释 device plugin、CRI、OCI runtime、NVIDIA Container Toolkit、driver/library 注入和容器 smoke test。 |
 | 网络通信链路 | 第 18、30、31、32、37、38、39、41 章 | 能从 NCCL 性能症状追到 GPU/NIC/rail/switch telemetry、fabric baseline、拥塞事件和成本影响。 |
 | 存储数据链路 | 第 10、14、20、33、37、38、39、41 章 | 能从 GPU idle、checkpoint 慢、冷启动慢追到 storage intent、dataset manifest、checkpoint commit、artifact distribution、cache residency、backend telemetry 和成本。 |
+| 数据/模型产物供应链链路 | 第 10、14、33、37、38、39、41、44 章 | 能从训练数据来源追到 dataset lineage、checkpoint restore、artifact provenance、cache residency、cache invalidation、storage security boundary、PRR 和供应链成本。 |
 | 可靠性链路 | 第 28、29、36、37、38、39、40、41、44 章 | 能把 health、maintenance、baseline invalidation、change、fault domain、evidence bundle、incident、error budget、capacity activation、PRR 和经济损失串起来。 |
 | 安全多租户链路 | 第 5、6、7、21、22、27、28、37、40、41 章 | 能解释租户边界、策略决策、runtime privilege、GPU 隔离、审计和成本隔离。 |
 | 质量与发布链路 | 第 6、13、14、37、40、41、44 章 | 能从线上质量退化追到 eval dataset lineage、quality gate execution、routing decision、serving contract、evidence bundle、rollback record、quality cost ledger 和 PRR。 |

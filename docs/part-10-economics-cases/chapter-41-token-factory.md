@@ -522,9 +522,14 @@ storage_cost_ledger:
     workloads: [train-20260620-017, endpoint-af-chat-large-prod]
   evidence:
     dataset_manifest: dataset-manifest@sha256:example
+    dataset_lineage_record: dlr-corpus-v3-2-20260620
     checkpoint_commit_record: ckpt-step-120000
+    checkpoint_restore_drill: crd-20260620-ckpt-120000
+    model_artifact_provenance: map-af-chat-large-20260619-r3
     model_artifact_distribution: af-chat-large-20260619-r3
     cache_residency: cache-residency-rack-11
+    cache_invalidation_record: optional
+    storage_security_boundary: ssb-model-and-training-prod
     storage_evidence: storage-ev-20260620-017
   cost_components:
     dataset_read_backend_cost: calculated
@@ -535,14 +540,22 @@ storage_cost_ledger:
     model_cold_start_capacity_cost: calculated
     orphan_artifact_retention_cost: calculated
     local_nvme_reserved_capacity_cost: calculated
+    dataset_lineage_governance_cost: calculated
+    checkpoint_restore_drill_cost: measured
+    artifact_provenance_and_signing_cost: measured
+    cache_invalidation_and_rewarm_cost: calculated
+    storage_security_boundary_cost: allocated
   outputs:
     storage_cost_per_training_token: calculated
     storage_cost_per_delivered_token: calculated_if_serving
     storage_waste_gpu_hours: calculated
+    supply_chain_cost_per_release: calculated
     cleanup_savings_candidate: calculated
 ```
 
 这份 ledger 能回答“为什么应该投入存储工程”。如果 checkpoint pause 造成大量 GPU idle，优化两阶段提交、分片格式或 checkpoint 窗口可能比增加 GPU 更划算；如果模型冷启动导致扩容慢，权重预热和 cache residency 可能直接改善毛利；如果 orphan artifact 和过期 checkpoint 占用高性能路径，清理自动化本身就是降本项目。存储成本的关键不是每 TB 多少钱，而是它如何改变有效 token 和有效训练 step。
+
+供应链相关成本不应被视为“文档成本”。`dataset_lineage_governance_cost` 购买的是数据可追溯和删除请求可执行，`checkpoint_restore_drill_cost` 购买的是故障时少丢训练进度，`artifact_provenance_and_signing_cost` 购买的是模型发布可证明，`cache_invalidation_and_rewarm_cost` 购买的是回滚和撤销能力，`storage_security_boundary_cost` 购买的是高价值数据不被随意复制。若这些成本不进入账本，短期看可以省钱，长期会以事故、合规风险、回滚失败和客户信任损失的形式返回。
 
 可靠性成本也应进入经济模型。一次 SLO 违约可能产生赔付、退款、客户支持成本、失败 token、重试 token、GPU 空转、机会成本和后续加固投入；一次训练 incident 可能造成 checkpoint 回滚、队列重排、重复训练和模型发布时间延迟。示例：
 

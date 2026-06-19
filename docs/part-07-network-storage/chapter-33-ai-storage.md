@@ -399,6 +399,59 @@ storage_evidence:
 
 这个对象是第 37 章观测、第 38 章准入、第 39 章故障树和第 41 章成本账本的交叉点。它不要求所有存储后端使用同一种实现，但要求它们用相同关联键表达事实。否则训练、推理、存储和财务团队会各自拥有一部分证据，却无法形成共同结论。
 
+AI 存储还要提供 `storage_security_boundary`。训练数据、RAG 文档、checkpoint、模型权重、adapter、prompt log、trace 和 billing record 的敏感级别不同，访问者也不同。存储层不能只依赖上层应用“不要读错路径”，而要把命名空间、加密、KMS key、IAM/RBAC、审计、导出、保留和删除策略写成边界对象。尤其是 checkpoint 和模型 artifact，它们可能泄露训练数据特征或商业能力，不能被当作普通文件共享。
+
+```yaml
+storage_security_boundary:
+  boundary_id: ssb-model-and-training-prod
+  namespaces:
+    dataset_raw:
+      classification: restricted
+      allowed_principals: [data-pipeline-prod]
+      export_requires_approval: true
+    checkpoint:
+      classification: model_secret
+      allowed_principals: [training-platform, model-release]
+      delete_requires_two_person_review: true
+    model_artifact:
+      classification: model_secret
+      allowed_principals: [model-registry, serving-control-plane]
+      signature_required: true
+    logs_and_trace:
+      classification: mixed_sensitive
+      redaction_required: true
+  controls:
+    encryption_at_rest: required
+    kms_key_scope: per_tenant_or_per_domain
+    immutable_audit_log: required
+    lifecycle_policy: versioned
+    break_glass_ttl: policy_defined
+```
+
+这个边界对象能防止很多“存储便利性”演变成安全事故。研究人员不应直接从生产 checkpoint 目录复制权重到个人路径；推理节点不应加载未签名 artifact；RAG 索引构建不应把受限文档写进共享缓存；事故排查不应把未脱敏 trace 导出到普通对象桶。存储安全边界不是阻碍效率，而是让高价值数据的访问、复制、删除和导出可审计、可撤销、可解释。
+
+把数据和模型产物串起来，可以形成一条供应链图。它从 raw dataset 进入 dataset lineage 和 manifest，经过训练生成 checkpoint 和 restore drill，再经过转换、评测和签名生成 model artifact provenance，最终通过 artifact distribution、cache residency 和 cache invalidation 进入 serving。任何一个环节缺证据，模型发布就不可证明。
+
+```mermaid
+flowchart LR
+  Raw["raw data / private data"] --> Lineage["dataset_lineage_record"]
+  Lineage --> Manifest["dataset_manifest"]
+  Manifest --> Train["TrainingJob"]
+  Train --> Ckpt["checkpoint_manifest"]
+  Ckpt --> Drill["checkpoint_restore_drill"]
+  Drill --> Prov["model_artifact_provenance"]
+  Prov --> Dist["model_artifact_distribution"]
+  Dist --> Cache["cache_residency"]
+  Cache --> Serve["serving release"]
+  Dist --> Invalid["cache_invalidation_record"]
+  Boundary["storage_security_boundary"] -. governs .-> Lineage
+  Boundary -. governs .-> Ckpt
+  Boundary -. governs .-> Prov
+  Boundary -. governs .-> Cache
+```
+
+这张图的读法是：存储层不是被动保存文件，而是保存供应链状态。训练异常、模型质量退化、安全撤销、缓存失效和成本归因，都沿这条链路查证。AI Factory 如果能让每个产物回答“来自哪里、谁批准、在哪里缓存、何时失效、能否恢复、成本归谁”，模型上线就从文件复制变成工程发布。
+
 第六步是把清理和成本做成自动化。平台应定期识别过期 checkpoint、孤儿缓存、无引用 artifact、超配额目录和异常增长租户，并在保留策略允许的范围内执行清理或发出审批。成本标签应从任务提交开始继承到存储路径，而不是月底人工追账。AI 存储的可持续性来自生命周期闭环：创建时有元数据，使用时有观测，结束后有清理，归档时有审计。
 
 实现时还要保留逃生通道。大型训练和紧急发布可能需要临时延长保留、固定缓存或提高配额，但这些例外必须有过期时间、审批记录和成本归属。没有例外机制，平台会被绕过；没有过期机制，例外会变成永久债务。好的存储平台不是禁止用户做特殊操作，而是让特殊操作可见、可审计、可回收。
