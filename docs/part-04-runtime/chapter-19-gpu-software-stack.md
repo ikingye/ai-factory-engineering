@@ -158,6 +158,33 @@ Toolkit 的验收应覆盖三类场景。第一类是最小容器，只运行 `n
 
 此外，Toolkit 配置应纳入节点 drift 检测。container runtime 配置被手工修改、runtime handler 变化、hook 二进制被覆盖、`NVIDIA_VISIBLE_DEVICES` 默认行为变化，都应触发节点重新准入。生产平台应把 Toolkit 版本、runtime 配置 hash、GPU smoke test 结果写入资源池，而不是只保存在节点上。这样才能防止局部修复变成长期隐患，也能在容器 GPU 问题发生时快速判断是节点基线、镜像依赖还是 Kubernetes 分配出了问题。
 
+较新的集群还应把 CDI/NRI 能力纳入 Toolkit 基线。Toolkit 不只是“安装一个 nvidia runtime”，还可能负责生成 CDI spec、配置 containerd/CRI-O 的 CDI 支持、与 device plugin 的 `deviceListStrategy` 对齐，或通过 NRI 参与容器创建路径。基线记录应明确当前节点使用 legacy OCI hook、CDI，还是混合模式；混合模式只应出现在迁移窗口，并要有到期时间。否则同一个 GPU Pod 在不同节点上会走不同注入路径，故障表现和审计证据都不一致。
+
+```yaml
+container_toolkit_baseline:
+  toolkit_version: pinned
+  libnvidia_container_version: pinned
+  container_runtime: containerd
+  runtime_handler:
+    name: nvidia
+    mode: legacy_hook
+  cdi:
+    enabled: true
+    spec_path: /var/run/cdi/nvidia-gpu.yaml
+    spec_hash: measured
+  nri:
+    enabled: policy_defined
+  device_plugin_strategy: cdi
+  validation:
+    - nvidia_container_cli_info
+    - legacy_hook_smoke_if_enabled
+    - cdi_device_resolution
+    - kubernetes_runtimeclass_smoke
+    - pod_device_visibility_reconciliation
+```
+
+这个 baseline 的价值在升级时最明显。containerd、CRI-O、runc、Toolkit、device plugin 任一组件升级，都可能改变设备注入路径。若 baseline 只记录版本，不记录注入模式和 spec hash，升级后即使版本看起来正确，也无法解释为什么容器内可见设备发生变化。AI Factory 应把“GPU 如何进入容器”视为可验收能力，而不是 runtime 的内部细节。
+
 ## 19.7 GPU Operator
 
 GPU Operator 使用 Kubernetes Operator 模式管理 GPU 软件栈，通常可以部署或管理 driver、NVIDIA Container Toolkit、GPU Device Plugin、DCGM exporter、MIG manager、Node Feature Discovery 等组件。它的价值是把 GPU 节点配置声明化、自动化，降低手工安装和漂移风险。对于 Kubernetes GPU 集群，GPU Operator 是常见管理方式。
@@ -213,11 +240,15 @@ gpu_node_baseline:
   nccl: pinned
   rdma_stack: pinned
   container_toolkit: pinned
+  container_toolkit_mode: cdi_or_legacy_hook
+  device_plugin_strategy: pinned
+  cdi_spec_hash: measured_if_enabled
   dcgm_exporter: enabled
   validation:
     - nvidia-smi
     - cuda-sample
     - container-gpu-smoke-test
+    - cdi-or-runtimeclass-smoke-test
     - nccl-test
     - dcgm-metrics-check
 ```

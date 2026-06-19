@@ -222,6 +222,8 @@ Bootstrap validation 应显式覆盖 NVIDIA Container Toolkit 和 container runt
 nvidia-smi
 nvidia-container-cli info
 containerd config dump | grep -i nvidia
+crictl info | grep -i runtime
+kubectl get runtimeclass
 ctr --namespace k8s.io images ls | grep nvidia || true
 ```
 
@@ -241,6 +243,48 @@ kubectl wait --for=condition=Ready pod/gpu-smoke --timeout=120s
 kubectl logs gpu-smoke
 ```
 
+若平台启用 CDI，还要检查 CDI spec 和容器内可见设备是否与调度分配一致。检查点包括：CDI spec 文件是否存在，spec 中的 device name 是否能对应到 GPU UUID 或 MIG UUID，containerd/CRI-O 是否启用 CDI，device plugin 是否使用 CDI strategy，Pod allocated resources 是否与容器内 `nvidia-smi -L` 一致。这个检查不能只在节点上跑，因为 CDI spec 存在不代表 kubelet、CRI 和 runtime 会在真实 Pod 创建路径中消费它。
+
+```bash
+ls -l /var/run/cdi /etc/cdi 2>/dev/null || true
+grep -R "nvidia.com" /var/run/cdi /etc/cdi 2>/dev/null || true
+kubectl describe pod gpu-smoke | grep -i "allocated\\|runtime\\|nvidia\\|cdi"
+kubectl exec gpu-smoke -- nvidia-smi -L
+```
+
+Bootstrap validation 的输出应包含 `gpu_container_runtime_report`，把主机、runtime、Kubernetes 和容器内事实放在一起。它不是给人看的临时日志，而是节点进入资源池前的准入证据。
+
+```yaml
+gpu_container_runtime_report:
+  node: gpu-node-001
+  baseline: gpu-node-2026-06
+  host:
+    driver: measured
+    gpu_uuids: measured
+    nvidia_container_cli_info: pass
+  runtime:
+    cri_endpoint: unix:///run/containerd/containerd.sock
+    containerd_config_hash: measured
+    runtime_handler: nvidia
+    runtime_class_present: true
+    toolkit_mode: cdi
+    cdi_spec_hash: measured
+  kubernetes:
+    device_plugin_registered: true
+    device_list_strategy: cdi
+    allocated_resource: nvidia.com/gpu
+  container:
+    nvidia_smi: pass
+    cuda_sample: pass
+    visible_gpu_uuids_match_assignment: true
+    rdma_visible_if_required: true
+  decision:
+    container_gpu_runtime: pass
+    schedulable_for: [online_inference, distributed_training]
+```
+
+这份报告能解决几个高频争议：主机 `nvidia-smi` 正常但容器失败，Docker 成功但 Kubernetes 失败，device plugin 分配成功但容器看到全部 GPU，CDI spec 存在但 runtime 不消费，RuntimeClass 未匹配 handler。节点 bootstrap 如果不能输出这些事实，就不应进入生产 GPU 资源池。
+
 第四步是设计升级流水线。新 baseline 先进入实验池，跑基础测试和典型 workload；通过后进入小规模灰度；灰度期间观察训练、推理、NCCL、RDMA 和故障指标；最后批量推广。每一步都要有回滚条件。环境升级不应靠人工记忆，而应由流水线推动。
 
 对底层环境变更，应要求提交 `change_safety_case`。它不是额外审批文书，而是机器可读的变更安全论证：说明变更对象、风险假设、兼容矩阵、验证证据、灰度范围、停止条件、回滚路径和基线失效范围。示例：
@@ -258,10 +302,15 @@ change_safety_case:
       nccl: changed
       ofed: unchanged
       nvidia_container_toolkit: changed
+      containerd_runtime_handler: changed
+      device_plugin_strategy: changed
+      cdi_spec_generation: changed
   risk_hypotheses:
     - driver_module_build_failure
     - nccl_bandwidth_regression
     - container_gpu_runtime_hook_regression
+    - cdi_device_resolution_regression
+    - runtimeclass_handler_mismatch
     - rdma_in_container_visibility_regression
   required_evidence:
     pre_change:
@@ -272,12 +321,14 @@ change_safety_case:
       - nvbandwidth
       - nccl_multi_node
       - kubernetes_gpu_pod_smoke
+      - cdi_or_runtimeclass_smoke
       - representative_training_job
       - representative_inference_endpoint
   stop_conditions:
     - new_xid_above_baseline
     - nccl_regression_outside_allowed_band
     - container_smoke_failure
+    - gpu_assignment_visibility_mismatch
     - ttft_or_step_time_regression
   rollback:
     method: restore_previous_golden_image

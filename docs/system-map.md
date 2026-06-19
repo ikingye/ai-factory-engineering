@@ -87,6 +87,7 @@ flowchart TB
 | `network_path_evidence` | 把 job/request 映射到 GPU、NIC、rail、switch port 和 baseline。 | 第 30、32、37 章 | `network_diagnostic_bundle`、`fabric_baseline` |
 | `storage_evidence` | 把 dataset、checkpoint、artifact、cache 和 backend 证据串起来。 | 第 33、37 章 | `storage_acceptance_matrix`、`storage_cost_ledger` |
 | `resource_health_record` | 把 GPU、node、fabric、storage 健康信号转成资源池状态。 | 第 28、37 章 | `maintenance_window`、`security_audit_event` |
+| `gpu_container_runtime_report` | 证明 driver、Toolkit、RuntimeClass/CDI、device plugin 和容器内设备可见性一致。 | 第 21、22、29、38 章 | `gpu_assignment_record`、`acceptance_baseline` |
 | `acceptance_baseline` | 证明资源进入生产池前通过准入，并可用于后续异常对比。 | 第 38 章 | `production_readiness_review`、`baseline_invalidation_policy` |
 | `incident_record` | 记录事故时间线、影响面、根因证据、止血动作和行动项。 | 第 39、40 章 | `slo_budget_ledger`、`reliability_cost` |
 | `Token Factory ledger` | 把 token、GPU、能耗、质量、安全、可靠性和收入放到同一账本。 | 第 41 章 | `business_model_profile`、`capacity_activation_review` |
@@ -104,7 +105,7 @@ flowchart TB
 | NCCL hang | 第 18、32、38、39 章 | rank mapping、NCCL env、RDMA counters、switch telemetry、fabric baseline | 先确定 rank 退出、collective mismatch、GPU/NVLink、RDMA/fabric 或容器 runtime。 |
 | checkpoint 很慢 | 第 10、33、37、39 章 | checkpoint_manifest、storage_evidence、backend telemetry、GPU idle | 区分数据路径、metadata、并行文件系统、对象存储和 local cache 问题。 |
 | 模型冷启动慢 | 第 14、15、33、41 章 | model_artifact_distribution、cache_residency、load time、cost ledger | 优化权重分发、预热、缓存驻留和多模型路由。 |
-| 容器里看不到 GPU | 第 19、21、22、29 章 | runtime_privilege_profile、device plugin state、NVIDIA_VISIBLE_DEVICES、Toolkit config | 区分 Kubernetes 分配、OCI runtime 注入、driver/library mount 和容器权限。 |
+| 容器里看不到 GPU | 第 19、21、22、29、38 章 | runtime_privilege_profile、device plugin state、RuntimeClass/CDI、NVIDIA_VISIBLE_DEVICES、Toolkit config | 区分 Kubernetes 分配、OCI runtime 注入、CDI spec、driver/library mount 和容器权限。 |
 | 容器里 RDMA 不通 | 第 22、32、38 章 | RDMA device、CNI、NUMA、container smoke test、fabric baseline | 宿主机 RDMA 正常不代表容器内 RDMA 正常，必须做容器路径验收。 |
 | GPU 降频或 tokens/W 下降 | 第 34、35、36、38、41 章 | power_thermal_envelope、rack_capacity_unit、energy_ledger | 检查 power、cooling、液冷、机柜降额和调度限制。 |
 | 账单争议 | 第 5、6、7、41、42 章 | append-only metering event、tenant boundary、business_model_profile | 区分失败是否计费、streaming 中断、免费额度、租户归属和合约边界。 |

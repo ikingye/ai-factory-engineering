@@ -242,6 +242,26 @@ NVIDIA Container Toolkit 的组件职责要记清楚。`libnvidia-container` 是
 
 安装包关系会随版本变化，但可以用职责而不是包名记忆：library/CLI 负责“怎么注入”，hook 负责“何时注入”，runtime 负责“把 hook 放进 spec”，ctk 负责“把 runtime 接到 Docker/containerd”。某些版本中 `nvidia-container-toolkit` 是 `nvidia-container-runtime-hook` 的软链接或等价入口，这是实现细节。工程上更重要的是能回答：Docker/containerd 是否使用了 NVIDIA runtime，OCI spec 是否包含 hook，hook 是否被 runc 调用，CLI 是否正确识别 GPU，libnvidia-container 是否成功 bind mount 设备和库。
 
+近年来还要理解 CDI（Container Device Interface，容器设备接口）和 NRI（Node Resource Interface，节点资源接口）带来的分叉。传统模式主要依赖环境变量和 OCI prestart hook：device plugin 把 `NVIDIA_VISIBLE_DEVICES`、device nodes 或 runtime 相关信息传给 kubelet/CRI，NVIDIA runtime hook 在容器启动前解析这些信息并注入设备。CDI 模式则把设备描述写成标准化 CDI spec，例如某个 `nvidia.com/gpu=GPU-xxxx` 对应哪些 device nodes、mount、env 和 hooks，containerd、CRI-O 或低层 runtime 根据 CDI device name 完成注入。NRI 进一步允许节点侧插件在容器生命周期中调整资源和注入信息。它们的共同目标，是减少对私有环境变量和 runtime wrapper 的依赖，让设备注入更标准、更可组合。
+
+这并不意味着 legacy hook 模式立刻消失。很多生产集群仍会同时存在 Docker `--gpus`、containerd `nvidia` runtime handler、Kubernetes device plugin 的 envvar strategy、CDI strategy、GPU Operator 管理的 Toolkit 和不同版本的容器运行时。平台文档如果只写“安装 NVIDIA Container Toolkit 即可”，读者遇到 RuntimeClass、CDI spec、device plugin strategy 或 hook 日志时就会断层。更准确的表达是：GPU 容器链路有多个实现路径，但每条路径都要回答同样的问题：设备由谁分配，设备描述由谁生成，CRI 如何传递，runtime 如何消费，容器内如何验证。
+
+```mermaid
+flowchart TB
+  DP["GPU Device Plugin\n发现 / 分配 GPU"] --> Strategy{"device list strategy"}
+  Strategy --> Env["envvar / volume / legacy path\nNVIDIA_VISIBLE_DEVICES"]
+  Strategy --> CDI["CDI spec\nvendor.com/device=GPU-uuid"]
+  Env --> CRI["kubelet -> CRI\ncontainerd / CRI-O"]
+  CDI --> CRI
+  CRI --> Handler{"runtime handler"}
+  Handler --> Hook["nvidia runtime / OCI hook\nlegacy injection"]
+  Handler --> Native["OCI runtime consumes CDI\nstandard device injection"]
+  Hook --> Container["container\n/dev/nvidia* + driver libs"]
+  Native --> Container
+```
+
+排障时必须先识别当前节点使用哪条路径。若集群使用 RuntimeClass `nvidia`，但 Pod 没写 runtimeClassName，可能落到默认 runc，导致 device plugin 分配了 GPU 但 runtime 没有执行 NVIDIA 注入。若 device plugin 使用 CDI strategy，但 containerd 或 CRI-O 没启用 CDI 支持，Pod 事件可能显示设备解析失败。若集群使用 legacy envvar strategy，镜像里残留 `NVIDIA_VISIBLE_DEVICES=all` 可能使非 GPU Pod 触发 NVIDIA hook。路径不同，日志入口也不同：legacy hook 看 `nvidia-container-runtime-hook`、`nvidia-container-cli` 和 containerd stderr；CDI 看 CDI spec 文件、CRI 传递的 device name 和 runtime CDI 解析错误；RuntimeClass 问题则看 Pod spec、RuntimeClass 对象、containerd runtime handler 和 kubelet CRI 配置。
+
 Docker 使用时，典型命令是：
 
 ```bash
@@ -275,6 +295,45 @@ docker run --rm --gpus all nvidia/cuda:12.2.0-base-ubuntu22.04 nvidia-smi
 ```
 
 containerd 节点要检查 runtime 配置是否进入 `/etc/containerd/config.toml`，并确认 kubelet 使用的 CRI endpoint 指向该 containerd。配置形式会随发行版、containerd 版本和 NVIDIA Toolkit 版本变化，平台不应手写不可审计的零散配置，而应由节点初始化或 GPU Operator 统一管理。配置后要重启 containerd，并通过 Kubernetes Pod 验证，而不只通过 Docker 验证。
+
+在 containerd 环境里，生产检查不应只 grep 一个 `nvidia` 字符串。要确认三个事实：第一，kubelet 的 CRI endpoint 指向的是这份 containerd；第二，containerd 中存在预期 runtime handler，例如 `nvidia`，且它指向 NVIDIA runtime 或支持 CDI 的 runtime；第三，Pod 是否通过默认 runtime、RuntimeClass 或 device plugin strategy 使用了这条 handler。下面的命令不是固定 runbook，而是检查方向：
+
+```bash
+crictl info | grep -i runtime
+containerd config dump | grep -i nvidia
+kubectl get runtimeclass
+kubectl describe pod <pod> | grep -i "runtime\\|nvidia\\|cdi"
+journalctl -u kubelet -u containerd --since "30 min ago" | grep -i "nvidia\\|cdi\\|oci"
+```
+
+如果集群使用 RuntimeClass，可以为 GPU workload 显式指定：
+
+```yaml
+apiVersion: node.k8s.io/v1
+kind: RuntimeClass
+metadata:
+  name: nvidia
+handler: nvidia
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: gpu-smoke-runtimeclass
+spec:
+  runtimeClassName: nvidia
+  restartPolicy: Never
+  containers:
+    - name: cuda
+      image: nvidia/cuda:12.2.0-base-ubuntu22.04
+      command: ["nvidia-smi"]
+      resources:
+        limits:
+          nvidia.com/gpu: 1
+```
+
+是否必须显式 RuntimeClass，取决于集群策略。有些平台把 NVIDIA runtime 配成默认 runtime，有些平台只允许 GPU workload 使用 `runtimeClassName: nvidia`，也有平台通过 CDI 让默认 runtime 消费设备描述。关键不是哪一种绝对正确，而是策略必须一致、可审计、可准入。若一半节点用默认 NVIDIA runtime，另一半节点要求 RuntimeClass，用户会看到随机失败；若 admission 没有检查 GPU Pod 的 runtime strategy，Pod 可能被调度成功却在 CreateContainer 阶段失败。
+
+CDI 路径还需要检查 CDI spec 是否存在、device name 是否与 device plugin 分配一致、runtime 是否启用 CDI，以及容器内设备与分配记录是否一致。生产诊断报告应把 `device_list_strategy` 写出来，例如 `envvar`、`cdi` 或混合模式，并记录 CDI spec hash。这样一次容器 GPU 问题发生时，SRE 不需要先猜这台节点到底走的是 hook 注入还是 CDI 注入。
 
 一个最小 GPU Pod 可以这样验证：
 

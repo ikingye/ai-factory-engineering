@@ -377,6 +377,41 @@ baseline_invalidation_policy:
 
 这个阶段能提前发现几类常见生产问题：Docker 测试通过但 kubelet 实际使用 containerd；containerd runtime handler 未配置 NVIDIA runtime；OCI prestart hook 没有执行；镜像中的 `NVIDIA_VISIBLE_DEVICES` 默认值导致设备暴露异常；device plugin 分配成功但容器内缺少 driver library；主机 RDMA 正常但容器内 verbs 不可用。没有这一阶段，业务 Pod 会成为容器 runtime 的测试工具。
 
+容器 GPU runtime 验收应明确当前节点使用哪种注入模式。legacy hook、RuntimeClass handler、CDI 和 NRI 的失败点不同，准入测试也不能只跑一个 Pod。下面的矩阵把“主机可用”“runtime 可用”“Kubernetes 分配可用”“容器内事实一致”拆开：
+
+```yaml
+container_gpu_runtime_acceptance_matrix:
+  baseline_id: container-gpu-runtime-20260620
+  dimensions:
+    runtime: [docker, containerd, cri_o]
+    injection_mode: [legacy_hook, runtimeclass_handler, cdi]
+    device_strategy: [envvar, cdi]
+    environment: [host_cli, runtime_cli, kubernetes_pod]
+  required_evidence:
+    - nvidia_container_cli_info
+    - container_runtime_config_hash
+    - runtimeclass_handler_mapping
+    - cdi_spec_hash_if_enabled
+    - device_plugin_strategy
+    - allocated_resource_from_kubelet
+    - nvidia_smi_inside_container
+    - cuda_sample_inside_container
+    - visible_device_matches_gpu_assignment_record
+  result:
+    docker_legacy_hook: pass
+    containerd_runtimeclass_handler: pass
+    containerd_cdi: pass
+    kubernetes_pod_visibility_reconciliation: pass
+  failure_classes:
+    - runtime_handler_missing
+    - cdi_spec_missing_or_stale
+    - device_plugin_strategy_mismatch
+    - visible_device_mismatch
+    - driver_library_mount_failed
+```
+
+这份矩阵的关键是“可见设备对账”。准入系统不应只判断容器内 `nvidia-smi` 成功，而要比较调度分配的 GPU UUID/MIG UUID 与容器内实际可见设备。若 Pod 申请 1 张 GPU 却看到 8 张，说明隔离和计费边界失效；若分配了 GPU-xxxx 但容器内看到 GPU-yyyy，说明 device plugin、CDI spec 或 runtime 注入存在错配；若分配了 MIG 实例但容器内看到整卡，说明 MIG 暴露策略错误。这些问题比“看不到 GPU”更危险，因为它们可能在生产中悄悄绕过配额和租户边界。
+
 ```yaml
 acceptance_pipeline:
   scope: rack-12
@@ -387,6 +422,7 @@ acceptance_pipeline:
     - hpl
     - nvbandwidth
     - container_gpu_runtime
+    - container_gpu_visibility_reconciliation
     - nccl_single_node
     - nccl_multi_node
     - storage_benchmark
