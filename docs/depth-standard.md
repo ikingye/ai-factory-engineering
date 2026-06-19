@@ -111,6 +111,9 @@
 | --- | --- | --- |
 | `TrainingJob` 生产对象 | 第 10 章 | 说明数据、模型、运行时、并行、调度和恢复语义 |
 | 训练状态机 | 第 10 章 | 覆盖 submitted、admitted、preflight、rendezvous、running、checkpointing、recovering |
+| `launcher_contract` | 第 16 章、第 10 章、第 41 章 | 说明 torchrun/DeepSpeed/Megatron/Slurm/Ray 等 launcher 如何把 placement、rank、env、checkpoint/log path 和失败语义变成可审计契约 |
+| `rendezvous_evidence` | 第 10 章、第 16 章、第 41 章 | 说明所有 rank 是否在同一 world size、endpoint、NCCL/env contract 和拓扑契约下完成 process group 初始化 |
+| `first_effective_step_record` | 第 10 章、第 37 章、第 41 章 | 说明训练何时真正完成首个数据读取、forward/backward、collective、optimizer step 和指标上报，作为 effective GPU hours 起点 |
 | checkpoint manifest | 第 10 章 | 说明 sharded checkpoint、optimizer/scheduler/rng/data loader state 和恢复校验 |
 | `framework_runtime_matrix` | 第 16、23、38、44 章 | 说明框架、CUDA/NCCL/driver、launcher、checkpoint 和指标能力如何作为训练 runtime 准入矩阵 |
 | `training_runtime_spec` | 第 16、37、39 章 | 说明单个训练任务实际引用的 runtime 矩阵、镜像、精度、分布式策略、checkpoint 和观测配置 |

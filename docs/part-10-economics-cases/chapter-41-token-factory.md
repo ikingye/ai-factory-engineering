@@ -509,6 +509,9 @@ training_roi_ledger:
     framework_runtime_matrix: frm-h100-train-20260620
     parallelism_plan_record: ppr-llm-20260620-001
     placement_commit_record: pcr-exp-20260619-001
+    launcher_contract: lc-torchrun-h100-202606
+    rendezvous_evidence: rv-exp-20260620-001
+    first_effective_step_record: fes-exp-20260620-001
     rank_topology_contract: rtc-llm-20260620-001
     nccl_env_contract: nec-h100-rdma-20260620
     collective_trace_record: optional
@@ -523,7 +526,9 @@ training_roi_ledger:
     effective_training_gpu_hours: measured
     wasted_gpu_hours:
       queue_startup: measured
+      launcher_or_env_error: measured_if_any
       rendezvous_failure: measured
+      no_first_effective_step: measured_if_any
       failed_restarts: measured
       preemption_lost_progress: measured
       placement_degradation: measured
@@ -550,6 +555,8 @@ training_roi_ledger:
 这个 ledger 让训练投资能被追踪到后续结果。若训练模型没有上线，ROI 不能按推理收入计算，但仍可记录为研究资产或失败学习；若模型上线后把 cost/token 降低，收益应回写到训练 ROI；若模型质量提升但推理成本上升，业务要判断 revenue/token 是否足以覆盖。训练 ROI 是跨时间窗口的事实链，不是单次作业报表。
 
 训练 ROI 还应吸收调度与生命周期事实。一个任务“成功完成”并不代表投资效率高：它可能长时间等待 gang，placement 降级导致训练吞吐下降，被抢占后丢失大量进度，或者 Slurm accounting 与平台成本口径没有对齐。`training_lifecycle_event` 说明 GPU 小时在哪个阶段消耗，`queue_fairness_ledger` 说明等待和借用是否符合资源承诺，`placement_commit_record` 说明性能是否受拓扑降级影响，`training_incident_record` 说明失败是否消耗了额外机会成本。把这些事实放入 ROI，训练队列才能和推理毛利在同一张经济表里比较。
+
+训练 ROI 的起点应是 `first_effective_step_record`，不是 Pod Running、Slurm Running 或容器启动。`launcher_contract` 能解释启动参数是否来自受控模板，`rendezvous_evidence` 能解释 world size 和 rank 是否完整，`first_effective_step_record` 能解释 GPU 何时真正开始产生训练 token。若任务在 rendezvous 前失败，成本应归入启动或调度浪费；若 rendezvous 后首个有效 step 前失败，成本应归入数据、框架或首个 collective；若首个有效 step 后失败，才进入训练稳定性和 checkpoint 恢复分析。这个阶段拆分能防止把启动浪费摊进正常训练成本。
 
 训练通信成本还需要单独拆出来。`communication_critical_path_record` 证明哪些 collective 真正暴露在 step 关键路径上，`rank_topology_contract` 说明是否有不可接受的拓扑违反，`nccl_env_contract` 说明环境是否偏离受控模板，`checkpoint_overlap_evidence` 说明周期性 spike 是否来自 checkpoint 与通信叠加。只有这些证据齐备，才能把“通信慢”换算成 `communication_critical_path_idle`，进而进入训练 ROI。否则团队容易把端口利用率、NCCL test 带宽或平均 op 时间误当作成本事实。
 

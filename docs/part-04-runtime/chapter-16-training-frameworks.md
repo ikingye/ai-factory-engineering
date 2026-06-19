@@ -261,6 +261,39 @@ training_runtime_spec:
 
 这个 spec 的关键是把运行时选择从“命令行参数”提升为“平台事实”。它让后续的 `parallelism_plan_record`、`placement_commit_record`、`nccl_env_contract`、`checkpoint_restore_drill` 和 `training_roi_ledger` 可以共享同一坐标系。若一次训练失败，团队可以先判断它是否运行在受控矩阵内；若不在，事故归因应优先进入实验路径，而不是污染生产 runtime 的可靠性报表。
 
+训练框架还需要 `launcher_contract`。Launcher 是把调度结果变成多进程训练的胶水层，可能是 `torchrun`、DeepSpeed launcher、Megatron 启动脚本、Slurm `srun`、Ray worker 或平台自研 launcher。它决定 rank、world size、master address、环境变量、日志路径、checkpoint 路径、容器工作目录和失败退出语义。很多训练事故不是框架本身坏了，而是 launcher 把 rank 映射、NCCL env 或恢复参数传错了。示例：
+
+```yaml
+launcher_contract:
+  contract_id: lc-torchrun-h100-202606
+  framework_runtime_matrix: frm-h100-train-20260620
+  launcher:
+    type: torchrun
+    version_or_template: pinned
+    managed_by: training_platform
+  rank_mapping_inputs:
+    placement_commit_record: required
+    rank_topology_contract: required
+    gpu_assignment_record: required
+  environment:
+    MASTER_ADDR: platform_generated
+    MASTER_PORT: platform_allocated
+    WORLD_SIZE: derived_from_admitted_replicas
+    RANK: unique_per_process
+    LOCAL_RANK: unique_per_node
+    NCCL_SOCKET_IFNAME: from_nccl_env_contract
+  filesystem:
+    checkpoint_root: platform_managed
+    log_root: platform_managed
+    dataset_mounts: from_dataset_manifest
+  failure_semantics:
+    rank_nonzero_exit: fail_job_or_elastic_policy
+    rendezvous_timeout: emit_rendezvous_evidence
+    partial_worker_start: release_or_quarantine_by_policy
+```
+
+这个 contract 应由调度系统、运行时模板和训练框架共同消费。调度系统生成 placement，launcher contract 把 placement 变成 rank 环境，框架按照这些环境建立 process group。若用户脚本绕过 contract 自行设置 `MASTER_ADDR`、`RANK` 或 NCCL 接口，任务应被标记为实验或拒绝进入生产队列。这样平台才能证明训练失败来自受控路径，而不是不可审计脚本。
+
 平台应提供经过验证的镜像和模板。一个模板对应一组框架、CUDA、NCCL、driver、依赖和启动方式，并通过标准训练任务验证。用户可以扩展模型代码，但不应随意破坏底层兼容矩阵。模板化不是限制创新，而是让生产训练具备可复现基础。
 
 工程实现还要支持运行时自检。任务启动前检查 GPU、driver、CUDA、NCCL、框架版本、网络接口、文件系统和环境变量；启动后记录 rank 映射、world size、并行配置和 checkpoint 路径。自检能把很多错误提前暴露在启动阶段，避免任务运行数小时后才失败。训练框架平台化的第一步，是让环境可验证。

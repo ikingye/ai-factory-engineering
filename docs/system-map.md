@@ -143,6 +143,9 @@ flowchart TB
 | `TrainingJob` | 描述一次训练任务的模型、数据、并行、调度和恢复语义。 | 第 10、23 章 | `checkpoint_manifest`、`rank_mapping`、`training_roi_ledger` |
 | `framework_runtime_matrix` | 记录训练框架、CUDA/NCCL/driver、launcher、checkpoint 和观测能力的受控组合。 | 第 16、23、38、44 章 | `training_runtime_spec`、`training_communication_acceptance_matrix` |
 | `training_runtime_spec` | 记录单个训练任务实际使用的 runtime 矩阵、镜像、精度、分布式策略和 checkpoint 配置。 | 第 16、37、39 章 | `framework_runtime_matrix`、`training_debug_bundle` |
+| `launcher_contract` | 记录 torchrun、DeepSpeed、Megatron、Slurm、Ray 或平台 launcher 如何生成 rank、env、日志、checkpoint 和失败语义。 | 第 16、10、41 章 | `rendezvous_evidence`、`training_debug_bundle` |
+| `rendezvous_evidence` | 证明所有预期 rank 在同一 world size、endpoint、NCCL/env contract 和拓扑契约下完成通信初始化。 | 第 10、16、41 章 | `first_effective_step_record`、`training_incident_record` |
+| `first_effective_step_record` | 记录训练何时真正完成首个有效 step，并把启动 GPU 小时与有效训练 GPU 小时分开。 | 第 10、37、41 章 | `training_roi_ledger`、`training_incident_record` |
 | `parallelism_plan_record` | 记录并行维度、batch、显存、通信、checkpoint 和拓扑意图的生产计划。 | 第 17、23、37、39、41、44 章 | `rank_topology_contract`、`placement_commit_record` |
 | `rank_topology_contract` | 定义 rank 放置、GPU/NIC/RDMA、rail 和故障域的 hard/soft 约束及违反动作。 | 第 17、23、37、39、44 章 | `placement_commit_record`、`gpu_nic_topology_evidence` |
 | `training_lifecycle_event` | 把训练作业从提交到 first effective step、checkpoint、恢复和完成串成阶段事实。 | 第 23、37、41 章 | `training_lifecycle_telemetry_event`、`training_roi_ledger` |

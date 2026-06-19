@@ -83,6 +83,38 @@ flowchart TB
 
 这张图强调，NCCL 不是孤立库。它承接并行计划和拓扑契约，依赖容器、RDMA、fabric 和调度事实，最终影响训练进度和经济账本。平台若只保存 NCCL 日志，会丢失上游意图；若只保存 topology，会丢失真实 op；若只看成本，会丢失技术根因。因此通信章节的核心，是把这些事实串成同一条证据链。
 
+通信诊断还要覆盖 checkpoint overlap。很多训练 step spike 并不是 collective 本身退化，而是 checkpoint 写入、manifest commit、对象存储限流或 metadata hotspot 与 collective 暴露在同一个时间窗口。平台应生成 `checkpoint_overlap_evidence`，区分“通信慢导致 checkpoint 慢”“checkpoint 抢占网络/存储导致通信慢”和“二者同时受底层 fabric 影响”：
+
+```yaml
+checkpoint_overlap_evidence:
+  evidence_id: coe-exp-20260620-step120000
+  training_job: exp-20260620-031
+  window:
+    start_step: 119980
+    end_step: 120020
+    checkpoint_id: ckpt-step-120000
+  communication:
+    collective_trace_record: ctr-exp-20260620-120000
+    exposed_collective_wait_ms: measured
+    affected_ops: [all_reduce, reduce_scatter]
+  checkpoint:
+    checkpoint_commit_record: ckpt-step-120000
+    write_duration_ms: measured
+    manifest_commit_ms: measured
+    slow_ranks: recorded
+  storage_and_network:
+    storage_evidence: storage-ev-20260620-017
+    network_path_evidence: optional
+    congestion_event_record: optional
+  verdict:
+    overlap_detected: true
+    likely_cause: checkpoint_write_competes_with_collective_or_storage_backpressure
+    gpu_idle_seconds: calculated
+    recommended_action: stagger_checkpoint_or_isolate_path_or_fix_storage
+```
+
+这个对象能防止错误投资。若 spike 来自 checkpoint 与 collective 叠加，盲目升级 NCCL 或增加 GPU 不能解决问题；更有效的动作可能是错峰 checkpoint、改写入格式、限制并发、隔离存储路径、优化 manifest commit 或调整 checkpoint interval。它也能把周期性 step spike 转成 `training_roi_ledger` 中的 wasted GPU hours，而不是让它隐藏在平均 step time 里。
+
 ## 18.1 AllReduce
 
 AllReduce 对多个 rank 的张量进行规约，并把规约结果返回给所有 rank。Data Parallel 中最典型的用途是梯度同步：每个 rank 处理不同数据，得到本地梯度，然后通过 AllReduce 求和或平均，使所有模型副本保持一致。它的语义简单，但在大规模训练中往往是最重要的通信成本之一。

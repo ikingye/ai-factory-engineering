@@ -245,6 +245,67 @@ stateDiagram-v2
   Completed --> [*]
 ```
 
+状态机里的 `Rendezvous` 和 `Running` 必须有可审计证据。Rendezvous 不是日志中出现 “init process group” 就算通过，而是所有预期 rank 在同一 world size、同一 rendezvous endpoint、同一 NCCL/env contract、同一 rank topology contract 下成功建立通信，并且没有 rank 迟到、重号、缺号或落到错误节点。平台应生成 `rendezvous_evidence`，把 launcher、调度放置、rank 映射和通信初始化绑定起来：
+
+```yaml
+rendezvous_evidence:
+  evidence_id: rv-exp-20260620-001
+  training_job: exp-20260620-031
+  launcher_contract: lc-torchrun-h100-202606
+  expected:
+    world_size: 512
+    min_ready_ranks: 512
+    rendezvous_backend: c10d_or_etcd_or_slurm
+    rank_topology_contract: rtc-llm-20260620-001
+    nccl_env_contract: nec-h100-rdma-20260620
+  observed:
+    joined_ranks: 512
+    duplicate_ranks: []
+    missing_ranks: []
+    late_ranks: measured
+    endpoint: recorded
+    nodes: recorded
+    gpu_assignment_records: attached
+  timing:
+    first_rank_started_at: recorded
+    last_rank_joined_at: recorded
+    process_group_ready_at: recorded
+  verdict:
+    rendezvous_complete: true
+    topology_matches_contract: true
+    safe_to_enter_training_loop: true
+```
+
+进入 `Running` 也不等于首个 batch 开始执行。生产平台更应该记录 `first_effective_step_record`：它证明训练已经完成数据读取、forward、backward、collective、optimizer update 和必要指标上报，产生了第一个有效训练 step。这个对象能把“任务启动成功”与“开始产生训练价值”分开，也是训练 ROI 中 effective GPU hours 的起点：
+
+```yaml
+first_effective_step_record:
+  record_id: fes-exp-20260620-001
+  training_job: exp-20260620-031
+  prerequisites:
+    rendezvous_evidence: rv-exp-20260620-001
+    dataset_manifest: corpus-v3.2
+    training_runtime_spec: trs-exp-20260620-031
+    placement_commit_record: pcr-exp-20260620-031
+  step:
+    global_step: 1
+    tokens_processed: measured
+    loss: measured
+    forward_backward_complete: true
+    optimizer_step_complete: true
+    collective_trace_record: attached
+    data_shards_consumed: recorded
+  timing:
+    admitted_at: recorded
+    first_effective_step_at: recorded
+    startup_gpu_hours: calculated
+  verdict:
+    effective_training_started: true
+    startup_waste_reason: none_or_image_or_rendezvous_or_data
+```
+
+这两个对象能改变训练启动事故的归因。若 GPU 已分配但没有 `rendezvous_evidence`，浪费应归入启动或通信初始化；若 rendezvous 完成但没有 first effective step，可能是数据读取、首个 collective、optimizer 或框架配置问题；若 first effective step 已产生，后续 step time 和 loss 才能进入常规训练稳定性分析。没有这些阶段证据，平台会把大量启动浪费误算为正常训练成本。
+
 工程实现还要拆分控制面和运行面。控制面负责队列、配额、配置校验、实验记录和 checkpoint 索引；运行面负责启动容器、初始化通信、读取数据、执行训练和上报指标。控制面应能在任务失败后回答：使用了什么数据，跑到哪一步，最后有效 checkpoint 是哪个，哪些节点参与，失败前哪些指标异常。没有这些问题的答案，平台就没有真正管理训练。
 
 上线一个预训练平台时，可以先建立最小闭环：任务提交校验、节点准入、训练 telemetry、checkpoint 校验、失败事件归档和恢复演练。随后再逐步加入自动异常检测、数据 shard 追踪、拓扑感知调度和成本分析。一次性追求全自动训练平台容易延期；但如果最小闭环缺失，规模一上来就会用人工成本补系统缺口。
