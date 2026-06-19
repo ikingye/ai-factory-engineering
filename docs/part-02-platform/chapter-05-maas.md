@@ -231,6 +231,6 @@ MaaS 的第一个取舍是兼容性与能力表达。完全追求 OpenAI-compati
 
 ## 延伸阅读
 
-- TODO: OpenAI API 官方文档
-- TODO: Azure OpenAI / Bedrock / Vertex AI 等 MaaS 产品文档
-- TODO: 多租户 API 平台工程案例
+- [OpenAI API documentation](https://platform.openai.com/docs/)
+- [Azure OpenAI documentation](https://learn.microsoft.com/en-us/azure/ai-services/openai/)；[Amazon Bedrock documentation](https://docs.aws.amazon.com/bedrock/)；[Vertex AI documentation](https://cloud.google.com/vertex-ai/docs)
+- [AWS SaaS Lens for the Well-Architected Framework](https://docs.aws.amazon.com/wellarchitected/latest/saas-lens/welcome.html)

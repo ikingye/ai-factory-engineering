@@ -243,6 +243,6 @@ node_lifecycle:
 
 ## 延伸阅读
 
-- TODO: Redfish 官方文档
-- TODO: 裸金属 provisioning 工具文档
-- TODO: GPU 节点准入案例
+- [DMTF Redfish](https://redfish.dmtf.org/)
+- [Metal3 documentation](https://book.metal3.io/)
+- [NVIDIA DCGM Diagnostics documentation](https://docs.nvidia.com/datacenter/dcgm/latest/user-guide/dcgm-diagnostics.html)

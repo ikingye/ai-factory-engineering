@@ -233,6 +233,6 @@ Token 与运行时指标包括 input/output/reasoning tokens、tokens/s、contex
 
 ## 延伸阅读
 
-- TODO: OpenTelemetry 官方文档
-- TODO: Prometheus / Grafana 可观测性资料
-- TODO: LLM serving observability 工程案例
+- [OpenTelemetry documentation](https://opentelemetry.io/docs/)
+- [Prometheus documentation](https://prometheus.io/docs/)；[Grafana documentation](https://grafana.com/docs/)
+- [vLLM documentation](https://docs.vllm.ai/)

@@ -269,6 +269,6 @@ delivery_batch:
 
 ## 延伸阅读
 
-- TODO: 数据中心电力与制冷工程资料
-- TODO: GPU 机柜交付验收资料
-- TODO: AI 数据中心扩容案例
+- [ASHRAE TC 9.9 data center resources](https://tc0909.ashraetcs.org/)
+- [NVIDIA DGX SuperPOD reference architecture](https://docs.nvidia.com/dgx-superpod/reference-architecture-scalable-infrastructure-b200/latest/index.html)
+- [Open Compute Project](https://www.opencompute.org/)

@@ -232,6 +232,6 @@ training_job:
 
 ## 延伸阅读
 
-- TODO: Megatron-LM / DeepSpeed 官方资料
-- TODO: 大模型预训练工程论文
-- TODO: 分布式训练稳定性案例
+- [Megatron-LM repository](https://github.com/NVIDIA/Megatron-LM)；[DeepSpeed documentation](https://www.deepspeed.ai/)
+- [Language Models are Few-Shot Learners](https://arxiv.org/abs/2005.14165)
+- [OPT: Open Pre-trained Transformer Language Models](https://arxiv.org/abs/2205.01068)

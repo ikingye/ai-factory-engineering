@@ -274,6 +274,6 @@ change_request:
 
 ## 延伸阅读
 
-- TODO: Google SRE 相关公开资料
-- TODO: OpenTelemetry / Prometheus 运营资料
-- TODO: AI 平台 incident 和变更管理案例
+- [Google SRE Books](https://sre.google/books/)
+- [OpenTelemetry documentation](https://opentelemetry.io/docs/)；[Prometheus documentation](https://prometheus.io/docs/)
+- [Google SRE: Managing Incidents](https://sre.google/sre-book/managing-incidents/)

@@ -248,6 +248,6 @@ release_gate:
 
 ## 延伸阅读
 
-- TODO: HELM / lm-evaluation-harness 等评测工具
-- TODO: 模型安全评测资料
-- TODO: 在线实验平台工程实践
+- [HELM](https://crfm.stanford.edu/helm/latest/)；[lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness)
+- [NIST AI Risk Management Framework](https://www.nist.gov/itl/ai-risk-management-framework)
+- [Argo Rollouts documentation](https://argo-rollouts.readthedocs.io/)

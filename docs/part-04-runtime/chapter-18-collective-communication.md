@@ -296,6 +296,6 @@ GPU 空转时间是最直观的成本信号。
 
 ## 延伸阅读
 
-- TODO: NCCL 官方文档
-- TODO: NCCL tests 文档
-- TODO: RDMA / RoCE 网络调优资料
+- [NCCL User Guide](https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/)
+- [NCCL tests repository](https://github.com/NVIDIA/nccl-tests)
+- [NVIDIA RDMA Aware Networks Programming User Manual](https://docs.nvidia.com/networking/display/rdmaawareprogrammingv17)

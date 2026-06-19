@@ -328,6 +328,6 @@ ai_factory_plan:
 
 ## 延伸阅读
 
-- TODO: AI 平台建设规划案例
-- TODO: GPU 集群验收与运维资料
-- TODO: MaaS / 推理平台生产化案例
+- [Google Cloud Architecture Framework: AI and ML perspective](https://cloud.google.com/architecture/framework/perspectives/ai-ml)
+- [NVIDIA DCGM Diagnostics documentation](https://docs.nvidia.com/datacenter/dcgm/latest/user-guide/dcgm-diagnostics.html)；[NCCL tests repository](https://github.com/NVIDIA/nccl-tests)
+- [vLLM documentation](https://docs.vllm.ai/)；[TensorRT-LLM documentation](https://nvidia.github.io/TensorRT-LLM/)

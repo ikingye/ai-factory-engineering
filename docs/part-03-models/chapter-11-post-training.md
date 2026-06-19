@@ -212,6 +212,6 @@ post_training_run:
 
 ## 延伸阅读
 
-- TODO: InstructGPT / RLHF 经典论文
-- TODO: DPO 论文
-- TODO: 模型安全评测资料
+- [Training language models to follow instructions with human feedback](https://arxiv.org/abs/2203.02155)
+- [Direct Preference Optimization](https://arxiv.org/abs/2305.18290)
+- [NIST AI Risk Management Framework](https://www.nist.gov/itl/ai-risk-management-framework)

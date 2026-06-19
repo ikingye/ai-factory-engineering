@@ -278,6 +278,6 @@ AI Gateway 可以做得很厚，也可以做得很薄。厚网关统一治理强
 
 ## 延伸阅读
 
-- TODO: Envoy AI Gateway 官方文档
-- TODO: Gateway API Inference Extension 官方文档
-- TODO: 云原生 API Gateway 设计资料
+- [Envoy AI Gateway documentation](https://aigateway.envoyproxy.io/)
+- [Gateway API Inference Extension documentation](https://gateway-api-inference-extension.sigs.k8s.io/)
+- [Kubernetes Gateway API documentation](https://gateway-api.sigs.k8s.io/)

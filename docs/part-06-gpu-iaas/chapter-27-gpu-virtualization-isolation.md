@@ -288,6 +288,6 @@ resource_classes:
 
 ## 延伸阅读
 
-- TODO: NVIDIA MIG 官方文档
-- TODO: NVIDIA vGPU 文档
-- TODO: Kubernetes GPU sharing 文档
+- [NVIDIA Multi-Instance GPU User Guide](https://docs.nvidia.com/datacenter/tesla/mig-user-guide/)
+- [NVIDIA vGPU documentation](https://docs.nvidia.com/vgpu/)
+- [NVIDIA k8s-device-plugin: shared access to GPUs](https://github.com/NVIDIA/k8s-device-plugin#shared-access-to-gpus)

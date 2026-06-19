@@ -213,6 +213,6 @@ cluster:
 
 ## 延伸阅读
 
-- TODO: Kubernetes 多集群管理资料
-- TODO: Kueue cohort / quota 资料
-- TODO: AI 集群混部工程案例
+- [Kubernetes SIG Multicluster documentation](https://multicluster.sigs.k8s.io/)
+- [Kueue ClusterQueue and cohort concepts](https://kueue.sigs.k8s.io/docs/concepts/cluster_queue/)
+- [Karmada documentation](https://karmada.io/docs/)

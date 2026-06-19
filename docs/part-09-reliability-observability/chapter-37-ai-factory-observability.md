@@ -291,6 +291,6 @@ observability_labels:
 
 ## 延伸阅读
 
-- TODO: DCGM 官方文档
-- TODO: OpenTelemetry 官方文档
-- TODO: AI 平台可观测性工程案例
+- [NVIDIA DCGM documentation](https://docs.nvidia.com/datacenter/dcgm/latest/)
+- [OpenTelemetry documentation](https://opentelemetry.io/docs/)
+- [vLLM documentation](https://docs.vllm.ai/)

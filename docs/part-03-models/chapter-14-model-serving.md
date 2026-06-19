@@ -267,6 +267,6 @@ Runtime 指标包括 queue length、queue time、batch size、prefill time、dec
 
 ## 延伸阅读
 
-- TODO: vLLM / SGLang / TensorRT-LLM serving 文档
-- TODO: Kubernetes serving 和 autoscaling 文档
-- TODO: 模型发布工程案例
+- [vLLM documentation](https://docs.vllm.ai/)；[SGLang documentation](https://docs.sglang.ai/)；[TensorRT-LLM documentation](https://nvidia.github.io/TensorRT-LLM/)
+- [Kubernetes Horizontal Pod Autoscaling](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/)
+- [MLflow Model Registry documentation](https://mlflow.org/docs/latest/model-registry.html)

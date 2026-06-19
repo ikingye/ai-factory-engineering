@@ -245,6 +245,6 @@ Checkpoint 指标包括写入耗时、恢复耗时、成功率、失败原因、
 
 ## 延伸阅读
 
-- TODO: 对象存储官方文档
-- TODO: Lustre / Weka / Ceph 官方资料
-- TODO: AI checkpoint 与数据加载工程案例
+- [Amazon S3 documentation](https://docs.aws.amazon.com/s3/)
+- [Lustre Manual](https://doc.lustre.org/lustre_manual.xhtml)；[WEKA documentation](https://docs.weka.io/)；[Ceph documentation](https://docs.ceph.com/)
+- [PyTorch Distributed Checkpoint documentation](https://pytorch.org/docs/stable/distributed.checkpoint.html)

@@ -267,6 +267,6 @@ compatibility_matrix:
 
 ## 延伸阅读
 
-- TODO: NVIDIA CUDA compatibility 文档
-- TODO: OFED / RDMA 文档
-- TODO: Golden image 管理实践
+- [NVIDIA CUDA Compatibility documentation](https://docs.nvidia.com/deploy/cuda-compatibility/)
+- [NVIDIA MLNX_OFED documentation](https://network.nvidia.com/products/infiniband-drivers/linux/mlnx_ofed/)
+- [HashiCorp Packer documentation](https://developer.hashicorp.com/packer/docs)

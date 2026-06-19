@@ -243,6 +243,6 @@ observability:
 
 ## 延伸阅读
 
-- TODO: Megatron-LM 并行论文和文档
-- TODO: PyTorch Distributed 文档
-- TODO: 大规模训练拓扑映射案例
+- [Megatron-LM paper](https://arxiv.org/abs/1909.08053)；[Megatron-LM repository](https://github.com/NVIDIA/Megatron-LM)
+- [PyTorch Distributed documentation](https://pytorch.org/docs/stable/distributed.html)
+- [NVIDIA Megatron Core documentation](https://docs.nvidia.com/megatron-core/developer-guide/latest/index.html)

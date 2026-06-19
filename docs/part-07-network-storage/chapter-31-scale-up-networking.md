@@ -303,6 +303,6 @@ Workload 指标包括单节点 tokens/s、decode latency、prefill throughput、
 
 ## 延伸阅读
 
-- TODO: NVIDIA NVLink / NVSwitch 官方文档
-- TODO: CUDA / NCCL 拓扑相关资料
-- TODO: GPU 服务器拓扑验收案例
+- [NVIDIA NVLink](https://www.nvidia.com/en-us/data-center/nvlink/)
+- [NCCL environment variables and topology documentation](https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/env.html)
+- [NVIDIA DGX Systems documentation](https://docs.nvidia.com/dgx/)

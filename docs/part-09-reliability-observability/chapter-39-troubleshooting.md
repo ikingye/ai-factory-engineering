@@ -291,6 +291,6 @@ diagnosis:
 
 ## 延伸阅读
 
-- TODO: NVIDIA Xid / DCGM 官方资料
-- TODO: NCCL troubleshooting 资料
-- TODO: SRE incident 复盘案例
+- [NVIDIA Xid Errors documentation](https://docs.nvidia.com/deploy/xid-errors/)；[NVIDIA DCGM documentation](https://docs.nvidia.com/datacenter/dcgm/latest/)
+- [NCCL Troubleshooting Guide](https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/troubleshooting.html)
+- [Google SRE: Postmortem Culture](https://sre.google/sre-book/postmortem-culture/)

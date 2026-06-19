@@ -269,6 +269,6 @@ gpu:
 
 ## 延伸阅读
 
-- TODO: Kubernetes Node / Device Plugin 资源管理文档
-- TODO: DCGM 文档
-- TODO: GPU 容量规划工程案例
+- [Kubernetes Nodes documentation](https://kubernetes.io/docs/concepts/architecture/nodes/)；[Device Plugins documentation](https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/device-plugins/)
+- [NVIDIA DCGM documentation](https://docs.nvidia.com/datacenter/dcgm/latest/)
+- [Karpenter documentation](https://karpenter.sh/docs/)

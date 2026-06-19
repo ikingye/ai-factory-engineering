@@ -189,6 +189,6 @@ platform_requirements:
 
 ## 延伸阅读
 
-- TODO: 企业 AI 应用架构案例
-- TODO: 代码助手系统论文和工程实践
-- TODO: 多模态模型服务官方文档
+- [Microsoft Azure Architecture Center: Build generative AI applications](https://learn.microsoft.com/en-us/azure/architecture/ai-ml/)
+- [GitHub Copilot documentation](https://docs.github.com/en/copilot)
+- [OpenAI Vision guide](https://platform.openai.com/docs/guides/vision)

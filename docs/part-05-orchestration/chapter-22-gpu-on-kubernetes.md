@@ -300,6 +300,6 @@ GPU on Kubernetes 的指标首先包括资源视图：GPU allocatable、allocate
 
 ## 延伸阅读
 
-- TODO: 官方文档
-- TODO: 经典论文
-- TODO: 工程案例
+- [Kubernetes Device Plugins documentation](https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/device-plugins/)
+- [NVIDIA k8s-device-plugin repository](https://github.com/NVIDIA/k8s-device-plugin)
+- [NVIDIA GPU Operator documentation](https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/latest/index.html)

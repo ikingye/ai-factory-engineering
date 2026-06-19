@@ -283,6 +283,6 @@ GPU 指标包括 utilization、SM occupancy、HBM 使用量、HBM bandwidth、GP
 
 ## 延伸阅读
 
-- TODO: NVIDIA GPU 服务器与 DCGM 官方资料
-- TODO: Redfish / BMC 管理资料
-- TODO: GPU 服务器拓扑验收案例
+- [NVIDIA DGX Systems documentation](https://docs.nvidia.com/dgx/)；[NVIDIA DCGM documentation](https://docs.nvidia.com/datacenter/dcgm/latest/)
+- [DMTF Redfish](https://redfish.dmtf.org/)
+- [NVIDIA DCGM Diagnostics documentation](https://docs.nvidia.com/datacenter/dcgm/latest/user-guide/dcgm-diagnostics.html)

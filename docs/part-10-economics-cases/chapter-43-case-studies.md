@@ -242,6 +242,6 @@ case_study:
 
 ## 延伸阅读
 
-- TODO: NVIDIA AI Factory 公开资料
-- TODO: 云厂商 AI 平台公开案例
-- TODO: 企业私有 AI 平台建设案例
+- [NVIDIA Glossary: AI Factory](https://www.nvidia.com/en-us/glossary/ai-factory/)
+- [Amazon Bedrock documentation](https://docs.aws.amazon.com/bedrock/)；[Azure AI Foundry documentation](https://learn.microsoft.com/en-us/azure/ai-foundry/)；[Vertex AI documentation](https://cloud.google.com/vertex-ai/docs)
+- [Azure Architecture Center: AI and machine learning](https://learn.microsoft.com/en-us/azure/architecture/ai-ml/)

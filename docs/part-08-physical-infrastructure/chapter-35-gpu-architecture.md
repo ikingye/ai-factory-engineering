@@ -256,6 +256,6 @@ gpu_capability:
 
 ## 延伸阅读
 
-- TODO: NVIDIA GPU 架构官方资料
-- TODO: CUDA 编程模型资料
-- TODO: 混合精度与量化工程案例
+- [NVIDIA Hopper Architecture Whitepaper](https://resources.nvidia.com/en-us-tensor-core/nvidia-hopper-architecture-whitepaper)
+- [CUDA C++ Programming Guide](https://docs.nvidia.com/cuda/cuda-c-programming-guide/)
+- [NVIDIA TensorRT documentation](https://docs.nvidia.com/deeplearning/tensorrt/latest/)

@@ -248,6 +248,6 @@ runtime:
 
 ## 延伸阅读
 
-- TODO: PyTorch Distributed 官方文档
-- TODO: DeepSpeed 官方文档
-- TODO: Megatron-LM 官方资料
+- [PyTorch Distributed documentation](https://pytorch.org/docs/stable/distributed.html)
+- [DeepSpeed documentation](https://www.deepspeed.ai/)
+- [Megatron-LM repository](https://github.com/NVIDIA/Megatron-LM)

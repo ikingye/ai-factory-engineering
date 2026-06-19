@@ -239,6 +239,6 @@ AI Factory 的指标应覆盖产出、体验、资源、可靠性和经济性。
 
 ## 延伸阅读
 
-- TODO: 官方文档
-- TODO: 经典论文
-- TODO: 工程案例
+- [NVIDIA Glossary: AI Factory](https://www.nvidia.com/en-us/glossary/ai-factory/)
+- [The Datacenter as a Computer, 2nd Edition](https://research.google/pubs/the-datacenter-as-a-computer-an-introduction-to-the-design-of-warehouse-scale-machines-second-edition/)
+- [NVIDIA DGX SuperPOD reference architecture](https://docs.nvidia.com/dgx-superpod/reference-architecture-scalable-infrastructure-b200/latest/index.html)

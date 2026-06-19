@@ -284,6 +284,6 @@ queue:
 
 ## 延伸阅读
 
-- TODO: Volcano 官方文档
-- TODO: Kueue 官方文档
-- TODO: Ray / Kubeflow / Argo Workflows 官方文档
+- [Volcano documentation](https://volcano.sh/en/docs/)
+- [Kueue documentation](https://kueue.sigs.k8s.io/docs/)
+- [Ray documentation](https://docs.ray.io/)；[Kubeflow documentation](https://www.kubeflow.org/docs/)；[Argo Workflows documentation](https://argo-workflows.readthedocs.io/)

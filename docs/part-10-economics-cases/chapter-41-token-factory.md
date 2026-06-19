@@ -294,6 +294,6 @@ Token Factory 的产能指标包括 total tokens/s、input tokens/s、output tok
 
 ## 延伸阅读
 
-- TODO: 官方文档
-- TODO: 经典论文
-- TODO: 工程案例
+- [OpenAI API Pricing](https://openai.com/api/pricing/)
+- [The Datacenter as a Computer, 2nd Edition](https://research.google/pubs/the-datacenter-as-a-computer-an-introduction-to-the-design-of-warehouse-scale-machines-second-edition/)
+- [FinOps Framework: Unit Economics](https://www.finops.org/framework/capabilities/unit-economics/)

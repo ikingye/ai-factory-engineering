@@ -238,6 +238,6 @@ margin_rate = (revenue - cost) / revenue
 
 ## 延伸阅读
 
-- TODO: 云计费系统设计资料
-- TODO: FinOps 成本分摊实践
-- TODO: LLM token pricing 工程案例
+- [Google Cloud Billing documentation](https://cloud.google.com/billing/docs)
+- [FinOps Framework: Allocation](https://www.finops.org/framework/capabilities/allocation/)
+- [OpenAI API Pricing](https://openai.com/api/pricing/)

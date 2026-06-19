@@ -260,6 +260,6 @@ network_baseline:
 
 ## 延伸阅读
 
-- TODO: InfiniBand / RoCE 官方文档
-- TODO: 数据中心网络拥塞控制资料
-- TODO: AI 训练网络工程案例
+- [NVIDIA Networking documentation](https://docs.nvidia.com/networking/)
+- [Data Center TCP (DCTCP)](https://www.microsoft.com/en-us/research/publication/data-center-tcp-dctcp/)
+- [NCCL Troubleshooting Guide](https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/troubleshooting.html)

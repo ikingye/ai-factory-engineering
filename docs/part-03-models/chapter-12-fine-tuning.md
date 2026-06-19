@@ -226,6 +226,6 @@ fine_tuning_job:
 
 ## 延伸阅读
 
-- TODO: LoRA 论文
-- TODO: QLoRA 论文
-- TODO: 参数高效微调工程实践
+- [LoRA: Low-Rank Adaptation of Large Language Models](https://arxiv.org/abs/2106.09685)
+- [QLoRA: Efficient Finetuning of Quantized LLMs](https://arxiv.org/abs/2305.14314)
+- [Hugging Face PEFT documentation](https://huggingface.co/docs/peft)

@@ -278,6 +278,6 @@ inference_engine:
 
 ## 延伸阅读
 
-- TODO: vLLM 官方文档
-- TODO: SGLang 官方文档
-- TODO: TensorRT-LLM 官方文档
+- [vLLM documentation](https://docs.vllm.ai/)
+- [SGLang documentation](https://docs.sglang.ai/)
+- [TensorRT-LLM documentation](https://nvidia.github.io/TensorRT-LLM/)

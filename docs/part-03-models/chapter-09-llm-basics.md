@@ -220,6 +220,6 @@ Profile 还应包含测试结果。比如在标准输入分布、长上下文分
 
 ## 延伸阅读
 
-- TODO: Attention Is All You Need
-- TODO: Transformer 架构官方/教材资料
-- TODO: LLM serving 工程案例
+- [Attention Is All You Need](https://arxiv.org/abs/1706.03762)
+- [Stanford CS224N: Natural Language Processing with Deep Learning](https://web.stanford.edu/class/cs224n/)
+- [PagedAttention / vLLM paper](https://arxiv.org/abs/2309.06180)
