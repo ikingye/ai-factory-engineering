@@ -156,6 +156,35 @@ Storage benchmark 应覆盖对象存储、并行文件系统、本地 NVMe、cac
 
 存储测试还要考虑与网络的叠加。Checkpoint 写入和训练通信经常共享部分 fabric，单独测存储和单独测 NCCL 都通过，并不代表同时运行稳定。高优训练池应包含组合压力测试。
 
+存储准入也应产出矩阵，表达不同数据路径是否可交付：
+
+```yaml
+storage_acceptance_matrix:
+  baseline_id: storage-training-prod-20260619
+  dimensions:
+    path_kind: [dataset_read, checkpoint_write, checkpoint_restore, model_load, cache_miss]
+    backend: [object_storage, parallel_file_system, local_nvme_cache]
+    concurrency: [single_client, rack_level, multi_rack]
+  required_evidence:
+    - dataset_manifest_read
+    - checkpoint_manifest_commit
+    - model_artifact_digest_verify
+    - metadata_ops
+    - tail_latency
+    - throttle_events
+  result:
+    dataset_read: pass
+    checkpoint_write: pass
+    checkpoint_restore: pass
+    model_load_under_scaleout: limited
+    cache_miss_burst: limited
+  schedulable_for:
+    distributed_training: true
+    inference_scaleout_burst: limited
+```
+
+矩阵的目标是避免“存储通过”这种粗糙结论。一个存储池可以适合训练数据读取，但不适合高峰模型冷启动；可以适合单 job checkpoint，但不适合多个大任务同时 checkpoint。准入结果应表达适用 workload，而不是只给一个 pass/fail。
+
 ## 38.7 network benchmark
 
 Network benchmark 需要覆盖管理网、BMC 网、业务网、存储网和训练通信网。对 RDMA 网络，应检查链路状态、MTU、PFC/ECN、拥塞控制、丢包、错误包、带宽、延迟、RDMA error、重传和多 rail 负载均衡。对普通以太网络，也要检查 Service、DNS、镜像拉取、对象存储访问、控制面连通性和推理入口路径。

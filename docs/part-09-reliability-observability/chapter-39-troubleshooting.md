@@ -85,6 +85,25 @@ flowchart TB
 
 这张图的重点不是穷尽所有原因，而是保证前四类高频问题不会被遗漏：rank 退出、GPU/互联异常、RDMA/fabric 异常、容器或运行时漂移。每个分支都应对应自动采集项，不能只写在文档里。
 
+存储类故障也需要独立故障树，因为它们经常伪装成 GPU、网络或模型问题。GPU idle 可能来自 data loader，TTFT 上升可能来自权重 cache miss，NCCL 变慢可能被 checkpoint 并发写入放大。
+
+```mermaid
+flowchart TB
+  S["GPU idle / checkpoint slow / model load slow"] --> P{是哪类路径?}
+  P -->|dataset| D["检查 dataset_manifest / shard / data loader wait / cache hit"]
+  P -->|checkpoint| C["检查 manifest commit / metadata ops / rank 写入长尾"]
+  P -->|artifact| A["检查 registry / digest verify / weight cache / local NVMe"]
+  P -->|cache| K["检查容量水位 / eviction / 版本键 / 预热状态"]
+  D --> E{是否与 baseline 偏离?}
+  C --> E
+  A --> E
+  K --> E
+  E -->|是| Fix["reshard / prewarm / throttle / repair backend / adjust schedule"]
+  E -->|否| Next["继续检查网络、runtime、模型配置"]
+```
+
+这个故障树要求先确认路径语义，再查对应证据。不要看到 GPU idle 就直接扩大 batch，也不要看到模型加载慢就盲目扩容副本。存储问题的关键是 path kind 和 manifest。
+
 ## 39.1 GPU Xid
 
 GPU Xid 是 NVIDIA 驱动报告的 GPU 错误事件类别。它可能表示应用错误、驱动问题、硬件异常、显存问题、GPU reset、访问非法地址或其它设备状态异常。不同 Xid 的含义和严重程度不同，不能把所有 Xid 都当成同级故障，也不能因为 GPU 仍可见就忽略严重 Xid。
@@ -276,6 +295,34 @@ network_diagnosis:
 ```
 
 这个对象把“网络可能有问题”拆成三种不同动作：隔离单节点、降级 fabric、修复 runtime。动作不同，责任团队和恢复路径也不同。没有这个拆分，事故中很容易把所有网络相关现象都交给同一个团队处理。
+
+对应地，存储诊断包应描述路径、manifest、缓存和影响：
+
+```yaml
+storage_diagnosis:
+  symptom: checkpoint_slow
+  evidence:
+    workload_id: required
+    path_kind: checkpoint
+    checkpoint_manifest: required
+    rank_write_latency: required
+    metadata_ops: required
+    storage_backend_counters: required
+    cache_state: required_if_applicable
+    network_overlap_window: required
+  decisions:
+    reshard_dataset_if:
+      - small_file_metadata_dominates
+      - data_loader_wait_correlates_with_shards
+    adjust_checkpoint_if:
+      - rank_write_tail_dominates
+      - manifest_commit_delays_training
+    prewarm_artifact_if:
+      - model_load_time_blocks_readiness
+      - cache_miss_burst_correlates_with_scaleout
+```
+
+这个诊断包把存储排障从“哪个系统慢”推进到“哪条数据路径导致哪个 workload 慢”。它也能把结果回写到准入和调度：checkpoint-heavy 训练避开 limited 存储池，推理高峰前预热权重缓存。
 
 第四步，是把诊断结果回写系统。坏节点进入维修，坏 rail 降级，缺失指标进入可观测性 backlog，准入漏测项进入 acceptance pipeline，重复事故进入 SRE 复盘。诊断闭环不完成，故障知识就无法转化为系统能力。
 

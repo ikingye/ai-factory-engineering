@@ -105,6 +105,21 @@
 | fabric acceptance matrix | 第 38 章 | 说明 same rack、cross rack、cross rail、host/container/Kubernetes 的验收矩阵 |
 | NCCL hang 网络故障树 | 第 39 章 | 说明 rank 退出、GPU/NVLink、RDMA/fabric、container/runtime、collective mismatch 的排查顺序 |
 
+## 存储数据链路覆盖矩阵
+
+存储数据链路的目标是让读者能从 GPU idle、checkpoint 慢、模型冷启动或成本异常一路追到 dataset、checkpoint、model artifact、cache、manifest、storage backend、telemetry、准入基线和经济影响。当前覆盖如下：
+
+| 知识点 | 主要章节 | 覆盖要求 |
+| --- | --- | --- |
+| `dataset_manifest` | 第 10 章、第 20 章、第 33 章 | 说明数据来源、处理版本、shard、checksum、统计、权限和缓存策略 |
+| checkpoint commit protocol | 第 10 章、第 33 章 | 说明分片写入、校验、manifest commit、latest valid 和恢复候选 |
+| `model_artifact_distribution` | 第 14 章、第 33 章 | 说明权重、tokenizer、template、digest、缓存预热和 readiness 的关系 |
+| `cache_residency` | 第 14 章、第 33 章 | 说明本地 NVMe、rack cache、权重 cache 与调度和冷启动的关系 |
+| `data_path_evidence` / `storage_evidence` | 第 33 章、第 37 章 | 说明 workload 到 path、manifest、client、cache、backend、telemetry 和 impact 的证据链 |
+| `storage_acceptance_matrix` | 第 38 章 | 说明 dataset read、checkpoint write/restore、model load、cache miss 的验收矩阵 |
+| 存储故障树 | 第 39 章 | 说明 GPU idle、checkpoint slow、model load slow 如何定位到 dataset/checkpoint/artifact/cache |
+| 存储经济账本 | 第 41 章 | 说明 dataset read、checkpoint、artifact retention、cache miss 和 storage-induced GPU idle 的成本归因 |
+
 ## 全书循环更新策略
 
 全书更新按“主题链路”推进，而不是按章节孤立推进。每轮选择一条关键链路，补齐机制、图、配置、故障、指标和验收。

@@ -195,6 +195,8 @@ training_job:
     dataset_version: corpus-v3.2
     tokenizer_version: tokenizer-v3
     shard_manifest: s3://datasets/corpus-v3.2/manifest.json
+    dataset_manifest_digest: sha256:example
+    expected_cache_policy: prewarm_for_training_prod
   model:
     architecture: transformer
     parameter_scale: documented_by_team
@@ -281,6 +283,8 @@ checkpoint_manifest:
 ```
 
 Manifest 的价值在恢复时体现。恢复逻辑应先查询 latest valid checkpoint，而不是简单读取最新目录；恢复后应校验 world size、parallelism、tokenizer、数据位置和 scheduler state 是否匹配。若不匹配，应显式拒绝并给出原因。这样可以避免“恢复成功但训练轨迹已经变了”的隐性事故。
+
+预训练任务还应把数据路径纳入运行时自检。`dataset_manifest_digest`、实际挂载路径、缓存命中、shard 数量、reader 版本和 data loader 指标，都应在 first effective step 之前上报。若数据路径不可达、manifest checksum 不匹配或缓存预热未完成，任务应停在 preflight，而不是进入训练后让 GPU 等待。数据自检失败是平台问题，不应由训练 step 承担。
 
 ## 常见故障
 

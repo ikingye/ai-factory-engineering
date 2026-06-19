@@ -226,6 +226,10 @@ serving_release:
     weights: registry/models/af-chat-large@sha256:example
     tokenizer: registry/tokenizers/af-chat-large@sha256:example
     chat_template: templates/af-chat-large:v12
+  distribution:
+    artifact_manifest: registry/manifests/af-chat-large-20260619.json
+    weight_cache_policy: prewarm_before_canary
+    cache_key: weights_tokenizer_template_digest
   runtime:
     image: registry/inference/vllm@sha256:example
     engine_config: configs/vllm/af-chat-large-prod:v7
@@ -249,6 +253,32 @@ serving_release:
 实现完成后，应通过回放测试、压测和故障注入验证。只验证正常请求成功，无法证明服务可生产。
 
 验证结果应写入发布记录。
+
+模型服务还应定义 artifact 分发协议。权重、tokenizer、chat template、engine config 和 LoRA/adapter 不能以“目录里有什么就加载什么”的方式分发，而应由 manifest 指定 digest、大小、权限、兼容 runtime、预热策略和回滚对象。副本进入 `Warming` 前先校验 manifest，再检查本地缓存或拉取 artifact；进入 `Ready` 前必须完成最小推理探针。这样才能把模型加载慢、缓存 miss、registry 异常和权重损坏区分开。
+
+```yaml
+model_artifact_distribution:
+  release_id: af-chat-large-20260619-r3
+  manifest_digest: sha256:example
+  artifacts:
+    weights:
+      digest: sha256:weights
+      size: recorded
+    tokenizer:
+      digest: sha256:tokenizer
+    chat_template:
+      digest: sha256:template
+  cache:
+    required_before_canary: true
+    local_nvme_path: managed
+    verify_on_read: true
+  readiness:
+    manifest_verified: required
+    warmup_probe: required
+    cache_hit_or_pull_time_recorded: required
+```
+
+Artifact 分发协议是推理冷启动治理的基础。没有它，autoscaler 只能看到副本还没 ready，却不知道是在拉镜像、拉权重、校验 digest、初始化 engine，还是被存储限流。
 
 模型服务还应提供 drain contract。Drain contract 至少说明：停止接收新请求的信号是什么，已有 streaming 请求最大等待多久，超时后如何关闭，已生成 token 如何计量，KV Cache 如何释放，副本退出前必须上报哪些事件。没有 drain contract，滚动升级、节点维护和缩容都会随机打断用户。
 
