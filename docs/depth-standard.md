@@ -180,6 +180,23 @@
 | `routing_quality_scorecard` | 第 6 章、第 13 章 | 说明 Gateway 如何把质量、安全、成本、延迟和能力用于模型路由，而不是只看健康 |
 | `quality_cost_ledger` | 第 41 章 | 说明低质量 token、人工接管、退款、重试、投诉和质量评测成本如何影响毛利 |
 
+## 行业案例与建设方法链路覆盖矩阵
+
+行业案例与建设方法链路的目标是让读者能从一个行业应用想法、商业模式、客户交付承诺或“买 GPU 建平台”的项目，一路追到 workload profile、business model profile、案例证据包、建设计划、架构决策记录、生产就绪评审、验收到上线流水线和 Token Factory/SRE 后果。当前覆盖如下：
+
+| 知识点 | 主要章节 | 覆盖要求 |
+| --- | --- | --- |
+| `workload_profile` | 第 4 章、第 44 章 | 说明应用交互、上下文、SLO、数据边界、工具副作用、成本口径和资源池如何变成平台输入 |
+| `application_readiness_review` | 第 4 章、第 13 章、第 40 章 | 说明行业应用进入生产前如何检查权限、评测、灰度、观测、成本、人工接管和退出条件 |
+| `business_model_profile` | 第 42 章、第 41 章 | 说明价值单位、计量事件、客户承诺、成本账本、SLO/SLA、支持模型和退出责任如何结构化 |
+| `commercial_readiness_matrix` | 第 42 章、第 44 章 | 说明 MaaS、算力租赁、私有化、推理服务和 Agent 平台上线前必须具备的商业工程能力 |
+| `case_study_evidence_pack` | 第 43 章 | 说明公开事实、推断、假设、证据可信度、能力缺口和可复用经验如何分层记录 |
+| `ai_factory_maturity_assessment` | 第 43 章、第 44 章 | 说明不同 AI Factory 类型如何按目标层、生产层、运营层和经济层做成熟度诊断 |
+| `ai_factory_build_plan` | 第 44 章 | 说明阶段、进入条件、退出条件、owner、证据、风险、停止条件和下一阶段投资如何绑定 |
+| `architecture_decision_record` | 第 44 章 | 说明 GPU、网络、存储、调度、推理引擎和商业模式选择如何记录背景、备选方案、取舍、回滚和复审触发器 |
+| `production_readiness_review` | 第 44 章、第 38 章、第 40 章 | 说明从资源准入、模型质量、SLO、计量、安全、runbook、成本到发布回滚的上线门禁 |
+| `acceptance_to_launch_record` | 第 38 章、第 44 章 | 说明资源、模型、服务和应用如何从 accepted、staging、canary、production 到 rollback/scale 的证据流 |
+
 ## 全书循环更新策略
 
 全书更新按“主题链路”推进，而不是按章节孤立推进。每轮选择一条关键链路，补齐机制、图、配置、故障、指标和验收。

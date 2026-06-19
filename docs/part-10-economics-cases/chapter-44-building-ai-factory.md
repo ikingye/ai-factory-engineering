@@ -265,15 +265,224 @@ ai_factory_plan:
       - cost_per_token_report
 ```
 
-第二步，是建立决策记录。GPU、网络、存储、调度、推理引擎、模型和商业模式的关键选择，都应记录背景、备选方案、取舍、风险和回滚条件。AI Factory 生命周期很长，决策记录能帮助后续团队理解为什么这样建，也能在环境变化时判断是否需要调整。
+生产级建设计划应更接近 `ai_factory_build_plan`。它不仅列输出物，还要列每阶段进入条件、退出条件、owner、证据、风险、停止条件和下一阶段投资依据。这样计划才能被 SRE、平台、基础设施、财务和业务共同使用，而不是只被项目经理跟进进度。
 
-第三步，是把建设计划接入验证。每个阶段结束都要跑审计：需求是否仍成立，SLO 是否达标，成本是否可解释，验收是否通过，故障是否可诊断，下一阶段是否具备前置条件。没有阶段审计，路线图会变成乐观清单。
+```yaml
+ai_factory_build_plan:
+  id: build-ai-factory-2026-h1
+  objective: support_internal_rag_and_maas_pilot
+  scope:
+    included_workloads:
+      - online_inference
+      - rag
+      - evaluation
+      - limited_fine_tuning
+    excluded_workloads:
+      - foundation_model_pretraining
+      - external_sla_maas
+      - multi_region_disaster_recovery
+  phase_0_design:
+    entry_criteria:
+      - executive_sponsor_assigned
+      - first_two_workload_profiles_drafted
+    exit_criteria:
+      - workload_profiles_approved
+      - business_model_profile_for_pilot_approved
+      - capacity_model_reviewed
+      - data_boundary_policy_approved
+    evidence:
+      - workload_profile
+      - business_model_profile
+      - capacity_model
+      - risk_register
+    stop_conditions:
+      - no_clear_value_unit
+      - data_boundary_unresolved
+  phase_1_resource_foundation:
+    entry_criteria:
+      - facility_power_and_cooling_confirmed
+      - gpu_network_storage_decisions_recorded
+    exit_criteria:
+      - gpu_resource_pool_accepted
+      - fabric_baseline_recorded
+      - storage_acceptance_matrix_passed
+      - observability_labels_available
+    owner:
+      - infra
+      - network
+      - storage
+      - sre
+    stop_conditions:
+      - acceptance_failure_without_remediation
+      - rack_capacity_unit_not_workload_fit
+  phase_2_platform_path:
+    entry_criteria:
+      - accepted_resource_pool_available
+      - model_strategy_approved
+    exit_criteria:
+      - maas_api_smoke_passed
+      - token_metering_append_only
+      - model_serving_canary_ready
+      - job_queue_and_quota_ready
+    owner:
+      - ai_platform
+      - model_serving
+      - sre
+    stop_conditions:
+      - no_request_trace_to_cost_ledger
+      - no_rollback_for_serving_release
+  phase_3_production_pilot:
+    entry_criteria:
+      - production_readiness_review_passed
+      - oncall_and_runbook_ready
+    exit_criteria:
+      - pilot_slo_met_for_review_window
+      - cost_per_successful_task_within_budget
+      - incident_actions_closed
+      - next_scale_decision_recorded
+    owner:
+      - business_owner
+      - platform_owner
+      - sre_owner
+    stop_conditions:
+      - sev1_without_root_cause
+      - quality_gate_regression
+      - sustained_cost_overrun
+```
 
-第四步，是建立从第一天可用的最小治理。即使平台还小，也要有资源命名、租户标签、模型版本、计量事件、变更记录和验收基线。治理早期看起来麻烦，但比后期补齐历史数据便宜得多。最小治理是规模化的保险。
+这个计划有两个重要特点。第一，它把第 4 章的 `workload_profile` 和第 42 章的 `business_model_profile` 放到建设入口，而不是等平台做好后再补。第二，它允许每个阶段停止。AI Factory 建设中最危险的不是慢，而是在价值单位、数据边界或准入基线没成立时继续扩容。停止条件是治理能力，不是失败姿态。
 
-第五步，是建立验收到上线的自动化流水线。资源通过准入后自动进入对应资源池，模型通过评测后才能灰度，推理服务通过 SLO smoke test 后才能扩大流量。自动化不一定复杂，但必须把“能上线”的判断从个人经验变成可重复规则。
+关键技术选择还应写入 `architecture_decision_record`。ADR 不需要长，但必须能回答：为什么选这个，拒绝了什么，承担什么风险，什么时候复审，如何回滚。GPU、网络、存储、调度、推理引擎和商业模式都应有 ADR。没有 ADR，半年后团队只会记得“当时大家觉得这样好”，无法判断环境变化后是否该调整。
 
-第六步，是把成本报表纳入上线评审。新模型、新租户或新资源池上线时，应给出预估 cost/token、GPU hour、存储增长和支持成本。没有成本评审，平台会在功能增长后才发现经济模型不成立。
+```yaml
+architecture_decision_record:
+  id: adr-007-inference-runtime-vllm-first
+  status: accepted
+  decision_area: inference_runtime
+  context:
+    workload_profiles:
+      - wp-internal-rag-v2
+      - wp-maas-chat-pilot-v1
+    constraints:
+      - openai_compatible_streaming_required
+      - limited_runtime_engineering_team
+      - need_fast_iteration_before_external_sla
+  options:
+    - name: vllm_first
+      strengths:
+        - fast_model_iteration
+        - continuous_batching_support
+        - broad_model_support
+      risks:
+        - engine_upgrade_may_change_token_behavior
+        - advanced_optimization_requires_benchmark
+    - name: tensorrt_llm_first
+      strengths:
+        - strong_optimized_serving_path
+      risks:
+        - higher_build_and_conversion_complexity_for_pilot
+  decision: vllm_first_for_phase_2
+  guardrails:
+    - runtime_quality_gate_required_for_engine_upgrade
+    - benchmark_matrix_required_before_scale
+    - serving_quality_contract_binds_engine_version
+  revisit_triggers:
+    - cost_per_token_above_budget
+    - model_family_requires_different_engine
+    - external_sla_requires_lower_tail_latency
+  rollback:
+    - keep_previous_serving_release_warm
+    - route_canary_tenants_back_to_stable_endpoint
+```
+
+ADR 的价值在于把工程取舍变成可复审证据。比如第一阶段为了速度选择 Kubernetes + vLLM，不代表未来不能引入 TensorRT-LLM 或 Slurm；选择 RoCE 不代表忽略拥塞控制和 telemetry；选择统一推理池不代表高价值客户永远不能专属容量。ADR 让“阶段性正确”不会变成“永久惯性”。
+
+上线前应通过 `production_readiness_review`。它把资源、模型、平台、安全、SRE、成本和商业承诺放在同一张门禁里。生产就绪不是“服务能访问”，而是当它慢、错、贵、坏、被滥用或需要回滚时，团队有证据和动作。
+
+```yaml
+production_readiness_review:
+  id: prr-maas-chat-pilot-2026-06
+  release_scope:
+    workload_profile: wp-maas-chat-pilot-v1
+    business_model_profile: bmp-internal-maas-pilot-v1
+    serving_release: sr-chat-model-a-v3
+    resource_pool: gpu-inference-shared-prod
+  gates:
+    resource:
+      acceptance_baseline: pass
+      capacity_reserve: pilot_only
+      fault_domain_review: pass
+    model:
+      quality_gate_record: pass
+      safety_eval: pass
+      rollback_model: sr-chat-model-a-v2
+    platform:
+      gateway_policy: pass
+      token_metering: append_only_enabled
+      request_trace: end_to_end
+    security:
+      tenant_boundary: pass
+      data_boundary_policy: pass
+      api_key_lifecycle: pass
+    sre:
+      dashboard: ready
+      runbook: ready
+      oncall: ready
+      incident_template: ready
+    economics:
+      cost_model: reviewed
+      budget_owner: assigned
+      stop_condition: cost_per_successful_answer_over_budget
+  decision: approve_canary
+  canary_plan:
+    traffic: 5_percent_internal_tenants
+    review_window: 7d
+    rollback_conditions:
+      - ttft_slo_breach
+      - quality_regression_record_open
+      - metering_gap_detected
+```
+
+`production_readiness_review` 应和第 38 章的验收基线、第 40 章的 SRE 流程、第 41 章的经济账本连接。它不是独立审批系统，而是把已有证据聚合成上线决策。若某项证据缺失，结论应该是 `block` 或 `conditional_approve`，并明确条件，而不是口头放行。
+
+从验收到上线的流水线可以用下面的图表示：
+
+```mermaid
+flowchart LR
+  Hardware["硬件 / 节点 / 网络 / 存储"] --> Acceptance["acceptance baseline\nGPU / NCCL / RDMA / storage"]
+  Acceptance -->|pass| ResourcePool["accepted resource pool"]
+  Acceptance -->|fail| Remediation["remediation\nrepair / config / vendor"]
+  Remediation --> Acceptance
+  ResourcePool --> ModelGate["model quality gate\nquality / safety / cost"]
+  ModelGate -->|pass| ServingRelease["serving release\nweights + tokenizer + runtime"]
+  ModelGate -->|fail| ModelFix["model / prompt / eval fix"]
+  ModelFix --> ModelGate
+  ServingRelease --> PRR["production readiness review"]
+  PRR -->|approve_canary| Canary["canary\nlimited tenants / traffic"]
+  PRR -->|block| FixGap["close evidence gaps"]
+  FixGap --> PRR
+  Canary -->|healthy| Production["production scale"]
+  Canary -->|breach| Rollback["rollback / drain / incident"]
+  Production --> Telemetry["telemetry + cost + feedback"]
+  Telemetry -->|"drift / incident / cost overrun"| PRR
+```
+
+最后，建设计划应落到时间节奏。下面的 30/60/90/180 天不是固定日历，而是用于提醒第一阶段应该产出什么证据。不同组织可以调整顺序，但不应跳过证据。
+
+| 阶段 | 目标 | 必须产出 | 不应做的事 |
+| --- | --- | --- | --- |
+| 0-30 天 | 明确目标和边界 | `workload_profile`、`business_model_profile`、容量模型、数据边界、初始 ADR | 在没有 SLO 和验收口径时下大额硬件单 |
+| 31-60 天 | 建立资源和基线 | GPU/resource pool、fabric baseline、storage baseline、观测标签、准入流水线 | 把未准入资源给生产任务使用 |
+| 61-90 天 | 打通平台路径 | Gateway、模型服务、token 计量、评测门禁、灰度回滚、基础 runbook | 对外承诺 SLA 或大规模多租户 |
+| 91-180 天 | 生产试点和规模化决策 | PRR、canary、成本账本、incident 复盘、扩容/暂停决策 | 只按 GPU 利用率决定继续扩容 |
+
+这张表的核心是“证据先于规模”。AI Factory 可以从小规模开始，但每一步都要留下可以复用的对象：profile、ADR、baseline、release、PRR、ledger 和 incident record。后续扩容时，团队复用的是这些工程对象，而不只是复用一套部署脚本。
+
+这些对象应进入日常工程流程，而不是停留在文档目录中。`ai_factory_build_plan` 进入项目例会和阶段审计，`architecture_decision_record` 进入技术评审，`production_readiness_review` 进入发布门禁，acceptance baseline 进入资源池状态，cost ledger 进入容量和商业决策。每个对象都要有 owner、版本和触发更新的条件，否则它们会很快过期。
+
+最小治理应从第一天开始。即使平台还小，也要有资源命名、租户标签、模型版本、计量事件、变更记录和验收基线。治理早期看起来麻烦，但比后期补齐历史数据便宜得多。没有这些基础对象，后续再做多租户、账单、SRE 和商业化时，团队会发现关键证据从未被采集。
+
+成本报表也要进入上线评审。新模型、新租户或新资源池上线时，应给出预估 cost/token、GPU hour、存储增长、支持成本和停止条件。没有成本评审，平台会在功能增长后才发现经济模型不成立；没有停止条件，团队会把成本异常解释成“增长的代价”，而不是及时纠偏。
 
 ## 常见故障
 

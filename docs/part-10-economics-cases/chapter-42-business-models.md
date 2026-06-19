@@ -197,6 +197,115 @@ business_model_profile:
       - error_budget
 ```
 
+生产级 `business_model_profile` 还应明确客户承诺、交付边界、退出责任和证据来源。它和第 4 章的 `workload_profile` 不是重复关系：前者描述“如何把能力卖出或内部结算”，后者描述“应用如何消耗能力”。一个客服 RAG workload 可以服务内部自用、行业云或私有化交付；同一个 MaaS 商业模式也可以承载 Chat、embedding、rerank 和 batch inference。两者必须通过产品配置和成本账本显式关联。
+
+```yaml
+business_model_profile:
+  id: bmp-enterprise-maas-standard-v2
+  owner:
+    product: maas-product
+    finance: ai-business-ops
+    platform: ai-platform
+    sre: ai-sre
+  lifecycle:
+    state: commercially_available
+    version: 2
+    review_cycle: quarterly
+    invalidation_triggers:
+      - new_model_pricing_tier
+      - sla_change
+      - serving_cost_model_change
+      - security_policy_change
+  customer_promise:
+    customer_segments:
+      - enterprise_developer
+      - internal_application_team
+    service_boundary: hosted_model_api
+    excluded_responsibilities:
+      - customer_prompt_quality
+      - downstream_business_decision
+      - customer_side_network_failure
+    support_model: business_hours_plus_sev1_oncall
+  value_unit:
+    primary: billable_token
+    secondary:
+      - provisioned_throughput
+      - dedicated_capacity
+  metering:
+    billable_events:
+      - request_admitted
+      - usage_delta
+      - request_closed
+    non_billable_events:
+      - policy_denied
+      - provider_side_5xx_before_first_token
+    dispute_evidence:
+      - append_only_metering_event
+      - request_trace_id
+      - model_version
+      - tenant_policy_version
+  cost_ledger:
+    direct_cost:
+      - gpu_seconds
+      - model_memory_residency
+      - gateway_and_observability
+    allocated_cost:
+      - reliability_reserve
+      - security_audit
+      - evaluation_pipeline
+      - support
+  slo_sla:
+    slo_class: production
+    sla_contract: external_standard
+    error_budget_policy: monthly
+    compensation_boundary: platform_responsible_failures
+  delivery:
+    mode: public_cloud_service
+    regions:
+      - primary_region
+    data_residency: configured_per_tenant
+    exit_plan:
+      - export_usage_records
+      - revoke_api_keys
+      - delete_or_retain_logs_by_contract
+      - model_deprecation_notice
+```
+
+这个对象要求商业承诺和平台事实一致。若 `service_boundary` 是 hosted model API，就不应把客户业务正确性写进 SLA；若 `value_unit.primary` 是 billable token，就必须有不可篡改的 token 事件；若承诺 dedicated capacity，就必须在资源池中有 reservation、健康状态和容量报告；若支持私有化退出，就必须能删除或导出客户数据。商业模式失败常常不是销售错了，而是承诺没有落成可验证对象。
+
+商业模式还需要 go/no-go 门禁。下面的 `commercial_readiness_matrix` 用于判断一个模式能否进入销售、试点或规模化。它不要求所有模式具备相同能力，但要求每个模式的价值单位、交付承诺、成本和支持边界可解释。
+
+| 商业模式 | 必须具备后才能销售 | 规模化前必须具备 | 不能承诺的典型事项 |
+| --- | --- | --- | --- |
+| 自用型 AI Factory | 租户/项目、成本看板、关键应用 SLO、数据权限 | 内部 chargeback、应用生命周期、容量例会、quality feedback | “免费无限使用”、无 owner 的生产应用 |
+| 云服务型 AI Factory | 产品规格、区域/资源池、账单、SLA、支持流程 | 库存预测、多租户审计、故障赔付、客户成功和容量运营 | 未通过准入的 GPU 现货交付 |
+| MaaS | API Key、token metering、模型目录、限流、请求 trace | append-only ledger、模型弃用策略、风控、账单争议处理 | 没有计量证据的按量收费 |
+| 私有化交付 | 标准拓扑、离线包、版本矩阵、验收脚本、责任矩阵 | 升级路径、脱敏诊断包、客户环境兼容层、LTS 策略 | 每个客户无限制代码分支 |
+| 行业云 | 行业数据边界、流程模板、领域评测、合规审计 | 行业运营指标、人工复核、知识库生命周期、复用组件 | 只靠 prompt 声称行业化 |
+| 算力租赁 | GPU inventory、准入报告、镜像/驱动、资源交付记录 | clean-to-reuse、维修回池、客户可见健康、库存/利用率优化 | 未定义性能边界的共享 GPU |
+| 推理服务 | 模型 registry、endpoint、SLO、灰度回滚、运行观测 | cost/token、模型所有权边界、性能调优基线、多租户公平 | 对客户模型质量做无证据保证 |
+| Agent 平台 | 工具权限、任务 trace、预算、人工确认、审计 | 任务级成本、结果评测、沙箱隔离、回滚/补偿流程 | 未经审批的高风险写操作 |
+
+商业能力也可以形成状态机。一个模式从 idea 到 scale，必须穿过 evidence、pilot、commercial 和 deprecation，而不是被一次发布会直接推入长期承诺。
+
+```mermaid
+stateDiagram-v2
+  [*] --> Idea
+  Idea --> EvidenceReady: value unit / workload / cost model defined
+  EvidenceReady --> Pilot: metering + support + SLO draft ready
+  Pilot --> Commercial: readiness matrix passed
+  Commercial --> Scale: margin + SLO + support cost stable
+  Scale --> Revise: cost drift / SLA breach / customer segment change
+  Revise --> Pilot: new profile requires validation
+  Commercial --> Deprecating: strategy exit / unprofitable / unsupported
+  Deprecating --> Retired: migration + data exit + contract closure
+  Pilot --> Stopped: no value / no cost control / unacceptable risk
+```
+
+这套状态机的重点是允许停止。很多 AI Factory 商业化问题来自“只会上线，不会下线”：某个私有化分支没有升级能力却继续售卖，某个 MaaS 模型成本明显倒挂却继续放量，某个 Agent 工具没有审计却被更多客户启用。状态机把停止条件写入产品治理，让技术团队有证据约束商业承诺。
+
+`business_model_profile` 最终应和 Token Factory 账本连接。MaaS 关注 `revenue_per_token - cost_per_token`，但行业云可能关注 `revenue_per_resolved_case - cost_per_resolved_case`，Agent 平台可能关注 `revenue_per_successful_task - cost_per_successful_task`。如果只用 token 作为唯一收入单位，就会低估高价值低 token 的场景；如果完全不看 token，又会失去底层成本控制。商业模式成熟度就在于能同时看价值单位和生产单位。
+
 第四步，是定期复盘模式适配度。每季度检查收入、毛利、SLO、客户投诉、交付成本、定制化比例和运维负担。如果某个商业模式增长很快但平台能力跟不上，应优先补齐能力；如果某个模式毛利低且定制化重，应重新审视产品边界。
 
 第五步，是把商业模式写入资源策略。MaaS 需要推理池和 token 成本治理，算力租赁需要库存和交付状态，私有化需要版本和镜像资产，Agent 平台需要执行环境和安全审计。资源策略若与商业模式脱节，平台会同时缺容量和缺毛利。

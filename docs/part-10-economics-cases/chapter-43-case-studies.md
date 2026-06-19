@@ -183,6 +183,143 @@ case_study:
     - missing_internal_billing
 ```
 
+更严谨的案例研究应生成 `case_study_evidence_pack`。它把公开事实、可验证证据、工程推断和待验证假设分开，避免把营销材料、媒体描述、供应商规格或二手传闻直接当成系统结论。这个对象也能帮助团队把案例研究转成自己的架构评审输入。
+
+```yaml
+case_study_evidence_pack:
+  id: case-enterprise-private-ai-factory-reference
+  scope:
+    case_type: enterprise_private_ai_factory
+    purpose: internal_productivity_and_secure_rag
+    analysis_date: "2026-06"
+  evidence_layers:
+    public_facts:
+      - source: product_documentation
+        claim: provides_private_model_serving
+        confidence: high
+      - source: public_architecture_talk
+        claim: uses_kubernetes_for_serving
+        confidence: medium
+    observed_signals:
+      - source: acceptance_report
+        claim: gpu_nodes_passed_container_gpu_smoke_test
+        confidence: high
+      - source: incident_review
+        claim: rag_acl_regression_caused_rollout_pause
+        confidence: high
+    engineering_inference:
+      - claim: dedicated_inference_pool_needed_for_customer_service
+        basis:
+          - production_slo
+          - traffic_peak_pattern
+          - wrong_answer_impact
+        confidence: medium
+    assumptions_to_validate:
+      - claim: future_agent_tools_require_stronger_sandbox
+        validation_method: application_readiness_review
+  capability_map:
+    target_layer:
+      service_object: internal_business_users
+      value_unit: resolved_task_and_cost_allocation
+    production_layer:
+      workloads:
+        - rag
+        - online_inference
+        - evaluation
+      missing_capabilities:
+        - token_metering_by_cost_center
+        - model_release_quality_gate
+    operations_layer:
+      strengths:
+        - private_data_boundary
+        - centralized_identity
+      gaps:
+        - no_standard_upgrade_path
+        - limited_remote_diagnostics
+    economics_layer:
+      known_metrics:
+        - gpu_hour_cost
+        - application_adoption
+      missing_metrics:
+        - cost_per_resolved_task
+        - quality_adjusted_value
+  reusable_lessons:
+    - start_with_workload_profile_not_gpu_inventory
+    - make_acl_regression_part_of_release_gate
+    - treat_private_upgrade_path_as_product_feature
+```
+
+案例成熟度可以用四层矩阵诊断，而不是只按“先进/落后”评价。目标层看服务对象和价值单位是否清楚；生产层看应用、模型、调度和基础设施是否能闭环；运营层看验收、观测、SRE、安全和升级是否可重复；经济层看成本、收入、ROI 和机会成本是否可解释。一个系统可以在生产层很强、经济层很弱，也可以在目标层清楚但运营层不成熟。分层诊断比单一评分更有用。
+
+| 案例类型 | 目标层成熟信号 | 生产层成熟信号 | 运营层成熟信号 | 经济层成熟信号 | 常见缺口 |
+| --- | --- | --- | --- | --- | --- |
+| NVIDIA AI Factory 参考架构 | AI 生产系统叙事清楚 | 软硬件协同链路完整 | 依赖组织自行落地运维 | 强调系统能效和产能 | 不能直接替代本地需求分析 |
+| 云厂商 AI Factory | 客户分层和产品规格清楚 | GPU IaaS、MaaS、训练/推理组合 | SLA、账单、多租户、支持体系 | 资源利用率和毛利可经营 | 标准化与大客户定制冲突 |
+| 企业私有 AI Factory | 内部效率和安全目标清楚 | RAG、推理、微调和企业系统集成 | 权限、审计、升级、内部支持 | 内部 ROI 和成本分摊 | 平台产品化不足 |
+| 大模型公司 AI Factory | 模型能力和 token 服务目标清楚 | 数据、训练、评测、推理闭环 | 实验治理、发布回滚、训练恢复 | 训练 ROI 与推理毛利连接 | 研究速度与稳定性冲突 |
+| TokenFoundry 类组织 | token 经济性目标突出 | 推理引擎、路由、计量强 | SLO 和成本运营强相关 | cost/token 与 revenue/token 清楚 | 可能忽视质量和长期信任 |
+| 边缘 AI Factory | 现场价值和离线目标清楚 | 小模型、边缘 RAG、中心协同 | 远程诊断、离线升级是关键 | 以现场业务连续性衡量 | 版本漂移和现场运维困难 |
+| 只买 GPU 的失败案例 | 目标层通常模糊 | 硬件有，生产路径断裂 | 准入、观测、SRE 缺失 | 成本和价值无法解释 | 把资源误认为产能 |
+
+失败案例也应按证据链诊断。下面的路径适合用在“GPU 买了但平台产出差”的复盘中。它从业务症状开始，逐层追到 profile、商业承诺、生产路径和运营证据，避免直接把问题归咎于“GPU 不够”或“模型不行”。
+
+```mermaid
+flowchart TB
+  Symptom["症状\n任务 pending / 延迟长尾 / 成本失控 / 业务无价值"] --> Target["目标层检查\n服务对象和价值单位是否清楚"]
+  Target -->|不清楚| FixTarget["补 workload_profile\n补 business_model_profile\n收缩范围"]
+  Target -->|清楚| Production["生产层检查\n应用-平台-模型-runtime-调度-资源是否闭环"]
+  Production -->|断裂| FixProduction["补缺口\nGateway / serving / queue / resource pool / data path"]
+  Production -->|闭环| Ops["运营层检查\n准入 / baseline / telemetry / runbook / change"]
+  Ops -->|缺证据| FixOps["建立 acceptance baseline\n补观测标签和诊断包"]
+  Ops -->|证据完整| Economics["经济层检查\ncost / value / margin / ROI"]
+  Economics -->|倒挂| FixEconomics["调整路由、价格、容量或下线场景"]
+  Economics -->|成立| Scale["进入规模化\n扩大资源或商业覆盖"]
+```
+
+这个诊断路径还要求区分事实和推断。比如“任务 pending 很久”是事实，“GPU 不够”只是可能推断；还需要检查 quota、gang、topology、image、data path、node baseline 和队列优先级。“推理毛利下降”是事实，“模型太贵”也只是可能推断；还需要检查 output token、cache miss、低质量重试、安全拦截、失败计费和支持成本。案例研究要训练这种证据纪律。
+
+在团队内部，可以把每个案例研究沉淀成 `ai_factory_maturity_assessment`。它给出当前级别、证据、短板和下一步，不追求一次性满分。
+
+```yaml
+ai_factory_maturity_assessment:
+  target_system: internal-ai-platform
+  assessment_period: 2026q2
+  levels:
+    target_layer:
+      level: 3
+      evidence:
+        - workload_profiles_for_top_5_apps
+        - internal_chargeback_policy
+      gap:
+        - no_external_customer_sla_boundary
+    production_layer:
+      level: 2
+      evidence:
+        - maas_api_available
+        - gpu_resource_pool_accepted
+      gap:
+        - training_checkpoint_recovery_not_standardized
+    operations_layer:
+      level: 2
+      evidence:
+        - basic_gpu_and_inference_dashboard
+        - incident_template
+      gap:
+        - no_change_safety_case_for_driver_upgrade
+    economics_layer:
+      level: 1
+      evidence:
+        - gpu_hour_cost_report
+      gap:
+        - missing_cost_per_successful_task
+  next_actions:
+    - build_append_only_metering_ledger
+    - add_acceptance_to_launch_pipeline
+    - define_business_model_profile_before_external_maas
+```
+
+成熟度诊断的价值在于排序。若目标层只有 1 级，不应急着采购更多 GPU；若生产层断裂，不应先做复杂毛利模型；若运营层没有准入和观测，规模化会放大事故；若经济层没有成本口径，商业增长可能只是亏损增长。案例研究最终要服务建设优先级。
+
 第四步，是定期更新案例库。行业技术和商业模式变化很快，案例不能写完就不动。每次项目复盘、客户交付、重大事故或成本优化，都应沉淀到案例库中。案例库的价值不是记录故事，而是帮助下一次架构决策更快、更准。
 
 第五步，是把案例库用于评审。新项目立项、重大采购、商业模式调整或私有化交付前，都可以选择相似案例做对照，检查能力缺口和风险。这样案例研究就从学习材料变成工程治理工具。

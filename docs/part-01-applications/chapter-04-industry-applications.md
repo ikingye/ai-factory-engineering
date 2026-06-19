@@ -148,6 +148,145 @@ platform_requirements:
   resource_pool: low_latency
 ```
 
+生产环境中的 `workload_profile` 应被当作一等对象，而不是接入表单。它需要有 owner、版本、证据来源、审批状态和失效条件。一个 profile 只有在绑定了真实样本、流量假设、权限边界、评测集和成本口径后，才足以驱动模型路由和资源池配置。若 profile 只是业务方口头描述，平台会把不确定性转嫁到默认策略中，最终在延迟、账单或安全事故中暴露。
+
+更完整的对象可以写成如下结构：
+
+```yaml
+workload_profile:
+  id: wp-code-assistant-ide-completion-v3
+  owner:
+    business: developer-product
+    platform: ai-platform
+    sre: ai-sre
+  lifecycle:
+    state: production
+    version: 3
+    effective_from: "2026-06-01"
+    review_cycle: monthly
+    invalidation_triggers:
+      - new_agent_write_tool
+      - context_window_expansion
+      - model_family_change
+      - p95_input_tokens_exceeds_profile
+  interaction:
+    mode: streaming_completion
+    user_surface: ide
+    sync_boundary: first_token_required
+    cancellation_expected: true
+  traffic:
+    peak_pattern: workday_diurnal
+    burst_source:
+      - repository_index_refresh
+      - release_week
+    representative_samples:
+      source: production_shadow_logs
+      retention: redacted_30d
+  context:
+    sources:
+      - current_file
+      - related_symbols
+      - recent_edits
+      - retrieval_snippets
+    budget_policy:
+      hard_cap: configured_by_gateway
+      truncation_order:
+        - low_score_retrieval
+        - old_chat_turns
+        - non_imported_files
+  risk:
+    data_classification: source_code
+    tool_side_effect: none_for_completion
+    audit_required: true
+  slo:
+    ttft_class: interactive
+    availability_class: production_internal
+    degradation_policy: fallback_to_short_context_model
+  economics:
+    value_metric: accepted_completion
+    cost_metric: cost_per_accepted_completion
+    chargeback: project_cost_center
+  platform_bindings:
+    gateway_policy: gwp-code-assistant-v3
+    routing_scorecard: route-code-low-latency-v2
+    eval_manifest: eval-code-completion-v5
+    resource_pool: gpu-inference-low-latency
+    telemetry_schema: trace-ai-code-v2
+```
+
+这个对象把应用、平台、模型、资源和经济性连接起来。`invalidation_triggers` 很关键，因为行业应用会演进：代码助手增加写文件工具后，风险边界从只读补全变成可修改仓库；办公 Copilot 增加长文档批处理后，资源池从低延迟交互变成混合同步/异步；客服增加自动退款工具后，必须引入人工确认和审计。profile 一旦失效，平台应要求重新评审，而不是继续使用旧限流和旧评测。
+
+`workload_profile` 到生产策略的链路可以画成下面的控制流。它的核心思想是：应用画像先进入评审和证据层，再生成平台策略；运行数据反过来更新画像。不要让业务需求直接改模型路由或资源池。
+
+```mermaid
+flowchart LR
+  Sample["真实样本\nprompt / documents / traces"] --> Profile["workload_profile"]
+  Business["业务目标\nvalue metric / failure impact"] --> Profile
+  Data["数据边界\npermission / retention / audit"] --> Profile
+  Profile --> Review["application_readiness_review"]
+  Review --> Gateway["Gateway policy\nrate limit / context budget / authz"]
+  Review --> Model["Model routing\nquality scorecard / fallback"]
+  Review --> Runtime["Runtime policy\nbatching / cache / timeout"]
+  Review --> Pool["Resource pool\nlatency / topology / isolation"]
+  Review --> Cost["Cost ledger\nvalue unit / chargeback"]
+  Gateway --> Telemetry["production telemetry"]
+  Model --> Telemetry
+  Runtime --> Telemetry
+  Pool --> Telemetry
+  Cost --> Telemetry
+  Telemetry -->|"profile drift / SLO breach / cost anomaly"| Profile
+```
+
+应用进入生产前应通过 `application_readiness_review`。它不是一次会议纪要，而是上线门禁记录。门禁至少检查八类证据：真实样本是否覆盖主路径和长尾，评测集是否覆盖业务失败，权限和数据保留是否清楚，模型路由和 fallback 是否可回滚，观测字段是否能串起 request、tenant、model、tool 和 cost，人工接管是否存在，成本是否有预算，退出条件是否可执行。
+
+```yaml
+application_readiness_review:
+  id: arr-customer-service-rag-2026-06
+  workload_profile: wp-customer-service-rag-v4
+  decision: conditional_approve
+  scope:
+    users: vip_customer_service_team
+    channels:
+      - web_chat
+      - agent_console_assist
+    excluded:
+      - automatic_refund
+      - legal_dispute_response
+  evidence:
+    eval_manifest: eval-cs-rag-v7
+    red_team_report: safety-cs-v2
+    permission_test: rag-acl-regression-v4
+    cost_simulation: cost-cs-peak-week-v3
+    rollback_plan: rb-cs-rag-v4
+  required_controls:
+    - cite_knowledge_article
+    - confidence_threshold_for_auto_answer
+    - human_handoff_on_low_confidence
+    - deny_when_acl_ambiguous
+    - append_only_metering
+  guardrail_metrics:
+    - wrong_answer_rate
+    - unsupported_claim_rate
+    - handoff_rate
+    - acl_denied_retrieval
+    - cost_per_resolved_session
+  stop_conditions:
+    - high_risk_wrong_answer_incident
+    - cost_per_resolved_session_exceeds_budget
+    - permission_regression_detected
+```
+
+行业应用还应有接入矩阵。矩阵用于快速判断某类应用是否已经具备生产条件，而不是把所有应用都塞进同一个审批流程。
+
+| 应用类型 | 必备画像字段 | 必备门禁 | 关键资源策略 | 失败时优先动作 |
+| --- | --- | --- | --- | --- |
+| 办公 Copilot | 文档来源、ACL、长上下文分布、引用策略 | 权限回归、引用准确率、数据保留 | 长上下文池与异步文档队列分离 | 降级到短上下文问答或只返回引用摘要 |
+| 代码助手 | 仓库敏感级别、IDE 延迟、上下文选择、工具权限 | 代码执行沙箱、补全采纳率、最小补丁检查 | 低延迟推理池与 Agent 工具池分离 | 禁用写操作工具，保留只读解释和补全 |
+| 智能客服 | 问题类型、知识库版本、人工接管、权益风险 | 质检样本、转人工策略、话术和合规审计 | 生产高可用池，RAG 索引独立准入 | 转人工，冻结高风险自动回复 |
+| 数据分析 Agent | 指标语义层、SQL 权限、扫描预算、确认流程 | SQL 审计、只读账户、结果一致性回归 | LLM 与数据计算成本分账 | 停止执行 SQL，只返回查询计划 |
+| 多模态应用 | 文件类型、预处理链路、对象存储、保留期 | 文件权限、OCR/ASR 回归、人工复核 | 异步预处理队列和对象存储容量隔离 | 保留上传和任务状态，停止自动决策 |
+| 私有化部署 | 客户环境、离线包、版本矩阵、运维责任 | 安装验收、升级回滚、诊断包 | 客户级资源池和现场可观测性 | 回滚到前一离线版本，导出脱敏诊断包 |
+
 ## 常见故障
 
 第一类故障是用统一模型和统一限流服务所有应用。短补全、长文档、客服和 Agent 被放进同一队列，导致高峰期互相影响。第二类故障是忽略上下文长度，只按请求数规划容量，结果 prefill、KV Cache 和 RAG 前置链路成为瓶颈。第三类故障是权限没有进入检索和工具链路，行业数据在 prompt、日志、缓存或工具输出中泄露。
