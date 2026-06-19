@@ -520,10 +520,14 @@ production_readiness_review:
       recent_high_risk_changes: reviewed
       canary_stop_conditions: machine_enforced
       rollback_drill: passed
+      release_train_record: pass_if_platform_or_baseline_release
+      lts_support_policy: pass_if_customer_or_long_lived_pool
+      field_patch_governance: pass_if_out_of_band_patch_exists
     observability:
       reliability_evidence_bundle_trigger: configured
       inference_runtime_diagnostic_bundle: configured
       security_evidence_bundle_trigger: configured
+      diagnostic_bundle_sla: configured_if_external_customer_or_private_delivery
       prompt_trace_redaction_record: pass
       token_metering_reconciliation: pass
     security_and_tenant_boundary:
@@ -596,6 +600,9 @@ production_readiness_review:
       sla_credit_model: ready_if_sla_committed
       customer_onboarding_evidence: pass_if_external_customer_or_key_internal_tenant
       private_deployment_acceptance_record: pass_if_private_delivery
+      private_delivery_lifecycle_contract: pass_if_private_delivery
+      offline_upgrade_rehearsal: pass_if_private_delivery_or_restricted_egress
+      support_ticket_taxonomy: configured_if_external_customer
       launch_risk_register: reviewed_and_owned
       owner_for_error_budget_burn: assigned
   decision_logic:
@@ -608,6 +615,12 @@ production_readiness_review:
       - open_cooling_degradation_record_for_required_capacity
       - new_gpu_generation_without_readiness_gate
       - no_rollback_path
+      - platform_release_without_release_train_record
+      - long_lived_customer_pool_without_lts_policy
+      - out_of_band_patch_without_field_patch_governance
+      - private_delivery_without_offline_upgrade_rehearsal
+      - external_customer_without_support_ticket_taxonomy
+      - external_customer_without_diagnostic_bundle_sla
       - no_metering_reconciliation
       - no_incident_owner_or_runbook
       - no_credential_lifecycle_or_api_key_audit

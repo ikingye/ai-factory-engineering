@@ -335,6 +335,38 @@ private_deployment_acceptance_record:
 
 这个记录把私有化交付从一次项目变成可维护产品。它明确哪些环境差异被支持，哪些责任属于客户，哪些证据用于验收，哪些能力必须在升级前重测。对供应方来说，`private_deployment_acceptance_record` 能控制定制化蔓延：客户差异应优先进入配置、版本矩阵和集成适配层，而不是分叉代码；对客户来说，它提供可复核边界：若故障发生在已验收的 GPU runtime 或模型 serving，供应方需要响应；若故障来自未批准的客户网络变更或知识库错误，处理方式不同。
 
+私有化交付的商业模型还必须绑定 release train、LTS、诊断包 SLA 和 field patch 规则。客户买到的不只是一次安装，而是一条可升级、可诊断、可回滚、可退出的产品线。销售合同如果承诺“长期支持”，工程上就必须能回答：支持哪些 baseline，补丁是否 backport，离线升级如何演练，客户不允许远程登录时如何导出脱敏证据，紧急补丁是否会合回主干，EOL 前如何通知和迁移。否则私有化项目会在第二年变成大量不可复用现场分支。
+
+```yaml
+private_delivery_lifecycle_contract:
+  contract_id: pdlc-enterprise-a-202606
+  linked_acceptance: pdar-enterprise-a-ai-factory-202606
+  release_policy:
+    release_train_record: gpu-baseline-2026-06
+    lts_support_policy: ai-factory-gpu-node-lts
+    customer_rings: [customer_staging, customer_production]
+    eol_notice_required: true
+  support_policy:
+    support_ticket_taxonomy: support-taxonomy-ai-factory
+    diagnostic_bundle_sla: dbsla-ai-factory-prod
+    remote_access: customer_approved_session_only
+    redacted_export: required
+  upgrade_policy:
+    offline_upgrade_rehearsal: required_before_major_or_lts_migration
+    rollback_drill: required
+    storage_and_artifact_migration: required_if_schema_or_model_change
+  patch_policy:
+    field_patch_governance: required_for_out_of_band_patch
+    merge_back_to_release_train: required
+    patch_expiry: policy_defined
+  commercial_controls:
+    support_cost_tagging: required
+    custom_delta_count_limit: policy_defined
+    unsupported_environment_clause: explicit
+```
+
+这份 lifecycle contract 让商业承诺能被工程系统验证。它也给毛利分析提供输入：客户支持工单、离线升级演练、现场补丁、远程诊断审批和定制差异都不是免费动作，而是私有化收入中的真实成本。若这些对象缺失，私有化看起来可能毛利很高，实际被支持成本和版本分叉吞掉。成熟的 AI Factory 商业化不是拒绝私有化，而是把私有化做成受控产品，而不是无限项目制交付。
+
 商业能力也可以形成状态机。一个模式从 idea 到 scale，必须穿过 evidence、pilot、commercial 和 deprecation，而不是被一次发布会直接推入长期承诺。
 
 ```mermaid

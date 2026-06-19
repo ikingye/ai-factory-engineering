@@ -343,6 +343,67 @@ container_runtime_change_record:
 
 这个记录应自动失效第 38 章的 `container_gpu_runtime_baseline`。若变更从 envvar strategy 切到 CDI，所有相关节点至少要复测 device plugin 分配、OCI/CDI 注入、容器内 GPU UUID、RDMA 可见性和代表性 workload。SRE 不能只看 Pod 创建成功，因为错误设备可见性可能不会产生 5xx，却会破坏租户隔离、计费和性能归因。
 
+对客户可见的问题，还应先进入 `support_ticket_taxonomy`，再进入 incident、problem 或 change。很多平台把所有客户问题都叫工单，导致响应时钟、owner 路由、证据要求和赔付关系混在一起。AI Factory 的支持工单至少要区分 incident（服务中断或 SLO 违约）、request（配额、模型开通、交付咨询）、problem（反复出现但未根除的缺陷）、change（客户窗口内的升级或配置变更）、billing dispute（账单争议）和 security case（安全事件）。分类不是客服话术，而是控制后续证据链。
+
+```yaml
+support_ticket_taxonomy:
+  taxonomy_id: support-taxonomy-ai-factory
+  categories:
+    incident:
+      examples: [slo_breach, training_job_hang, private_endpoint_down]
+      required_evidence: [reliability_evidence_bundle, diagnostic_bundle_sla]
+      owner_routing: sre_or_product_oncall
+    request:
+      examples: [quota_increase, model_enablement, new_project]
+      required_evidence: [customer_onboarding_evidence]
+      owner_routing: platform_ops_or_customer_success
+    problem:
+      examples: [repeated_nccl_hang, recurring_model_load_slow]
+      required_evidence: [incident_records, baseline_history]
+      owner_routing: domain_owner
+    change:
+      examples: [private_upgrade_window, routing_policy_change]
+      required_evidence: [change_safety_case, offline_upgrade_rehearsal_if_private]
+      owner_routing: release_manager
+    billing_dispute:
+      examples: [unexpected_token_charge, sla_credit_claim]
+      required_evidence: [billing_dispute_replay, sla_credit_replay]
+      owner_routing: billing_ops
+    security_case:
+      examples: [api_key_leak, trace_export_concern]
+      required_evidence: [security_evidence_bundle]
+      owner_routing: security_oncall
+  severity:
+    sev1: customer_visible_outage_or_security_exposure
+    sev2: degraded_service_or_blocked_production_workload
+    sev3: workaround_available_or_limited_scope
+    sev4: question_or_planned_request
+  clocks:
+    response: severity_defined
+    diagnostic_bundle_collection: diagnostic_bundle_sla
+    mitigation_update: severity_defined
+```
+
+分类后的工单应进入统一时间线。一个 Sev1 incident 需要 `reliability_evidence_bundle` 和客户沟通节奏；一个 billing dispute 需要冻结 metering event、policy decision 和 invoice line；一个 private upgrade change 需要引用 `release_train_record`、`lts_support_policy` 和 `offline_upgrade_rehearsal`。这样支持体系就不会只依赖“谁熟悉这个客户”，而是依赖可复用的证据对象。长期看，taxonomy 还能反向暴露产品问题：如果某类 request 经常升级成 incident，说明 onboarding、配额或文档能力不足；如果 field patch 工单过多，说明 release train 和 LTS 规则失控。
+
+```mermaid
+flowchart TB
+  Ticket["customer ticket"] --> Classify["support_ticket_taxonomy\ncategory + severity"]
+  Classify --> Evidence["diagnostic_bundle_sla\nfreeze and redact evidence"]
+  Evidence --> Incident["incident\nreliability evidence + mitigation"]
+  Evidence --> Change["change\nrelease train + upgrade rehearsal"]
+  Evidence --> Billing["billing dispute\nmetering replay + SLA credit"]
+  Evidence --> Security["security case\nsecurity evidence bundle"]
+  Incident --> Timeline["customer communication timeline"]
+  Change --> Timeline
+  Billing --> Timeline
+  Security --> Timeline
+  Timeline --> Review["postmortem / problem record\nproduct backlog"]
+  Review --> Policy["release / LTS / support policy update"]
+```
+
+这条流程把客户支持从“接单响应”变成生产控制面的一部分。分类决定谁响应和什么时钟启动，诊断包 SLA 决定哪些证据先冻结，后续分支再进入 incident、change、billing 或 security 流程。最后的 policy update 很重要：如果同类工单反复出现，问题不应只停留在客服知识库，而要反馈到 release、LTS、onboarding、计费或产品门禁。
+
 ## 40.6 upgrade
 
 Upgrade 是升级过程。AI Factory 升级难在版本矩阵：driver、CUDA、NCCL、cuDNN、OFED、kernel、Kubernetes、GPU Operator、container runtime、training framework、inference engine、model image 和 CNI/CSI 都有兼容关系。升级一个组件，可能影响整条训练或推理路径。
@@ -358,6 +419,39 @@ Upgrade 还要考虑长任务。训练任务可能运行数天甚至数周，不
 升级计划还要明确“谁被保护”。核心生产推理、长周期预训练、实验任务和空闲资源池的升级策略不应相同。越靠近业务承诺，越需要灰度、回滚和冗余；越靠近实验资源，越适合先暴露兼容问题。用资源等级安排升级顺序，比简单按节点编号滚动更可靠。
 
 对底层升级而言，最容易低估的是回滚成本。驱动、kernel、OFED 或 Kubernetes 组件回退后，节点状态、容器镜像、设备插件和缓存可能仍留有新版本痕迹。回滚演练必须验证业务路径，而不是只验证命令执行成功。
+
+升级还需要 `field_patch_governance`。Field patch 是对特定客户、特定资源池或特定事故窗口下发的紧急补丁，不是常规 release train。它的存在有合理场景，例如安全漏洞、阻断性 bug、私有化客户无法等待下一列车；但它也是长期运维最大的分叉来源。没有治理的 field patch 会让现场版本脱离 LTS 策略，后续升级、诊断和赔付都无法解释。因此补丁必须有准入条件、过期时间、客户审批、回归证据和合回 release train 的要求。
+
+```yaml
+field_patch_governance:
+  patch_id: fp-enterprise-a-runtime-20260620
+  eligibility:
+    allowed_reasons: [critical_security, sev1_blocker, data_loss_prevention]
+    disallowed_reasons: [feature_request, unvalidated_performance_tuning]
+  scope:
+    customers_or_pools: [enterprise-a-private]
+    components: [model_serving_runtime]
+    expires_at: policy_defined
+  required_approvals:
+    product_owner: required
+    sre_owner: required
+    security_owner: required_if_security_or_data_boundary
+    customer_approval: required_if_customer_environment
+  package:
+    delta_manifest: signed
+    rollback_bundle: included
+    compatibility_matrix_delta: attached
+  validation:
+    targeted_regression: pass
+    diagnostic_bundle_export: pass
+    offline_upgrade_rehearsal_update: required_if_private
+  merge_back:
+    release_train_target: next_eligible_train
+    lts_backport_decision: recorded
+    unsupported_after_expiry: true
+```
+
+Field patch 的关键控制点是“临时性”。它可以用于止血，但不能成为新基线的隐式来源。每个 patch 都应自动创建后续任务：合回主干、进入下一列 release train、更新 LTS backport 决策、刷新客户现场验收记录，或在到期前迁移到受支持版本。如果补丁无法合回，SRE 和商业团队必须看到持续支持成本，并把它计入 `commercial_pnl_ledger`。这能防止私有化交付被无数一次性补丁拖垮。
 
 ## 40.7 capacity operation
 

@@ -587,6 +587,46 @@ inference_runtime_diagnostic_bundle:
 
 诊断包还要保存“动作证据”。很多事故不是缺少指标，而是自动系统已经做了几次动作：Gateway 改过权重，canary 冻结过放量，runtime 关闭过 speculative decoding，autoscaler 扩过 decode pool。这些动作如果不进入 bundle，复盘会把事故看成静态状态，忽略控制面在过程中改变了现场。`endpoint_admission_decision` 和 `engine_canary_guardrail_action` 应按时间线写入，帮助 oncall 判断当前状态是原始故障，还是自动止血后的残留影响。
 
+面向客户支持时，还需要把诊断包服务化，形成 `diagnostic_bundle_sla`。它不是新的监控指标，而是支持体系对证据包的时限、范围、脱敏、导出边界和留存责任的承诺。高优事故如果等到多团队手工收集日志，SLA 时钟已经被浪费；但无边界导出完整 prompt、trace、节点拓扑和账单明细又会制造安全事故。因此诊断包 SLA 必须同时定义“多快能拿到证据”和“哪些证据不能未经审批离开边界”。
+
+```yaml
+diagnostic_bundle_sla:
+  policy_id: dbsla-ai-factory-prod
+  bundle_classes:
+    inference_runtime:
+      trigger: ttft_tpot_error_or_streaming_slo_breach
+      collection_deadline: severity_defined
+      required_refs:
+        - inference_runtime_diagnostic_bundle
+        - endpoint_admission_decision
+        - metering_events
+    training_failure:
+      trigger: job_failed_hang_or_checkpoint_restore_failure
+      required_refs:
+        - training_debug_bundle
+        - placement_commit_record
+        - collective_trace_record
+        - storage_evidence
+    private_delivery_support:
+      trigger: customer_ticket_sev1_or_upgrade_failure
+      required_refs:
+        - private_deployment_acceptance_record
+        - offline_upgrade_rehearsal
+        - release_train_record
+  redaction:
+    prompt_response: hashed_or_sampled_by_policy
+    tenant_identifiers: pseudonymized_for_external_export
+    secrets_and_tokens: forbidden
+    topology_detail: export_requires_approval
+  workflow:
+    support_ticket_link: required
+    customer_consent: required_for_external_export
+    retention: policy_defined
+    immutable_audit_event: required
+```
+
+诊断包 SLA 能把可观测性接入客户支持流程。Support ticket 创建后，系统应按 severity、产品线和部署形态选择 bundle class，自动冻结证据并生成脱敏版本；SRE 处理事故时使用完整内部证据，客户沟通使用经审批的摘要证据。若 bundle 缺少 `release_train_record`、`private_deployment_acceptance_record` 或 `offline_upgrade_rehearsal`，私有化事故就无法判断是产品缺陷、客户环境漂移还是升级包执行偏差。诊断包 SLA 因此既是排障能力，也是商业交付能力。
+
 ```mermaid
 flowchart LR
   Trigger["TTFT / TPOT / KV release / canary breach"] --> Bundle["inference_runtime_diagnostic_bundle"]

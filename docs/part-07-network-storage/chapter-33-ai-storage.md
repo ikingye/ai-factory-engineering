@@ -428,6 +428,45 @@ storage_security_boundary:
     break_glass_ttl: policy_defined
 ```
 
+私有化和离线环境还需要 `offline_upgrade_rehearsal`。很多 AI Factory 产品在公有云环境里升级顺利，到了客户现场却失败，原因不是单个镜像坏了，而是离线 registry、模型 artifact、RAG 索引、缓存、数据库迁移、证书、KMS、对象存储路径和 GPU runtime baseline 没有作为一个整体演练。离线升级不能把“包能导入”当作成功标准，必须证明导入后服务能启动、旧数据能读、新旧模型能回滚、缓存不会复用过期内容、诊断包能导出。
+
+```yaml
+offline_upgrade_rehearsal:
+  rehearsal_id: offline-upg-enterprise-a-202606
+  target_environment:
+    deployment: private_ai_factory
+    network_mode: offline_or_restricted_egress
+    registry: customer_offline_registry
+  package_integrity:
+    image_manifest: signed_and_digest_pinned
+    model_artifact_manifest: signed_and_digest_pinned
+    helm_or_kustomize_bundle: signed
+    sbom_and_vulnerability_report: included
+  storage_and_data_checks:
+    dataset_manifest_compatibility: pass_if_training_or_rag
+    model_artifact_provenance: pass
+    cache_invalidation_record_replay: pass
+    rag_index_migration: pass_if_rag
+    database_migration_dry_run: pass_if_stateful
+    backup_restore_point: verified_before_upgrade
+  runtime_checks:
+    compatibility_matrix: pass
+    gpu_container_runtime_report: pass
+    representative_inference_endpoint: pass
+    representative_training_or_finetuning_job: pass_if_supported
+  rollback_drill:
+    service_version_rollback: pass
+    artifact_pointer_rollback: pass
+    cache_rewarm_after_rollback: pass
+    data_migration_rollback_or_forward_fix: documented
+  support_evidence:
+    diagnostic_bundle_export: pass
+    redaction_policy: pass
+    customer_approval_record: attached
+```
+
+这个对象应归档到交付和 SRE 系统，而不是停留在项目群截图里。它回答三个关键问题：升级包是否完整可信，客户环境是否满足版本矩阵，失败时是否能回到可服务状态。对存储层来说，最重要的是 artifact 和 cache 的一致性：模型权重、tokenizer、chat template、RAG 索引和本地 NVMe cache 必须跟 release 指针一致；如果回滚只改控制面版本，却没有撤销旧 cache 或重新预热，就会出现“版本显示已回滚，实际仍加载旧权重或旧索引”的隐性故障。
+
 这个边界对象能防止很多“存储便利性”演变成安全事故。研究人员不应直接从生产 checkpoint 目录复制权重到个人路径；推理节点不应加载未签名 artifact；RAG 索引构建不应把受限文档写进共享缓存；事故排查不应把未脱敏 trace 导出到普通对象桶。存储安全边界不是阻碍效率，而是让高价值数据的访问、复制、删除和导出可审计、可撤销、可解释。
 
 存储边界还应包含 `secret_boundary_evidence`。AI Factory 中的 secret 不只是 API key，也包括 KMS key、registry token、provider credential、model artifact signing key、object storage STS token、BMC/Redfish 凭据和临时 break-glass token。它们经常跨越 CI/CD、训练任务、推理服务、节点初始化和事故排查路径。如果 secret 边界只靠运维习惯维护，就会在镜像、日志、Notebook、对象存储或 trace 中泄露。

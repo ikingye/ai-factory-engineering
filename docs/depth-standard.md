@@ -279,6 +279,13 @@
 | `commercial_readiness_matrix` | 第 42 章、第 44 章 | 说明 MaaS、算力租赁、私有化、推理服务和 Agent 平台上线前必须具备的商业工程能力 |
 | `sla_credit_model` / `sla_operation_record` / `sla_credit_replay` | 第 5 章、第 7 章、第 40 章、第 41 章、第 44 章 | 说明 SLA 如何从 SLI/SLO/SLA 边界、排除项、incident 证据、credit 计算和 invoice 动作形成可回放赔付链路 |
 | `private_deployment_acceptance_record` | 第 42 章、第 44 章 | 说明私有化交付如何验收离线包、版本矩阵、GPU runtime、RAG ACL、计量导出、升级回滚、诊断包和责任矩阵 |
+| `release_train_record` | 第 29 章、第 40 章、第 44 章 | 说明 OS、driver、OFED、container runtime、Toolkit、device plugin、base image 和验收脚本如何作为发布列车进入灰度、回滚和基线失效 |
+| `lts_support_policy` | 第 29 章、第 42 章、第 44 章 | 说明长期支持 baseline、EOL、backport、升级路径和客户通知如何约束版本分叉 |
+| `support_ticket_taxonomy` | 第 40 章、第 42 章、第 44 章 | 说明 incident、request、problem、change、billing dispute 和 security case 如何决定 owner、时钟、证据和升级路径 |
+| `diagnostic_bundle_sla` | 第 37 章、第 40 章、第 42 章、第 44 章 | 说明客户支持场景下诊断包的采集时限、脱敏、导出边界、客户同意和留存审计 |
+| `offline_upgrade_rehearsal` | 第 33 章、第 42 章、第 44 章 | 说明私有化或离线环境升级前如何演练镜像导入、artifact/cache、数据迁移、runtime smoke、回滚和诊断导出 |
+| `field_patch_governance` | 第 40 章、第 42 章、第 44 章 | 说明现场紧急补丁的适用条件、签名 delta、客户审批、过期时间、合回 release train 和支持成本归因 |
+| `private_delivery_lifecycle_contract` | 第 42 章、第 44 章 | 说明私有化客户从验收、支持、升级、补丁、EOL 到退出的长期产品责任 |
 | `commercial_pnl_ledger` | 第 41 章、第 42 章、第 44 章 | 说明 revenue、折扣、free quota、SLA credit、support cost、private delivery cost、reserved capacity 和各类成本账本如何形成商业 P&L |
 | `case_study_evidence_pack` | 第 43 章 | 说明公开事实、推断、假设、证据可信度、能力缺口、不可复用条件和可复用经验如何分层记录 |
 | `ai_factory_maturity_assessment` | 第 43 章、第 44 章 | 说明不同 AI Factory 类型如何按目标层、生产层、运营层和经济层做成熟度诊断 |
