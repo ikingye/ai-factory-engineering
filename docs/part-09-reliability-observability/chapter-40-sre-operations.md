@@ -418,6 +418,24 @@ flowchart TB
 
 质量事故也应消耗 error budget，但口径要独立于可用性。一个模型持续返回低质量答案，HTTP 可用性可能仍然达标，却已经伤害用户任务成功率和客户信任。SRE 可以为核心应用定义 quality SLO，例如任务成功率、引用正确率、工具轨迹成功率、人工接管率或投诉率，并把严重质量回归写入 `slo_budget_ledger`。这样模型质量会影响发布节奏和变更策略，而不是只影响离线评测报告。
 
+质量事故的控制回路应和技术事故同级。`quality_evidence_bundle` 冻结线上质量现场，`quality_gate_execution` 说明发布前门禁依据，`routing_quality_decision_record` 说明 Gateway 为什么选择某个模型，`serving_rollback_record` 说明如何止血，`quality_cost_ledger` 说明低质量 token 的经济影响。SRE 不能只问“是否 5xx”，而要问“用户任务是否成功，质量预算是否被消耗，是否需要冻结模型或路由变更”。
+
+```mermaid
+flowchart TB
+  QAlert["quality SLO / feedback spike"] --> QEvidence["quality_evidence_bundle"]
+  QEvidence --> QIncident["quality_incident_record"]
+  QEvidence --> QBudget["quality error budget"]
+  Gate["quality_gate_execution"] --> QIncident
+  Route["routing_quality_decision_record"] --> QIncident
+  QIncident --> Rollback["serving_rollback_record / route freeze"]
+  QIncident --> Cost["quality_cost_ledger"]
+  Cost --> Policy["release and routing policy"]
+  QBudget --> Policy
+  Policy --> PRR["production_readiness_review"]
+```
+
+这条回路让质量问题进入生产治理。若 canary 期间 citation failure 上升，系统应先冻结放量和收集 evidence bundle，再决定回滚 release、调整 Gateway 路由或打开 regression；若质量成本高于预期，路由 scorecard 应降低该模型在对应 task slice 的权重；若 quality gate execution 使用的评测集没有覆盖线上失败样本，评测集 lineage 和 regression record 必须更新。质量事故的结论必须改变门禁或路由，否则就会复发。
+
 第四类工程工作是建立运行例会的数据包。周报不应手工拼图，而应自动生成：本周 SLO、error budget、incident、变更、容量水位、成本异常、行动项状态和下周风险。SRE 会议讨论的是决策和风险，不是临时找数据。
 
 第五类工程工作是把 SRE 规则接入调度和发布。error budget 耗尽时限制高风险发布，资源池 degraded 时降低可调度等级，容量水位低时拒绝新增大任务承诺，成本异常时触发归因分析。规则只有进入控制面，才真正改变系统行为。

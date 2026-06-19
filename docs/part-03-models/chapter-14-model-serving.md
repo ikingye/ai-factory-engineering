@@ -386,6 +386,47 @@ flowchart LR
 
 `serving_quality_contract` 还应进入线上 trace。每个请求至少要能查到 contract id、release id、模型版本和 runtime profile。这样线上反馈进入第 1 章的 `quality_feedback_event` 后，评测平台可以知道应使用哪组 artifact 回放。若 contract id 缺失，线上请求与离线评测之间就断了，质量闭环只能停在“可能是新版本问题”。
 
+回滚也需要结构化记录。`serving_rollback_record` 描述一次回滚从触发到完成的全过程：触发信号是什么，回滚了权重、tokenizer、runtime、Gateway route 还是 batch 配置，哪些请求和租户受影响，旧版本容量是否足够，证据是否被保留，后续需要打开哪些 `quality_regression_record` 或 `runtime_quality_gate`。没有 record，团队只能知道“回滚了”，但不知道回滚是否恢复了质量、是否污染了实验、是否丢失了事故现场。
+
+```yaml
+serving_rollback_record:
+  rollback_id: srr-20260620-001
+  trigger:
+    source: canary_guardrail
+    linked_records:
+      engine_canary_record: engine-canary-20260620-001
+      quality_gate_execution: qge-af-chat-20260620-001
+      online_experiment_record: exp-support-model-20260619
+    reason: citation_failure_rate_increase
+  scope:
+    endpoint: af-chat-large-prod
+    from_release: af-chat-large-20260619-r3
+    to_release: af-chat-large-20260612-r9
+    tenants: [enterprise-a]
+    traffic_percent: measured
+  components_reverted:
+    weights: true
+    tokenizer: true
+    chat_template: true
+    runtime_image: false
+    engine_config: false
+    gateway_route: true
+  preservation:
+    request_samples_frozen: true
+    quality_telemetry_window: retained
+    runtime_diagnostic_bundle: retained_if_applicable
+  outcome:
+    rollback_started_at: recorded
+    rollback_completed_at: recorded
+    slo_recovered: true_or_false
+    quality_guardrail_recovered: true_or_false
+  follow_up:
+    open_quality_regression_records: [qrr-20260620-0012]
+    block_release_until_gate_passes: true
+```
+
+这个记录能避免两类事故。第一类是“半回滚”：只回滚权重，没有回滚 tokenizer 或 chat template，线上行为仍然不同；第二类是“证据清空”：回滚删掉了新版本副本和日志，导致后续无法解释质量退化。生产回滚既要快，也要保留足够证据。对高价值模型，回滚记录应进入 PRR 和 SRE 复盘，证明同类问题在下一次 release gate 中被覆盖。
+
 模型服务还应向 Gateway 暴露 `engine_admission_health`。这是 endpoint 级健康摘要，生成方通常是 model server 或 serving control plane，消费方是 AI Gateway、autoscaler 和 SRE。它把内部 queue、active sequence、KV block、deadline miss、drain、canary freeze 等状态压缩成可路由信号，避免 Gateway 把流量送到端口正常但 runtime 已经不可承诺 SLO 的副本组。
 
 ```yaml

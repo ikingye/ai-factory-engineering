@@ -467,9 +467,16 @@ production_readiness_review:
       reliability_evidence_bundle_trigger: configured
       inference_runtime_diagnostic_bundle: configured
       token_metering_reconciliation: pass
+    quality:
+      quality_gate_execution: qge-af-chat-20260620-001
+      eval_dataset_lineage_record: edl-support-quality-20260620
+      routing_quality_scorecard: rqs-20260619-support
+      serving_rollback_record_template: ready
+      quality_evidence_bundle_trigger: configured
     sre_and_economics:
       slo_budget_ledger: initialized
       reliability_cost_ledger: initialized
+      quality_cost_ledger: initialized
       owner_for_error_budget_burn: assigned
   decision_logic:
     block_if:
@@ -478,12 +485,15 @@ production_readiness_review:
       - no_rollback_path
       - no_metering_reconciliation
       - no_incident_owner_or_runbook
+      - no_valid_quality_gate_execution
+      - no_eval_dataset_lineage_for_required_task_slices
+      - no_quality_rollback_or_freeze_path
     conditional_approve_if:
       - limited_capacity_with_explicit_canary_scope
       - noncritical_observability_gap_with_due_date
 ```
 
-这份门禁会迫使上线讨论从“服务能不能访问”转为“证据是否足以承受生产风险”。例如资源池有 GPU，但 `baseline_invalidation_record` 仍然 open，就只能批准单节点低风险 canary，不能批准 premium inference；模型质量门禁通过，但 token 计量未对账，就不能进入商业化计费；容量激活记录显示 cooling_limited，就不能承诺持续满载训练。PRR 的价值在于把这些限制提前暴露，而不是等事故后再解释。
+这份门禁会迫使上线讨论从“服务能不能访问”转为“证据是否足以承受生产风险”。例如资源池有 GPU，但 `baseline_invalidation_record` 仍然 open，就只能批准单节点低风险 canary，不能批准 premium inference；模型质量门禁通过，但评测集没有 lineage 或没有覆盖目标 task slice，就不能进入高价值租户；token 计量未对账，就不能进入商业化计费；容量激活记录显示 cooling_limited，就不能承诺持续满载训练。PRR 的价值在于把这些限制提前暴露，而不是等事故后再解释。
 
 从验收到上线的流水线可以用下面的图表示：
 

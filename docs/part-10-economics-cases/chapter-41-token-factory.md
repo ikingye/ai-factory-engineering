@@ -571,6 +571,11 @@ quality_cost_ledger:
     model_version: af-chat-large-202606
     task_slice: rag_citation
     serving_quality_contract: sqc-af-chat-20260619-r3
+  evidence:
+    quality_evidence_bundle: qeb-20260620-support-001
+    quality_gate_execution: qge-af-chat-20260620-001
+    routing_quality_decision_records: sampled
+    serving_rollback_records: [srr-20260620-001]
   production:
     billable_tokens: measured
     low_quality_tokens: estimated_from_feedback_and_eval
@@ -611,6 +616,8 @@ cost_per_successful_answer =
 ```
 
 这个口径会改变模型路由和定价。一个小模型的 base cost/token 低，但如果导致更多追问和人工接管，`cost_per_successful_answer` 可能高于大模型；一个强模型输出更长，base cost/token 高，但如果提高一次解决率，质量调整后的单位成功成本可能更低。Token Factory 的目标不是最低 token 成本，而是在质量和 SLO 约束下的最低成功任务成本。
+
+质量成本账本还应能反向更新路由和发布策略。若 `routing_quality_decision_record` 显示某个 task slice 被频繁路由到便宜模型，但 `quality_cost_ledger` 显示人工接管和投诉成本上升，Gateway scorecard 应降低该模型在该切片的权重；若 `serving_rollback_record` 显示一次质量回滚避免了持续低质量损失，预留 canary 容量和回滚演练就有经济依据；若某次 `quality_gate_execution` 的 prevention cost 很高但几乎没有线上质量损失，团队可以评审门禁是否过度。质量经济模型的作用不是惩罚模型团队，而是让质量投入、路由策略和商业结果在同一张表里对齐。
 
 ```mermaid
 flowchart LR

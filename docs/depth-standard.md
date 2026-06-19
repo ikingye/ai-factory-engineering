@@ -191,13 +191,18 @@
 | 知识点 | 主要章节 | 覆盖要求 |
 | --- | --- | --- |
 | `eval_dataset_manifest` | 第 13 章、第 2 章、第 3 章 | 说明评测数据来源、任务切片、证据、权限、版本、盲测和污染控制 |
+| `eval_dataset_lineage_record` | 第 13 章、第 44 章 | 说明评测数据集版本实际如何生成、脱敏、标注、去重、切片、排除训练污染，并解释分数变化来自模型还是评测口径 |
 | `quality_gate_record` | 第 13 章、第 14 章、第 40 章 | 说明模型、prompt、RAG、工具、runtime、成本和安全指标如何组成上线门禁 |
+| `quality_gate_execution` | 第 13 章、第 6 章、第 14 章、第 40 章、第 44 章 | 说明某次门禁执行的输入、环境、数据 lineage、judge/rubric、结果、豁免和发布动作，避免只保存静态 pass/fail |
 | `online_experiment_record` | 第 6 章、第 13 章、第 14 章 | 说明 A/B、canary、流量切分、护栏指标、统计窗口、回滚和影响范围 |
 | `quality_feedback_event` | 第 1 章、第 2 章、第 3 章、第 37 章 | 说明用户反馈、人工接管、引用错误、工具失败和投诉如何进入质量事实层 |
 | `quality_regression_record` | 第 13 章、第 37 章、第 40 章 | 说明线上事故和评测失败如何沉淀为回归样本、owner、修复策略和复测状态 |
 | `serving_quality_contract` | 第 14 章、第 15 章 | 说明 serving release 中 weights、tokenizer、template、engine、参数和质量门禁的绑定关系 |
+| `serving_rollback_record` | 第 14 章、第 40 章、第 44 章 | 说明一次质量或 runtime 回滚到底回滚了权重、tokenizer、template、engine、Gateway 路由还是配置，并保留事故证据 |
 | `routing_quality_scorecard` | 第 6 章、第 13 章 | 说明 Gateway 如何把质量、安全、成本、延迟和能力用于模型路由，而不是只看健康 |
-| `quality_cost_ledger` | 第 41 章 | 说明低质量 token、人工接管、退款、重试、投诉和质量评测成本如何影响毛利 |
+| `routing_quality_decision_record` | 第 6 章、第 37 章、第 41 章 | 说明某个请求或流量切片为什么选择、拒绝或 fallback 到某个模型，并能回放质量、SLO、成本、能力和数据边界依据 |
+| `quality_evidence_bundle` | 第 37 章、第 40 章、第 41 章 | 说明质量事故时如何冻结反馈、路由、serving contract、gate execution、评测 lineage、回滚和成本证据 |
+| `quality_cost_ledger` | 第 41 章 | 说明低质量 token、人工接管、退款、重试、投诉、评测成本、路由决策和回滚收益如何影响毛利 |
 
 ## 行业案例与建设方法链路覆盖矩阵
 

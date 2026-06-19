@@ -107,6 +107,40 @@ eval_dataset_manifest:
     exclude_from_training: true
 ```
 
+评测数据还需要 `eval_dataset_lineage_record`。Manifest 描述数据集应该是什么，lineage record 记录这次数据集版本实际如何生成、从哪些线上反馈或回归样本吸收、经过哪些脱敏和标注、是否进入训练排除列表、judge 或 rubric 是否变化。没有 lineage，团队看到评测分数变化时，无法区分是模型变了，还是评测集、评审规则或样本构成变了。
+
+```yaml
+eval_dataset_lineage_record:
+  lineage_id: edl-support-quality-20260620
+  dataset_id: support-quality-202606
+  version: v20260620
+  inputs:
+    curated_cases: object://eval/support/curated@sha256:example
+    quality_feedback_events: [qfe-20260619-0001, qfe-20260619-0042]
+    quality_regression_records: [qrr-20260619-0007]
+    red_team_cases: [rt-support-202606]
+  transformations:
+    pii_redaction: policy-v4
+    deduplication: semantic-dedup-v2
+    task_slice_assignment: rubric-support-v5
+    holdout_split: deterministic_seed_recorded
+  contamination_control:
+    exclude_from_training_registry: recorded
+    overlap_check_against_sft_data: pass
+    overlap_check_against_public_benchmarks: reviewed
+  judge_and_rubric:
+    rubric_version: support-rubric-v5
+    judge_model_version: judge-202606
+    human_audit_sample_rate: policy_defined
+  diff_from_previous:
+    added_cases: measured
+    removed_cases: measured
+    changed_labels: measured
+    changed_task_slice_distribution: measured
+```
+
+这个 record 的价值是让评测分数可解释。若候选模型在 RAG citation 上下降，同时 lineage 显示该版本新增了大量高风险投诉样本，下降未必是模型退化；若 judge model 升级后所有模型分数一起变化，问题可能是评审口径；若 overlap check 失败，门禁分数不应进入发布决策。评测数据在 AI Factory 中是生产控制面的一部分，必须像模型和镜像一样有 lineage。
+
 `quality_gate_record` 是把评测结果转成发布决策的对象。它应记录候选、基线、门禁维度、阈值、通过或失败、豁免、owner、审批和后续动作。门禁不应只说 pass/fail，还要表达“在哪些任务切片通过，哪些指标观察，哪些风险被接受”。这样第 14 章的 serving release、第 6 章的 Gateway 路由和第 40 章的 SRE 变更管理才能消费同一事实。
 
 ```yaml
@@ -136,6 +170,41 @@ quality_gate_record:
     approved_by: release_owner
     expiry: next_major_release
 ```
+
+门禁配置还要落成 `quality_gate_execution`。同一条 gate 可能在不同时间、不同 runtime、不同评测数据版本、不同 judge 版本下执行；只保存最终 pass/fail 会丢掉决策证据。Execution 记录这次运行的输入、环境、结果、豁免和后续发布动作，是 PRR、serving release 和 SRE 质量事故复盘共同引用的事实。
+
+```yaml
+quality_gate_execution:
+  execution_id: qge-af-chat-20260620-001
+  gate_id: qg-af-chat-20260619
+  candidate:
+    model_version: af-chat-large-202606
+    serving_quality_contract: sqc-af-chat-20260619-r3
+    runtime_quality_gate: rqg-vllm-20260620
+  datasets:
+    - dataset_id: support-quality-202606
+      lineage: edl-support-quality-20260620
+  execution_environment:
+    runner_image: eval-runner@sha256:example
+    decoding_profile: deterministic_eval
+    judge_model_version: judge-202606
+  results:
+    hard_gates: pass
+    soft_gates: review_required
+    regressions_opened: [qrr-20260620-0012]
+    token_count_drift: explained
+    cost_per_successful_answer: within_or_review
+  waivers:
+    - metric: output_length_delta
+      reason: expected_more_complete_answer
+      expires_at: next_gate_execution
+      approver: model-release-owner
+  decision:
+    action: approve_canary
+    canary_scope: internal_and_low_risk_tenants
+```
+
+这份 execution 让质量门禁可以审计和复用。Gateway 的 `routing_quality_scorecard` 可以引用最近一次通过的 execution；第 14 章的 `serving_quality_contract` 可以证明上线组合与评测组合一致；第 40 章的 quality incident 可以检查当初是否有豁免或未关闭回归；第 41 章可以把评测成本和低质量损失放进质量账本。门禁不是静态清单，而是一条可追溯的发布证据链。
 
 `quality_regression_record` 是失败样本从发现到关闭的状态机。它要记录发现来源、复现条件、影响范围、归因层级、owner、修复方案、复测结果和是否加入门禁。没有 regression record，线上反馈很容易被临时修掉，却不能防止复发；有了它，质量事故会沉淀成长期资产。
 

@@ -420,6 +420,41 @@ flowchart LR
   Route --> PDR["policy_decision_record"]
 ```
 
+在高价值场景中，还应生成 `routing_quality_decision_record`。它比普通 `policy_decision_record` 更关注质量和业务结果：请求被识别成哪个 task slice，哪些候选模型被排除，最终模型为什么在质量、SLO、成本、数据边界和 capability 约束下胜出，fallback 是否仍满足同一质量门槛。没有这个记录，线上出现“为什么这个客户被路由到小模型”的争议时，团队只能查路由代码和当时的配置快照。
+
+```yaml
+routing_quality_decision_record:
+  decision_id: rqd-20260620-0001
+  trace_id: trace-abc
+  request_features:
+    tenant: enterprise-a
+    application: support-chat
+    task_slice: policy_lookup
+    risk_level: medium
+    required_capabilities: [streaming, tool_calling, citation]
+    data_boundary: first_party_only
+  scorecard:
+    scorecard_id: rqs-20260619-support
+    quality_gate_execution: qge-af-chat-20260620-001
+    quality_cost_ledger_window: qcost-20260620-1000
+  candidates:
+    - model: af-chat-large-202606
+      decision: selected
+      reason: best_quality_under_slo_and_budget
+    - model: af-chat-small-202606
+      decision: rejected
+      reason: citation_accuracy_below_task_threshold
+    - model: third_party-model-x
+      decision: rejected
+      reason: data_boundary_not_allowed
+  fallback_policy:
+    allowed: true
+    require_same_capabilities: true
+    require_quality_gate: true
+```
+
+这个记录不应包含原始 prompt，但应包含足够回放路由决策的引用。它能连接四类事后分析：质量投诉时查 task slice 和候选模型；账单争议时查为什么选了更贵模型；SLO 事故时查是否因健康状态临时降级；安全审计时查第三方 provider 为何被排除。质量路由一旦进入结构化记录，Gateway 就不只是流量入口，而是模型能力与业务价值之间的决策执行点。
+
 AI Gateway 还要承载 `online_experiment_record`。A/B 和 canary 不是简单按比例分流，而是一个带假设、样本、随机化单元、护栏指标、统计窗口、停止条件和回滚动作的实验对象。模型上线实验尤其要防止污染：同一用户多轮会话不能在不同模型之间来回切换，Agent run 中途不能切模型，RAG 索引实验不能让同一个请求同时混用多个索引版本。实验记录必须能说明谁进入了实验、为什么进入、观察了哪些指标、何时停止。
 
 ```yaml

@@ -28,6 +28,7 @@ flowchart TB
 
   subgraph Evidence["证据与治理"]
     Baseline["acceptance_baseline\n准入与验收"]
+    Quality["quality_evidence_bundle\n质量证据包"]
     Telemetry["telemetry_event\n观测事实"]
     Incident["incident_record\n故障复盘"]
     Ledger["Token Factory ledger\n成本与价值"]
@@ -44,6 +45,9 @@ flowchart TB
   Physical --> Baseline --> Pool
   Pool --> Telemetry
   Runtime --> Telemetry
+  Req --> Quality
+  Quality --> Incident
+  Quality --> Ledger
   Req --> Ledger
   Train --> Ledger
   Telemetry --> Incident --> BP
@@ -80,7 +84,11 @@ flowchart TB
 | `production_readiness_review` | 聚合资源、模型、平台、安全、SRE 和经济证据，决定是否上线。 | 第 44 章 | `online_experiment_record`、`incident_record` |
 | `tenant_boundary` | 定义租户在身份、数据、模型、资源和账单中的边界。 | 第 5、6、27 章 | `policy_decision_record`、`security_audit_event` |
 | `policy_decision_record` | 让 Gateway 的 allow/deny/route/fallback 可回放。 | 第 6 章 | `api_key_audit_event`、`routing_quality_scorecard` |
+| `routing_quality_decision_record` | 让一次模型路由选择能按质量、SLO、成本、能力和数据边界回放。 | 第 6 章 | `quality_evidence_bundle`、`quality_cost_ledger` |
+| `eval_dataset_lineage_record` | 记录评测数据版本如何生成、清洗、标注、切片、排污和变更。 | 第 13 章 | `quality_gate_execution`、`production_readiness_review` |
+| `quality_gate_execution` | 记录一次质量门禁执行的输入、环境、结果、豁免和发布动作。 | 第 13、44 章 | `routing_quality_decision_record`、`serving_rollback_record` |
 | `serving_quality_contract` | 把 weights、tokenizer、template、engine 和质量门禁绑定。 | 第 14 章 | `runtime_quality_gate`、`quality_regression_record` |
+| `serving_rollback_record` | 记录一次回滚触发、范围、组件、证据保留、恢复结果和后续门禁。 | 第 14、40 章 | `quality_regression_record`、`production_readiness_review` |
 | `runtime_quality_gate` | 防止推理引擎优化破坏质量、协议或成本。 | 第 15 章 | `serving_quality_contract`、`benchmark_matrix` |
 | `engine_admission_health` | 让 Gateway 知道 endpoint 是否还能按 SLO 接收请求。 | 第 6、14、15、37、39 章 | `engine_canary_record`、`incident_record` |
 | `kv_block_ledger` | 把 KV block 分配、释放、prefix cache、租户和泄漏成本串起来。 | 第 1、14、15、37、39、41 章 | `Token Factory ledger`、`runtime_quality_gate` |
@@ -109,6 +117,7 @@ flowchart TB
 | `acceptance_baseline` | 证明资源进入生产池前通过准入，并可用于后续异常对比。 | 第 38 章 | `production_readiness_review`、`baseline_invalidation_policy` |
 | `baseline_invalidation_record` | 记录某次变更、维修或事故让哪些 baseline 失效，资源池如何降级以及如何复测恢复。 | 第 38、44 章 | `change_safety_case`、`capacity_activation_record`、`production_readiness_review` |
 | `reliability_evidence_bundle` | 在事故触发时冻结跨层证据，避免 Pod、端口计数、日志和缓存状态消失后无法复盘。 | 第 37、39 章 | `incident_record`、`slo_budget_ledger`、`reliability_cost_ledger` |
+| `quality_evidence_bundle` | 在质量退化触发时冻结反馈、路由、门禁、serving、评测 lineage、回滚和影响证据。 | 第 37、40 章 | `quality_cost_ledger`、`incident_record`、`production_readiness_review` |
 | `incident_record` | 记录事故时间线、影响面、根因证据、止血动作和行动项。 | 第 39、40 章 | `slo_budget_ledger`、`reliability_cost` |
 | `capacity_activation_record` | 把 planned、installed、accepted、allocatable 和 workload-fit 产能及受限原因写成投产事实。 | 第 36、40、41 章 | `capacity_activation_review`、`reliability_cost_ledger` |
 | `reliability_cost_ledger` | 把事故、SLO 预算、基线失效、容量延迟和预防成本折算进成功 token 成本。 | 第 41 章 | `Token Factory ledger`、`production_readiness_review` |
@@ -121,6 +130,10 @@ flowchart TB
 | Chat 首 token 慢 | 第 1、6、14、15 章 | request trace、routing decision、engine_admission_health、prefill time、KV cache pressure | 分离 Gateway 排队、serving 队列、prefill 资源、KV block 和 runtime admission。 |
 | TPOT 变慢或 streaming 断续 | 第 1、14、15、37、39 章 | decode batch、active sequence、kv_block_ledger、engine_canary_record、inference_runtime_diagnostic_bundle | 区分 decode 拥塞、KV block 压力、engine 变更、PD transfer、网关背压和客户端取消。 |
 | output token 便宜但用户不满意 | 第 1、13、14、41 章 | quality_feedback_event、quality_regression_record、quality_cost_ledger | 用 cost per successful answer 替代原始 cost/token 做决策。 |
+| 模型上线后质量退化 | 第 6、13、14、37、40、41 章 | quality_gate_execution、eval_dataset_lineage_record、serving_quality_contract、quality_evidence_bundle、quality_cost_ledger | 先冻结质量证据，再判断是评测覆盖不足、serving 组合漂移、路由策略变化、RAG/Agent 依赖变化还是模型本身退化。 |
+| A/B 结果争议 | 第 6、13、14、37、40 章 | online_experiment_record、routing_quality_decision_record、quality_gate_execution、task slice、randomization unit | 检查随机化单元、样本污染、会话粘性、护栏指标、统计窗口和是否混入 fallback 流量。 |
+| 便宜模型导致人工接管上升 | 第 6、7、13、37、41 章 | routing_quality_decision_record、routing_quality_scorecard、quality_feedback_event、quality_cost_ledger | 按 task slice 计算 cost per successful answer，必要时调整路由权重、capability gate 或商业定价。 |
+| 回滚后仍未恢复质量 | 第 14、37、39、40、44 章 | serving_rollback_record、serving_quality_contract、quality_evidence_bundle、release diff、Gateway route | 检查是否只回滚权重但未回滚 tokenizer、template、engine config、RAG 索引、tool policy 或 Gateway route。 |
 | RAG 答案引用错 | 第 2、4、13、37 章 | eval_dataset_manifest、rag_regression_case、permission test、retrieval trace | 分解为文档权限、chunk、rerank、context 拼接和生成忠实性问题。 |
 | Agent 任务成本失控 | 第 3、7、42、41 章 | agent_trajectory_record、tool cost、retry reason、task budget | 加最大步数、预算、人工接管和任务级计费。 |
 | 训练任务长期 pending | 第 20、23、24、28 章 | pending reason、job_admission_event、queue_fairness_ledger、quota、gang、topology | 区分配额不足、拓扑不可满足、借用策略、镜像/数据预检失败和资源池状态问题。 |
@@ -149,7 +162,8 @@ flowchart TB
 | 存储数据链路 | 第 10、14、20、33、37、38、39、41 章 | 能从 GPU idle、checkpoint 慢、冷启动慢追到 storage intent、dataset manifest、checkpoint commit、artifact distribution、cache residency、backend telemetry 和成本。 |
 | 可靠性链路 | 第 28、29、36、37、38、39、40、41、44 章 | 能把 health、maintenance、baseline invalidation、change、fault domain、evidence bundle、incident、error budget、capacity activation、PRR 和经济损失串起来。 |
 | 安全多租户链路 | 第 5、6、7、21、22、27、28、37、40、41 章 | 能解释租户边界、策略决策、runtime privilege、GPU 隔离、审计和成本隔离。 |
-| 行业建设链路 | 第 4、42、43、44 章 | 能把应用想法转成 profile、商业模式、案例诊断、建设计划、ADR 和 PRR。 |
+| 质量与发布链路 | 第 6、13、14、37、40、41、44 章 | 能从线上质量退化追到 eval dataset lineage、quality gate execution、routing decision、serving contract、evidence bundle、rollback record、quality cost ledger 和 PRR。 |
+| 行业建设链路 | 第 4、42、43、44 章 | 能把应用想法转成 profile、商业模式、案例诊断、建设计划、ADR、质量门禁和 PRR。 |
 
 ## 使用方法
 

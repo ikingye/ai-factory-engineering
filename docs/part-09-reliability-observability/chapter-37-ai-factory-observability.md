@@ -432,6 +432,35 @@ flowchart LR
 
 质量 dashboard 不应只展示平均满意度。它应按 task slice、租户、模型版本、prompt 模板、RAG 索引、Agent 工具、Gateway 路由、experiment variant 和 release contract 切分，展示点踩率、人工接管率、重新生成率、引用失败率、工具失败率、误拒/漏拒、安全拦截、质量回归重开和低质量 token 成本。只有这样，团队才能判断质量问题是模型、RAG、Agent、Gateway 还是 runtime 引入的。
 
+严重质量退化也应冻结证据，形成 `quality_evidence_bundle`。质量事故的现场比延迟事故更容易丢：用户点踩原因可能在前端，客服投诉在 CRM，RAG 检索证据在短期日志，Agent tool trace 在业务库，Gateway 路由 scorecard 会随配置变化。Bundle 应把这些证据在同一时间窗口冻结，供第 40 章的 quality incident 和第 41 章的 quality cost ledger 使用。
+
+```yaml
+quality_evidence_bundle:
+  bundle_id: qeb-20260620-support-001
+  trigger:
+    source: quality_slo_alert_or_feedback_spike
+    symptom: citation_failure_rate_increase
+  scope:
+    tenant: enterprise-a
+    application: support-chat
+    task_slice: rag_citation
+    experiment_id: exp-support-model-20260619
+  evidence_refs:
+    quality_telemetry_events: sampled
+    routing_quality_decision_records: sampled
+    serving_quality_contract: sqc-af-chat-20260619-r3
+    quality_gate_execution: qge-af-chat-20260620-001
+    eval_dataset_lineage_record: edl-support-quality-20260620
+    serving_rollback_record: optional
+  impact:
+    low_quality_tokens: estimated
+    human_handoff_delta: measured
+    complaints: measured
+    quality_cost_estimate: calculated
+```
+
+这个 bundle 能把“用户说不好”变成可复盘的工程证据。SRE 可以判断是否要冻结 canary，评测团队可以把样本加入 regression，Gateway 团队可以检查路由是否误选小模型，模型服务团队可以检查 serving contract 是否和 gate execution 一致，商业团队可以看到低质量 token 的成本。质量观测不是满意度看板，而是质量控制面的输入。
+
 ## 工程实现
 
 工程实现的第一步是统一标签规范。所有采集系统都应使用同一套实体标识：tenant、project、model、model_version、endpoint、job、rank、pod、node、gpu_uuid、nic、rack、rail、storage_path、power_domain 和 cooling_domain。标签不统一，后续 dashboard、告警、trace 和成本归因都会变成手工拼接。
