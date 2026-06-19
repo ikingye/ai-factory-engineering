@@ -465,6 +465,39 @@ training_storage_cost =
 
 这能防止一个常见误判：训练贵不一定是模型计算贵，也可能是数据格式、checkpoint 策略或 artifact 生命周期让 GPU 等存储。把存储浪费显式写入 ledger，平台才会投资 reshard、cache、manifest、预热和清理自动化。
 
+更完整的 `storage_cost_ledger` 应把训练和推理共同使用的数据路径纳入同一口径。它不是存储账单的复制，而是把存储行为转成 GPU 时间、ready 时间、失败恢复和长期保留成本。
+
+```yaml
+storage_cost_ledger:
+  window: 2026-06-20T10:00Z/2026-06-20T11:00Z
+  scope:
+    tenant: foundation-model-team
+    resource_pool: training-prod-h100
+    workloads: [train-20260620-017, endpoint-af-chat-large-prod]
+  evidence:
+    dataset_manifest: dataset-manifest@sha256:example
+    checkpoint_commit_record: ckpt-step-120000
+    model_artifact_distribution: af-chat-large-20260619-r3
+    cache_residency: cache-residency-rack-11
+    storage_evidence: storage-ev-20260620-017
+  cost_components:
+    dataset_read_backend_cost: calculated
+    dataset_cache_prewarm_cost: calculated
+    checkpoint_write_and_restore_cost: calculated
+    checkpoint_gpu_idle_cost: calculated
+    artifact_distribution_cost: calculated
+    model_cold_start_capacity_cost: calculated
+    orphan_artifact_retention_cost: calculated
+    local_nvme_reserved_capacity_cost: calculated
+  outputs:
+    storage_cost_per_training_token: calculated
+    storage_cost_per_delivered_token: calculated_if_serving
+    storage_waste_gpu_hours: calculated
+    cleanup_savings_candidate: calculated
+```
+
+这份 ledger 能回答“为什么应该投入存储工程”。如果 checkpoint pause 造成大量 GPU idle，优化两阶段提交、分片格式或 checkpoint 窗口可能比增加 GPU 更划算；如果模型冷启动导致扩容慢，权重预热和 cache residency 可能直接改善毛利；如果 orphan artifact 和过期 checkpoint 占用高性能路径，清理自动化本身就是降本项目。存储成本的关键不是每 TB 多少钱，而是它如何改变有效 token 和有效训练 step。
+
 可靠性成本也应进入经济模型。一次 SLO 违约可能产生赔付、退款、客户支持成本、失败 token、重试 token、GPU 空转、机会成本和后续加固投入；一次训练 incident 可能造成 checkpoint 回滚、队列重排、重复训练和模型发布时间延迟。示例：
 
 ```text

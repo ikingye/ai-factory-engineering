@@ -185,6 +185,40 @@ storage_acceptance_matrix:
 
 矩阵的目标是避免“存储通过”这种粗糙结论。一个存储池可以适合训练数据读取，但不适合高峰模型冷启动；可以适合单 job checkpoint，但不适合多个大任务同时 checkpoint。准入结果应表达适用 workload，而不是只给一个 pass/fail。
 
+高优训练池和推理池还应增加组合门禁。单独 dataset read、单独 checkpoint、单独 NCCL、单独 model load 都通过，不代表它们在同一时间窗口内不会相互干扰。典型门禁应同时运行数据读取、checkpoint 写入、NCCL 通信和模型 artifact 拉取，观察 exposed GPU idle、metadata tail、对象存储限流、cache miss 风暴和网络重叠。
+
+```yaml
+storage_composite_regression_gate:
+  gate_id: storage-composite-training-prod-20260620
+  scope:
+    resource_pool: training-prod-h100
+    racks: [rack-11, rack-12]
+  concurrent_workloads:
+    dataset_read:
+      manifest: dataset-manifest@sha256:example
+      readers: multi_rank
+    checkpoint_write:
+      protocol: two_phase_manifest_commit
+      ranks: 512
+    nccl:
+      operation: all_reduce
+      topology: same_fabric
+    artifact_load:
+      release: af-chat-large-20260619-r3
+      cache_state: forced_miss
+  pass_conditions:
+    data_loader_wait_regression: within_baseline
+    checkpoint_commit_record: complete
+    nccl_bandwidth_regression: within_baseline
+    cache_miss_burst: bounded
+    storage_evidence_emitted: true
+  schedulable_result:
+    checkpoint_heavy_training: pass_or_limited
+    inference_scaleout_during_training: pass_or_limited
+```
+
+这个门禁的价值是暴露“单项都好，组合变坏”的情况。AI Factory 中存储、网络和 GPU 通常共享故障域；checkpoint 与 NCCL 重叠、权重加载与对象存储限流、数据预热与训练通信叠加，都可能让生产任务退化。准入矩阵应把组合门禁结果写入资源池能力，而不是只保存测试报告。
+
 物理设施也需要独立准入矩阵。GPU burn-in、NCCL 和存储都通过，并不代表 rack 可以长期满载运行；BMC 不可达、PDU 冗余异常、液冷流量不足或线缆映射缺失，都会让资源不适合进入生产池。
 
 ```yaml

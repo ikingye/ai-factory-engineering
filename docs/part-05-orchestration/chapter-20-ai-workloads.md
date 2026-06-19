@@ -229,6 +229,48 @@ workload:
 
 此外，平台应把 workload spec 版本化。策略变化后，旧任务可以按旧语义解释，新任务使用新模板，审计时能知道一次调度决策依据的是哪一版规则。
 
+AI workload spec 还应显式声明 storage intent。训练、推理、评测和数据处理虽然都可能运行在容器里，但它们的数据路径完全不同：训练需要 dataset manifest、data loader 热路径和 checkpoint；推理需要 model artifact、权重 cache 和 rollback artifact；评测需要冻结的评测数据和输出归档；数据处理需要输入、输出、shuffle 和中间结果。若这些需求只写在脚本里，调度器无法做预热，准入系统无法验证路径，成本系统也无法归因。
+
+```yaml
+workload_storage_intent:
+  workload_id: train-20260620-017
+  type: distributed_training
+  dataset:
+    manifest: dataset-manifest@sha256:example
+    cache_policy: prewarm_before_first_step
+    data_loader_slo: no_gpu_wait_after_warmup
+  checkpoint:
+    policy: sharded_two_phase_commit
+    interval_steps: 1000
+    retention: last_5_best_milestone
+    restore_required: true
+  scratch:
+    local_nvme_gb: requested
+    cleanup: required_on_completion
+  observability:
+    emit_data_path_evidence: true
+    chargeback_tags: [tenant, project, dataset, checkpoint_policy]
+```
+
+对在线推理，storage intent 会换成 artifact 和 cache 语义：
+
+```yaml
+workload_storage_intent:
+  workload_id: endpoint-af-chat-large-prod
+  type: online_inference
+  artifact:
+    distribution: model_artifact_distribution
+    cache_residency_required: true_for_premium_pool
+    warmup_probe: required
+  rollback:
+    previous_release_cache: keep_hot_during_canary
+  observability:
+    emit_model_load_time: true
+    emit_cache_miss_event: true
+```
+
+有了 storage intent，平台才能在 admission 阶段检查数据权限、manifest 完整性、checkpoint 路径、cache 空间和 artifact 可用性；在调度阶段优先选择已预热节点；在故障阶段从 workload 直接找到 `storage_evidence`；在经济模型中计算 cache miss、checkpoint 和孤儿 artifact 成本。AI workload 与普通微服务的差异，很大一部分就体现在这些数据路径语义上。
+
 最后，workload spec 应和权限系统联动。不同租户能提交哪些 workload、能使用哪些资源池、是否允许高优先级、是否允许可抢占，都应由策略控制。这样平台既能提供自助能力，也能避免用户通过错误类型绕过资源治理。
 
 ## 常见故障

@@ -75,6 +75,25 @@ flowchart LR
 
 这条链路的关键是 manifest。路径只是位置，manifest 才是契约：它说明哪些 shard、哪些对象、哪些 checkpoint 分片、哪个模型权重 digest、哪个 tokenizer、哪些 checksum 和生命周期策略构成一次可复现的数据访问。路径可以迁移，manifest 不应丢失。AI Factory 应尽量让训练、评测和服务都引用 manifest，而不是让脚本自由扫描目录。
 
+可以把 AI 存储理解成四类生产路径的组合，而不是一个统一文件系统。Dataset path 负责持续供给训练样本；checkpoint path 负责保存和恢复训练状态；artifact path 负责发布模型和扩容副本；cache path 负责把热数据靠近 GPU。每条路径都有不同 owner、指标、失败语义和成本口径。
+
+```mermaid
+flowchart TB
+  Intent["workload_storage_intent"] --> Dataset["dataset_manifest\nshards / lineage / permissions"]
+  Intent --> Ckpt["checkpoint_manifest\ncommit / restore / retention"]
+  Intent --> Artifact["model_artifact_distribution\ndigest / rollout / rollback"]
+  Intent --> Cache["cache_residency\nnode / rack / pool state"]
+  Dataset --> Evidence["storage_evidence"]
+  Ckpt --> Evidence
+  Artifact --> Evidence
+  Cache --> Evidence
+  Evidence --> Diagnose["storage diagnosis\nGPU idle / checkpoint slow / cold start"]
+  Evidence --> Cost["storage_cost_ledger"]
+  Evidence --> Admission["storage_acceptance_matrix"]
+```
+
+这张图的重点是 intent 和 evidence。Intent 让平台在任务启动前知道需要什么数据路径；evidence 让平台在任务运行后证明发生了什么。没有 intent，调度器无法预热和准入；没有 evidence，事故和成本只能靠存储后端平均指标解释。存储系统的工程深度，取决于这两类对象是否贯穿训练和推理生命周期。
+
 ## 33.1 dataset storage
 
 Dataset storage 保存训练、微调、评测和 RAG 所需的数据。它要解决容量、版本、权限、吞吐、数据格式、sharding、生命周期和成本问题。训练数据从 raw data 到 processed dataset，通常经历清洗、去重、过滤、tokenization、切分和格式转换。每个阶段都应有版本和元数据。
@@ -150,6 +169,34 @@ sequenceDiagram
 ```
 
 这个协议能避免最常见的隐性事故：目录存在但分片不完整，最新 checkpoint 覆盖了旧健康版本，恢复时才发现 optimizer 或 scheduler state 缺失。Checkpoint 的可用性必须由 manifest 和校验定义，而不是由文件夹是否存在定义。
+
+生产实现还应记录 `checkpoint_commit_record`，把一次 checkpoint 的写入、校验、提交、latest 指针更新和恢复候选关系保留下来：
+
+```yaml
+checkpoint_commit_record:
+  checkpoint_id: ckpt-step-120000
+  workload_id: train-20260620-017
+  storage_backend: parallel_file_system
+  commit_protocol: two_phase_manifest_commit
+  writes:
+    expected_rank_shards: 512
+    completed_rank_shards: measured
+    slowest_rank_write_ms: measured
+    metadata_ops: measured
+  validation:
+    shard_checksums: verified
+    manifest_committed: true
+    restore_smoke_test: passed
+  index_update:
+    previous_latest_valid: ckpt-step-119000
+    new_latest_valid: ckpt-step-120000
+    update_time_ms: measured
+  impact:
+    checkpoint_pause_ms: measured
+    gpu_idle_seconds: calculated
+```
+
+这个记录让 checkpoint 从“周期性写文件”变成可运营对象。若 checkpoint 慢，平台能判断是 rank 写入长尾、metadata 服务、manifest 校验还是 index update；若恢复失败，平台能判断是否 latest 指针指向了未验证对象；若训练成本上升，Token Factory 可以把 checkpoint pause 和 GPU idle 计入训练 ROI。
 
 ## 33.3 object storage
 
@@ -312,6 +359,45 @@ data_path_evidence:
 ```
 
 这个对象让存储问题能进入统一诊断包。它回答的不是“存储系统慢不慢”，而是“哪个 workload 因为哪条数据路径慢，浪费了多少 GPU 时间，应该由谁处理”。
+
+更完整的 `storage_evidence` 应覆盖 dataset、checkpoint、artifact 和 cache 四种路径。它应包含 manifest、client、cache、backend、telemetry、网络重叠和业务影响。示例：
+
+```yaml
+storage_evidence:
+  evidence_id: storage-ev-20260620-017
+  workload:
+    id: train-20260620-017
+    type: distributed_training
+    phase: checkpoint_write
+  path:
+    kind: checkpoint
+    manifest: ckpt-step-120000
+    backend: parallel_file_system
+    namespace: managed_training_checkpoint
+  clients:
+    ranks: 512
+    nodes: measured
+    racks: measured
+  cache:
+    state: bypass_or_hit_or_miss
+    local_nvme_pressure: measured_if_applicable
+  telemetry:
+    read_write_p99_ms: measured
+    metadata_ops: measured
+    throttle_events: measured
+    backend_error_rate: measured
+    network_overlap: nccl_or_artifact_or_none
+  impact:
+    gpu_idle_seconds: calculated
+    checkpoint_pause_ms: measured
+    model_ready_delay_ms: calculated_if_artifact
+    affected_tenants: recorded
+  decision:
+    likely_cause: metadata_hotspot_or_cache_miss_or_backend_throttle
+    action: reshard_prewarm_throttle_or_move_path
+```
+
+这个对象是第 37 章观测、第 38 章准入、第 39 章故障树和第 41 章成本账本的交叉点。它不要求所有存储后端使用同一种实现，但要求它们用相同关联键表达事实。否则训练、推理、存储和财务团队会各自拥有一部分证据，却无法形成共同结论。
 
 第六步是把清理和成本做成自动化。平台应定期识别过期 checkpoint、孤儿缓存、无引用 artifact、超配额目录和异常增长租户，并在保留策略允许的范围内执行清理或发出审批。成本标签应从任务提交开始继承到存储路径，而不是月底人工追账。AI 存储的可持续性来自生命周期闭环：创建时有元数据，使用时有观测，结束后有清理，归档时有审计。
 

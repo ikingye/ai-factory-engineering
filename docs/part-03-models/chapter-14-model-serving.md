@@ -280,6 +280,45 @@ model_artifact_distribution:
 
 Artifact 分发协议是推理冷启动治理的基础。没有它，autoscaler 只能看到副本还没 ready，却不知道是在拉镜像、拉权重、校验 digest、初始化 engine，还是被存储限流。
 
+Artifact 分发还需要状态机和 `cache_residency`。同一个 release 在不同节点上可能处于未下载、下载中、校验中、已缓存、已预热、可服务或失效状态。Autoscaler 和调度器如果不知道这些状态，就会把副本调度到完全冷的节点，扩容窗口被权重拉取和校验放大。模型服务控制面应把 artifact cache 当成资源状态，而不是让 Pod 启动脚本临时处理。
+
+```mermaid
+stateDiagram-v2
+  [*] --> Missing
+  Missing --> Pulling: schedule prewarm or replica start
+  Pulling --> Verifying: artifact downloaded
+  Verifying --> Cached: digest and manifest ok
+  Cached --> Warming: load weights / tokenizer / engine
+  Warming --> Ready: warmup probe passed
+  Cached --> Invalid: manifest revoked or digest mismatch
+  Ready --> Draining: release rollback or node maintenance
+  Draining --> Cached
+```
+
+```yaml
+cache_residency:
+  release_id: af-chat-large-20260619-r3
+  artifact_digest: sha256:weights
+  scope:
+    resource_pool: inference-prod-h100
+    node: gpu-node-042
+    rack: rack-11
+  state:
+    artifact: cached
+    tokenizer: cached
+    engine_warmup: passed
+    ready_for_endpoint: af-chat-large-prod
+  timings:
+    pull_ms: measured
+    verify_ms: measured
+    warmup_ms: measured
+  policy:
+    protect_while_endpoint_active: true
+    evict_after_release_unused: policy_defined
+```
+
+这份状态能直接改变扩容策略。若某个 rack 的 `cache_residency` 已经 ready，调度器可以优先放置新 replica；若 cache miss 正在高峰期集中发生，Gateway 应降低新流量导入速度或提前扩容；若 digest mismatch，发布系统应冻结 canary，而不是让副本反复重启。模型冷启动不是单一耗时指标，而是 artifact 分发、校验、缓存、warmup 和 readiness 的组合路径。
+
 模型服务还应提供 drain contract。Drain contract 至少说明：停止接收新请求的信号是什么，已有 streaming 请求最大等待多久，超时后如何关闭，已生成 token 如何计量，KV Cache 如何释放，副本退出前必须上报哪些事件。没有 drain contract，滚动升级、节点维护和缩容都会随机打断用户。
 
 ```yaml

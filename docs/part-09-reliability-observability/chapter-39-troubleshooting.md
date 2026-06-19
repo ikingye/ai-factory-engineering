@@ -427,13 +427,36 @@ network_diagnosis:
 
 对应地，存储诊断包应描述路径、manifest、缓存和影响：
 
+```mermaid
+flowchart TB
+  Symptom["GPU idle / checkpoint slow / model load slow"] --> Kind{"path kind"}
+  Kind --> Dataset["dataset path"]
+  Kind --> Ckpt["checkpoint path"]
+  Kind --> Artifact["artifact path"]
+  Kind --> Cache["cache path"]
+  Dataset --> D1["dataset_manifest\nshard checksum / reader / sampling"]
+  Dataset --> D2["data_loader_wait\nsmall file / remote LIST / cache miss"]
+  Ckpt --> C1["checkpoint_commit_record\nrank write tail / manifest commit"]
+  Ckpt --> C2["metadata ops / backend throttle / network overlap"]
+  Artifact --> A1["model_artifact_distribution\ndigest / registry / pull"]
+  Artifact --> A2["cache_residency\ncold node / warmup / ready delay"]
+  Cache --> K1["local NVMe pressure\neviction / stale version / cleanup"]
+  D1 --> Evidence["storage_evidence"]
+  C1 --> Evidence
+  A1 --> Evidence
+  K1 --> Evidence
+  Evidence --> Action["reshard / prewarm / move path / throttle / repair"]
+```
+
 ```yaml
 storage_diagnosis:
   symptom: checkpoint_slow
   evidence:
     workload_id: required
+    storage_intent_id: required
     path_kind: checkpoint
     checkpoint_manifest: required
+    checkpoint_commit_record: required
     rank_write_latency: required
     metadata_ops: required
     storage_backend_counters: required
@@ -452,6 +475,8 @@ storage_diagnosis:
 ```
 
 这个诊断包把存储排障从“哪个系统慢”推进到“哪条数据路径导致哪个 workload 慢”。它也能把结果回写到准入和调度：checkpoint-heavy 训练避开 limited 存储池，推理高峰前预热权重缓存。
+
+存储故障树还要避免一个常见错误：把所有 GPU idle 都归到存储。只有当 `storage_evidence` 能证明 data loader wait、checkpoint pause、model load delay 或 cache miss 与 GPU idle 在同一时间窗口、同一 workload 和同一 path kind 上相关，才能把事故归入存储域。若 evidence 只显示存储端平均延迟升高，但没有 workload impact，最多说明有风险，不能直接作为根因。
 
 第四步，是把诊断结果回写系统。坏节点进入维修，坏 rail 降级，缺失指标进入可观测性 backlog，准入漏测项进入 acceptance pipeline，重复事故进入 SRE 复盘。诊断闭环不完成，故障知识就无法转化为系统能力。
 

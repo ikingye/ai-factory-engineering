@@ -125,13 +125,14 @@
 | 知识点 | 主要章节 | 覆盖要求 |
 | --- | --- | --- |
 | `dataset_manifest` | 第 10 章、第 20 章、第 33 章 | 说明数据来源、处理版本、shard、checksum、统计、权限和缓存策略 |
-| checkpoint commit protocol | 第 10 章、第 33 章 | 说明分片写入、校验、manifest commit、latest valid 和恢复候选 |
+| `workload_storage_intent` | 第 20、33、37 章 | 说明训练、推理、评测和数据处理如何声明 dataset、checkpoint、artifact、cache 和观测需求 |
+| `checkpoint_commit_record` | 第 10 章、第 33 章、第 41 章 | 说明分片写入、校验、manifest commit、latest valid、恢复候选和 GPU idle 成本 |
 | `model_artifact_distribution` | 第 14 章、第 33 章 | 说明权重、tokenizer、template、digest、缓存预热和 readiness 的关系 |
-| `cache_residency` | 第 14 章、第 33 章 | 说明本地 NVMe、rack cache、权重 cache 与调度和冷启动的关系 |
-| `data_path_evidence` / `storage_evidence` | 第 33 章、第 37 章 | 说明 workload 到 path、manifest、client、cache、backend、telemetry 和 impact 的证据链 |
-| `storage_acceptance_matrix` | 第 38 章 | 说明 dataset read、checkpoint write/restore、model load、cache miss 的验收矩阵 |
-| 存储故障树 | 第 39 章 | 说明 GPU idle、checkpoint slow、model load slow 如何定位到 dataset/checkpoint/artifact/cache |
-| 存储经济账本 | 第 41 章 | 说明 dataset read、checkpoint、artifact retention、cache miss 和 storage-induced GPU idle 的成本归因 |
+| `cache_residency` | 第 14 章、第 33 章、第 41 章 | 说明本地 NVMe、rack cache、权重 cache 与调度、冷启动和成本归因的关系 |
+| `data_path_evidence` / `storage_evidence` | 第 33 章、第 37 章、第 39 章、第 41 章 | 说明 workload 到 path、manifest、client、cache、backend、telemetry 和 impact 的证据链 |
+| `storage_acceptance_matrix` / `storage_composite_regression_gate` | 第 38 章 | 说明 dataset read、checkpoint write/restore、model load、cache miss 以及 NCCL+checkpoint+artifact 并发门禁 |
+| 存储故障树 | 第 39 章 | 说明 GPU idle、checkpoint slow、model load slow 如何定位到 dataset/checkpoint/artifact/cache，并要求 workload impact 证据 |
+| `storage_cost_ledger` | 第 41 章 | 说明 dataset read、checkpoint、artifact retention、cache miss、local NVMe 保留和 storage-induced GPU idle 的成本归因 |
 
 ## 可靠性与运维链路覆盖矩阵
 

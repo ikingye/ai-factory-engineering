@@ -253,6 +253,36 @@ stateDiagram-v2
 
 实现上还要把权限纳入流程。谁能提交大规模训练、谁能删除 checkpoint、谁能恢复任务、谁能修改数据版本，都应有审计记录。预训练消耗资源巨大，权限和审计是成本治理的一部分。
 
+训练数据也应有标准 `dataset_manifest`。第 33 章会从存储系统角度解释它；在预训练章节里，它首先是训练可复现和故障定位的合同。它不能只写数据集名称，而要固定处理 pipeline、tokenizer、shard 列表、采样权重、权限、缓存策略和从 step 到 shard 的映射规则。没有这些字段，loss spike、data loader hang 和恢复后状态漂移都很难证明。
+
+```yaml
+dataset_manifest:
+  dataset_id: corpus-v3.2
+  immutable_digest: sha256:dataset-manifest
+  tokenizer:
+    name: tokenizer-v3
+    digest: sha256:tokenizer
+  processing:
+    pipeline_digest: sha256:clean-tokenize-pack
+    dedup_profile: dedup-v4
+    packing_strategy: fixed_length_with_document_boundary
+  shards:
+    format: indexed_binary
+    count: 8192
+    checksum_index: required
+    step_to_shard_mapping: deterministic_with_seed
+  sampling:
+    mixture_weights: versioned
+    epoch_policy: documented
+    random_seed: recorded
+  access:
+    data_classification: restricted
+    tenant_scope: foundation-model-team
+    cache_policy: prewarm_for_training_prod
+```
+
+训练框架启动前应校验 manifest digest、shard checksum、reader 版本、缓存状态和权限；进入 first effective step 后，应把实际消费的 shard range 写入训练 telemetry。这样 loss 异常可以定位到数据版本和 shard，checkpoint 恢复也能验证 dataloader state 是否回到同一位置。数据 manifest 是训练控制面的一部分，不是存储目录旁边的说明文件。
+
 Checkpoint manifest 应被平台标准化。每次写入 checkpoint 后，训练进程或 sidecar 不应只留下一个目录，而应写入 manifest，说明包含哪些 rank 分片、优化器和 scheduler 状态、数据读取位置、随机状态、校验和、评测状态和可恢复性。
 
 ```yaml
@@ -283,6 +313,32 @@ checkpoint_manifest:
 ```
 
 Manifest 的价值在恢复时体现。恢复逻辑应先查询 latest valid checkpoint，而不是简单读取最新目录；恢复后应校验 world size、parallelism、tokenizer、数据位置和 scheduler state 是否匹配。若不匹配，应显式拒绝并给出原因。这样可以避免“恢复成功但训练轨迹已经变了”的隐性事故。
+
+Checkpoint 写入还应采用两阶段提交门禁。训练 rank 先写入临时路径和本地 checksum，validator 验证所有 rank 分片、manifest、optimizer、scheduler、rng 和 dataloader state，再把 checkpoint 标记为 latest valid。任何 rank 缺片、checksum 不一致、metadata 不完整或恢复 smoke test 失败，都不能更新 latest 指针。这样能防止“目录已经出现但 checkpoint 实际不可恢复”的生产事故。
+
+```yaml
+checkpoint_commit_record:
+  checkpoint_id: ckpt-step-120000
+  phase: commit_validation
+  temporary_path: managed_tmp_path
+  rank_shards:
+    expected: 512
+    written: measured
+    checksum_verified: true
+  manifest:
+    committed: true
+    latest_pointer_updated: only_after_validation
+  restore_gate:
+    world_size_match: true
+    parallelism_match: true
+    scheduler_state_match: true
+    dataloader_position_match: true
+  failure_policy:
+    keep_previous_latest_valid: true
+    quarantine_partial_checkpoint: true
+```
+
+这个记录是训练恢复和成本账本的共同证据。若 checkpoint 写入拉长 step time，平台可以从 commit record 看到长尾来自 rank 写入、manifest 校验还是 latest 指针更新；若恢复失败，平台可以证明失败发生在 checkpoint 本身、恢复配置还是数据位置。Checkpoint 不是文件夹，而是一个有提交协议的训练状态对象。
 
 预训练任务还应把数据路径纳入运行时自检。`dataset_manifest_digest`、实际挂载路径、缓存命中、shard 数量、reader 版本和 data loader 指标，都应在 first effective step 之前上报。若数据路径不可达、manifest checksum 不匹配或缓存预热未完成，任务应停在 preflight，而不是进入训练后让 GPU 等待。数据自检失败是平台问题，不应由训练 step 承担。
 
