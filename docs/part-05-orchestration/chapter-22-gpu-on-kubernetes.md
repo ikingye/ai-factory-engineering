@@ -279,6 +279,22 @@ gpu_nic_topology_evidence:
 
 这份证据应由调度器、kubelet 事件、device plugin、CNI/RDMA 插件、NCCL 环境和网络 telemetry 共同生成。它不是静态拓扑表，而是某个 workload 的实际运行事实。节点拓扑正确但 Pod 没拿到对应 RDMA device，证据会失败；调度意图正确但 NCCL 选择了另一张网卡，证据也会失败。第 39 章的 NCCL hang 分支应优先引用它，而不是只看 switch 端口计数。
 
+```mermaid
+flowchart LR
+  Intent["workload intent\nGPU class + RDMA + topology"] --> Placement["placement_commit_record\nnode / rank / constraints"]
+  Placement --> Assign["gpu_assignment_record\nGPU / MIG / runtime"]
+  Assign --> Visibility["gpu_device_visibility_reconciliation\ncontainer GPU facts"]
+  Placement --> NIC["RDMA device allocation\nNIC / rail / NUMA"]
+  NIC --> Topology["gpu_nic_topology_evidence\nGPU + NIC + NCCL interface"]
+  Visibility --> Topology
+  Topology --> Telemetry["NCCL / DCGM / fabric telemetry"]
+  Telemetry --> Decision{"meets baseline?"}
+  Decision -->|yes| Run["run workload"]
+  Decision -->|no| Action["cordon / relabel / retest / reroute"]
+```
+
+这张图把“意图、放置、注入、运行事实和 telemetry”串成一条证据流。对多卡训练，`placement_commit_record` 说明调度意图，`gpu_assignment_record` 说明设备分配，`gpu_device_visibility_reconciliation` 说明容器内是否看到正确 GPU，`gpu_nic_topology_evidence` 说明 GPU 与 NIC 是否真正对齐。只有这些事实都成立，NCCL 指标才有可靠解释基础。
+
 ## 22.4 MIG
 
 MIG 即 Multi-Instance GPU，可以把一张物理 GPU 切分成多个硬件隔离实例。每个 MIG 实例拥有独立的一部分计算和显存资源，适合小模型推理、开发测试、多租户隔离和资源粒度较细的场景。相比 time-slicing，MIG 的隔离更强，性能更可预测；相比整卡分配，MIG 能提高资源利用率，减少小任务占整卡的浪费。

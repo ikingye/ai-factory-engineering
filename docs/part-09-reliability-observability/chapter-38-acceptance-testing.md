@@ -619,6 +619,24 @@ container_gpu_runtime_acceptance_matrix:
 
 矩阵还应输出可机器消费的复测动作。`runtime_handler_missing` 触发 runtime 配置修复和 kubelet/containerd 重启验证；`visible_device_mismatch` 触发节点 cordon、`gpu_device_visibility_reconciliation` 复跑和调度隔离；`rdma_gpu_nic_topology_mismatch` 触发 RDMA device plugin、CNI、Topology Manager 和调度标签检查；`oci_injection_diff_unexpected` 触发 NVIDIA Toolkit/CDI/NRI 变更审计。准入报告如果只给 pass/fail，无法自动改变资源池状态；失败分类必须足够具体，才能驱动修复。
 
+```mermaid
+flowchart TB
+  Matrix["container_gpu_runtime_acceptance_matrix"] --> Evidence["evidence set\nruntime config + OCI diff + assignment + visibility"]
+  Evidence --> Classify{"failure class"}
+  Classify --> Runtime["runtime_handler_missing\nfix CRI/runtime baseline"]
+  Classify --> CDI["cdi_spec_missing_or_stale\nregenerate spec / retest"]
+  Classify --> Visible["visible_device_mismatch\ncordon + reconciliation"]
+  Classify --> RDMA["rdma_gpu_nic_topology_mismatch\nCNI/RDMA/topology repair"]
+  Runtime --> Retest["targeted retest"]
+  CDI --> Retest
+  Visible --> Retest
+  RDMA --> Retest
+  Retest --> Baseline["acceptance_baseline refresh"]
+  Baseline --> PRR["production_readiness_review"]
+```
+
+这张图说明准入失败不是一个终点，而是自动修复和门禁的入口。失败分类必须足够具体，才能决定修 runtime、修 CDI、隔离节点还是修 RDMA/拓扑。复测通过后刷新 baseline，PRR 才能消费新的证据；如果只保留一份失败报告，不改变资源池状态，准入就没有真正保护生产。
+
 ```yaml
 acceptance_pipeline:
   scope: rack-12

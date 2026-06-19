@@ -304,6 +304,20 @@ oci_runtime_injection_diff:
 
 这个 diff 的关键不是记录所有实现细节，而是建立“分配事实到运行时事实”的桥。若 device plugin 分配了 1 张 GPU，而 diff 中出现 8 张设备，问题在 runtime 注入或镜像默认值；若 diff 中有 CDI device name，但容器创建失败提示无法解析 CDI，问题在 containerd/CRI-O 的 CDI 支持或 spec 文件；若 diff 没有任何 NVIDIA 相关变化，说明 RuntimeClass、runtime handler 或 device plugin strategy 没有接上。它应被第 38 章的容器 GPU runtime 准入和第 39 章的故障诊断消费。
 
+```mermaid
+flowchart TB
+  Symptom["Pod Running\nbut GPU wrong / unavailable"] --> Assign["gpu_assignment_record\nkubelet + device plugin"]
+  Assign --> Diff["oci_runtime_injection_diff\nOCI spec / CDI / hook"]
+  Diff --> Recon["gpu_device_visibility_reconciliation\ninside container facts"]
+  Recon --> Verdict{"facts match?"}
+  Verdict -->|yes| App["move upward\nCUDA / NCCL / app readiness"]
+  Verdict -->|no| Runtime["runtime investigation\nRuntimeClass / CDI / hook / env"]
+  Runtime --> Baseline["container_gpu_runtime_acceptance_matrix\nretest node pool"]
+  Baseline --> Pool["resource pool state\nallocatable / limited / quarantine"]
+```
+
+这张图的价值在于明确“先对账，再归因”。容器内 `nvidia-smi` 成功只是一个观察点，不是最终结论；真正要比较的是调度分配、OCI 注入和容器内事实是否一致。若三者一致，再进入 CUDA、NCCL、模型服务或应用 readiness；若三者不一致，就应先处理 runtime 基线，而不是让业务团队继续改镜像或模型代码。
+
 Docker 使用时，典型命令是：
 
 ```bash

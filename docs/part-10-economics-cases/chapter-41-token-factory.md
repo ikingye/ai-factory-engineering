@@ -64,6 +64,26 @@ flowchart TB
   Margin --> Decisions["定价 / 扩容 / 路由 / 优化"]
 ```
 
+Token Factory 还需要一张账本汇聚图。它回答“某个 token 或任务的成本从哪里来”，也回答“哪些工程对象会进入经营决策”。不同账本不是财务表的重复，而是从不同工程路径汇聚到同一个单位经济模型。
+
+```mermaid
+flowchart TB
+  Token["metering events\ninput / output / reasoning / cached"] --> Ledger["Token Factory ledger"]
+  Runtime["inference_runtime_cost_ledger\nKV / PD / speculative / cancel"] --> Ledger
+  Quality["quality_cost_ledger\nfeedback / handoff / rollback / eval"] --> Ledger
+  Reliability["reliability_cost_ledger\nincident / SLA / wasted GPU hours"] --> Ledger
+  Security["security_cost_ledger / abuse_cost_ledger\nkey leak / denial-of-wallet / audit"] --> Ledger
+  Storage["storage_cost_ledger\ncheckpoint / artifact / cache miss"] --> Ledger
+  Network["network_cost_ledger\ncongestion / wrong placement / idle"] --> Ledger
+  Energy["energy_ledger\ntokens/W / rack power / PUE"] --> Ledger
+  Revenue["business_model_profile\nprice / discount / credit"] --> PNL["commercial_pnl_ledger"]
+  Ledger --> Unit["unit economics\ncost per successful answer / task / token"]
+  Unit --> PNL
+  PNL --> Decision["route / price / scale / train / deprecate"]
+```
+
+这张图提醒读者：`cost/token` 不是 GPU 成本除以 token 数那么简单。KV 泄漏、取消浪费、质量回归、SLA credit、安全事件、存储冷启动、网络拥塞和能耗都会进入单位经济。最终的经营动作也不只是一味扩容，可能是改路由、调价、压缩模型、限制免费额度、暂停某个场景或投资训练。
+
 ## 41.1 token 是 AI Factory 的产出
 
 对在线推理业务来说，token 是最细粒度、最容易计量的产出。用户请求进入 AI Factory，经过网关、认证、租户限流、模型路由、推理服务、prefill、decode、KV Cache、CUDA kernel、GPU/HBM 和 streaming，最终得到的是一串 token。这个过程把应用需求转化为可观测、可计费、可优化的计算产物。

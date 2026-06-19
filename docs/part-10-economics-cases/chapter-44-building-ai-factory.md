@@ -451,6 +451,25 @@ production_readiness_review:
 
 `production_readiness_review` 应和第 38 章的验收基线、第 40 章的 SRE 流程、第 41 章的经济账本连接。它不是独立审批系统，而是把已有证据聚合成上线决策。若某项证据缺失，结论应该是 `block` 或 `conditional_approve`，并明确条件，而不是口头放行。
 
+```mermaid
+stateDiagram-v2
+  [*] --> Draft: release scope defined
+  Draft --> EvidenceCollecting: workload + business + resource scope
+  EvidenceCollecting --> Blocked: required evidence missing
+  Blocked --> EvidenceCollecting: evidence gap closed
+  EvidenceCollecting --> ConditionalApprove: non-critical risk accepted with owner
+  EvidenceCollecting --> ApproveCanary: all hard gates pass
+  ConditionalApprove --> Canary: stop conditions machine-enforced
+  ApproveCanary --> Canary
+  Canary --> Scale: SLO + quality + cost + support stable
+  Canary --> Rollback: guardrail breach
+  Scale --> Review: drift / incident / cost overrun
+  Review --> EvidenceCollecting: PRR re-opened
+  Rollback --> EvidenceCollecting: rollback evidence + new gate
+```
+
+这张状态机把 PRR 从一次会议变成持续控制流程。`Blocked` 不是失败，而是证据缺口尚未关闭；`ConditionalApprove` 必须绑定 owner、停止条件和观察窗口；`Canary` 不是上线完成，而是继续收集 SLO、质量、成本和支持证据；一旦 drift、incident 或 cost overrun 出现，PRR 应重新打开。AI Factory 的生产就绪不是某一天获得批准，而是在运行中持续证明。
+
 商业化上线还应维护 `launch_risk_register`。PRR 判断“当前证据是否足以放行”，risk register 则持续记录“哪些风险仍然存在、谁负责、何时停止、如何验证关闭”。它尤其适合处理不能简单二元判断的风险：客户支持成本尚无历史数据，SLA credit 口径刚建立，私有化客户环境存在特殊 DNS/证书限制，首批客户流量形态可能偏离 workload profile，或者商业折扣导致毛利缓冲较薄。没有风险登记，conditional approve 往往变成口头放行。
 
 ```yaml
