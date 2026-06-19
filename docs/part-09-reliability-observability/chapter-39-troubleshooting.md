@@ -66,6 +66,25 @@ flowchart TB
   Model --> Action
 ```
 
+网络与通信类故障尤其需要把故障树和证据链结合。下面的 NCCL hang 入口可以作为值班系统的自动检查顺序：
+
+```mermaid
+flowchart TB
+  H["NCCL hang / step 无前进"] --> R{是否有 rank 退出?}
+  R -->|是| Exit["检查 Pod exit / OOM / container log / node event"]
+  R -->|否| G{GPU 是否有 Xid/ECC/NVLink 异常?}
+  G -->|是| GPUFix["隔离 GPU 或节点，跑 GPU/NVLink/NCCL 回归"]
+  G -->|否| N{RDMA / NIC / switch port 是否异常?}
+  N -->|是| NetFix["采集 RDMA counters / rail / port，降级 fabric 或避让拓扑"]
+  N -->|否| C{容器与运行时配置是否一致?}
+  C -->|否| RuntimeFix["检查 NCCL env / interface / RDMA device / image / OFED"]
+  C -->|是| Code{collective 调用是否一致?}
+  Code -->|否| ModelFix["检查训练代码分支、rank 条件和框架版本"]
+  Code -->|是| Unknown["保留现场，扩大采样，运行同拓扑基线复测"]
+```
+
+这张图的重点不是穷尽所有原因，而是保证前四类高频问题不会被遗漏：rank 退出、GPU/互联异常、RDMA/fabric 异常、容器或运行时漂移。每个分支都应对应自动采集项，不能只写在文档里。
+
 ## 39.1 GPU Xid
 
 GPU Xid 是 NVIDIA 驱动报告的 GPU 错误事件类别。它可能表示应用错误、驱动问题、硬件异常、显存问题、GPU reset、访问非法地址或其它设备状态异常。不同 Xid 的含义和严重程度不同，不能把所有 Xid 都当成同级故障，也不能因为 GPU 仍可见就忽略严重 Xid。
@@ -228,6 +247,36 @@ diagnosis:
     - compare_with_acceptance_baseline
 ```
 
+网络诊断包需要进一步包含拓扑和端口证据：
+
+```yaml
+network_diagnosis:
+  symptom: nccl_hang
+  evidence:
+    rank_mapping: required
+    gpu_to_nic_affinity: required
+    nic_to_switch_port: required
+    rail_mapping: required
+    fabric_baseline_id: required
+    rdma_counters: required
+    switch_port_counters: required
+    nccl_selected_interface: required
+    container_rdma_visibility: required
+  decisions:
+    isolate_single_node_if:
+      - errors_concentrated_on_one_node
+      - baseline_fails_on_same_node
+    degrade_fabric_if:
+      - errors_spread_across_rail
+      - cross_rack_baseline_regresses
+    suspect_runtime_if:
+      - host_rdma_passes
+      - container_rdma_fails
+      - nccl_interface_mismatch
+```
+
+这个对象把“网络可能有问题”拆成三种不同动作：隔离单节点、降级 fabric、修复 runtime。动作不同，责任团队和恢复路径也不同。没有这个拆分，事故中很容易把所有网络相关现象都交给同一个团队处理。
+
 第四步，是把诊断结果回写系统。坏节点进入维修，坏 rail 降级，缺失指标进入可观测性 backlog，准入漏测项进入 acceptance pipeline，重复事故进入 SRE 复盘。诊断闭环不完成，故障知识就无法转化为系统能力。
 
 第五步，是把诊断工具放到值班路径里。告警页面应直接提供诊断包入口、相关 runbook、最近变更、影响面和建议止血动作，而不是只给一条 Prometheus 表达式。事故中最稀缺的是注意力，工具应减少人工跳转和重复查询。
@@ -294,3 +343,4 @@ diagnosis:
 - [NVIDIA Xid Errors documentation](https://docs.nvidia.com/deploy/xid-errors/)；[NVIDIA DCGM documentation](https://docs.nvidia.com/datacenter/dcgm/latest/)
 - [NCCL Troubleshooting Guide](https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/troubleshooting.html)
 - [Google SRE: Postmortem Culture](https://sre.google/sre-book/postmortem-culture/)
+- [NVIDIA GPUDirect RDMA documentation](https://docs.nvidia.com/cuda/gpudirect-rdma/)

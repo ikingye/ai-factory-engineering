@@ -87,6 +87,24 @@
 | TrainingJob smoke test | 第 38 章 | 说明 gang、rank mapping、NCCL rendezvous、first effective step 和 checkpoint manifest 验收 |
 | training ROI ledger | 第 41 章 | 说明 allocated/effective/wasted GPU hours、checkpoint、评测、上线收益和成本变化 |
 
+## 网络通信链路覆盖矩阵
+
+网络通信链路的目标是让读者能从训练或推理的性能症状一路追到 GPU 拓扑、NIC、rail、leaf/spine、RDMA/NCCL、telemetry、准入基线和调度动作。当前覆盖如下：
+
+| 知识点 | 主要章节 | 覆盖要求 |
+| --- | --- | --- |
+| `network_path_evidence` | 第 30 章 | 说明 job/request 到 placement、GPU、NIC、rail、switch port、baseline 和动作的证据链 |
+| east-west / north-south 分流 | 第 30 章 | 说明训练通信、推理入口、存储路径和管理流量的边界 |
+| scale-up topology contract | 第 31 章 | 说明 NVLink/NVSwitch 域、GPU-to-GPU bandwidth、拓扑碎片和资源等级 |
+| GPU-to-NIC / NUMA 亲和 | 第 31 章、第 32 章 | 说明节点内拓扑如何影响 RDMA、NCCL 和调度 |
+| `fabric_baseline` | 第 32 章、第 38 章 | 说明 fabric、rail、版本、测试项、失效条件和可调度能力 |
+| 多 rail 放置与诊断 | 第 32 章 | 说明 rank、NIC、rail、leaf group 和 rail balance 的一致性 |
+| RDMA in container | 第 22 章、第 32 章、第 38 章 | 说明宿主机 RDMA 正常不等于容器内 RDMA 可用 |
+| `network_diagnostic_bundle` | 第 32 章、第 39 章 | 说明 rank mapping、NCCL env、RDMA counters、switch ports、baseline 和 verdict |
+| network telemetry 到业务影响 | 第 37 章 | 说明端口事件如何映射到 job、model、tenant、baseline drift 和 owner |
+| fabric acceptance matrix | 第 38 章 | 说明 same rack、cross rack、cross rail、host/container/Kubernetes 的验收矩阵 |
+| NCCL hang 网络故障树 | 第 39 章 | 说明 rank 退出、GPU/NVLink、RDMA/fabric、container/runtime、collective mismatch 的排查顺序 |
+
 ## 全书循环更新策略
 
 全书更新按“主题链路”推进，而不是按章节孤立推进。每轮选择一条关键链路，补齐机制、图、配置、故障、指标和验收。

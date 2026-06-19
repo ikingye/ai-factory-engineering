@@ -65,6 +65,20 @@ flowchart TB
   Scheduler["Topology-aware Scheduler"] --> W1
 ```
 
+AI 网络排障最重要的不是某一层指标，而是跨层证据链。一个训练任务变慢时，平台应能从 job id 找到 rank placement，再找到 node、GPU、NIC、rail、leaf/spine port、fabric baseline 和同一时间窗口的端口计数；一个推理请求变慢时，平台应能从 request trace 找到 gateway、route、replica、node、storage path 和 streaming gap。这个证据链把“设备状态”转换成“workload 影响”。
+
+```mermaid
+flowchart LR
+  Job["job / request"] --> Placement["placement: rank / replica / node"]
+  Placement --> Device["GPU / NIC / NUMA / container"]
+  Device --> Path["rail / leaf / spine / storage path"]
+  Path --> Counters["RDMA / ECN / PFC / errors / latency"]
+  Counters --> Baseline["acceptance baseline / historical baseline"]
+  Baseline --> Action["isolate / reroute / reschedule / repair"]
+```
+
+这条链路也定义了团队协作边界。网络团队负责 fabric 和端口事实，平台团队负责 placement 和资源状态，训练或推理团队负责 workload 阶段和 runtime 参数。任何结论都应能同时回答三个问题：哪个 workload 受影响，经过哪条网络路径，和基线相比发生了什么变化。回答不了这三个问题，就还只是线索，不是根因。
+
 ## 30.1 east-west traffic
 
 East-west traffic 指数据中心内部东西向流量。在 AI Factory 中，它主要来自训练 worker 之间的梯度通信、模型并行的 activation 传输、MoE expert routing、推理副本之间的缓存或状态同步、数据处理任务之间的数据交换，以及计算节点到存储系统的读写。它是 GPU 集群内部最容易被低估的流量。
@@ -204,6 +218,42 @@ network_baseline:
 
 还要建立标准诊断包。训练网络诊断包应包含 job id、rank 映射、节点、NIC、端口、NCCL 日志和端口计数；推理网络诊断包应包含 trace、网关日志、upstream、连接状态和后端指标。诊断包能减少跨团队来回询问。
 
+更具体地说，AI Factory 应维护一个可查询的 `network_path_evidence` 对象。它不是网络设备清单，而是 workload 到网络路径的连接表。示例：
+
+```yaml
+network_path_evidence:
+  workload:
+    type: training_job
+    id: train-20260619-042
+    phase: all_reduce
+  placement:
+    ranks:
+      - rank: 17
+        node: gpu-node-117
+        gpu_uuid: GPU-aaaa
+        nic: mlx5_1
+        rail: rail1
+        rack: rack-12
+        switch_port: leaf12-eth1/17
+  runtime:
+    nccl_version: recorded
+    selected_interface: mlx5_1
+    transport: rdma
+  telemetry_window:
+    start: incident_start_minus_5m
+    end: incident_end_plus_5m
+    counters:
+      rdma_retransmit: compare_with_baseline
+      ecn_mark: compare_with_baseline
+      pfc_pause: compare_with_baseline
+      port_error: compare_with_baseline
+  baseline:
+    acceptance_baseline_id: rack12-fabric-20260619
+    expected_topology: same_fabric_multi_rail
+```
+
+这个对象能直接服务三个动作：调度器用它解释 pending 或降级原因，SRE 用它生成 incident 诊断包，容量团队用它发现长期热点。没有这种对象，网络事实会散落在交换机、Prometheus、训练日志和资产系统里，事故中只能手工拼接。
+
 ## 常见故障
 
 第一类故障是拓扑与调度不一致。某些 rack 的训练任务持续慢，原因是跨 rack 路径 oversubscription 高，或 rank 被放置到不同 rail。调度系统只满足 GPU 数量，却没有满足网络邻近。解决方向是把 rack、leaf、rail 和故障域纳入资源模型。
@@ -236,6 +286,8 @@ network_baseline:
 
 指标应能下钻到具体 job、租户、模型和拓扑路径。只有这样，平台才能把网络退化转化为可执行动作，例如迁移任务、隔离节点、调整路由或扩容 fabric。
 
+还要特别关注派生指标。`gpu_idle_due_to_network_seconds`、`job_effective_comm_bandwidth`、`rail_balance_ratio`、`fabric_baseline_drift`、`affected_gpu_hours` 和 `streaming_gap_due_to_network` 比单纯端口吞吐更接近生产影响。原始计数用于专家定位，派生指标用于平台决策和经济性分析。二者都要保留，但不要混淆用途。
+
 ## 设计取舍
 
 第一个取舍是高性能专用 fabric 与共享以太网络。专用训练 fabric 性能和隔离更好，但成本高、运维专门化；共享网络利用率高、生态统一，但隔离和性能解释更难。选择应由 workload 比例、训练规模、团队能力和成本模型决定。
@@ -263,3 +315,4 @@ network_baseline:
 - [NVIDIA Networking documentation](https://docs.nvidia.com/networking/)
 - [Data Center TCP (DCTCP)](https://www.microsoft.com/en-us/research/publication/data-center-tcp-dctcp/)
 - [NCCL Troubleshooting Guide](https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/troubleshooting.html)
+- [NVIDIA UFM Telemetry documentation](https://docs.nvidia.com/networking/display/UFMEnterpriseUMv6221/Telemetry)

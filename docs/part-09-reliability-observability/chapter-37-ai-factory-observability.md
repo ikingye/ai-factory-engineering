@@ -184,6 +184,19 @@ Network telemetry 还要进入容量和变更管理。新增 rack、交换机升
 
 网络 telemetry 也需要现场保留策略。端口计数清零、交换机日志轮转、任务结束和容器销毁都会丢失证据。关键网络异常发生时，应自动冻结相关端口、节点、rank 和 job 的诊断数据，便于后续复盘。
 
+网络观测还应明确从“设备事件”到“业务影响”的转换规则。交换机端口错误本身不是 incident，只有当它影响某个 job、模型、租户或资源池等级时，才成为生产事件；反过来，训练 step time 上升也不必然是网络问题，只有当 rank placement、端口计数和 baseline 同时支持时，才能归入网络域。这个转换规则应写入告警和诊断系统。
+
+```mermaid
+flowchart LR
+  Port["switch / NIC counters"] --> Topology["port-to-node-to-rank mapping"]
+  Topology --> Workload["job / model / tenant impact"]
+  Workload --> Baseline["baseline drift"]
+  Baseline --> Severity["severity and owner"]
+  Severity --> Action["degrade fabric / isolate node / reroute / repair"]
+```
+
+这样做可以避免两类极端：网络团队每天处理大量无业务影响的端口噪音，或业务团队在任务变慢时无法拿到网络层证据。可观测性应该减少争论，而不是制造更多告警。
+
 ## 37.9 distributed tracing
 
 Distributed tracing 用于追踪请求经过的服务链路。在 AI Factory 中，推理请求 trace 应覆盖 gateway、auth、quota、routing、model selection、scheduler、model server、prefill、decode、streaming、metering、billing 和 observability export。只有这样，TTFT 或 E2E latency 上升时，才能定位慢在入口、平台、模型服务还是客户端输出。
@@ -221,6 +234,31 @@ observability_labels:
   rack: required_for_infra_metrics
   topology_domain: recommended
 ```
+
+对网络和通信故障，还应增加 `network_evidence` 字段，使观测系统能直接生成跨团队可读的结论：
+
+```yaml
+network_evidence:
+  workload_id: required
+  placement_snapshot: required
+  rank_to_node_mapping: required_for_training
+  replica_to_node_mapping: required_for_inference
+  nic_to_switch_port_mapping: required
+  rail_mapping: required_for_multi_rail
+  fabric_baseline_id: required
+  telemetry_window: required
+  correlated_counters:
+    - rdma_retransmit
+    - port_error
+    - ecn_mark
+    - pfc_pause
+    - link_flap
+  conclusion:
+    status: evidence_required
+    confidence: low_medium_high
+```
+
+这个字段不要求所有系统使用同一个数据库，但要求它们使用同一组关联键。只要关联键稳定，时序库、日志系统、trace backend、对象存储诊断包和数据仓库就可以协同工作。
 
 第四步是建立数据质量检查。指标缺失、标签为空、时间戳漂移、重复采集和单位不一致，都会让看板和告警失真。可观测性平台本身也要有 SLO，例如关键指标采集延迟、丢失率和查询可用性。否则事故中最先失效的可能就是观测系统。
 
@@ -294,3 +332,4 @@ observability_labels:
 - [NVIDIA DCGM documentation](https://docs.nvidia.com/datacenter/dcgm/latest/)
 - [OpenTelemetry documentation](https://opentelemetry.io/docs/)
 - [vLLM documentation](https://docs.vllm.ai/)
+- [NVIDIA UFM Telemetry documentation](https://docs.nvidia.com/networking/display/UFMEnterpriseUMv6221/Telemetry)
