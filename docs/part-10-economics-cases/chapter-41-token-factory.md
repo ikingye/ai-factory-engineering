@@ -501,6 +501,108 @@ abuse_cost_ledger:
 
 这个账本能把“安全异常”转成经营动作：吊销 key、关闭 provider route、收紧预算、退款或追偿、修复 SDK、调整免费额度。对 AI Factory 来说，经济异常往往比技术错误更早暴露滥用；如果成本系统不能按小时级别识别异常 token，安全团队会失去最有效的早期信号。
 
+`denial_of_wallet_incident_record` 应把一次经济型攻击或误用写成可定责对象。它不同于普通安全事件记录：重点不是只有“谁访问了什么”，还包括“谁的预算被消耗、哪些成本本应被阻断、哪些高价值请求被挤占、哪些 usage 需要 hold、哪些 provider 成本不可追回”。这类事故如果只进入安全工单，最后会在财务月结时变成毛利异常；如果只进入账单系统，又无法解释凭据和策略责任。Token Factory 需要把它放在安全、计费和 SRE 之间。
+
+```yaml
+denial_of_wallet_incident_record:
+  incident_id: dow-20260620-001
+  detection:
+    first_signal: spend_velocity_alert
+    detected_by: gateway_budget_guard
+    window: 2026-06-20T10:00Z/2026-06-20T10:18Z
+  scope:
+    tenant: enterprise-a
+    projects: [support-copilot-prod]
+    credentials: [key_6f2c_redacted]
+    endpoints: [chat_completions, agent_runs]
+    route_pools: [inference-premium-a]
+    providers: [third-party-x-if_any]
+  evidence:
+    security_evidence_bundle: seb-20260620-001
+    security_policy_fault_tree_execution: spfte-sec-20260620-001
+    egress_provider_decisions: sampled_or_full
+    policy_decision_records: sampled_or_full
+    metering_events: immutable_refs
+  usage_delta:
+    suspicious_input_tokens: measured
+    suspicious_output_tokens: measured
+    suspicious_reasoning_tokens: measured_if_available
+    suspicious_provider_calls: measured
+    suspicious_agent_steps: measured_if_applicable
+    displaced_premium_requests: estimated_or_measured
+  responsibility:
+    likely_domain: leaked_customer_key_or_platform_policy_gap_or_free_quota_design_or_unknown
+    tenant_chargeability: chargeable_or_not_chargeable_or_split_pending_replay
+    billing_hold: active
+  containment:
+    credentials_frozen: true
+    provider_fallback_disabled: true_if_relevant
+    max_output_reduced: true_if_relevant
+    agent_step_limit_applied: true_if_relevant
+  economic_impact:
+    token_cost: calculated
+    provider_cost: calculated
+    capacity_displacement_cost: calculated
+    investigation_and_support_cost: calculated
+    credit_or_refund_reserve: calculated_if_needed
+```
+
+这个对象使定责不再依赖口头判断。若 `responsibility.likely_domain` 是 leaked customer key，平台仍可能先做 billing hold，等 `billing_dispute_replay` 关闭后再决定正常计费或分摊；若是 platform policy gap，异常 usage 应更多进入内部损失和策略修复；若是 free quota design，说明产品 guardrail 失效，成本应该进入产品策略评审。相同的 token 成本，在不同责任边界下对应完全不同的财务和工程动作。
+
+```mermaid
+flowchart TB
+  Detect["spend velocity / provider cost alert"] --> DOW["denial_of_wallet_incident_record"]
+  SEB["security_evidence_bundle"] --> DOW
+  SPFT["security_policy_fault_tree_execution"] --> DOW
+  Meter["metering events"] --> DOW
+  DOW --> Hold["billing hold"]
+  DOW --> Replay["billing_dispute_replay"]
+  DOW --> Abuse["abuse_cost_ledger"]
+  DOW --> Security["security_cost_ledger"]
+  Abuse --> PNL["commercial_pnl_ledger"]
+  Replay --> Invoice["invoice correction / credit / charge"]
+  DOW --> Guard["gateway guardrail update"]
+  Guard --> PRR["PRR security gate"]
+```
+
+`abuse_cost_ledger` 也要区分不同成本层。第一层是直接推理成本，包括 input/output/reasoning token、prefill、decode 和 KV 占用。第二层是外部 provider 成本，因为 provider 往往按更高价格或更严格合同结算，且不一定能追回。第三层是容量置换成本：异常流量占用 premium pool 后，正常高价值请求被排队、降级或 fallback。第四层是处置成本：安全值班、客户沟通、账单重算、credit reserve、产品策略变更。只看 direct token cost，会系统性低估 denial-of-wallet 的真实损失。
+
+```yaml
+abuse_cost_ledger:
+  ledger_id: acl-20260620-001
+  window: 2026-06-20T10:00Z/2026-06-20T11:00Z
+  incident: dow-20260620-001
+  cost_layers:
+    direct_inference:
+      prefill_cost: calculated
+      decode_cost: calculated
+      kv_occupancy_cost: calculated
+      failed_or_cancelled_generation_cost: calculated
+    provider:
+      provider_request_cost: calculated
+      provider_minimum_commit_burn: calculated_if_applicable
+      provider_egress_audit_cost: calculated_if_contract_requires
+    displacement:
+      premium_queue_delay_cost: calculated
+      fallback_to_higher_cost_model: calculated
+      lost_or_degraded_requests: measured_or_estimated
+    response:
+      investigation_cost: calculated
+      support_and_customer_comm_cost: calculated
+      billing_replay_cost: calculated
+      credit_or_refund_reserve: calculated_if_needed
+  allocation:
+    tenant_chargeable: pending_replay
+    platform_absorbed: pending_replay
+    product_guardrail_cost: pending_replay
+  actions:
+    gateway_guardrail_update: required_if_policy_gap
+    pricing_or_free_quota_review: required_if_product_gap
+    prr_gate_update: required_if_launch_gap
+```
+
+这个 ledger 的输出不应只给财务。Gateway 需要它判断哪些 guard 真正降低损失，产品需要它调整免费额度和试用策略，SRE 需要它评估异常流量是否挤占 error budget，商业团队需要它解释客户账单。一个好的 denial-of-wallet 闭环，会在小时级别产生账本，在日级别完成责任 replay，在周级别关闭 guardrail 和 PRR 行动项。若只能在月末毛利报表中看到异常，平台已经错过了止血窗口。
+
 商业化经营还需要 `commercial_pnl_ledger`。Token Factory 的账本解释 token、GPU、质量、安全和可靠性成本，但商业负责人还需要按产品线、客户、合同和交付模式看 P&L：收入来自哪里，折扣和免费额度消耗多少，SLA credit 吃掉多少毛利，客户支持和私有化交付成本是否被低估，预留容量和库存风险是否被正确分摊。没有这张账本，平台可能在技术上优化了 cost/token，却仍然因为折扣、赔付、支持和交付成本而商业倒挂。
 
 ```yaml

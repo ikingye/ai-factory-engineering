@@ -472,6 +472,70 @@ egress_provider_decision:
 
 这个对象把“数据边界”从抽象原则变成路由门禁。它也让 fallback 更安全：当内部模型不可用时，Gateway 不能只按可用性切到外部 provider，而必须先证明该租户、该数据等级、该区域和该合同允许外联。对商业平台来说，它还支撑账单解释：用户是否被路由到第三方、第三方价格如何计入、是否使用了合规折扣或禁训合同，都应可追溯。
 
+`egress_provider_decision` 的判断不能只发生在最终 route 阶段。外联风险在 admission chain 中会逐步累积：identity 阶段确认调用主体，data boundary 阶段确认数据等级和驻留要求，budget 阶段确认第三方 provider 成本上限，capability 阶段确认内部模型是否能满足需求，route 阶段才选择候选 provider。若只在 route 阶段做一次开关判断，就会出现“安全上允许但经济上不可接受”或“经济上便宜但合同上禁止”的路线。成熟 Gateway 应把外联决策拆成安全、合同、区域、日志、训练使用、计费和止损多个子结论，并把每个子结论写入同一条 decision。
+
+外联决策还要能解释拒绝后的行为。一个 provider 被拒绝后，Gateway 可以选择内部模型、低风险小模型、异步批量队列、人工确认或直接失败；这些动作的用户体验和成本不同。比如高敏客服请求不能外发给第三方，但可以路由到内部模型；公开文档摘要可以外发，但需要低成本模型和 token 预算；跨区域请求可以失败并提示用户切换区域。`egress_provider_decision` 因此不只是审计日志，而是后续 fallback、计费、支持和客户沟通的事实来源。
+
+```mermaid
+flowchart TB
+  Req["request"] --> Id["identity / tenant"]
+  Id --> Classify["data classification\nprompt / file / RAG context"]
+  Classify --> Contract["provider contract\nregion / no training / logging"]
+  Contract --> Cost["provider cost guard\nbudget / price / quota"]
+  Cost --> Internal{internal model usable?}
+  Internal -->|yes| RouteInternal["route internal endpoint"]
+  Internal -->|no| Egress{egress allowed?}
+  Egress -->|yes| RouteProvider["route provider endpoint"]
+  Egress -->|no| DenyOrDegrade["deny / degrade / async / human approval"]
+  RouteInternal --> EPD["egress_provider_decision"]
+  RouteProvider --> EPD
+  DenyOrDegrade --> EPD
+  EPD --> PDR["policy_decision_record"]
+  EPD --> Billing["metering / provider cost"]
+  EPD --> Audit["security_audit_event"]
+```
+
+公共 MaaS 或开放试用场景还必须把 denial-of-wallet 作为入口治理问题。Denial-of-wallet 指攻击者或误配置调用者通过合法 API 消耗大量昂贵资源，让平台、租户或受害 key 承担成本。它不一定表现为 5xx，也不一定让服务不可用：请求可能都是 2xx，只是每个请求都带超长 context、强制长输出、触发昂贵 provider、制造 Agent 循环或绕过缓存。若 Gateway 只看 QPS、可用性和鉴权，通过的流量仍可能在经济上构成事故。
+
+Gateway 对这类风险的防线应在 admission chain 中前置。第一层是 credential risk：新 key、长期未用 key、来源 ASN 突变、地理位置突变、同一 key 多地域并发、被禁用 key 持续重试。第二层是 request shape risk：input token 极长、max output 异常、工具调用上限异常、provider 强制路由、reasoning effort 过高。第三层是 spend velocity：每分钟成本、每小时预算、免费额度燃烧速度、第三方 provider 成本和专属容量被挤占。第四层是 business intent：该项目历史是否有这类任务，是否处于压测窗口，是否有审批或实验记录。只有把这些信号合并，才能区分真实增长、压测、客户 key 泄露和主动攻击。
+
+```yaml
+denial_of_wallet_admission_guard:
+  guard_id: dow-guard-maas-public-v1
+  scope:
+    tenants: public_and_untrusted
+    endpoints: [chat_completions, responses, agent_runs]
+  signals:
+    credential_risk:
+      new_key_high_spend_window: 10m
+      source_asn_change: alert_or_step_up
+      disabled_key_retry: block
+    request_shape:
+      input_token_p99_multiplier: policy_defined
+      max_output_token_ceiling: policy_defined
+      provider_forcing: require_egress_provider_decision
+      agent_step_ceiling: policy_defined
+    spend_velocity:
+      cost_per_minute_budget: tenant_or_project_budget
+      free_quota_burn_rate: alert_and_throttle
+      provider_cost_burst: hold_and_step_up
+      premium_capacity_displacement: block_if_untrusted
+  actions:
+    soft:
+      - lower_max_output_tokens
+      - require_async_batch_for_large_context
+      - disable_external_provider_fallback
+    hard:
+      - revoke_or_freeze_credential
+      - mark_usage_under_billing_hold
+      - emit_security_evidence_bundle
+      - open_denial_of_wallet_incident_record
+```
+
+这个 guard 不应简单替代租户预算。预算回答“最多能花多少”，denial-of-wallet guard 回答“这笔花费是否符合身份、历史、数据边界和业务意图”。一个大客户在合同内做批量生成可能合法，免费试用 key 在 5 分钟内触发同样 provider 成本则应进入 hold。相反，不能因为预算未超就继续消耗昂贵 provider，也不能因为短期成本高就误伤已审批的生产批任务。Gateway 的作用是把风险信号变成 typed decision，而不是把所有异常都归为限流。
+
+当 guard 触发 hard action 时，Gateway 应同时写三类对象：`policy_decision_record` 说明为什么拒绝、降级或冻结；`security_evidence_bundle` 冻结 key、来源、请求形态、provider route、trace 脱敏和 metering 证据；`denial_of_wallet_incident_record` 进入事故与成本流程。这样安全团队可以处置凭据，计费团队可以对异常 usage 做 billing hold，SRE 可以判断是否挤占高价值容量，业务团队可以和客户确认是否真实流量。没有这三类对象，denial-of-wallet 会在安全、账单和 SRE 之间来回转交。
+
 质量路由需要 `routing_quality_scorecard`。普通路由回答“哪个后端可用”，质量路由回答“这个请求在质量、安全、延迟、成本和业务价值约束下，应该由哪个模型或资源池服务”。同一个模型不必服务所有任务：小模型可以处理低风险分类，大模型服务高价值复杂推理；某个模型在代码场景强，但在客服场景不稳定；某个 provider 便宜但数据边界不满足企业租户。Gateway 应把这些差异显式写入 scorecard，而不是隐藏在 if/else 路由规则里。
 
 ```yaml

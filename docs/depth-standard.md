@@ -99,12 +99,16 @@
 | `credential_lifecycle` / `api_key_audit_event` | 第 5、40、44 章 | 说明 API Key、服务账户和短期凭据如何创建、轮换、禁用、审计和进入事故取证 |
 | `policy_decision_record` | 第 6、37、40、44 章 | 说明 Gateway 的 allow、deny、route、fallback、budget、data boundary 和 safety 决策如何回放 |
 | `egress_provider_decision` | 第 6、37、41、44 章 | 说明请求是否允许发往第三方 provider、跨区域 endpoint 或私有 provider，以及 provider 合同和数据边界如何约束 fallback |
+| `denial_of_wallet_admission_guard` | 第 6、37、41、44 章 | 说明合法 API 请求如何通过 credential risk、request shape、spend velocity 和 business intent 信号识别经济型攻击或误用 |
 | `prompt_trace_redaction_record` | 第 8、37、44 章 | 说明 prompt、response、RAG chunk、tool arguments 在 trace、日志和导出中如何脱敏、引用化、设 TTL 和审计 |
 | `secret_boundary_evidence` | 第 33、37、41、44 章 | 说明 KMS、provider credential、registry token、签名 key、STS token 和 break-glass token 如何被扫描、挂载、轮换和审计 |
 | `security_evidence_bundle` | 第 37、40、41、44 章 | 说明 key 泄露、provider 越权、trace 泄露和安全成本事故如何冻结跨系统证据 |
-| `denial_of_wallet_incident_record` | 第 40、41、44 章 | 说明 stolen key、长上下文攻击、Agent 循环、昂贵 provider 路由如何造成经济型事故并进入止血和账单处理 |
+| `security_policy_fault_tree_execution` | 第 39、44 章 | 说明安全与经济型事故如何按 credential、Gateway policy、provider egress、spend velocity、trace/export 分支执行故障树 |
+| `denial_of_wallet_incident_record` | 第 39、40、41、44 章 | 说明 stolen key、长上下文攻击、Agent 循环、昂贵 provider 路由如何造成经济型事故并进入止血和账单处理 |
 | `billing_dispute_replay` | 第 7、41、44 章 | 说明账单争议如何从 invoice 回放到 metering event、policy decision、served model、价格版本、hold 和修正 |
+| `denial_of_wallet_billing_replay` | 第 7、41 章 | 说明合法凭据下的异常成本如何按客户 key 泄露、平台策略缺口、产品免费额度缺口或未知窗口拆分责任和账单动作 |
 | `security_cost_ledger` / `abuse_cost_ledger` | 第 41 章 | 说明隔离、密钥、脱敏、审计、security incident、denial-of-wallet 和争议处理如何进入 secure cost/token |
+| `security_prr_abuse_drill` | 第 44 章 | 说明公共入口、外部 provider、免费试用和 Agent 平台上线前如何演练 key 泄露、provider 外联阻断、billing hold 和滥用成本闭环 |
 
 ## 训练任务链路覆盖矩阵
 

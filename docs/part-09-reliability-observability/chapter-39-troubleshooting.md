@@ -589,6 +589,74 @@ flowchart TB
 
 这个执行记录让“推理慢”不再是单一故障。TTFT 异常可能需要预热权重或拆长上下文；TPOT 异常可能要调 decode active sequence；streaming gap 可能是客户端背压或 server flush；取消后 HBM 不降可能是 KV 释放；PD 分离超时可能要切回 monolithic endpoint；canary 触发可能只需要关闭 speculative decoding 的某个 slice。动作越贴近分支，影响面越小。
 
+安全和成本型事故也需要故障树。典型症状包括：某个租户预算在短时间内被打满，同一 API Key 出现多地域来源，第三方 provider 成本突增，长上下文请求比例异常，Agent run 步数失控，或者高敏请求被错误 fallback 到外部 provider。它们与传统服务故障不同：HTTP 可能都是 2xx，模型质量也可能正常，但平台的身份边界、数据边界或经济边界已经失控。若仍用“服务是否可用”作为入口，事故会等到账单或客户投诉时才暴露。
+
+`security_policy_fault_tree_execution` 用来把这类事故拆成可验证分支。第一分支是 credential：key 是否泄露、是否新建、来源是否异常、是否绕过 rotation 或禁用策略。第二分支是 policy：Gateway 是否按正确版本执行 `policy_decision_record`，是否有 dry-run 漏放或实例配置漂移。第三分支是 egress：`egress_provider_decision` 是否存在、provider 合同和区域是否允许、fallback 是否越过数据边界。第四分支是 spend：请求形态和成本速度是否符合租户历史和审批。第五分支是 observability：trace、prompt、RAG context、tool 参数是否被正确脱敏。每个分支都要能指向证据和止血动作。
+
+```yaml
+security_policy_fault_tree_execution:
+  execution_id: spfte-sec-20260620-001
+  incident_id: sec-20260620-dow-001
+  security_evidence_bundle: seb-20260620-001
+  entry:
+    symptom: provider_cost_spike_or_budget_burn_or_boundary_violation
+    affected_tenants: [enterprise-a]
+    affected_credentials: [key_6f2c_redacted]
+    first_signal: spend_velocity_alert
+  branches:
+    credential:
+      verdict: ruled_out_or_confirmed_or_unknown
+      evidence: [credential_lifecycle, api_key_audit_events, source_asn_geo_diff]
+      immediate_actions: [freeze_or_rotate_key_if_confirmed]
+    gateway_policy:
+      verdict: ruled_out_or_confirmed_or_unknown
+      evidence: [policy_decision_records, gateway_policy_version, dry_run_diff]
+      immediate_actions: [rollback_policy_or_block_rule_if_confirmed]
+    provider_egress:
+      verdict: ruled_out_or_confirmed_or_unknown
+      evidence: [egress_provider_decisions, provider_contract, route_trace]
+      immediate_actions: [disable_external_provider_fallback_if_suspect]
+    spend_velocity:
+      verdict: ruled_out_or_confirmed_or_unknown
+      evidence: [denial_of_wallet_admission_guard, metering_events, budget_ledger]
+      immediate_actions: [throttle_large_context_or_agent_steps, billing_hold]
+    trace_and_export:
+      verdict: ruled_out_or_confirmed_or_unknown
+      evidence: [prompt_trace_redaction_records, security_audit_events, export_logs]
+      immediate_actions: [freeze_export, revoke_break_glass_access]
+  conclusion:
+    most_likely_domain: credential_or_policy_or_provider_egress_or_spend_velocity_or_unknown
+    confidence: low_medium_or_high
+    evidence_gaps: []
+  outputs:
+    denial_of_wallet_incident_record: generated_if_cost_attack
+    billing_dispute_replay: opened_if_chargeability_unclear
+    abuse_cost_ledger: append_if_abuse_or_anomaly
+    prr_gate_update: generated_if_gate_gap_found
+```
+
+```mermaid
+flowchart TB
+  Alert["security / spend alert"] --> Bundle["security_evidence_bundle"]
+  Bundle --> Tree["security_policy_fault_tree_execution"]
+  Tree --> Cred["credential\nkey / source / lifecycle"]
+  Tree --> Policy["gateway policy\nversion / dry-run / drift"]
+  Tree --> Egress["provider egress\ncontract / region / fallback"]
+  Tree --> Spend["spend velocity\ncontext / provider / agent steps"]
+  Tree --> Export["trace export\nredaction / break-glass"]
+  Cred --> Contain["containment\nfreeze key / route / export / budget"]
+  Policy --> Contain
+  Egress --> Contain
+  Spend --> Contain
+  Export --> Contain
+  Contain --> DOW["denial_of_wallet_incident_record"]
+  Contain --> Replay["billing_dispute_replay"]
+  Contain --> Cost["abuse_cost_ledger"]
+  Contain --> PRR["security PRR gate update"]
+```
+
+这棵树的价值是把“安全事故”拆成不同责任和成本路径。若 credential 分支确认泄露，优先轮换、冻结和争议计费；若 provider egress 分支确认越权，优先关外联、审计合同和通知受影响租户；若 spend velocity 分支确认免费额度被刷但没有数据越界，重点是预算 guard、billing hold 和产品策略修复；若 trace export 分支确认泄露，必须进入数据事件和导出审计。不同分支的技术动作、客户沟通和经济处理完全不同，不能用同一个“security issue”标签糊掉。
+
 ## 39.9 故障树分析
 
 故障树分析把故障从症状拆到可能原因、证据和动作。AI Factory 应为高频故障建立标准树：训练 pending、NCCL hang、GPU Xid、推理 TTFT 高、checkpoint 慢、节点 NotReady、存储慢、模型 loss spike 和资源池容量异常。故障树让排障从经验驱动变为流程驱动。

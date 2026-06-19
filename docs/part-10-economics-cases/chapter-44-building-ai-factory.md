@@ -807,6 +807,63 @@ supply_chain_prr_invalidation_drill:
 
 这个演练的价值在于暴露“控制面成功、数据面失败”的风险。Registry 指针已经更新，但本地 NVMe 仍保留旧权重；RAG 索引权限已经修复，但 rack cache 仍可命中旧索引；tokenizer digest 已撤销，但某些 warmed replica 仍使用旧模板；调度器看到节点 cache ready，却不知道它是 invalid ready。AI Factory 的供应链安全不是只签名和登记来源，还要能撤销、阻断、预热替代版本并计算影响成本。
 
+安全和滥用也需要 PRR 演练。公共 MaaS、外部客户、免费试用、第三方 provider 聚合、Agent 平台和高敏企业租户，都不能只检查认证和 TLS。PRR 必须证明：异常 key 能被发现和冻结，provider 外联能被策略证明或阻断，长上下文/长输出/Agent 循环能被预算和形态 guard 降级，异常 usage 能进入 billing hold，事故证据能进入 `security_evidence_bundle`，成本能进入 `abuse_cost_ledger`，并且策略缺口会回写 Gateway 和上线门禁。
+
+```yaml
+security_prr_abuse_drill:
+  drill_id: sec-prr-drill-20260620-001
+  production_readiness_review: prr-maas-chat-prod-2026-06
+  scope:
+    endpoint: maas-public-chat
+    tenants: [public-trial, enterprise-a]
+    providers: [third-party-x]
+    workload_slices: [long_context_chat, agent_run, provider_fallback]
+  simulated_or_controlled_events:
+    - stolen_key_source_asn_change
+    - free_quota_long_context_burst
+    - external_provider_fallback_candidate_for_sensitive_prompt
+    - agent_loop_with_repeated_tool_failures
+  required_outputs:
+    policy_decision_record: generated
+    egress_provider_decision: generated_for_provider_candidate
+    denial_of_wallet_admission_guard: triggered_or_proven_not_triggered
+    security_evidence_bundle: generated
+    security_policy_fault_tree_execution: generated
+    denial_of_wallet_incident_record: generated_if_cost_attack_simulated
+    billing_dispute_replay: opened_if_chargeability_unclear
+    abuse_cost_ledger: appended
+    prr_gate_update: generated_if_gap_found
+  pass_criteria:
+    external_provider_route_blocked_if_data_boundary_forbids: true
+    suspicious_key_frozen_before_budget_exhaustion: true
+    provider_fallback_disabled_for_untrusted_or_sensitive_scope: true
+    billing_hold_marks_suspicious_usage: true
+    no_sensitive_prompt_copied_into_security_bundle: true
+    cost_ledger_append_verified: true
+    guardrail_update_owner_assigned_if_gap_found: true
+```
+
+这类演练能拦截两种常见误判。第一种是“认证通过就是合法流量”：stolen key 使用的仍是合法 API Key，但来源、形态和成本速度已经异常。第二种是“provider fallback 提高可用性”：如果数据边界、合同、日志和训练使用策略不允许外联，可用性不能凌驾于边界之上。PRR 要求演练这些路径，是为了证明平台能在真实成本和真实风险出现前止血，而不是事后靠人工查账。
+
+```mermaid
+flowchart LR
+  Drill["security_prr_abuse_drill"] --> Gateway["Gateway guard\nidentity / policy / budget"]
+  Gateway --> PDR["policy_decision_record"]
+  Gateway --> EPD["egress_provider_decision"]
+  Gateway --> Guard["denial_of_wallet_admission_guard"]
+  PDR --> Bundle["security_evidence_bundle"]
+  EPD --> Bundle
+  Guard --> Bundle
+  Bundle --> Fault["security_policy_fault_tree_execution"]
+  Fault --> DOW["denial_of_wallet_incident_record"]
+  DOW --> Abuse["abuse_cost_ledger"]
+  DOW --> Replay["billing_dispute_replay"]
+  Abuse --> PRR["PRR gate update"]
+  Replay --> PRR
+```
+
+安全 PRR 的通过标准应避免两个极端。一个极端是把所有 provider 外联都禁止，牺牲多模型聚合和成本优化；另一个极端是把所有外联都交给业务配置，平台无法证明边界。更合理的做法是把 provider、区域、数据等级、日志策略、训练使用策略、价格、fallback 目标和客户披露写成 `egress_provider_decision`，让允许和拒绝都能回放。denial-of-wallet 也类似：不是所有成本突增都要封禁，而是要根据身份、历史、审批和风险分层采取降级、人工确认、冻结、hold 或放行。
+
 从验收到上线的流水线可以用下面的图表示：
 
 ```mermaid

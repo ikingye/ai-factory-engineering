@@ -833,14 +833,38 @@ security_evidence_bundle:
     secret_boundary_evidence: required_if_secret_or_provider_involved
     metering_events: required
     billing_hold: required_if_cost_under_investigation
+    denial_of_wallet_admission_guard: required_if_cost_attack_suspected
+    spend_velocity_snapshot: required_if_budget_or_provider_cost_spike
   containment:
     revoked_credentials: recorded
     route_blocks: recorded
     export_freeze: recorded
     affected_usage_marked_under_review: true
+    external_provider_fallback_disabled: true_if_relevant
 ```
 
 这个 bundle 的关键是同时服务安全、SRE 和财务。Key 泄露既是身份事故，也是成本事故；trace 泄露既是观测事故，也是数据边界事故；第三方 provider 越权路由既是策略事故，也是合同和账单事故。把证据冻结成一个对象，能减少跨团队重复取证，并让后续 `billing_dispute_replay` 和 `production_readiness_review` 使用同一事实。
+
+denial-of-wallet 事故需要比普通安全告警多冻结经济证据。一次 key 泄露可能还没有造成数据外流，却已经烧掉大量 provider cost；一次免费额度刷量可能没有突破租户边界，却挤占 premium capacity；一次 Agent 循环可能每一步都符合权限，却在任务层面完全失控。因此 `security_evidence_bundle` 应包含 spend velocity、free quota burn、provider call count、max output、Agent step、route pool、budget action、billing hold 和受影响高价值请求。没有这些字段，安全团队只能说“key 异常”，财务团队却无法判断应正常计费、退款、内部吸收还是追偿。
+
+```mermaid
+flowchart LR
+  Gateway["AI Gateway\npolicy + budget"] --> PDR["policy_decision_record"]
+  Gateway --> EPD["egress_provider_decision"]
+  Gateway --> Guard["denial_of_wallet_admission_guard"]
+  Guard --> Bundle["security_evidence_bundle"]
+  PDR --> Bundle
+  EPD --> Bundle
+  Meter["metering events\ninput/output/provider"] --> Bundle
+  Bundle --> Hold["billing hold"]
+  Bundle --> Cost["abuse_cost_ledger"]
+  Bundle --> Tree["security_policy_fault_tree_execution"]
+  Bundle --> Audit["security_audit_event"]
+```
+
+观测系统还应把 denial-of-wallet 作为 SLO 旁路信号。传统可用性告警可能完全不触发，因为服务响应正常；真正异常的是单位时间成本、free quota 消耗、provider route 比例、长上下文占比、同一 credential 的 geography/ASN 扩散、Agent step 分布和 premium queue displacement。SRE 看板应把这些指标和普通 TTFT、TPOT、错误率放在一起，尤其要按 tenant、credential、project、model、provider 和 route_pool 切分。经济异常常常比 5xx 更早暴露滥用，也比月度账单更适合止血。
+
+安全证据包必须遵守脱敏和最小化原则。它可以引用 prompt、RAG chunk 和 tool argument 的 hash、对象引用、分类标签和抽样摘要，但不应把完整敏感内容复制进安全工单。对 provider 外联事故，bundle 应保存 provider contract id、region、training/logging policy、egress decision 和 route result，而不是复制原始 prompt。这样既能证明边界是否被突破，也不会让事故取证本身成为新的泄露路径。
 
 第八步是建立质量事件采集管道。应用侧的用户反馈、人工接管、重新生成，Gateway 的路由、fallback、实验分桶，模型服务的 release contract，RAG 的引用校验，Agent 的轨迹结果，安全策略的拒答和工具审计，都要进入同一条质量事实流。质量事件不一定全部实时告警，但必须可查询、可抽样、可脱敏、可沉淀为回归样本。否则线上质量会和离线评测长期脱节。
 

@@ -287,6 +287,33 @@ billing_dispute_replay:
 
 这个对象也能处理 security hold。若 key 泄露、异常预算消耗或 denial-of-wallet 攻击正在调查，相关 usage 不应直接进入最终账单，而应先标记为 hold。调查结束后，replay 根据责任边界决定正常计费、退款、内部损失或安全赔付。没有 dispute replay，平台即使愿意处理争议，也很难给出可验证依据。
 
+denial-of-wallet 的 replay 需要额外区分“合法凭据、异常意图、真实成本”三件事。合法 API Key 发出的请求不一定都应正常计费：如果平台的 `denial_of_wallet_admission_guard` 明确应该阻断却没有阻断，异常 usage 可能属于平台策略缺口；如果客户 key 泄露且平台在合理窗口内触发冻结，后续 usage 可能按合同由客户承担或分摊；如果免费额度设计允许未认证用户制造高 provider 成本，就应进入产品策略成本。账单系统不能简单按 `credential_valid=true` 出账，也不能简单把所有异常归为安全赔付。
+
+```yaml
+denial_of_wallet_billing_replay:
+  replay_id: dow-bdr-20260620-001
+  source:
+    denial_of_wallet_incident_record: dow-20260620-001
+    security_policy_fault_tree_execution: spfte-sec-20260620-001
+    abuse_cost_ledger: acl-20260620-001
+  disputed_usage:
+    metering_events: immutable_refs
+    provider_cost_events: immutable_refs
+    affected_invoice_lines: matched
+  responsibility_split:
+    customer_key_leak_window: calculated_if_confirmed
+    platform_policy_gap_window: calculated_if_confirmed
+    product_free_quota_gap_window: calculated_if_confirmed
+    unknown_window: hold_until_review
+  billing_actions:
+    charge_customer: amount_if_contract_allows
+    platform_absorb: amount_if_policy_gap
+    issue_credit: amount_if_overcharged
+    update_future_guardrail: required
+```
+
+这个 replay 的输出应同时进入 invoice、客户通知、`security_cost_ledger` 和 `abuse_cost_ledger`。否则账单修正只解决一次争议，不会降低下一次事故概率。尤其是公共试用和第三方 provider 聚合场景，计费系统应能告诉 Gateway：哪些 usage 模式曾经造成损失、哪些 guard 已经更新、哪些租户或产品计划需要更低默认预算。账单不是事故后的尾声，而是经济控制面的反馈来源。
+
 SLA 赔付也应进入同一个 replay 流程，而不是在账单外手工发放。`sla_credit_model` 定义哪些指标、窗口和排除项可以产生 credit，`billing_dispute_replay` 则负责把这些 credit 追到 metering event、invoice line、租户和项目。这样可以避免两类错误：一类是可靠性事故已经确认，但财务无法把赔付落到账单；另一类是客户质疑账单时，平台把质量问题、SLA 违约、客户侧错误和安全 hold 混在同一个“退款”动作里。
 
 ```yaml

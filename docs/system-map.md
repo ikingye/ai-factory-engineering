@@ -106,11 +106,15 @@ flowchart TB
 | `tenant_isolation_evidence` | 证明租户隔离在身份、模型目录、资源池、缓存、trace、存储和计量路径中实际生效。 | 第 5、37、44 章 | `policy_decision_record`、`production_readiness_review` |
 | `policy_decision_record` | 让 Gateway 的 allow/deny/route/fallback 可回放。 | 第 6 章 | `api_key_audit_event`、`routing_quality_scorecard` |
 | `egress_provider_decision` | 记录一次请求是否允许出站到第三方 provider、跨区域 endpoint 或私有 provider，并绑定数据边界和合同。 | 第 6、37、41、44 章 | `policy_decision_record`、`billing_dispute_replay` |
+| `denial_of_wallet_admission_guard` | 用 credential risk、request shape、spend velocity 和 business intent 信号在 Gateway 入口识别经济型攻击或误用。 | 第 6、37、41、44 章 | `security_evidence_bundle`、`denial_of_wallet_incident_record` |
 | `prompt_trace_redaction_record` | 记录 prompt、response、RAG chunk 和 tool arguments 在 trace、日志和导出中的脱敏、引用、TTL 和审批。 | 第 8、37、44 章 | `security_evidence_bundle`、`security_audit_event` |
 | `secret_boundary_evidence` | 证明 KMS、provider credential、registry token、签名 key、STS token 和 break-glass token 没有越界使用或泄露。 | 第 33、37、41、44 章 | `storage_security_boundary`、`security_cost_ledger` |
 | `security_evidence_bundle` | 冻结 key 泄露、provider 越权、trace 泄露、secret 泄露和 denial-of-wallet 所需的跨系统证据。 | 第 37、40、41、44 章 | `security_audit_event`、`billing_dispute_replay` |
-| `denial_of_wallet_incident_record` | 记录 stolen key、长上下文攻击、Agent 循环和昂贵 provider 路由造成的成本型事故。 | 第 40、41、44 章 | `abuse_cost_ledger`、`billing_dispute_replay` |
+| `security_policy_fault_tree_execution` | 记录安全与经济型事故在 credential、Gateway policy、provider egress、spend velocity、trace/export 分支上的证据、判断和动作。 | 第 39、44 章 | `security_evidence_bundle`、`denial_of_wallet_incident_record` |
+| `denial_of_wallet_incident_record` | 记录 stolen key、长上下文攻击、Agent 循环和昂贵 provider 路由造成的成本型事故。 | 第 39、40、41、44 章 | `abuse_cost_ledger`、`billing_dispute_replay` |
 | `billing_dispute_replay` | 把账单争议从 invoice 回放到 metering event、policy decision、served model、价格版本和 hold/correction。 | 第 7、41、44 章 | `tenant_cost_isolation`、`security_cost_ledger` |
+| `denial_of_wallet_billing_replay` | 把经济型攻击或误用的异常 usage 按客户 key 泄露、平台策略缺口、产品免费额度缺口或未知窗口拆分责任和账单动作。 | 第 7、41 章 | `billing_dispute_replay`、`abuse_cost_ledger` |
+| `security_prr_abuse_drill` | 演练公共入口、provider 外联、免费额度和 Agent 场景下的 key 冻结、外联阻断、billing hold、故障树和成本账本。 | 第 44 章 | `production_readiness_review`、`abuse_cost_ledger` |
 | `rag_agent_admission_context` | 把入口身份、数据边界、RAG 范围、工具范围和预算传给下游执行链路。 | 第 6 章 | `retrieval_permission_decision`、`agent_budget_ledger` |
 | `retrieval_permission_decision` | 证明 RAG 在当前用户和数据边界下允许或拒绝哪些候选证据。 | 第 2、6 章 | `rag_context_snapshot`、`tool_security_incident_record` |
 | `rag_context_snapshot` | 冻结最终进入 prompt 的证据、引用、token 预算、截断和冲突处理。 | 第 2、37 章 | `rag_quality_regression_record`、`quality_evidence_bundle` |
@@ -243,8 +247,9 @@ flowchart TB
 | 变更后随机故障 | 第 29、37、38、39、40 章 | change_safety_case、baseline_invalidation_record、reliability_evidence_bundle、recent changes | 检查变更是否失效了准入基线、资源池是否降级、复测是否覆盖真实 workload。 |
 | 扩容后产能没增长 | 第 28、36、38、40、41 章 | capacity_activation_record、rack_capacity_unit、physical/fabric/storage acceptance、workload-fit capacity | 区分 installed、accepted、allocatable 和 workload-fit GPU，定位 power、cooling、fabric、storage 或 baseline 失效限制。 |
 | 上线评审证据不足 | 第 38、40、41、44 章 | production_readiness_review、baseline_invalidation_record、slo_budget_ledger、reliability_cost_ledger | 证据缺口应 block 或 conditional approve，不能靠口头承诺上线。 |
-| API Key 泄露或异常消费 | 第 5、6、37、40、41、44 章 | credential_lifecycle、api_key_audit_event、security_evidence_bundle、denial_of_wallet_incident_record、abuse_cost_ledger | 先吊销或轮换凭据并标记 billing hold，再判断是用户泄露、平台策略缺口还是滥用攻击。 |
-| 第三方 provider 越权路由 | 第 5、6、37、40、41、44 章 | egress_provider_decision、policy_decision_record、data_boundary_policy、provider_contract、security_evidence_bundle | 阻断 provider route，回放数据边界和合同，评估数据暴露、成本和账单修正。 |
+| API Key 泄露或异常消费 | 第 5、6、37、39、40、41、44 章 | credential_lifecycle、api_key_audit_event、denial_of_wallet_admission_guard、security_evidence_bundle、security_policy_fault_tree_execution、denial_of_wallet_incident_record、abuse_cost_ledger | 先吊销或轮换凭据并标记 billing hold，再判断是用户泄露、平台策略缺口、产品免费额度缺口还是滥用攻击。 |
+| 第三方 provider 越权路由 | 第 5、6、37、39、40、41、44 章 | egress_provider_decision、policy_decision_record、data_boundary_policy、provider_contract、security_evidence_bundle、security_policy_fault_tree_execution | 阻断 provider route，回放数据边界、合同、日志和训练使用策略，评估数据暴露、provider 成本和账单修正。 |
+| 免费额度被刷或 denial-of-wallet | 第 6、7、37、39、41、44 章 | denial_of_wallet_admission_guard、security_evidence_bundle、security_policy_fault_tree_execution、denial_of_wallet_incident_record、denial_of_wallet_billing_replay、abuse_cost_ledger、security_prr_abuse_drill | 区分真实增长、压测、key 泄露、产品 guardrail 缺口和主动攻击，先冻结异常 usage，再做责任 replay 和网关 guard 更新。 |
 | Trace 或日志疑似泄露敏感 prompt | 第 6、8、33、37、40、44 章 | prompt_trace_redaction_record、security_audit_event、data_boundary_policy、secret_boundary_evidence | 冻结导出权限，确认脱敏和 TTL，评估导出范围并更新观测审批。 |
 | 账单争议 | 第 5、6、7、41、42 章 | billing_dispute_replay、tenant_cost_isolation、policy_decision_record、metering event、business_model_profile | 区分失败是否计费、streaming 中断、免费额度、租户归属、provider 路由、security hold 和合约边界。 |
 | 客户上线后承诺无法兑现 | 第 4、5、40、42、44 章 | customer_onboarding_evidence、tenant_boundary、sla_credit_model、launch_risk_register、production_readiness_review | 检查客户、租户、模型访问、预算、支持、SLA 和数据边界是否真的完成接入；缺证据时应暂停放量。 |
