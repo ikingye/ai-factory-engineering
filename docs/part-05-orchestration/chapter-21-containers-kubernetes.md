@@ -262,6 +262,48 @@ flowchart TB
 
 排障时必须先识别当前节点使用哪条路径。若集群使用 RuntimeClass `nvidia`，但 Pod 没写 runtimeClassName，可能落到默认 runc，导致 device plugin 分配了 GPU 但 runtime 没有执行 NVIDIA 注入。若 device plugin 使用 CDI strategy，但 containerd 或 CRI-O 没启用 CDI 支持，Pod 事件可能显示设备解析失败。若集群使用 legacy envvar strategy，镜像里残留 `NVIDIA_VISIBLE_DEVICES=all` 可能使非 GPU Pod 触发 NVIDIA hook。路径不同，日志入口也不同：legacy hook 看 `nvidia-container-runtime-hook`、`nvidia-container-cli` 和 containerd stderr；CDI 看 CDI spec 文件、CRI 传递的 device name 和 runtime CDI 解析错误；RuntimeClass 问题则看 Pod spec、RuntimeClass 对象、containerd runtime handler 和 kubelet CRI 配置。
 
+为了让这条路径可验证，平台应保存 `oci_runtime_injection_diff`。它不是要求用户读完整 OCI `config.json`，而是把 NVIDIA runtime、CDI 或 NRI 在容器启动前后改变了什么摘出来：新增了哪些 hook、device、mount、env、Linux capability、cgroup device rule，以及这些变化是否来自 device plugin 分配结果。没有 diff，`OCI runtime create failed` 只能靠节点日志猜；有 diff，SRE 可以判断失败发生在 spec patch、hook 执行、CDI 解析还是用户进程启动。
+
+```yaml
+oci_runtime_injection_diff:
+  diff_id: ord-20260620-gpu-smoke-001
+  pod:
+    namespace: gpu-acceptance
+    name: gpu-smoke-runtimeclass
+    container: cuda
+  runtime_path:
+    cri: containerd
+    runtime_handler: nvidia
+    injection_mode: cdi
+    device_list_strategy: cdi
+  before:
+    hooks:
+      prestart: []
+    devices: []
+    mounts: []
+    env:
+      NVIDIA_VISIBLE_DEVICES: absent
+  after:
+    cdi_devices:
+      - nvidia.com/gpu=GPU-xxxx
+    devices:
+      - /dev/nvidia0
+      - /dev/nvidiactl
+      - /dev/nvidia-uvm
+    mounts:
+      - source: host_driver_library
+        destination: container_driver_library
+    env:
+      NVIDIA_VISIBLE_DEVICES: GPU-xxxx
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+  verdict:
+    spec_patch: pass
+    hook_or_cdi_resolution: pass
+    unexpected_extra_devices: false
+```
+
+这个 diff 的关键不是记录所有实现细节，而是建立“分配事实到运行时事实”的桥。若 device plugin 分配了 1 张 GPU，而 diff 中出现 8 张设备，问题在 runtime 注入或镜像默认值；若 diff 中有 CDI device name，但容器创建失败提示无法解析 CDI，问题在 containerd/CRI-O 的 CDI 支持或 spec 文件；若 diff 没有任何 NVIDIA 相关变化，说明 RuntimeClass、runtime handler 或 device plugin strategy 没有接上。它应被第 38 章的容器 GPU runtime 准入和第 39 章的故障诊断消费。
+
 Docker 使用时，典型命令是：
 
 ```bash
@@ -415,6 +457,38 @@ spec:
 
 工程实现还应提供标准诊断脚本或诊断 Job。诊断不应只打印 `nvidia-smi`，而应按层次输出：节点 driver 和 GPU UUID、container runtime 配置、NVIDIA hook 是否可用、Pod 分配到的 GPU、容器内设备文件、CUDA library、RDMA device、NCCL 环境变量、Service endpoint 和探针结果。诊断结果应带 run id 并归档，方便后续与准入基线对比。这样用户报“Pod 起不来”或“GPU 不可用”时，平台能快速判断是镜像、调度、runtime、设备注入还是应用 readiness 问题。
 
+标准诊断 Job 的输出应包含 `gpu_device_visibility_reconciliation`。它把 Kubernetes 分配、runtime 注入和容器内枚举三类事实对齐，专门发现“能看到 GPU 但看错了 GPU”这种隐蔽问题。
+
+```yaml
+gpu_device_visibility_reconciliation:
+  reconciliation_id: gdvr-20260620-001
+  pod: gpu-smoke-runtimeclass
+  assignment_record: gar-20260620-0001
+  expected:
+    gpu_uuids: [GPU-xxxx]
+    mig_uuids: []
+    visible_count: 1
+    driver_capabilities: [compute, utility]
+  observed:
+    nvidia_smi_gpu_uuids: [GPU-xxxx]
+    cuda_visible_devices: "0"
+    dev_nodes:
+      - /dev/nvidia0
+      - /dev/nvidiactl
+      - /dev/nvidia-uvm
+    nvidia_visible_devices: GPU-xxxx
+  checks:
+    count_matches_assignment: pass
+    uuid_matches_assignment: pass
+    no_unassigned_gpu_visible: pass
+    driver_library_load: pass
+    cuda_minimal_kernel: pass
+  failure_action:
+    on_mismatch: cordon_node_and_open_runtime_investigation
+```
+
+这个对象应成为 GPU Pod admission、节点准入和事故排查的共同证据。容器里完全看不到 GPU 是硬失败；容器里看到过多 GPU 是隔离和计费失败；容器里看到的 UUID 与分配记录不同，则可能把一个租户的任务放到另一个租户的设备上。生产系统必须把这些情况区分开，不能都写成 “GPU unavailable”。
+
 落地时还要把准入门禁接到对象创建路径。生产 namespace 可以要求镜像 digest、资源标签、探针、owner、租户、成本中心和安全上下文齐全；GPU workload 可以要求目标节点池已经通过容器 GPU smoke test；训练任务可以要求 queue、quota、checkpoint 和失败策略完整。这些检查应由 admission webhook 或平台控制器自动执行，而不是靠评审 YAML。Kubernetes 允许用户提交很多合法对象，但 AI Factory 只应允许符合生产语义的对象进入关键资源池。
 
 一个 GPU workload 的准入链可以这样组织：
@@ -492,7 +566,9 @@ Job 指标要覆盖业务完成。批量推理看 shard success、output complet
 
 - [NVIDIA Container Toolkit: Architecture Overview](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/arch-overview.html)
 - [NVIDIA Container Toolkit: Installing the NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)
+- [NVIDIA GPU Operator: CDI and NRI support](https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/latest/cdi.html)
 - [Open Container Initiative Runtime Specification](https://specs.opencontainers.org/runtime-spec/runtime/)
 - [Kubernetes Concepts](https://kubernetes.io/docs/concepts/)
+- [Kubernetes RuntimeClass](https://kubernetes.io/docs/concepts/containers/runtime-class/)
 - [Kubernetes Network Plugins](https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/network-plugins/)
 - [Large-scale cluster management at Google with Borg](https://research.google/pubs/large-scale-cluster-management-at-google-with-borg/)

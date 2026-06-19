@@ -198,6 +198,9 @@ nccl_hang_network_branch:
     - compare_with_fabric_baseline
     - attach_rail_balance_report
     - attach_congestion_event_record_if_present
+    - attach_gpu_nic_topology_evidence
+    - attach_gpu_device_visibility_reconciliation
+    - attach_oci_runtime_injection_diff_if_container_changed
     - verify_container_rdma_and_nccl_interface
   verdicts:
     rail_imbalance:
@@ -209,6 +212,12 @@ nccl_hang_network_branch:
     runtime_interface_mismatch:
       evidence: nccl_selected_interface_not_in_affinity_report
       action: fix_runtime_template_or_env
+    device_visibility_mismatch:
+      evidence: gpu_device_visibility_reconciliation_failed
+      action: cordon_node_and_retest_container_runtime
+    runtime_injection_regression:
+      evidence: oci_runtime_injection_diff_changed_after_upgrade
+      action: rollback_runtime_or_rebuild_cdi_spec
     insufficient_evidence:
       action: preserve_evidence_and_rerun_same_topology_baseline
 ```

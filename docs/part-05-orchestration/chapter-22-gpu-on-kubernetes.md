@@ -245,6 +245,40 @@ gpu_assignment_record:
 
 `gpu_assignment_record` 还应支持分配事实与容器内事实对账。分配事实来自 kubelet/device plugin，容器内事实来自 `nvidia-smi -L`、CUDA runtime、CDI 解析和 `/dev/nvidia*` 可见性。两者不一致时，说明调度和 runtime 之间发生断裂。例如 record 中 `cdi_device_name` 指向某个 GPU UUID，但容器内 `nvidia-smi` 看到了全部 GPU；或者 record 中分配了 MIG 实例，容器内却看到了整卡设备。对账失败应触发 `device_visibility_mismatch` 告警，并阻止该节点继续接收生产 GPU Pod，直到 runtime 配置复测通过。
 
+多卡训练还需要 `gpu_nic_topology_evidence`。它把 Pod 或 rank 实际使用的 GPU、NUMA、CPU set、NIC、RDMA device、rail、NCCL interface 和 switch port 绑定在一起，回答“这组 GPU 是否真的靠近这组 NIC”。没有这个对象，NCCL 慢只能在训练框架、网络和调度之间来回甩锅；有这个对象，平台可以判断慢 rank 是否集中在跨 NUMA、跨 PCIe root complex、错 rail 或容器 RDMA 不可见的节点上。
+
+```yaml
+gpu_nic_topology_evidence:
+  evidence_id: gnte-train-20260620-rack12
+  workload:
+    job: pretrain-exp-20260620
+    pod: worker-17
+    rank: 136
+  placement:
+    node: gpu-node-017
+    gpu_uuid: GPU-xxxx
+    mig_uuid: none
+    numa_node: 0
+    cpu_set: measured
+  network:
+    rdma_device: mlx5_0
+    nic_pci_bus: "0000:41:00.0"
+    rail: rail-a
+    switch_port: leaf11/1/17
+    nccl_selected_interface: mlx5_0
+  runtime:
+    runtime_class: nvidia
+    device_list_strategy: cdi
+    rdma_visible_in_container: true
+    gpu_device_visibility_reconciliation: gdvr-20260620-001
+  verdict:
+    gpu_nic_numa_aligned: true
+    nccl_interface_matches_affinity: true
+    topology_risk: none
+```
+
+这份证据应由调度器、kubelet 事件、device plugin、CNI/RDMA 插件、NCCL 环境和网络 telemetry 共同生成。它不是静态拓扑表，而是某个 workload 的实际运行事实。节点拓扑正确但 Pod 没拿到对应 RDMA device，证据会失败；调度意图正确但 NCCL 选择了另一张网卡，证据也会失败。第 39 章的 NCCL hang 分支应优先引用它，而不是只看 switch 端口计数。
+
 ## 22.4 MIG
 
 MIG 即 Multi-Instance GPU，可以把一张物理 GPU 切分成多个硬件隔离实例。每个 MIG 实例拥有独立的一部分计算和显存资源，适合小模型推理、开发测试、多租户隔离和资源粒度较细的场景。相比 time-slicing，MIG 的隔离更强，性能更可预测；相比整卡分配，MIG 能提高资源利用率，减少小任务占整卡的浪费。
@@ -332,6 +366,8 @@ RDMA 的验收不能只看设备存在。还要验证容器内 verbs 能力、NC
 多租户 RDMA 还要有隔离边界。SR-IOV VF、VLAN、VRF、InfiniBand P_Key、RoCE GID、NetworkPolicy 和服务网格身份各自负责不同层次，不能互相替代。Kubernetes NetworkPolicy 通常不约束所有 RDMA 数据路径，RDMA VF 暴露给容器也不等于租户网络策略已正确执行。平台应把 RDMA device 分配、网络分段、NCCL interface 选择和审计事件放在同一份诊断报告里。
 
 生产实现中，不应为了让 RDMA 可用而把训练 Pod 直接设为 privileged。更好的方式是通过 RDMA device plugin 或 SR-IOV device plugin 暴露受控设备，通过 CNI/Network Operator 配置网络，通过 `runtime_privilege_profile` 开放必要但有限的 capability，并把分配结果写入 `gpu_assignment_record`。这样性能路径和安全路径可以同时被验证。
+
+RDMA 设备还应进入和 GPU 相同的可见性对账。`gpu_device_visibility_reconciliation` 关注 GPU，`gpu_nic_topology_evidence` 关注 GPU 与 NIC 的运行时绑定。对跨节点训练，准入测试应确认容器内 verbs 设备、NCCL 选择接口、GPU/NIC NUMA 亲和和 rail 标签一致。若主机 `ibv_devinfo` 正常但容器内不可见，问题在设备注入或权限；若容器内可见但 NCCL 选择了非预期接口，问题在模板、环境变量或拓扑标签；若接口正确但带宽低，再进入 fabric 和拥塞分支。这个顺序能显著减少无效排障。
 
 RDMA 可用性应进入节点准入报告。
 
@@ -446,3 +482,5 @@ GPU on Kubernetes 的指标首先包括资源视图：GPU allocatable、allocate
 - [Kubernetes Device Plugins documentation](https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/device-plugins/)
 - [NVIDIA k8s-device-plugin repository](https://github.com/NVIDIA/k8s-device-plugin)
 - [NVIDIA GPU Operator documentation](https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/latest/index.html)
+- [NVIDIA GPU Operator: CDI and NRI support](https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/latest/cdi.html)
+- [Kubernetes RuntimeClass](https://kubernetes.io/docs/concepts/containers/runtime-class/)

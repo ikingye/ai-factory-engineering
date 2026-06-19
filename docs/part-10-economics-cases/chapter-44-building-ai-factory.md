@@ -467,6 +467,13 @@ production_readiness_review:
       reliability_evidence_bundle_trigger: configured
       inference_runtime_diagnostic_bundle: configured
       token_metering_reconciliation: pass
+    container_gpu_runtime:
+      container_gpu_runtime_acceptance_matrix: pass
+      oci_runtime_injection_diff: sampled_and_clean
+      gpu_device_visibility_reconciliation: pass
+      gpu_nic_topology_evidence: pass_if_rdma_or_multigpu
+      runtime_privilege_profile: enforced
+      container_runtime_change_record: reviewed_if_recent
     quality:
       quality_gate_execution: qge-af-chat-20260620-001
       eval_dataset_lineage_record: edl-support-quality-20260620
@@ -498,6 +505,10 @@ production_readiness_review:
       - no_rollback_path
       - no_metering_reconciliation
       - no_incident_owner_or_runbook
+      - no_container_gpu_runtime_acceptance_for_target_pool
+      - gpu_device_visibility_reconciliation_failed
+      - rdma_or_multigpu_without_gpu_nic_topology_evidence
+      - recent_container_runtime_change_without_retest
       - no_valid_quality_gate_execution
       - no_eval_dataset_lineage_for_required_task_slices
       - no_quality_rollback_or_freeze_path

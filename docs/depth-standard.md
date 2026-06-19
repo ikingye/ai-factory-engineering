@@ -40,6 +40,8 @@
 | `nvidia-container-runtime` 修改 OCI spec | 第 21 章 | 讲清 runtime wrapper 位置和职责 |
 | `nvidia-container-runtime-hook` 作为 OCI prestart hook | 第 21 章 | 讲清 hook 调用时机和失败表现 |
 | `nvidia-container-cli` 与 `libnvidia-container` 注入设备和库 | 第 21 章 | 讲清 bind mount、环境变量、capabilities 和 debug 入口 |
+| `oci_runtime_injection_diff` | 第 21 章、第 38 章、第 39 章 | 说明 NVIDIA runtime、CDI 或 NRI 对 OCI spec 的实际改动如何被审计和排障 |
+| `gpu_device_visibility_reconciliation` | 第 21 章、第 22 章、第 38 章、第 39 章 | 说明 kubelet/device plugin 分配结果、runtime 注入结果和容器内可见 GPU 如何对账 |
 | `NVIDIA_VISIBLE_DEVICES`、`NVIDIA_DRIVER_CAPABILITIES` | 第 21 章、第 22 章 | 解释语义、风险、与 Kubernetes request 的关系 |
 | Docker、containerd、CRI-O 与 Kubernetes CRI | 第 21 章 | 说明 kubelet 到 CRI 到 OCI runtime 的链路 |
 | CDI / NRI 与 legacy hook 模式 | 第 19 章、第 21 章、第 22 章 | 说明 Container Device Interface、Node Resource Interface、RuntimeClass、device list strategy 和验收差异 |
@@ -48,6 +50,8 @@
 | driver、CUDA、NCCL、OFED、Toolkit 兼容矩阵 | 第 19 章、第 29 章 | 说明主机/容器边界、版本矩阵和漂移控制 |
 | GPU 容器准入与 smoke test | 第 29 章、第 38 章 | 说明节点入池前如何验证容器内 GPU、NCCL、RDMA |
 | 容器内 GPU 与 RDMA/NIC 协同 | 第 22 章、第 32 章、第 38 章 | 说明 device、NIC、NUMA、RDMA、NCCL 的完整路径 |
+| `gpu_nic_topology_evidence` | 第 22 章、第 38 章、第 39 章 | 说明多卡和 RDMA 任务中 GPU、NUMA、NIC、rail、NCCL interface 和 switch port 如何绑定成运行事实 |
+| `container_runtime_change_record` | 第 40 章、第 44 章、第 41 章 | 说明 containerd/runc/Toolkit/CDI/NRI/device plugin strategy 变更如何触发复测、PRR 和成本归因 |
 
 ## 推理请求链路覆盖矩阵
 

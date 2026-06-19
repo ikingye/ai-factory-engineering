@@ -585,6 +585,9 @@ reliability_cost_ledger:
     reliability_evidence_bundles: [reb-20260620-ttft-rack12]
     slo_budget_ledger: slo-maas-chat-202606
     baseline_invalidation_records: [bir-20260620-001]
+    container_runtime_change_records: [crc-gpu-runtime-20260620]
+    gpu_device_visibility_reconciliation: sampled
+    gpu_nic_topology_evidence: sampled_if_training
     capacity_activation_records: [dc-a-rack-12-2026-06]
   losses:
     failed_or_slow_billable_tokens: measured
@@ -595,18 +598,25 @@ reliability_cost_ledger:
     support_and_oncall_cost: calculated
     delayed_capacity_cost: calculated
     delayed_model_launch_cost: calculated_if_training_related
+    runtime_visibility_mismatch_cost: calculated_if_detected
+    topology_misplacement_gpu_idle_cost: calculated_if_training
   prevention_and_control_cost:
     acceptance_retest_cost: measured
     canary_capacity_cost: measured
     hot_spare_cost: measured
+    container_runtime_reconciliation_cost: measured
+    topology_evidence_collection_cost: measured
     runbook_and_drill_cost: measured
   derived:
     reliability_cost_per_delivered_token: calculated
     incident_cost_per_successful_answer: calculated
+    container_runtime_risk_cost_per_token: calculated_if_applicable
     prevention_cost_vs_loss_avoided: estimated_policy
 ```
 
 这个账本会改变成本优化的讨论方式。若某个资源池长期 `reliability_cost_per_delivered_token` 高，平台应查资源健康、变更节奏、准入覆盖和故障域设计，而不是只压低 GPU 单价；若 prevention cost 很高但事故损失更低，说明可靠性策略可能过度；若 delayed_capacity_cost 持续高，说明采购、机房、准入或资源池激活链路存在瓶颈。可靠性不再是“多花的钱”，而是影响成功 token 成本的生产变量。
+
+容器 runtime 和拓扑证据也要进入经济口径。一次 `visible_device_mismatch` 可能让租户用到未授权 GPU、造成账单争议或安全事故；一次 GPU/NIC 拓扑错配可能让训练 step time 增加，消耗大量无效 GPU 小时；一次 CDI spec 失效可能让扩容副本全部卡在 `CreateContainerError`，推理峰值流量下 TTFT 违约。把这些事件记入 `reliability_cost_ledger`，可以证明为什么要投入 runtime 准入、设备可见性对账和拓扑证据采集。它们不是额外文书，而是在保护 token 生产线不被底层漂移吞噬。
 
 质量成本需要单独的 `quality_cost_ledger`。低质量 token 不一定失败，也不一定触发 5xx，但会造成用户追问、重新生成、人工接管、退款、客户支持、投诉、流失、额外评测和修复成本。若这些成本被平均摊进正常请求，平台会误以为某个低成本模型毛利更高，实际却把成本转嫁给运营和客户成功团队。质量成本账本让“便宜但没用的 token”从报表里显形。
 

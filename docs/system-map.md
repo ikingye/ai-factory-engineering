@@ -128,6 +128,10 @@ flowchart TB
 | `storage_evidence` | 把 dataset、checkpoint、artifact、cache、backend 和 workload impact 证据串起来。 | 第 33、37、39、41 章 | `storage_acceptance_matrix`、`storage_cost_ledger` |
 | `resource_health_record` | 把 GPU、node、fabric、storage 健康信号转成资源池状态。 | 第 28、37 章 | `maintenance_window`、`security_audit_event` |
 | `gpu_container_runtime_report` | 证明 driver、Toolkit、RuntimeClass/CDI、device plugin 和容器内设备可见性一致。 | 第 21、22、29、38 章 | `gpu_assignment_record`、`acceptance_baseline` |
+| `oci_runtime_injection_diff` | 记录 NVIDIA runtime、CDI 或 NRI 对 OCI spec 的设备、mount、env、hook 和 cgroup 变更。 | 第 21、38、39 章 | `gpu_device_visibility_reconciliation`、`container_runtime_change_record` |
+| `gpu_device_visibility_reconciliation` | 对账 kubelet/device plugin 分配、runtime 注入和容器内实际可见 GPU/MIG。 | 第 21、22、38、39 章 | `container_gpu_runtime_acceptance_matrix`、`production_readiness_review` |
+| `gpu_nic_topology_evidence` | 把实际运行中的 GPU、NUMA、RDMA NIC、rail、NCCL interface 和 switch port 绑定到 workload。 | 第 22、38、39 章 | `network_diagnostic_bundle`、`reliability_cost_ledger` |
+| `container_runtime_change_record` | 记录 containerd/runc/Toolkit/CDI/NRI/device plugin strategy 变更及其复测、停止和回滚条件。 | 第 40、44 章 | `baseline_invalidation_record`、`reliability_cost_ledger` |
 | `acceptance_baseline` | 证明资源进入生产池前通过准入，并可用于后续异常对比。 | 第 38 章 | `production_readiness_review`、`baseline_invalidation_policy` |
 | `baseline_invalidation_record` | 记录某次变更、维修或事故让哪些 baseline 失效，资源池如何降级以及如何复测恢复。 | 第 38、44 章 | `change_safety_case`、`capacity_activation_record`、`production_readiness_review` |
 | `reliability_evidence_bundle` | 在事故触发时冻结跨层证据，避免 Pod、端口计数、日志和缓存状态消失后无法复盘。 | 第 37、39 章 | `incident_record`、`slo_budget_ledger`、`reliability_cost_ledger` |
@@ -165,8 +169,8 @@ flowchart TB
 | 模型服务加载旧权重 | 第 14、33、37、39 章 | model_artifact_distribution、cache_residency、cache_invalidation_record、serving_rollback_record、node cache state | 区分 registry 指针、节点缓存、RuntimeClass、启动脚本和 Gateway 路由，必要时阻断调度到 invalid cache 节点。 |
 | 模型冷启动慢 | 第 14、15、33、41 章 | model_artifact_distribution、cache_residency、storage_evidence、load time、storage_cost_ledger | 优化权重分发、预热、缓存驻留、调度放置和多模型路由。 |
 | 缓存撤销后仍被调度使用 | 第 14、33、38、39、44 章 | cache_invalidation_record、cache_residency、scheduler placement、serving release、storage_security_boundary | 检查失效事件是否进入调度和 autoscaler，确认旧 cache 从 ready 变成 invalid 并完成替代版本预热。 |
-| 容器里看不到 GPU | 第 19、21、22、29、38 章 | runtime_privilege_profile、device plugin state、RuntimeClass/CDI、NVIDIA_VISIBLE_DEVICES、Toolkit config | 区分 Kubernetes 分配、OCI runtime 注入、CDI spec、driver/library mount 和容器权限。 |
-| 容器里 RDMA 不通 | 第 22、32、38 章 | RDMA device、CNI、NUMA、container smoke test、fabric baseline | 宿主机 RDMA 正常不代表容器内 RDMA 正常，必须做容器路径验收。 |
+| 容器里看不到 GPU 或看到错误 GPU | 第 19、21、22、29、38 章 | runtime_privilege_profile、device plugin state、RuntimeClass/CDI、oci_runtime_injection_diff、gpu_device_visibility_reconciliation | 区分 Kubernetes 分配、OCI runtime 注入、CDI spec、driver/library mount、镜像环境变量和容器权限。 |
+| 容器里 RDMA 不通 | 第 22、32、38 章 | RDMA device、CNI、NUMA、container smoke test、gpu_nic_topology_evidence、fabric baseline | 宿主机 RDMA 正常不代表容器内 RDMA 可用，先对账 GPU/NIC/NUMA/NCCL interface，再进入 fabric 分支。 |
 | GPU 降频或 tokens/W 下降 | 第 34、35、36、38、41 章 | power_thermal_envelope、rack_capacity_unit、energy_ledger | 检查 power、cooling、液冷、机柜降额和调度限制。 |
 | 网络退化导致 GPU 空转 | 第 18、30、32、37、39、41 章 | network_path_evidence、congestion_event_record、rail_balance_report、network_cost_ledger | 先量化 exposed communication time 和 idle GPU hours，再决定隔离、避让、限流或扩容。 |
 | 变更后随机故障 | 第 29、37、38、39、40 章 | change_safety_case、baseline_invalidation_record、reliability_evidence_bundle、recent changes | 检查变更是否失效了准入基线、资源池是否降级、复测是否覆盖真实 workload。 |
