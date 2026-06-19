@@ -287,6 +287,39 @@ billing_dispute_replay:
 
 这个对象也能处理 security hold。若 key 泄露、异常预算消耗或 denial-of-wallet 攻击正在调查，相关 usage 不应直接进入最终账单，而应先标记为 hold。调查结束后，replay 根据责任边界决定正常计费、退款、内部损失或安全赔付。没有 dispute replay，平台即使愿意处理争议，也很难给出可验证依据。
 
+SLA 赔付也应进入同一个 replay 流程，而不是在账单外手工发放。`sla_credit_model` 定义哪些指标、窗口和排除项可以产生 credit，`billing_dispute_replay` 则负责把这些 credit 追到 metering event、invoice line、租户和项目。这样可以避免两类错误：一类是可靠性事故已经确认，但财务无法把赔付落到账单；另一类是客户质疑账单时，平台把质量问题、SLA 违约、客户侧错误和安全 hold 混在同一个“退款”动作里。
+
+```yaml
+sla_credit_replay:
+  credit_id: scr-20260620-001
+  tenant_id: enterprise-a
+  source:
+    sla_credit_model: scm-enterprise-maas-premium-v1
+    incident_record: inc-20260620-ttft-001
+    reliability_evidence_bundle: reb-20260620-ttft-rack12
+    slo_budget_ledger: slo-maas-chat-202606
+  affected_scope:
+    billing_period: 2026-06
+    window: 2026-06-20T10:00Z/2026-06-20T10:45Z
+    endpoints: [chat_completions]
+    projects: [support-rag-prod]
+  replay:
+    affected_metering_events: immutable_event_refs
+    excluded_events:
+      quota_rejects: excluded_by_policy
+      customer_cancelled_before_first_token: excluded_by_policy
+      preview_model_calls: excluded_by_policy
+    creditable_usage: calculated
+    invoice_lines: matched
+  decision:
+    issue_credit: true
+    credit_amount: calculated_by_contract
+    cost_ledger_link: reliability_cost_ledger
+    customer_notification: required
+```
+
+这个 replay 的关键是把“赔付事实”和“成本事实”同时保留。对客户来说，它解释为什么某些 usage 得到 credit、某些 usage 被排除；对平台来说，它让赔付进入第 41 章的 `reliability_cost_ledger` 和 `commercial_pnl_ledger`，避免事故成本被隐藏在财务总账里。SLA credit 不是纯法律动作，它会反向影响容量、冗余、灰度和定价。如果赔付长期高于预防成本，平台应投资可靠性；如果赔付主要来自不可控排除项争议，平台应修合同口径、状态通知和账单明细。
+
 工程实现还应支持重算。价格规则变化、折扣补录、事件迟到或标签修复后，平台可能需要重算某个时间窗口的账单。重算必须基于不可变原始事件和版本化价格规则，而不是覆盖历史聚合结果。这样才能在争议处理和审计时说明“为什么账单发生变化”。可重算能力是计费系统成熟度的重要标志。
 
 落地时可以把链路拆成三类数据集：原始事件表、聚合用量表和账单明细表。原始事件只追加不覆盖；聚合用量可以按小时或天重算；账单明细记录价格规则、折扣和出账批次。每次重算都生成新的版本，并保留旧版本用于审计。在线预算系统则使用近实时聚合结果，不直接依赖月度账单。

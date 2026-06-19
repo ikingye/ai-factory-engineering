@@ -378,6 +378,52 @@ abuse_cost_ledger:
 
 这个账本能把“安全异常”转成经营动作：吊销 key、关闭 provider route、收紧预算、退款或追偿、修复 SDK、调整免费额度。对 AI Factory 来说，经济异常往往比技术错误更早暴露滥用；如果成本系统不能按小时级别识别异常 token，安全团队会失去最有效的早期信号。
 
+商业化经营还需要 `commercial_pnl_ledger`。Token Factory 的账本解释 token、GPU、质量、安全和可靠性成本，但商业负责人还需要按产品线、客户、合同和交付模式看 P&L：收入来自哪里，折扣和免费额度消耗多少，SLA credit 吃掉多少毛利，客户支持和私有化交付成本是否被低估，预留容量和库存风险是否被正确分摊。没有这张账本，平台可能在技术上优化了 cost/token，却仍然因为折扣、赔付、支持和交付成本而商业倒挂。
+
+```yaml
+commercial_pnl_ledger:
+  period: 2026-06
+  scope:
+    business_model_profile: bmp-enterprise-maas-standard-v2
+    customer_segment: enterprise
+    products:
+      - maas_premium
+      - private_rag_addon
+  revenue:
+    recognized_usage_revenue: calculated
+    subscription_or_commit_revenue: calculated
+    private_delivery_revenue: calculated_if_applicable
+    professional_service_revenue: calculated_if_applicable
+  contra_revenue:
+    free_quota: calculated
+    discount: calculated
+    sla_credit: linked_to_sla_credit_replay
+    refund_or_billing_adjustment: linked_to_billing_dispute_replay
+  cost_of_service:
+    token_factory_cost: linked_to_token_ledger
+    inference_runtime_cost_ledger: linked
+    reliability_cost_ledger: linked
+    quality_cost_ledger: linked
+    security_cost_ledger: linked
+    abuse_cost_ledger: linked_if_any
+    support_cost: calculated
+    private_deployment_cost: linked_to_private_deployment_acceptance_record
+    reserved_capacity_and_inventory_cost: calculated
+  outputs:
+    gross_margin: calculated
+    margin_rate: calculated
+    cost_per_successful_task: calculated_if_task_based
+    pnl_risks:
+      - high_sla_credit_rate
+      - support_cost_growth
+      - private_customization_cost
+      - low_utilization_reserved_capacity
+```
+
+这张账本的价值在于防止“局部盈利幻觉”。例如某个 MaaS 客户的 token revenue 很高，但它购买了高 SLA、专属容量、长审计保留和强支持，如果 SLA credit、reserved capacity 和支持成本不进入 P&L，就会高估毛利；某个私有化项目合同金额很大，但每次升级都需要现场专家、离线镜像重做和客户环境调试，如果 private deployment cost 不进入账本，项目会在长期维护期亏损；某个 Agent 平台任务单价很高，但失败重试、人工接管和工具外部 API 成本大，必须用 cost per successful task 重新评估。
+
+`commercial_pnl_ledger` 也能反向约束产品承诺。若高 SLA 产品的赔付率长期高于可靠性预防成本，应该增加冗余、收紧准入或提高价格；若私有化交付的定制成本持续上升，应该减少特殊分支、加强标准交付包或提高专业服务定价；若免费额度经常被高成本长上下文或 Agent 循环消耗，应该调整产品 guardrail。商业 P&L 不是财务季报，而是 AI Factory 的产品控制面。
+
 ## 41.6 GPU 利用率
 
 GPU 利用率是 Token Factory 的重要变量，但它不是一个单一数字。SM utilization、HBM bandwidth、显存占用、KV Cache 水位、PCIe/NVLink、功耗、温度、kernel occupancy、batch 队列和实例空闲时间，都可能解释“GPU 是否被有效使用”。只看平均 GPU utilization，容易掩盖真正瓶颈。

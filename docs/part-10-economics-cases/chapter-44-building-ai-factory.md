@@ -433,6 +433,12 @@ production_readiness_review:
       cost_model: reviewed
       budget_owner: assigned
       stop_condition: cost_per_successful_answer_over_budget
+    commercial:
+      customer_onboarding_evidence: ready_if_external_or_key_customer
+      sla_credit_model: ready_if_sla_committed
+      private_deployment_acceptance_record: ready_if_private_delivery
+      commercial_pnl_ledger: initialized_if_commercial
+      launch_risk_register: reviewed
   decision: approve_canary
   canary_plan:
     traffic: 5_percent_internal_tenants
@@ -444,6 +450,52 @@ production_readiness_review:
 ```
 
 `production_readiness_review` 应和第 38 章的验收基线、第 40 章的 SRE 流程、第 41 章的经济账本连接。它不是独立审批系统，而是把已有证据聚合成上线决策。若某项证据缺失，结论应该是 `block` 或 `conditional_approve`，并明确条件，而不是口头放行。
+
+商业化上线还应维护 `launch_risk_register`。PRR 判断“当前证据是否足以放行”，risk register 则持续记录“哪些风险仍然存在、谁负责、何时停止、如何验证关闭”。它尤其适合处理不能简单二元判断的风险：客户支持成本尚无历史数据，SLA credit 口径刚建立，私有化客户环境存在特殊 DNS/证书限制，首批客户流量形态可能偏离 workload profile，或者商业折扣导致毛利缓冲较薄。没有风险登记，conditional approve 往往变成口头放行。
+
+```yaml
+launch_risk_register:
+  id: lrr-maas-premium-enterprise-a-202606
+  release_scope:
+    production_readiness_review: prr-maas-chat-prod-2026-06
+    customer_onboarding_evidence: coe-enterprise-a-support-rag-202606
+    business_model_profile: bmp-enterprise-maas-standard-v2
+  risks:
+    - risk_id: lrr-001
+      description: premium_sla_has_limited_real_incident_history
+      owner: ai-sre
+      evidence_gap: no_prior_sla_credit_replay_for_this_tier
+      mitigation:
+        - canary_first_traffic_window
+        - enhanced_reliability_evidence_bundle_sampling
+        - daily_slo_budget_review
+      stop_condition: ttft_or_streaming_slo_breach_above_policy
+      close_condition: two_review_windows_without_creditable_sla_event
+    - risk_id: lrr-002
+      description: private_rag_customer_environment_differs_from_reference
+      owner: delivery-platform
+      evidence_gap: dns_proxy_and_offline_registry_variance
+      mitigation:
+        - private_deployment_acceptance_record_required
+        - upgrade_and_rollback_drill_before_scale
+      stop_condition: diagnostic_bundle_export_failed
+      close_condition: acceptance_and_upgrade_drill_passed
+    - risk_id: lrr-003
+      description: launch_margin_sensitive_to_support_cost
+      owner: ai-business-ops
+      evidence_gap: insufficient_support_cost_baseline
+      mitigation:
+        - initialize_commercial_pnl_ledger
+        - tag_support_tickets_by_tenant_and_product
+      stop_condition: support_cost_exceeds_margin_buffer
+      close_condition: pnl_review_confirms_margin_after_support_cost
+  review_cadence: twice_per_week_during_canary
+  escalation:
+    unresolved_high_risk: block_scale
+    missing_owner: block_launch
+```
+
+这个对象把“风险可接受”变成可执行承诺。每个风险必须有 owner、证据缺口、缓解措施、停止条件和关闭条件；否则它不是风险管理，而是愿望列表。它还把商业风险和工程风险放在一起：SLA 经验不足会影响流量放量，私有化环境差异会影响交付节奏，支持成本缺口会影响毛利。AI Factory 上线的风险从来不只在技术栈里，也在客户承诺、交付边界和经济模型里。
 
 成熟的 PRR 还应检查“证据是否仍然有效”。很多上线事故不是完全没有验收，而是验收基线已经被 driver、fabric、存储、模型 runtime 或维护动作失效；不是没有容量，而是 capacity activation 只到 installed，没有到 workload-fit；不是没有可观测性，而是缺少事故触发时能冻结的 `reliability_evidence_bundle`。因此 PRR 应把证据有效性作为一等门禁：
 
@@ -540,6 +592,11 @@ production_readiness_review:
       security_cost_ledger: initialized
       billing_dispute_replay: ready
       abuse_cost_ledger: initialized_if_public_or_untrusted_access
+      commercial_pnl_ledger: initialized_if_external_customer_or_chargeback
+      sla_credit_model: ready_if_sla_committed
+      customer_onboarding_evidence: pass_if_external_customer_or_key_internal_tenant
+      private_deployment_acceptance_record: pass_if_private_delivery
+      launch_risk_register: reviewed_and_owned
       owner_for_error_budget_burn: assigned
   decision_logic:
     block_if:
@@ -561,6 +618,11 @@ production_readiness_review:
       - secret_or_provider_scope_without_secret_boundary_evidence
       - public_or_untrusted_access_without_denial_of_wallet_runbook
       - commercial_billing_without_dispute_replay
+      - customer_launch_without_onboarding_evidence
+      - committed_sla_without_credit_model
+      - private_delivery_without_acceptance_record
+      - commercial_launch_without_pnl_ledger
+      - open_launch_risk_without_owner_or_stop_condition
       - no_endpoint_admission_decision_replay
       - stale_or_missing_engine_admission_health
       - no_kv_block_ledger_for_target_endpoint

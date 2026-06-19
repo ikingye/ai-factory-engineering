@@ -276,6 +276,48 @@ application_readiness_review:
     - permission_regression_detected
 ```
 
+当应用准备进入商业客户、内部关键业务或私有化交付时，`application_readiness_review` 还应生成 `customer_onboarding_evidence` 的输入。前者回答“这个应用能不能进入生产”，后者回答“这个客户或租户是否已经具备被承诺服务的条件”。两者不能混用：应用准备好了，不代表客户的租户、密钥、合同边界、预算、支持入口和数据授权都准备好了；客户合同签了，也不代表应用已通过权限、质量、成本和回滚门禁。
+
+```yaml
+customer_onboarding_evidence:
+  onboarding_id: coe-enterprise-a-support-rag-202606
+  source_application_readiness_review: arr-customer-service-rag-2026-06
+  tenant_scope:
+    tenant_id: enterprise-a
+    projects: [support-rag-prod]
+    environments: [production]
+    customer_owner: enterprise-a-ai-owner
+    platform_owner: ai-platform-customer-success
+  contractual_boundary:
+    business_model_profile: bmp-enterprise-maas-standard-v2
+    service_boundary: hosted_rag_model_api
+    excluded_responsibilities:
+      - customer_knowledge_base_correctness
+      - customer_network_failure
+      - unapproved_prompt_or_tool_change
+  platform_readiness:
+    tenant_boundary: pass
+    api_key_lifecycle: issued_and_rotation_policy_defined
+    quota_and_budget: configured
+    model_access: approved
+    data_boundary_policy: approved
+    billing_account: mapped
+    support_channel: active
+  launch_controls:
+    initial_traffic: limited_canary
+    guardrail_metrics:
+      - wrong_answer_rate
+      - acl_denied_retrieval
+      - ttft_p99
+      - cost_per_resolved_session
+    stop_conditions:
+      - application_readiness_review_invalidated
+      - customer_budget_exceeded_without_approval
+      - unresolved_security_or_quality_incident
+```
+
+这个对象的价值在于把客户上线从“开通一个 key”提升为“交付一组可被证明的生产承诺”。例如客服 RAG 应用已经通过权限回归，但客户尚未确认知识库 owner 和数据保留策略，就不能承诺生产 SLA；代码助手已经通过补全延迟门禁，但客户没有配置成本中心和预算，就不能进入商业计费；Agent 应用已经完成工具策略，但客户没有指定人工审批责任人，就不能开放写操作。客户接入证据把这些缺口提前暴露，避免上线后在 SLA、账单或事故中争论责任。
+
 行业应用还应有接入矩阵。矩阵用于快速判断某类应用是否已经具备生产条件，而不是把所有应用都塞进同一个审批流程。
 
 | 应用类型 | 必备画像字段 | 必备门禁 | 关键资源策略 | 失败时优先动作 |

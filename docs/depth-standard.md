@@ -274,12 +274,17 @@
 | --- | --- | --- |
 | `workload_profile` | 第 4 章、第 44 章 | 说明应用交互、上下文、SLO、数据边界、工具副作用、成本口径和资源池如何变成平台输入 |
 | `application_readiness_review` | 第 4 章、第 13 章、第 40 章 | 说明行业应用进入生产前如何检查权限、评测、灰度、观测、成本、人工接管和退出条件 |
+| `customer_onboarding_evidence` | 第 4 章、第 5 章、第 44 章 | 说明客户或关键租户上线前如何证明 tenant、项目、API Key、模型访问、预算、SLA、支持入口和数据边界已经准备好 |
 | `business_model_profile` | 第 42 章、第 41 章 | 说明价值单位、计量事件、客户承诺、成本账本、SLO/SLA、支持模型和退出责任如何结构化 |
 | `commercial_readiness_matrix` | 第 42 章、第 44 章 | 说明 MaaS、算力租赁、私有化、推理服务和 Agent 平台上线前必须具备的商业工程能力 |
-| `case_study_evidence_pack` | 第 43 章 | 说明公开事实、推断、假设、证据可信度、能力缺口和可复用经验如何分层记录 |
+| `sla_credit_model` / `sla_operation_record` / `sla_credit_replay` | 第 5 章、第 7 章、第 40 章、第 41 章、第 44 章 | 说明 SLA 如何从 SLI/SLO/SLA 边界、排除项、incident 证据、credit 计算和 invoice 动作形成可回放赔付链路 |
+| `private_deployment_acceptance_record` | 第 42 章、第 44 章 | 说明私有化交付如何验收离线包、版本矩阵、GPU runtime、RAG ACL、计量导出、升级回滚、诊断包和责任矩阵 |
+| `commercial_pnl_ledger` | 第 41 章、第 42 章、第 44 章 | 说明 revenue、折扣、free quota、SLA credit、support cost、private delivery cost、reserved capacity 和各类成本账本如何形成商业 P&L |
+| `case_study_evidence_pack` | 第 43 章 | 说明公开事实、推断、假设、证据可信度、能力缺口、不可复用条件和可复用经验如何分层记录 |
 | `ai_factory_maturity_assessment` | 第 43 章、第 44 章 | 说明不同 AI Factory 类型如何按目标层、生产层、运营层和经济层做成熟度诊断 |
 | `ai_factory_build_plan` | 第 44 章 | 说明阶段、进入条件、退出条件、owner、证据、风险、停止条件和下一阶段投资如何绑定 |
 | `architecture_decision_record` | 第 44 章 | 说明 GPU、网络、存储、调度、推理引擎和商业模式选择如何记录背景、备选方案、取舍、回滚和复审触发器 |
+| `launch_risk_register` | 第 44 章 | 说明商业化上线和关键客户上线前如何记录剩余风险、owner、证据缺口、缓解措施、停止条件和关闭条件 |
 | `production_readiness_review` | 第 44 章、第 38 章、第 40 章、第 41 章 | 说明从资源准入、基线有效性、模型质量、SLO、计量、安全、runbook、成本到发布回滚的上线门禁 |
 | `acceptance_to_launch_record` | 第 38 章、第 44 章 | 说明资源、模型、服务和应用如何从 accepted、staging、canary、production 到 rollback/scale 的证据流 |
 

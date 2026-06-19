@@ -249,6 +249,54 @@ case_study_evidence_pack:
     - treat_private_upgrade_path_as_product_feature
 ```
 
+成熟的 `case_study_evidence_pack` 还应给出证据质量评分和不可复用条件。很多案例失败不是因为分析者不努力，而是把不同可信度的材料混在一起：供应商规格、公开演讲、客户口述、内部监控、事故复盘和财务账本的可信度不同；“某公司这样做了”也不等于“我们的组织可以这样做”。证据包要明确哪些结论可以直接用于设计，哪些只能作为假设，哪些必须在本地 PoC、验收或商业试点中验证。
+
+```yaml
+case_study_evidence_pack:
+  id: case-commercial-maas-reference-202606
+  evidence_quality:
+    scoring_rubric:
+      level_3: direct_measurement_or_contractual_record
+      level_2: customer_interview_or_public_technical_detail
+      level_1: public_marketing_or_inferred_architecture
+      level_0: unsupported_claim
+    minimum_for_architecture_decision: level_2_with_local_validation
+    minimum_for_commercial_commitment: level_3
+  claim_register:
+    - claim: premium_maas_requires_dedicated_capacity_and_sla_credit_model
+      evidence_level: 3
+      evidence_refs:
+        - sla_credit_model
+        - commercial_pnl_ledger
+        - customer_onboarding_evidence
+      reusable: true
+    - claim: private_deployment_can_share_same_upgrade_path_as_public_cloud
+      evidence_level: 1
+      reusable: false
+      reason_not_reusable: customer_network_and_offline_registry_constraints_unknown
+      validation_required:
+        - private_deployment_acceptance_record
+        - upgrade_and_rollback_drill
+    - claim: token_margin_will_improve_after_new_runtime
+      evidence_level: 2
+      reusable: conditional
+      validation_required:
+        - inference_runtime_cost_ledger
+        - quality_cost_ledger
+        - online_experiment_guardrail
+  non_transferable_context:
+    - different_power_and_cooling_limit
+    - different_customer_support_model
+    - different_data_residency_requirement
+    - missing_sre_oncall_maturity
+  commercial_evidence_gaps:
+    - no_customer_support_cost_measurement
+    - no_sla_credit_history
+    - no_private_delivery_cost_baseline
+```
+
+这段结构让案例研究能直接进入第 44 章的建设评审。`minimum_for_commercial_commitment` 要求商业承诺必须有合同、账单、验收或生产证据，不能只靠公开叙事；`non_transferable_context` 防止团队照搬别人的规模、SLA 或交付方式；`commercial_evidence_gaps` 则把案例学习转成下一步数据采集。读者看到一个成功案例后，应能判断哪些能力是可学习的系统原则，哪些只是该组织在特定资源、客户和团队条件下成立。
+
 案例成熟度可以用四层矩阵诊断，而不是只按“先进/落后”评价。目标层看服务对象和价值单位是否清楚；生产层看应用、模型、调度和基础设施是否能闭环；运营层看验收、观测、SRE、安全和升级是否可重复；经济层看成本、收入、ROI 和机会成本是否可解释。一个系统可以在生产层很强、经济层很弱，也可以在目标层清楚但运营层不成熟。分层诊断比单一评分更有用。
 
 | 案例类型 | 目标层成熟信号 | 生产层成熟信号 | 运营层成熟信号 | 经济层成熟信号 | 常见缺口 |

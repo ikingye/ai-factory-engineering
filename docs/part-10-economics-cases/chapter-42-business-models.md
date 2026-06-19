@@ -286,6 +286,55 @@ business_model_profile:
 | 推理服务 | 模型 registry、endpoint、SLO、灰度回滚、运行观测 | cost/token、模型所有权边界、性能调优基线、多租户公平 | 对客户模型质量做无证据保证 |
 | Agent 平台 | 工具权限、任务 trace、预算、人工确认、审计 | 任务级成本、结果评测、沙箱隔离、回滚/补偿流程 | 未经审批的高风险写操作 |
 
+私有化交付还需要单独的 `private_deployment_acceptance_record`。公有云 MaaS 的上线证据主要来自平台内部控制面，而私有化交付的证据来自客户现场：离线镜像是否完整、版本矩阵是否受控、GPU/driver/runtime 是否匹配、客户网络和证书是否配置正确、RAG 数据导入是否尊重权限、升级和回滚是否演练、诊断包是否能在客户不开放生产数据的情况下导出。没有这个记录，私有化项目会把“验收通过”写成会议结论，后续升级和故障争议无法复盘。
+
+```yaml
+private_deployment_acceptance_record:
+  id: pdar-enterprise-a-ai-factory-202606
+  customer: enterprise-a
+  delivery_scope:
+    deployment_type: on_prem_standard
+    components:
+      - maas_gateway
+      - model_serving
+      - rag_pipeline
+      - observability_agent
+      - offline_registry
+    excluded:
+      - foundation_model_pretraining
+      - customer_business_system_sla
+  version_matrix:
+    os_baseline: approved
+    kernel: approved
+    nvidia_driver: approved
+    cuda: approved
+    nccl: approved
+    container_runtime: approved
+    gpu_operator_or_device_plugin: approved
+    model_images: signed_and_pinned
+  acceptance:
+    offline_package_integrity: pass
+    gpu_runtime_smoke: pass
+    model_load_and_streaming: pass
+    rag_acl_regression: pass
+    metering_export: pass
+    backup_restore: pass
+    upgrade_and_rollback_drill: pass
+    diagnostic_bundle_export: pass
+  responsibility_matrix:
+    facility_power_cooling: customer
+    gpu_hardware_repair: agreed_party
+    platform_upgrade: supplier_with_customer_window
+    knowledge_base_quality: customer
+    model_serving_runtime: supplier
+  support_boundary:
+    remote_access: customer_approved_session_only
+    data_export: redacted_diagnostic_bundle
+    emergency_patch_policy: defined
+```
+
+这个记录把私有化交付从一次项目变成可维护产品。它明确哪些环境差异被支持，哪些责任属于客户，哪些证据用于验收，哪些能力必须在升级前重测。对供应方来说，`private_deployment_acceptance_record` 能控制定制化蔓延：客户差异应优先进入配置、版本矩阵和集成适配层，而不是分叉代码；对客户来说，它提供可复核边界：若故障发生在已验收的 GPU runtime 或模型 serving，供应方需要响应；若故障来自未批准的客户网络变更或知识库错误，处理方式不同。
+
 商业能力也可以形成状态机。一个模式从 idea 到 scale，必须穿过 evidence、pilot、commercial 和 deprecation，而不是被一次发布会直接推入长期承诺。
 
 ```mermaid

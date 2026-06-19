@@ -9,6 +9,7 @@ flowchart TB
   subgraph Demand["目标与需求"]
     WP["workload_profile\n应用如何消耗能力"]
     BMP["business_model_profile\n能力如何商业化或结算"]
+    COE["customer_onboarding_evidence\n客户接入证据"]
     BP["ai_factory_build_plan\n建设阶段与停止条件"]
   end
 
@@ -32,13 +33,18 @@ flowchart TB
     Telemetry["telemetry_event\n观测事实"]
     Incident["incident_record\n故障复盘"]
     Ledger["Token Factory ledger\n成本与价值"]
+    PNL["commercial_pnl_ledger\n商业 P&L"]
+    Risk["launch_risk_register\n上线风险登记"]
     PRR["production_readiness_review\n上线门禁"]
   end
 
   WP --> Req
   WP --> Train
   BMP --> Ledger
+  BMP --> COE
+  COE --> PRR
   BP --> PRR
+  Risk --> PRR
   Req --> Runtime --> Sched --> Pool --> Fabric --> Physical
   Train --> Runtime
   Train --> Data --> Fabric
@@ -50,6 +56,8 @@ flowchart TB
   Quality --> Ledger
   Req --> Ledger
   Train --> Ledger
+  Ledger --> PNL
+  PNL --> BMP
   Telemetry --> Incident --> BP
   Ledger --> BMP
   PRR --> Req
@@ -78,7 +86,12 @@ flowchart TB
 | --- | --- | --- | --- |
 | `workload_profile` | 描述应用如何消耗 token、工具、数据和资源。 | 第 4、44 章 | `application_readiness_review`、`business_model_profile`、`production_readiness_review` |
 | `application_readiness_review` | 判断行业应用是否具备生产接入条件。 | 第 4 章 | `quality_gate_record`、`data_boundary_policy`、`cost_ledger` |
+| `customer_onboarding_evidence` | 证明客户或关键租户的 tenant、项目、API Key、模型访问、预算、SLA、支持和数据边界已准备好。 | 第 4、5、44 章 | `tenant_boundary`、`sla_credit_model`、`production_readiness_review` |
 | `business_model_profile` | 描述价值单位、客户承诺、计量和退出责任。 | 第 42 章 | `commercial_readiness_matrix`、`Token Factory ledger` |
+| `sla_credit_model` | 把 SLA 指标、排除项、credit 输入、赔付上限和 invoice 动作结构化。 | 第 5、7、40 章 | `sla_operation_record`、`sla_credit_replay`、`reliability_cost_ledger` |
+| `private_deployment_acceptance_record` | 记录私有化交付的离线包、版本矩阵、GPU runtime、RAG ACL、升级回滚、诊断包和责任矩阵。 | 第 42、44 章 | `launch_risk_register`、`production_readiness_review` |
+| `commercial_pnl_ledger` | 汇总收入、折扣、SLA credit、支持、私有化交付、预留容量和各类成本账本。 | 第 41、42、44 章 | `business_model_profile`、`launch_risk_register` |
+| `launch_risk_register` | 记录上线剩余风险、owner、证据缺口、缓解措施、停止条件和关闭条件。 | 第 44 章 | `production_readiness_review`、`incident_record` |
 | `ai_factory_build_plan` | 把建设阶段、证据、owner 和停止条件结构化。 | 第 44 章 | `architecture_decision_record`、`production_readiness_review` |
 | `architecture_decision_record` | 记录 GPU、网络、存储、调度、runtime 和商业模式的取舍。 | 第 44 章 | `change_safety_case`、`production_readiness_review` |
 | `production_readiness_review` | 聚合资源、模型、平台、安全、SRE 和经济证据，决定是否上线。 | 第 44 章 | `online_experiment_record`、`incident_record` |
@@ -217,7 +230,10 @@ flowchart TB
 | 第三方 provider 越权路由 | 第 5、6、37、40、41、44 章 | egress_provider_decision、policy_decision_record、data_boundary_policy、provider_contract、security_evidence_bundle | 阻断 provider route，回放数据边界和合同，评估数据暴露、成本和账单修正。 |
 | Trace 或日志疑似泄露敏感 prompt | 第 6、8、33、37、40、44 章 | prompt_trace_redaction_record、security_audit_event、data_boundary_policy、secret_boundary_evidence | 冻结导出权限，确认脱敏和 TTL，评估导出范围并更新观测审批。 |
 | 账单争议 | 第 5、6、7、41、42 章 | billing_dispute_replay、tenant_cost_isolation、policy_decision_record、metering event、business_model_profile | 区分失败是否计费、streaming 中断、免费额度、租户归属、provider 路由、security hold 和合约边界。 |
-| 私有化交付无法升级 | 第 4、29、42、43、44 章 | version matrix、offline package、case evidence、ADR、PRR | 将客户差异收敛到配置和集成层，建立升级与诊断证据。 |
+| 客户上线后承诺无法兑现 | 第 4、5、40、42、44 章 | customer_onboarding_evidence、tenant_boundary、sla_credit_model、launch_risk_register、production_readiness_review | 检查客户、租户、模型访问、预算、支持、SLA 和数据边界是否真的完成接入；缺证据时应暂停放量。 |
+| SLA 赔付争议 | 第 5、7、37、40、41、44 章 | sla_credit_model、sla_operation_record、sla_credit_replay、reliability_evidence_bundle、billing_dispute_replay | 回放事故窗口、排除项、受影响 usage 和 invoice line，把赔付写入可靠性成本和商业 P&L。 |
+| 私有化交付无法升级 | 第 4、29、42、43、44 章 | private_deployment_acceptance_record、version matrix、offline package、diagnostic bundle、ADR、PRR | 将客户差异收敛到配置和集成层，建立升级、回滚、诊断和责任矩阵证据。 |
+| 商业毛利与技术指标矛盾 | 第 7、40、41、42、43、44 章 | commercial_pnl_ledger、Token Factory ledger、quality/reliability/security cost ledger、sla_credit_replay、case_study_evidence_pack | 拆分收入、折扣、SLA credit、支持、私有化交付、预留容量和事故成本，避免只看 cost/token 或 GPU 利用率。 |
 
 ## 核心链路索引
 
