@@ -562,6 +562,58 @@ training_roi_ledger:
 
 这个拆分会改变投资判断。如果大部分浪费来自 rank topology violation，优先投入调度和资源碎片治理；如果来自 NCCL env mismatch，优先投入 runtime 模板和容器准入；如果来自 checkpoint overlap，优先投入存储、异步 checkpoint 或隔离网络；如果来自真实 fabric baseline 退化，才进入网络扩容或维修讨论。Token Factory 的经济模型应帮助团队找到最便宜的有效修复，而不是默认把问题归结为“需要更多 GPU 或更贵网络”。
 
+训练事故还应生成 `training_incident_cost_record`，作为 `training_incident_record` 和 `training_roi_ledger` 之间的桥。事故复盘关注根因和动作，ROI 账本关注投资结果；中间需要一个成本对象把 GPU 小时、checkpoint 回退、队列机会成本、模型发布日期延迟和工程处理成本统一口径。没有它，训练事故很容易只在 SRE 系统里关闭，而没有进入资源治理和商业决策。
+
+```yaml
+training_incident_cost_record:
+  record_id: ticr-inc-20260620-train-001
+  training_incident_record: inc-20260620-train-001
+  training_fault_tree_execution: tfte-inc-20260620-train-001
+  training_debug_bundle: tdb-exp-20260620-001
+  affected_investment:
+    training_job: exp-20260620-031
+    model_candidate: af-base-v4-ckpt120000
+    queue: training-prod
+    resource_pool: h100-rdma-prod
+  cost_breakdown:
+    allocated_gpu_hours_during_incident: measured
+    effective_training_gpu_hours_lost: measured
+    checkpoint_rollback_gpu_hours: calculated
+    queue_opportunity_cost_gpu_hours: calculated
+    storage_and_checkpoint_extra_cost: measured
+    engineering_response_hours: measured
+    model_release_delay_days: estimated
+  attribution:
+    primary_cost_domain: launcher_or_rendezvous_or_rdma_or_checkpoint_or_model_code
+    confidence: low_medium_or_high
+    preventable_by_existing_gate: true_or_false
+    missing_gate_or_evidence: optional
+  ledger_updates:
+    training_roi_ledger: append
+    queue_fairness_ledger: append_if_capacity_impact
+    reliability_cost_ledger: append_if_customer_or_slo_impact
+    acceptance_or_prr_gate: update_if_preventable
+```
+
+这个成本记录会改变事故优先级。一个 10 分钟 NCCL hang 如果影响 512 张 GPU，并导致 checkpoint 回退和下游模型发布延迟，它的成本不应等同于单个服务实例重启；一个首步前失败如果反复发生，虽然没有 loss 回退，却可能消耗大量启动 GPU 小时和队列窗口；一个 checkpoint overlap 如果每小时发生一次，单次 spike 不严重，累计成本可能超过一次明显故障。把事故成本标准化后，团队才能比较“修 runtime 模板”“优化 checkpoint”“扩网络”“增加准入测试”哪一个投资回报更高。
+
+```mermaid
+flowchart LR
+  Incident["training_incident_record"] --> Cost["training_incident_cost_record"]
+  FaultTree["training_fault_tree_execution"] --> Cost
+  Debug["training_debug_bundle"] --> Cost
+  Cost --> ROI["training_roi_ledger"]
+  Cost --> Queue["queue_fairness_ledger"]
+  Cost --> Reliability["reliability_cost_ledger"]
+  Cost --> Gate["acceptance / PRR gate update"]
+  ROI --> Decision["train / rerun / repair / pause / invest"]
+  Queue --> Decision
+  Reliability --> Decision
+  Gate --> Decision
+```
+
+事故成本不应被机械地全部归入“浪费”。如果事故暴露了未知硬件批次问题、补齐了故障树、提升了 checkpoint 恢复策略，部分成本可以记为学习资产；但只有当它产生了可复用规则、测试或门禁时，才有资格这么记录。否则“失败也是经验”会变成掩盖低质量运行的借口。
+
 ## 工程实现
 
 Token Factory 的工程实现从数据模型开始。每个请求、任务、模型版本、租户、endpoint、replica、GPU pool 和计费计划，都要有稳定标识。计量事件必须记录 input token、output token、reasoning token、cached token、失败状态、延迟、模型版本、路由结果和 trace id。没有这些字段，后续成本和收入都只能粗略平均。

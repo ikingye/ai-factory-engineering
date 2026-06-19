@@ -137,8 +137,10 @@
 | TrainingJob smoke test | 第 38 章 | 说明 gang、rank mapping、NCCL rendezvous、first effective step 和 checkpoint manifest 验收 |
 | `training_communication_acceptance_matrix` | 第 38、44 章 | 说明 framework/runtime、parallelism、rank topology、NCCL、fabric、collective trace 和 checkpoint overlap 的组合验收 |
 | `training_lifecycle_telemetry_event` | 第 37 章 | 说明训练生命周期、拓扑、checkpoint 和 GPU 小时口径如何进入观测事实层 |
-| `training_debug_bundle` | 第 39 章 | 说明训练事故如何冻结 runtime、并行、调度、通信、checkpoint、数据和成本影响证据 |
+| `training_debug_bundle` | 第 37、39、44 章 | 说明训练事故如何冻结 runtime、并行、调度、通信、checkpoint、数据和成本影响证据 |
+| `training_fault_tree_execution` | 第 39、44 章 | 说明训练事故故障树如何记录分支判断、证据引用、排除项、置信度、动作和证据缺口 |
 | `training_incident_record` | 第 39、41 章 | 说明训练事故如何回指 admission、placement、rank mapping、checkpoint、资源健康和 ROI 损失 |
+| `training_incident_cost_record` | 第 41、44 章 | 说明训练事故如何把 GPU 小时、checkpoint 回退、队列机会成本、工程响应和模型发布延迟写入 ROI 与 PRR |
 | training ROI ledger | 第 41 章 | 说明 allocated/effective/wasted GPU hours、调度等待、放置降级、抢占、checkpoint、评测、上线收益和成本变化 |
 
 ## 网络通信链路覆盖矩阵

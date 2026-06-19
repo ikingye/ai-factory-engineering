@@ -583,6 +583,10 @@ production_readiness_review:
       communication_regression_record: pass_if_recent_runtime_or_fabric_change
       checkpoint_overlap_evidence: required_if_checkpoint_heavy_training
       training_debug_bundle_template: ready
+      training_debug_bundle_trigger: configured_for_hang_loss_spike_checkpoint_slow
+      training_fault_tree_execution_dry_run: pass
+      training_incident_cost_record_pipeline: configured
+      first_effective_step_record: required_for_training_roi
     quality:
       quality_gate_execution: qge-af-chat-20260620-001
       eval_slice_contract: esc-support-202606
@@ -673,6 +677,9 @@ production_readiness_review:
       - recent_fabric_or_nccl_change_without_communication_regression_record
       - large_training_pool_without_training_communication_acceptance_matrix
       - checkpoint_heavy_training_without_checkpoint_overlap_evidence
+      - training_pool_without_debug_bundle_trigger
+      - training_fault_tree_dry_run_failed
+      - training_incident_cost_record_pipeline_missing
       - no_valid_quality_gate_execution
       - no_eval_slice_contract_for_target_task
       - no_eval_dataset_lineage_for_required_task_slices
@@ -696,6 +703,35 @@ production_readiness_review:
 ```
 
 这份门禁会迫使上线讨论从“服务能不能访问”转为“证据是否足以承受生产风险”。例如资源池有 GPU，但 `baseline_invalidation_record` 仍然 open，就只能批准单节点低风险 canary，不能批准 premium inference；模型质量门禁通过，但评测集没有 lineage、没有 `eval_slice_contract` 或没有覆盖目标 task slice，就不能进入高价值租户；golden set 被污染或过期，门禁分数就不能作为生产证据；线上实验没有 guardrail，就不能把真实客户当作无边界试验场；高 SLA endpoint 没有近期 `serving_rollback_drill`，就不能承诺快速回滚；训练产物没有 `dataset_lineage_record`、`checkpoint_restore_drill` 和 `model_artifact_provenance`，就不能证明模型来自被批准的数据、可恢复 checkpoint 和合格转换链路；缓存撤销不能回放，就不能保证旧 tokenizer、旧权重或旧 RAG 索引已离开生产路径；RAG 没有权限决策回放和 context 快照，就不能接入敏感知识库；Agent 没有工具副作用策略和预算账本，就不能自动执行有副作用动作；token 计量未对账，就不能进入商业化计费；容量激活记录显示 cooling_limited，就不能承诺持续满载训练。PRR 的价值在于把这些限制提前暴露，而不是等事故后再解释。
+
+训练资源池的 PRR 还应做一次故障树演练。演练不需要真的破坏生产任务，但必须能用一条受控 smoke training job 触发 `training_debug_bundle`，执行 `training_fault_tree_execution`，生成 `training_incident_record` 和 `training_incident_cost_record` 的演练版本。若 bundle 缺少 rank mapping、NCCL env、checkpoint overlap 或资源健康记录，说明事故时无法定位；若故障树只能输出 unknown 且没有 evidence gaps，说明 runbook 没有表达不确定性；若成本记录无法写入 `training_roi_ledger`，说明技术事故和经济账本仍然割裂。
+
+```yaml
+training_prr_failure_drill:
+  drill_id: train-prr-drill-20260620-001
+  production_readiness_review: prr-maas-chat-prod-2026-06
+  scope:
+    resource_pool: h100-rdma-prod
+    workload: smoke_distributed_training
+    injected_or_simulated_symptoms:
+      - controlled_rank_exit
+      - checkpoint_slow_window
+      - nccl_env_mismatch_dry_run
+  required_outputs:
+    training_debug_bundle: generated
+    training_fault_tree_execution: generated
+    training_incident_record: generated
+    training_incident_cost_record: generated
+    prr_gate_update: generated_if_gap_found
+  pass_criteria:
+    evidence_completeness: above_policy
+    unsafe_actions_blocked: true
+    rollback_or_checkpoint_recovery_decision_recorded: true
+    cost_ledger_append_verified: true
+    evidence_redaction_policy_applied: true
+```
+
+这个演练能把“训练平台可观测”变成可验收事实。很多团队在建设阶段能展示 dashboard，却无法在事故发生时拿到 rank、容器注入、RDMA、checkpoint 和成本的同一条证据链；也有团队能定位技术根因，却无法说明浪费了多少 GPU 小时、是否影响模型发布日期、是否应该暂停扩容。PRR 要求演练这些路径，是为了避免昂贵训练任务成为第一次真实集成测试。
 
 从验收到上线的流水线可以用下面的图表示：
 

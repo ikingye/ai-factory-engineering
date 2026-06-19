@@ -166,6 +166,79 @@ training_incident_record:
 
 这个对象能防止训练事故复盘停留在“重启后好了”。如果从 checkpoint 恢复损失很小，优先恢复进度；如果同一 placement 多次触发通信问题，应更新调度策略；如果抢占造成大量 lost progress，应调整 checkpoint-aware preemption；如果 Slurm accounting 和平台 ledger 差异很大，应触发对账。训练事故的结论必须回写训练平台，而不只是关闭工单。
 
+训练事故的排障过程还应沉淀为 `training_fault_tree_execution`。它记录故障树具体走了哪些分支、每个分支引用了哪些证据、哪些假设被排除、最后采取了什么动作。这样复盘时可以区分“根因未知但证据充分排除高危分支”和“根因未知且证据缺失”。前者可能接受风险继续运行，后者必须补观测或门禁。
+
+```yaml
+training_fault_tree_execution:
+  execution_id: tfte-inc-20260620-train-001
+  incident_id: inc-20260620-train-001
+  training_debug_bundle: tdb-exp-20260620-001
+  entry:
+    symptom: nccl_hang_or_no_step_progress
+    phase_at_detection: running
+    last_effective_step: measured
+    latest_valid_checkpoint: ckpt-step-120000
+  branches:
+    rank_exit:
+      verdict: ruled_out_or_confirmed_or_unknown
+      evidence: [pod_status, process_exit_codes, launcher_contract]
+    gpu_health:
+      verdict: ruled_out_or_confirmed_or_unknown
+      evidence: [dcgm_xid_ecc_nvlink, resource_health_records]
+    rdma_fabric:
+      verdict: ruled_out_or_confirmed_or_unknown
+      evidence: [network_evidence, rail_balance_report, congestion_event_record]
+    runtime_env:
+      verdict: ruled_out_or_confirmed_or_unknown
+      evidence: [nccl_env_contract, oci_runtime_injection_diff, gpu_device_visibility_reconciliation]
+    checkpoint_overlap:
+      verdict: ruled_out_or_confirmed_or_unknown
+      evidence: [checkpoint_overlap_evidence, storage_evidence]
+    data_pipeline:
+      verdict: ruled_out_or_confirmed_or_unknown
+      evidence: [dataset_manifest, data_loader_wait, storage_evidence]
+    model_code:
+      verdict: ruled_out_or_confirmed_or_unknown
+      evidence: [training_code_version, collective_call_consistency, loss_and_gradient_trace]
+  conclusion:
+    most_likely_domain: runtime_env_or_rdma_fabric_or_checkpoint_or_unknown
+    confidence: low_medium_or_high
+    evidence_gaps: []
+  actions:
+    immediate: [preserve_bundle, recover_from_checkpoint_or_hold_job]
+    resource: [cordon_node_or_degrade_fabric_or_none]
+    platform: [update_runtime_template_or_scheduler_policy_or_none]
+    follow_up: [add_acceptance_test_or_runbook_branch_or_prr_gate]
+```
+
+这个执行记录的价值在于让诊断可复现。两次 NCCL hang 如果都经过同一棵故障树，却在 `runtime_env` 分支确认了不同的 `NCCL_SOCKET_IFNAME`，说明 runtime 模板治理有问题；如果多次在 `checkpoint_overlap` 分支确认，说明 checkpoint 策略或存储隔离需要重构；如果总是落到 unknown 且 evidence gaps 相同，说明不是人不够努力，而是观测系统缺关键证据。故障树执行结果应回写 runbook、验收矩阵和第 41 章的成本账本。
+
+```mermaid
+flowchart TB
+  Trigger["training anomaly trigger"] --> Bundle["training_debug_bundle"]
+  Bundle --> Complete{evidence complete?}
+  Complete -->|no| Gap["record evidence_gaps\nfreeze affected scope"]
+  Complete -->|yes| Tree["training_fault_tree_execution"]
+  Gap --> Tree
+  Tree --> Rank["rank exit / launcher"]
+  Tree --> GPU["GPU Xid / ECC / NVLink"]
+  Tree --> Fabric["RDMA / rail / fabric"]
+  Tree --> Runtime["NCCL env / container injection"]
+  Tree --> Storage["checkpoint / dataset / storage"]
+  Tree --> Code["collective order / model code"]
+  Rank --> Verdict["probable root cause + confidence"]
+  GPU --> Verdict
+  Fabric --> Verdict
+  Runtime --> Verdict
+  Storage --> Verdict
+  Code --> Verdict
+  Verdict --> Incident["training_incident_record"]
+  Incident --> Cost["training_incident_cost_record"]
+  Incident --> PRR["PRR / acceptance / runbook updates"]
+```
+
+这张图强调，故障树不是文档，而是一条数据流。`training_debug_bundle` 是输入，`training_fault_tree_execution` 是推理过程，`training_incident_record` 是事故结论，成本记录和 PRR 更新是输出。若只有输入没有执行记录，团队无法复盘判断过程；若只有事故结论没有成本记录，组织无法决定是否投入修复；若没有 PRR 更新，同类事故会在下一次上线中复发。
+
 网络与通信类故障尤其需要把故障树和证据链结合。下面的 NCCL hang 入口可以作为值班系统的自动检查顺序：
 
 ```mermaid

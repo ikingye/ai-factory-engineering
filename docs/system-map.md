@@ -156,11 +156,13 @@ flowchart TB
 | `communication_regression_record` | 记录 NCCL/OFED/fabric/runtime/调度变更后的通信回归和代表性训练结果。 | 第 18、32、37、38、39、44 章 | `fabric_change_record`、`production_readiness_review` |
 | `checkpoint_overlap_evidence` | 记录 checkpoint 窗口与 collective、存储、数据读取的重叠和成本影响。 | 第 18、37、38、39、41、44 章 | `storage_evidence`、`training_roi_ledger` |
 | `training_communication_acceptance_matrix` | 组合验证训练 runtime、并行拓扑、NCCL、fabric、collective trace 和 checkpoint overlap。 | 第 38、44 章 | `acceptance_baseline`、`production_readiness_review` |
-| `training_debug_bundle` | 冻结训练 runtime、并行、调度、通信、checkpoint、数据和成本影响证据。 | 第 39 章 | `training_incident_record`、`reliability_evidence_bundle` |
+| `training_debug_bundle` | 冻结训练 runtime、并行、调度、通信、checkpoint、数据和成本影响证据。 | 第 37、39、44 章 | `training_fault_tree_execution`、`training_incident_record`、`reliability_evidence_bundle` |
+| `training_fault_tree_execution` | 记录训练故障树的分支判断、证据引用、置信度、动作和证据缺口。 | 第 39、44 章 | `training_incident_record`、`training_incident_cost_record`、`production_readiness_review` |
 | `queue_fairness_ledger` | 把 guaranteed、borrowed、lent、preempted、starved 和 effective GPU hours 串成队列公平账本。 | 第 23、41 章 | `training_roi_ledger`、`capacity_activation_review` |
 | `preemption_record` | 记录一次抢占的 safe point、checkpoint、释放资源、恢复和浪费 GPU 小时。 | 第 23、41 章 | `queue_fairness_ledger`、`training_roi_ledger` |
 | `training_accounting_reconciliation` | 对齐 Slurm、Kubernetes、训练框架和成本系统的 GPU 小时口径。 | 第 24、41 章 | `training_roi_ledger`、`Token Factory ledger` |
 | `training_incident_record` | 把训练事故回指 admission、placement、rank、checkpoint、健康和成本影响。 | 第 39、41 章 | `incident_record`、`training_roi_ledger` |
+| `training_incident_cost_record` | 把训练事故的 GPU 小时、checkpoint 回退、队列机会成本、工程响应和模型发布延迟写入经济账本。 | 第 41、44 章 | `training_roi_ledger`、`queue_fairness_ledger`、`production_readiness_review` |
 | `dataset_manifest` | 固定数据处理、shard、采样、权限和缓存策略。 | 第 10、20、33 章 | `workload_storage_intent`、`storage_evidence` |
 | `dataset_lineage_record` | 记录训练数据如何从原始来源经过清洗、过滤、tokenization、sharding、删除请求和治理动作生成 manifest。 | 第 10、33、38 章 | `model_artifact_provenance`、`supply_chain_acceptance_matrix` |
 | `workload_storage_intent` | 让 workload 在 admission 前声明数据、checkpoint、artifact、cache 和观测需求。 | 第 20、33、37 章 | `storage_acceptance_matrix`、`storage_evidence` |

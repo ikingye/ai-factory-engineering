@@ -230,6 +230,54 @@ training_lifecycle_telemetry_event:
 
 训练观测还应避免把 checkpoint 抖动误归因给 NCCL。`checkpoint_overlap_evidence` 可以说明 checkpoint 窗口是否与 collective、数据加载和存储写入重叠。若通信慢只在 checkpoint 窗口出现，且 fabric baseline 正常，优先查 checkpoint 写入模式、metadata、对象存储限流或异步保存回压；若无 checkpoint 窗口也慢，再进入 fabric 和 runtime 分支。可观测性的成熟度，体现在能减少错误升级路径。
 
+训练事故还需要自动生成 `training_debug_bundle`。它不是把日志目录打包下载，而是在告警触发时冻结一组有结构的、能被故障树消费的事实：调度放置、launcher、rendezvous、first effective step、rank 映射、collective、checkpoint、数据、资源健康、近期变更和成本影响。没有这个 bundle，NCCL hang、loss spike 或 checkpoint slow 的排障会在多个团队之间手工对时间戳，现场也会随着任务重启而丢失。
+
+```yaml
+training_debug_bundle:
+  bundle_id: tdb-exp-20260620-001
+  trigger:
+    symptom: nccl_hang_or_step_time_spike_or_loss_spike_or_checkpoint_slow
+    detected_at: recorded
+    detection_rule: training_lifecycle_slo_or_anomaly
+    freeze_window:
+      before_trigger_minutes: policy_defined
+      after_trigger_minutes: policy_defined
+  training_context:
+    training_job: exp-20260620-031
+    training_lifecycle_telemetry_event: train-tel-20260620-001
+    training_runtime_spec: trs-exp-20260620-031
+    launcher_contract: lc-torchrun-h100-202606
+    rendezvous_evidence: rv-exp-20260620-001
+    first_effective_step_record: fes-exp-20260620-001
+  topology_and_runtime:
+    placement_commit_record: pcr-exp-20260620-031
+    rank_topology_contract: rtc-llm-20260620-001
+    rank_mapping: rank-mapping-exp-20260620-031
+    gpu_assignment_records: attached
+    gpu_nic_topology_evidence: attached_if_rdma
+    nccl_env_contract: nec-h100-rdma-20260620
+    oci_runtime_injection_diff: attached_if_container_runtime_recently_changed
+  evidence:
+    collective_trace_record: attached_if_available
+    communication_critical_path_record: attached_if_step_spike
+    checkpoint_overlap_evidence: attached_if_checkpoint_window
+    storage_evidence: attached_if_data_or_checkpoint_path_suspect
+    resource_health_records: attached
+    network_evidence: attached_if_fabric_signal
+    recent_change_records: attached
+  completeness:
+    required_refs_present: true_or_false
+    missing_refs: []
+    evidence_ttl_expires_at: recorded
+  decision_support:
+    likely_fault_tree_entry: rank_exit_gpu_rdma_runtime_storage_model_or_unknown
+    safe_actions: [preserve_processes, checkpoint_if_safe, isolate_suspect_node]
+```
+
+这个对象应由观测系统和调度系统共同生成。观测系统知道何时异常，调度系统知道 rank、node、GPU、NIC、queue 和 topology，训练平台知道 runtime、launcher、checkpoint 和数据路径。三者缺一，bundle 都会变成不完整证据。特别是 hang 类问题，第一原则是先冻结证据，再决定是否 kill；如果用户脚本、Pod 重启策略或 oncall 手工操作先破坏现场，后续只能猜。
+
+`training_debug_bundle` 还应计算 evidence completeness。一个完整 bundle 至少要能回答：任务处于哪个生命周期阶段，最后一个有效 step 是多少，所有 rank 是否仍在，哪些 rank 等待，是否有 GPU/Xid/ECC/NVLink 信号，RDMA/fabric 是否与等待 rank 相关，checkpoint 是否重叠，近期是否有 driver、NCCL、OFED、容器 runtime、调度标签或存储配置变更。缺失项本身就是观测缺陷，应进入 PRR 和复盘。
+
 ## 37.7 storage metrics
 
 Storage metrics 覆盖对象存储、并行文件系统、本地 NVMe、cache、model registry 和日志系统。指标包括吞吐、IOPS、P50/P95/P99 延迟、metadata ops、错误率、限流、cache hit ratio、容量、水位、checkpoint 耗时、恢复耗时、模型权重加载时间和对象请求量。AI 存储观测要按访问模式区分，而不是只看总带宽。
