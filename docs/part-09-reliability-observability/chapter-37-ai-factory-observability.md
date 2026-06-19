@@ -279,6 +279,51 @@ telemetry_data_classification:
 
 租户可见观测视图要默认收敛。租户可以看到自己请求的 trace 摘要、延迟、错误、token、模型版本、资源等级和健康摘要，但不一定能看到同卡邻居、其它租户 Pod、完整 GPU UUID、rack、switch port 或平台内部路由策略。SRE 需要更完整视图，但每次查询敏感字段都应有 `query_audit_event`。这样既能支持排障，又能避免观测系统绕过租户边界。
 
+质量观测需要 `quality_telemetry_event`。传统 observability 看到 5xx、latency 和 resource saturation，但 AI 应用经常“技术成功、业务失败”：HTTP 200，用户点踩；stream 完整，引用错误；工具调用成功，任务结果错；模型输出安全拒答，但其实误拒。质量 telemetry 把这些用户可见 outcome、模型行为和评测事实纳入同一事实层，使第 13 章的评测和第 40 章的 SRE 能消费线上质量信号。
+
+```yaml
+quality_telemetry_event:
+  event_id: qte-20260619-0001
+  trace_id: trace-abc
+  request_or_run_id: req-123
+  scope:
+    tenant: enterprise-a
+    application: support-chat
+    model_version: af-chat-large-202606
+    serving_quality_contract: sqc-af-chat-20260619-r3
+    routing_quality_scorecard: rqs-20260619-support
+  outcome:
+    user_visible_status: completed
+    task_slice: rag_citation
+    finish_reason: stop
+    fallback: false
+  quality_signals:
+    user_feedback: negative
+    citation_check: failed
+    tool_call_schema: not_applicable
+    safety_decision: allowed
+    human_handoff: true
+  data_boundary:
+    prompt_ref: object://redacted
+    response_ref: object://redacted
+    privacy_classification: internal_sensitive
+```
+
+质量 telemetry 的关键是关联键。它必须能连到 `quality_feedback_event`、`prompt_context_snapshot`、`eval_dataset_manifest`、`quality_regression_record`、`online_experiment_record` 和 `quality_cost_ledger`。如果这些对象各自用不同 id，质量闭环就会断裂。工程上可以把 `trace_id`、`request_id`、`run_id`、`serving_quality_contract`、`experiment_id` 和 `task_slice` 作为最小关联键集，并要求 Gateway、model server、Agent orchestrator 和 observability pipeline 共同写入。
+
+```mermaid
+flowchart LR
+  Trace["request / run trace"] --> QTE["quality_telemetry_event"]
+  Feedback["quality_feedback_event"] --> QTE
+  Experiment["online_experiment_record"] --> QTE
+  Contract["serving_quality_contract"] --> QTE
+  QTE --> Regression["quality_regression_record"]
+  QTE --> Dashboard["quality dashboard\n长尾 / 切片 / 版本"]
+  QTE --> Cost["quality_cost_ledger"]
+```
+
+质量 dashboard 不应只展示平均满意度。它应按 task slice、租户、模型版本、prompt 模板、RAG 索引、Agent 工具、Gateway 路由、experiment variant 和 release contract 切分，展示点踩率、人工接管率、重新生成率、引用失败率、工具失败率、误拒/漏拒、安全拦截、质量回归重开和低质量 token 成本。只有这样，团队才能判断质量问题是模型、RAG、Agent、Gateway 还是 runtime 引入的。
+
 ## 工程实现
 
 工程实现的第一步是统一标签规范。所有采集系统都应使用同一套实体标识：tenant、project、model、model_version、endpoint、job、rank、pod、node、gpu_uuid、nic、rack、rail、storage_path、power_domain 和 cooling_domain。标签不统一，后续 dashboard、告警、trace 和成本归因都会变成手工拼接。
@@ -375,6 +420,8 @@ reliability_evidence:
 
 第七步是建立查询审计和导出审批。AI Factory 的诊断包通常跨越应用、模型、GPU、网络和账单，包含高价值敏感信息。导出完整 trace、原始日志、GPU 进程明细或跨租户拓扑时，应要求用途、范围、TTL 和审批，并自动生成 `security_audit_event`。很多数据泄露不是来自生产请求，而是来自事故期间随手导出的日志包。
 
+第八步是建立质量事件采集管道。应用侧的用户反馈、人工接管、重新生成，Gateway 的路由、fallback、实验分桶，模型服务的 release contract，RAG 的引用校验，Agent 的轨迹结果，安全策略的拒答和工具审计，都要进入同一条质量事实流。质量事件不一定全部实时告警，但必须可查询、可抽样、可脱敏、可沉淀为回归样本。否则线上质量会和离线评测长期脱节。
+
 ## 常见故障
 
 第一类故障是指标很多但缺少标签。平台采集了 GPU、网络、存储和应用指标，但没有 tenant、model、job、node、GPU 和 rack 关联，事故时只能人工查表。解决方向是把标签规范作为平台 API 和采集规范的一部分，不合规指标不能进入核心看板。
@@ -390,6 +437,8 @@ reliability_evidence:
 第六类故障是缺少版本上下文。模型升级、driver 升级、NCCL 变更或网关策略调整后，指标变化无法归因。解决方向是把版本、发布事件和变更单写入时间线，让每个指标变化都有可查询背景。
 
 第七类故障是诊断包缺失。事故发生时指标曾经存在，但任务结束后日志、容器和临时文件都被清理。解决方向是在告警触发时自动归档关键证据，避免事后只能复述现象。
+
+第八类故障是质量信号散落。点踩在前端库，投诉在客服系统，人工接管在业务库，引用错误在 RAG 日志，工具失败在 Agent trace，评测失败在离线平台。没有 `quality_telemetry_event` 时，团队无法判断同一质量问题是否跨版本、跨租户、跨任务复发。解决方向是把质量信号统一进入 observability 事实层，并用 trace 和 release contract 关联。
 
 ## 性能指标
 
@@ -410,6 +459,8 @@ reliability_evidence:
 指标之间还要有派生关系。GPU 小时、有效 token、失败 token、浪费 GPU 小时、SLO 违约和成本，需要由底层指标计算得到。平台应维护这些公式，避免不同团队各算各的，导致经营口径不一致。
 
 口径必须版本化。
+
+质量观测指标包括 quality feedback rate、feedback replay rate、human handoff rate、citation failure rate、tool trajectory failure rate、schema failure rate、safety false reject/false allow、experiment guardrail breach、quality regression reopen rate、serving contract mismatch 和 quality cost ledger lag。它们回答质量闭环是否运转。一个平台如果只能看到 GPU 和 latency，看不到这些质量指标，就无法让资深工程师相信它能运营 AI 产品。
 
 ## 设计取舍
 
@@ -433,6 +484,7 @@ reliability_evidence:
 - GPU、NCCL、网络、存储、trace 和 token 指标必须能通过统一标签关联。
 - 推理看用户体验和 token 产出，训练看 step time、通信、数据和 checkpoint。
 - 可观测性最终服务排障、验收、容量规划、成本优化和自动化恢复。
+- `quality_telemetry_event` 把用户反馈、RAG 引用、Agent 轨迹、实验分桶和服务质量契约接入同一事实层，支撑质量回归和质量成本分析。
 
 ## 延伸阅读
 

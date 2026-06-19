@@ -410,6 +410,71 @@ reliability_cost =
 
 把可靠性成本显式化，可以防止一个常见误判：为了降低 cost/token 而减少冗余、缩短灰度、跳过准入或压缩维护窗口，短期报表会变好，但长期毛利可能被事故吞掉。Token Factory 不是只计算稳定态成本，还要计算风险成本。SRE 事件一旦进入 ledger，可靠性投入才有经济解释。
 
+质量成本需要单独的 `quality_cost_ledger`。低质量 token 不一定失败，也不一定触发 5xx，但会造成用户追问、重新生成、人工接管、退款、客户支持、投诉、流失、额外评测和修复成本。若这些成本被平均摊进正常请求，平台会误以为某个低成本模型毛利更高，实际却把成本转嫁给运营和客户成功团队。质量成本账本让“便宜但没用的 token”从报表里显形。
+
+```yaml
+quality_cost_ledger:
+  window: 2026-06-19T00:00Z/2026-06-20T00:00Z
+  scope:
+    tenant: enterprise-a
+    application: support-chat
+    model_version: af-chat-large-202606
+    task_slice: rag_citation
+    serving_quality_contract: sqc-af-chat-20260619-r3
+  production:
+    billable_tokens: measured
+    low_quality_tokens: estimated_from_feedback_and_eval
+    repeated_prompt_tokens: measured
+    regeneration_tokens: measured
+  quality_losses:
+    human_handoff_cost: calculated
+    refund_or_credit: calculated_if_applicable
+    support_ticket_cost: calculated
+    churn_risk_cost: estimated_policy
+    rework_cost: calculated
+  prevention_cost:
+    evaluation_run_cost: measured
+    human_labeling_cost: measured
+    red_team_cost: measured
+    regression_suite_cost: measured
+  derived:
+    quality_adjusted_cost_per_token: calculated
+    cost_per_successful_answer: calculated
+    value_token_ratio: calculated
+```
+
+质量调整后的成本可以这样理解：
+
+```text
+quality_adjusted_cost_per_token =
+  (base_request_cost
+   + quality_losses
+   + allocated_prevention_cost)
+  / successful_user_visible_tokens
+
+cost_per_successful_answer =
+  (all_request_cost_for_task_slice
+   + human_handoff_cost
+   + regeneration_cost
+   + refund_or_credit)
+  / successful_tasks
+```
+
+这个口径会改变模型路由和定价。一个小模型的 base cost/token 低，但如果导致更多追问和人工接管，`cost_per_successful_answer` 可能高于大模型；一个强模型输出更长，base cost/token 高，但如果提高一次解决率，质量调整后的单位成功成本可能更低。Token Factory 的目标不是最低 token 成本，而是在质量和 SLO 约束下的最低成功任务成本。
+
+```mermaid
+flowchart LR
+  Tokens["generated / delivered tokens"] --> Base["base request cost"]
+  Feedback["quality_feedback_event"] --> Loss["quality losses\nhandoff / refund / rework"]
+  Eval["eval / labeling / regression"] --> Prevent["prevention cost"]
+  Base --> QCost["quality_cost_ledger"]
+  Loss --> QCost
+  Prevent --> QCost
+  QCost --> Route["quality-aware routing"]
+  QCost --> Pricing["pricing / plan design"]
+  QCost --> ROI["model and training ROI"]
+```
+
 ## 常见故障
 
 第一类故障是只看 QPS，不看 token。QPS 上升可能是短请求增长，也可能是 Agent 内部调用放大；QPS 稳定也可能掩盖 input token 和 output token 激增。解决方向是把容量、账单和告警都改成请求数与 token 数并行观察，并按请求形态拆分。
@@ -432,6 +497,10 @@ reliability_cost =
 
 第十类故障是把可靠性当作纯成本中心。冗余、准入、灰度、回滚演练、健康隔离和 SRE 值班都会增加显性成本，但它们减少失败 token、赔付、重跑、客户流失和事故响应成本。若经济模型只看稳定态 GPU 利用率，就会倾向于削掉这些保护机制。正确做法是同时展示 reliability_cost/token、incident_waste_gpu_hours 和 error_budget_burn 对毛利的影响。
 
+第十一类故障是忽略低质量 token。某个模型 cost/token 更低，线上回答也很少报错，但用户反复追问、客服人工接管和退款增加。若报表只看 billable token 和 GPU 成本，会错误地扩大这个模型流量。解决方向是把 `quality_feedback_event`、人工接管、重新生成、投诉和退款汇总到 `quality_cost_ledger`，用 cost per successful task 而不是只用 cost/token 做决策。
+
+第十二类故障是把评测和人工标注视为纯研发成本。评测、红队、人工标注和回归维护确实消耗成本，但它们减少线上低质量损失和事故复发。若没有 prevention cost 与 quality loss 的对比，组织可能削减评测预算，短期毛利变好，长期质量损失上升。质量成本账本能解释哪些质量投入是经济上合理的。
+
 ## 性能指标
 
 Token Factory 的产能指标包括 total tokens/s、input tokens/s、output tokens/s、per-model tokens/s、per-tenant tokens/s、replica throughput 和峰谷负载。它们回答系统能生产多少 token、瓶颈在哪个模型或租户、是否需要扩容或限流。产能指标要与上下文长度和输出长度分布一起看。
@@ -441,6 +510,8 @@ Token Factory 的产能指标包括 total tokens/s、input tokens/s、output tok
 成本与收入指标包括 cost/token、revenue/token、gross margin、failure waste cost、free quota cost、reserved capacity cost 和 customer/model margin。它们回答哪些业务创造价值，哪些业务消耗资源但毛利不足。成本指标必须能按模型、租户、资源池和产品计划拆分。
 
 体验和质量指标包括 TTFT、TPOT、TPOP、E2E latency、错误率、限流率、streaming 中断、fallback、人工接管、质量评测和安全拦截。它们防止经济优化牺牲用户体验和模型可信度。没有体验指标约束的 cost/token，可能会把平台带向错误方向。
+
+质量经济指标包括 low quality token rate、regeneration token ratio、human handoff cost、refund per task、complaint cost、quality adjusted cost/token、cost per successful answer、quality prevention cost、regression prevented loss 和 value/token。它们把模型质量从主观体验转成经济事实。对于企业客户，cost per successful answer 往往比 cost per output token 更能说明产品价值。
 
 训练相关指标包括训练 GPU 小时、有效 step、失败重跑成本、checkpoint 成本、评测通过率、上线收益、推理成本改善和训练 ROI。它们把离线训练投资与在线 token 经济性连接起来。最终目标是让训练投入能解释为质量提升、收入提升、成本下降或长期能力沉淀。
 
@@ -487,6 +558,7 @@ Token Factory 指标还需要防止 Goodhart 定律。若只考核 cost/token，
 - GPU 利用率必须和 HBM、KV Cache、功耗、SLO 和质量指标一起看。
 - 推理毛利来自收入、成本、利用率、质量和体验的共同作用。
 - 训练 ROI 需要把训练成本、模型质量、上线收益和平台沉淀放在同一闭环中评估。
+- `quality_cost_ledger` 让低质量 token、人工接管、退款、重复追问、评测和回归成本进入毛利模型，避免只追求便宜 token。
 
 ## 延伸阅读
 

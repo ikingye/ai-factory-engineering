@@ -341,6 +341,102 @@ policy_decision_record:
 
 关键路径失败时，应优先安全拒绝，而不是绕过策略继续转发。
 
+质量路由需要 `routing_quality_scorecard`。普通路由回答“哪个后端可用”，质量路由回答“这个请求在质量、安全、延迟、成本和业务价值约束下，应该由哪个模型或资源池服务”。同一个模型不必服务所有任务：小模型可以处理低风险分类，大模型服务高价值复杂推理；某个模型在代码场景强，但在客服场景不稳定；某个 provider 便宜但数据边界不满足企业租户。Gateway 应把这些差异显式写入 scorecard，而不是隐藏在 if/else 路由规则里。
+
+```yaml
+routing_quality_scorecard:
+  scorecard_id: rqs-20260619-support
+  scope:
+    tenant: enterprise-a
+    application: support-chat
+    task_slices: [policy_lookup, troubleshooting, complaint]
+  candidates:
+    - model: af-chat-large-202606
+      quality_score:
+        offline_eval: pass
+        citation_accuracy: high
+        tool_call_success: high
+        safety_gate: pass
+      serving_score:
+        ttft_p95: within_slo
+        tpot_p95: within_slo
+        availability: healthy
+      economic_score:
+        cost_per_successful_answer: acceptable
+        fallback_cost: bounded
+      constraints:
+        data_boundary: first_party_only
+        required_capabilities: [streaming, tool_calling]
+    - model: af-chat-small-202606
+      quality_score:
+        offline_eval: pass_for_simple_cases
+        citation_accuracy: medium
+      routing_use: simple_low_risk_only
+  decision_policy:
+    primary: maximize_quality_under_slo_and_budget
+    fallback: require_same_capabilities_and_safety_gate
+```
+
+Scorecard 的输入来自多处：第 13 章的 eval report、第 14 章的 serving release、第 15 章的 runtime qualification、第 37 章的线上质量 telemetry、第 41 章的质量成本账本。Gateway 不应在请求路径上实时计算复杂质量模型，而应消费已发布、版本化、可回放的 scorecard。请求进入时，Gateway 根据任务特征、租户、能力要求和当前健康状态选择候选模型，并把命中的 scorecard id 写入 `policy_decision_record`。这样，线上质量争议可以追溯到当时采用的质量证据。
+
+```mermaid
+flowchart LR
+  Req["request features\n任务 / 租户 / 风险 / 能力"] --> Score["routing_quality_scorecard"]
+  Eval["offline eval"] --> Score
+  Online["online quality telemetry"] --> Score
+  Cost["quality_cost_ledger"] --> Score
+  Health["serving health / SLO"] --> Score
+  Score --> Route["route model / pool / fallback"]
+  Route --> PDR["policy_decision_record"]
+```
+
+AI Gateway 还要承载 `online_experiment_record`。A/B 和 canary 不是简单按比例分流，而是一个带假设、样本、随机化单元、护栏指标、统计窗口、停止条件和回滚动作的实验对象。模型上线实验尤其要防止污染：同一用户多轮会话不能在不同模型之间来回切换，Agent run 中途不能切模型，RAG 索引实验不能让同一个请求同时混用多个索引版本。实验记录必须能说明谁进入了实验、为什么进入、观察了哪些指标、何时停止。
+
+```yaml
+online_experiment_record:
+  experiment_id: exp-support-model-20260619
+  hypothesis: "new model improves citation correctness without increasing cost per successful answer"
+  owner: maas-platform
+  randomization_unit: user_id
+  eligibility:
+    tenants: [enterprise-a]
+    task_slices: [policy_lookup]
+    exclude: [high_risk_complaint, agent_runs]
+  variants:
+    control:
+      model: af-chat-large-202605
+      prompt_template: support-v17
+    treatment:
+      model: af-chat-large-202606
+      prompt_template: support-v18
+  guardrails:
+    - ttft_p95_not_regress
+    - safety_reject_rate_not_drop
+    - complaint_rate_not_increase
+    - cost_per_successful_answer_not_increase
+  stop_conditions:
+    rollback_on_severe_quality_feedback: true
+    freeze_on_guardrail_breach: true
+  sample_harvesting:
+    feedback_to_eval_dataset: enabled_with_review
+```
+
+```mermaid
+stateDiagram-v2
+  [*] --> Designed
+  Designed --> DryRun: policy replay
+  DryRun --> Canary: eligibility and guardrails pass
+  Canary --> Observe: collect quality / SLO / cost
+  Observe --> Expand: guardrails pass
+  Observe --> Freeze: weak signal or insufficient sample
+  Observe --> Rollback: severe guardrail breach
+  Expand --> RolledOut: decision approved
+  Freeze --> Observe: extend window or adjust
+  Rollback --> Harvest: collect regression samples
+  RolledOut --> Harvest
+  Harvest --> [*]
+```
+
 Gateway 的计量事件应采用 append-only 设计。请求开始、首 token、完成、取消和失败是不同事件，不应只在成功完成时写一条 usage。Append-only 事件能处理 streaming 中断、重试和补账，也便于审计。
 
 ```yaml
@@ -378,6 +474,10 @@ metering_events:
 
 配置漂移要告警，告警应指向具体实例、策略版本和受影响租户。否则同一策略会在不同实例上表现不同，直接破坏排障可信度。
 
+第九类故障是质量路由没有证据。平台把高价值请求路由给大模型，把低价值请求路由给小模型，但没有记录 `routing_quality_scorecard`，也没有说明任务切片如何识别。出现投诉时，团队无法判断是路由策略错、任务分类错、模型质量差，还是成本策略过于激进。质量路由必须像安全策略一样可回放：给定历史请求和当时 scorecard，应能重建候选模型、过滤原因、排序结果和最终决策。
+
+第十类故障是实验对象不完整。灰度只写了“10% 流量到新模型”，没有随机化单元、护栏指标和停止条件；同一用户多轮对话被分到不同版本，反馈样本互相污染；回滚后没有把失败样本沉淀到评测集。AI Gateway 里的实验开关必须绑定 `online_experiment_record`，否则 A/B 会退化成不可解释的线上试错。
+
 ## 性能指标
 
 AI Gateway 指标应覆盖入口流量、治理结果、模型后端和成本。入口指标包括请求数、连接数、streaming duration、网关处理延迟、请求体大小、响应体大小和客户端取消率。治理指标包括认证失败、权限拒绝、限流命中、配额拒绝、上下文超限、fallback 次数、灰度流量比例、策略拦截和错误码分布。
@@ -391,6 +491,8 @@ AI Gateway 指标应覆盖入口流量、治理结果、模型后端和成本。
 指标还要按策略版本切分。一次路由规则、限流阈值或 fallback 配置变更后，平台需要比较变更前后的延迟、错误、成本和质量代理指标。若没有策略版本维度，网关变更造成的影响会混在模型流量波动里。AI Gateway 是策略执行点，因此策略本身也应成为观测维度。
 
 性能指标还应连接容量规划。Gateway 看到的是最早的租户和模型流量分布，能提前发现某些模型、区域或资源池的需求增长。若这些指标只用于告警，不进入容量评审，平台会重复在高峰期被动扩容。入口指标是业务需求进入 AI Factory 的第一手信号。
+
+质量路由指标包括 scorecard 命中率、按任务切片的模型分布、质量 fallback 率、低质量反馈后的路由变更、实验样本量、实验护栏触发、回滚样本数和路由决策回放成功率。它们和普通网关指标不同：普通指标告诉你请求是否到达后端，质量路由指标告诉你请求是否被交给了合适能力的后端。若 `routing_quality_scorecard` 命中率低，说明大量请求仍在走默认路由；若护栏触发后没有自动冻结，说明实验治理还停留在人工观察。
 
 对 Gateway 来说，错误指标必须能指导客户端行为。建议每个对外错误码至少带三类元数据：`retryable`、`billing_impact` 和 `owner_stage`。例如认证失败不可重试、无 token 费用、owner 是 identity；后端超时可能可重试、可能已有部分 token、owner 是 serving；客户端取消不可重试、可能已有 generated token、owner 是 client/runtime 边界。缺少这些元数据，应用会用同一种退避策略处理所有失败，平台也无法把故障归到正确团队。
 
@@ -422,6 +524,7 @@ AI Gateway 可以做得很厚，也可以做得很薄。厚网关统一治理强
 - LLM 限流需要理解 token、上下文、streaming 和任务调用树。
 - Fallback 和灰度必须考虑模型能力、质量、成本和可回滚性。
 - 标准化网关生态正在形成，但生产系统仍需要结合租户、计费和可观测性闭环。
+- `routing_quality_scorecard` 和 `online_experiment_record` 让网关从“按健康转发”升级为“在质量、安全、SLO 和成本约束下可解释地路由与实验”。
 
 ## 延伸阅读
 

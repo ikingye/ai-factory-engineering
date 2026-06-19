@@ -279,6 +279,55 @@ engine_benchmark_matrix:
     - engine_errors_by_stage
 ```
 
+推理引擎变更还需要 `runtime_quality_gate`。很多 runtime 变更看起来只是性能优化，例如打开 prefix cache、调整 max num seqs、升级 vLLM、启用 speculative decoding、切换量化格式或改 sampler 默认值，但它们可能改变输出长度、停止条件、JSON 稳定性、tool call 格式、错误码和 usage 时机。因此 engine qualification 不能只跑吞吐压测，还要绑定第 13 章的 `quality_gate_record` 和第 14 章的 `serving_quality_contract`。
+
+```yaml
+runtime_quality_gate:
+  gate_id: rqg-vllm-20260619
+  change:
+    engine: vllm
+    from_version: v0.previous
+    to_version: v0.candidate
+    config_delta:
+      prefix_cache: enabled
+      max_num_seqs: changed
+      speculative_decoding: disabled
+  scope:
+    endpoints: [af-chat-large-prod, support-chat-prod]
+    models: [af-chat-large-202606]
+  required_checks:
+    protocol_contract: pass
+    token_count_drift: explained_or_block
+    output_format_regression: pass
+    tool_call_schema_regression: pass
+    safety_eval: pass
+    latency_and_throughput: pass_under_slo
+    kv_cache_failure_rate: zero_or_below_threshold
+  decision:
+    action: canary
+    rollback_target: previous_engine_profile
+```
+
+Engine qualification 的核心是把 runtime 变化拆成四类影响。第一类是正确性：同一输入在确定性设置下是否仍满足答案、格式和安全要求。第二类是协议：streaming chunk、usage、finish reason、错误码、取消语义是否兼容。第三类是性能：TTFT、TPOT、tokens/s、KV Cache、OOM 和 queue 是否改善或保持。第四类是经济性：单位成功任务成本是否下降，额外 draft 模型、缓存和资源占用是否值得。只要其中一类没有证据，引擎变更就不应全量上线。
+
+```mermaid
+flowchart LR
+  Change["engine/config change"] --> Correct["quality regression"]
+  Change --> Protocol["serving protocol contract"]
+  Change --> Perf["performance benchmark"]
+  Change --> Cost["cost per successful task"]
+  Correct --> Gate["runtime_quality_gate"]
+  Protocol --> Gate
+  Perf --> Gate
+  Cost --> Gate
+  Gate --> Canary["engine canary"]
+  Canary --> SQC["serving_quality_contract update"]
+```
+
+对于 speculative decoding，质量门禁要特别看 acceptance rate 之外的指标。Draft 模型的接受率高，不代表业务质量不变；采样参数、验证实现、停止条件和 tokenizer 兼容都可能改变输出行为。评测应比较输出长度、拒答率、结构化输出失败率、tool call 参数稳定性和用户可见错误。若收益主要来自少量长输出任务，Gateway 应按任务切片启用，而不是全局打开。
+
+对于 prefix cache，质量门禁要看缓存 key 和数据边界。错误的 cache key 可能跨租户复用敏感前缀，过度动态的 key 又会导致低命中率和高内存占用。评测应验证模型版本、tokenizer、chat template、租户、数据等级和工具 schema 是否进入 cache key；还要确认缓存失效后输出行为一致。Prefix cache 是性能优化，同时也是状态管理和安全边界。
+
 ## 常见故障
 
 第一类故障是模型兼容性不足。模型结构、位置编码、MoE、量化格式、tokenizer 或 chat template 与引擎支持不匹配，导致启动失败、输出异常或性能退化。排查时不能只看模型权重是否存在，还要看 engine support matrix、转换日志、运行时错误和输出一致性测试。
@@ -296,6 +345,10 @@ engine_benchmark_matrix:
 第七类故障是取消语义错误。客户端断开后引擎继续 decode，占用 GPU 和 KV Cache。高并发下，这会变成隐性容量泄漏。取消路径必须压测。
 
 第八类故障是多副本配置不一致。同一 endpoint 下副本参数不同，导致请求随机快慢或输出差异。发布系统应校验副本配置一致性。
+
+第九类故障是 runtime 优化绕过质量门禁。团队为了降低 TPOT 打开 speculative decoding，或为了改善 TTFT 打开 prefix cache，压测指标改善后直接全量发布；几天后发现 JSON 输出失败率上升、工具参数更不稳定、某些租户命中不该共享的缓存。推理引擎变更应走 `runtime_quality_gate`，并在 trace 中记录 engine profile 和优化开关。性能优化不能成为绕过模型质量治理的后门。
+
+第十类故障是 token drift 未解释。引擎升级后 tokenizer 调用路径、chat template 渲染、stop token 处理或 usage 统计发生变化，同一请求的 input/output token 口径改变。用户账单、成本模型和延迟指标都会被污染。Runtime 发布必须运行 token drift 测试，并把差异归因到 tokenizer、template、sampler、stop condition 或 usage reporter。
 
 ## 性能指标
 
@@ -328,6 +381,8 @@ engine_benchmark_matrix:
 
 最终，推理引擎的 dashboard 应能回答三个问题：当前还能不能接新请求，接新请求会不会破坏 SLO，若不能接，瓶颈是 queue、prefill、decode、KV Cache 还是 GPU。答不出这三个问题，指标再多也不够生产级。
 
+质量相关 runtime 指标包括 token drift、output length drift、finish reason drift、JSON/schema failure、tool call parse failure、safety refusal delta、speculative acceptance rate、draft overhead、prefix cache hit by tenant、cache isolation violation、quality regression failure 和 engine profile mismatch。它们不一定属于传统性能 dashboard，但必须进入发布门禁。Runtime 优化的目标不是让任意 token 更快，而是让通过质量约束的有效 token 更便宜、更稳定地产出。
+
 ## 设计取舍
 
 第一个取舍是性能与兼容性。高度优化的引擎可能需要严格模型格式、构建流程和硬件版本，兼容范围较窄；通用引擎更容易支持多模型和快速迭代，但极限性能可能不如专用优化。平台可以为核心高流量模型使用深度优化路径，为实验和长尾模型使用通用路径。
@@ -348,6 +403,7 @@ engine_benchmark_matrix:
 - Continuous batching 提升吞吐，paged attention 改善 KV Cache 管理。
 - Speculative decoding、prefix cache 和 PD 分离是更高级的优化，需要按 workload 验证。
 - 引擎指标必须进入平台 dashboard、容量规划和发布门禁。
+- `runtime_quality_gate` 让推理引擎升级、缓存、解码和量化优化同时接受质量、协议、性能和经济性验证。
 
 ## 延伸阅读
 

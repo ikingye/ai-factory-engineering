@@ -59,6 +59,125 @@ flowchart LR
   Feedback --> Domain
 ```
 
+生产评测还需要把多个事实对象串成闭环：`eval_dataset_manifest` 定义评测数据和污染控制，`quality_gate_record` 定义上线门禁，`online_experiment_record` 定义线上实验，`quality_feedback_event` 定义真实用户反馈，`quality_regression_record` 定义失败样本的修复和复测。没有这些对象，评测会停留在报告；有了这些对象，评测才能进入路由、发布、SRE 和经济模型。
+
+```mermaid
+flowchart TB
+  Feedback["online feedback\n投诉 / 点踩 / 人工接管"] --> Triage["quality triage"]
+  Triage --> Regression["quality_regression_record"]
+  Regression --> Dataset["eval_dataset_manifest\n回归集 / 盲测集 / 任务切片"]
+  Dataset --> EvalRun["offline eval / judge / human review"]
+  EvalRun --> Gate["quality_gate_record"]
+  Gate --> Release["serving release / model registry"]
+  Release --> Experiment["online_experiment_record\ncanary / A-B"]
+  Experiment --> Routing["routing_quality_scorecard"]
+  Routing --> Cost["quality_cost_ledger"]
+  Cost --> Triage
+```
+
+`eval_dataset_manifest` 是评测系统最核心的元数据。它不是样本内容本身，而是说明样本从哪里来、覆盖什么任务、如何标注、谁能访问、如何防污染、何时过期、如何与线上反馈和回归集连接。一个模型候选如果只在“某个目录下的一批 JSON”上评测，后续无法判断分数变化来自模型、数据、prompt、评审规则还是样本泄漏。Manifest 让评测数据成为可治理资产。
+
+```yaml
+eval_dataset_manifest:
+  dataset_id: support-quality-202606
+  owner: model-quality
+  purpose: release_gate
+  task_slices:
+    - faq_grounded_answer
+    - rag_citation
+    - no_answer_refusal
+    - tool_call_json
+    - safety_sensitive_request
+  source:
+    curated_cases: object://eval/support/curated
+    online_feedback_events: [qfe-20260619-0001]
+    regression_cases: [qrr-20260619-0007]
+  labeling:
+    rubric_version: support-rubric-v5
+    human_review_required_for: [safety_sensitive_request, high_value_customer]
+    judge_model_version: judge-202606
+  execution_binding:
+    prompt_template_version: support-v18
+    tokenizer_version: tokenizer-202606
+    decoding_profile: deterministic_eval
+  governance:
+    blind_split: holdout-202606
+    data_classification: internal_sensitive
+    allowed_readers: [model-quality, sre-oncall]
+    exclude_from_training: true
+```
+
+`quality_gate_record` 是把评测结果转成发布决策的对象。它应记录候选、基线、门禁维度、阈值、通过或失败、豁免、owner、审批和后续动作。门禁不应只说 pass/fail，还要表达“在哪些任务切片通过，哪些指标观察，哪些风险被接受”。这样第 14 章的 serving release、第 6 章的 Gateway 路由和第 40 章的 SRE 变更管理才能消费同一事实。
+
+```yaml
+quality_gate_record:
+  gate_id: qg-af-chat-20260619
+  candidate:
+    model_version: af-chat-large-202606
+    prompt_template_version: support-v18
+    runtime_profile: vllm-prod-v7
+  baseline:
+    model_version: af-chat-large-202605
+  datasets:
+    - support-quality-202606
+    - rag-support-202606
+    - agent-codefix-202606
+  hard_gates:
+    safety_eval: pass
+    no_domain_regression: pass
+    citation_accuracy: pass
+    latency_p95_under_slo: pass
+    token_count_drift_explained: pass
+  soft_gates:
+    output_length_delta: review
+    cost_per_successful_task: review
+  decision:
+    action: canary
+    approved_by: release_owner
+    expiry: next_major_release
+```
+
+`quality_regression_record` 是失败样本从发现到关闭的状态机。它要记录发现来源、复现条件、影响范围、归因层级、owner、修复方案、复测结果和是否加入门禁。没有 regression record，线上反馈很容易被临时修掉，却不能防止复发；有了它，质量事故会沉淀成长期资产。
+
+```mermaid
+stateDiagram-v2
+  [*] --> Detected
+  Detected --> Triaged: classify failure layer
+  Triaged --> Reproduced: replay with frozen artifacts
+  Reproduced --> Assigned: owner and fix layer selected
+  Assigned --> Fixed: model / prompt / RAG / tool / route / runtime
+  Fixed --> Retested: run regression suite
+  Retested --> GateUpdated: add or update gate case
+  GateUpdated --> Closed: pass and monitored
+  Retested --> Reopened: failure persists
+  Reopened --> Assigned
+```
+
+```yaml
+quality_regression_record:
+  regression_id: qrr-20260619-0007
+  discovered_by: online_feedback
+  feedback_event: qfe-20260619-0001
+  affected_versions:
+    model: af-chat-large-202606
+    prompt_template: support-v18
+    gateway_policy: gw-20260619.4
+  failure:
+    task_slice: rag_citation
+    severity: high
+    layer: context_assembly
+    symptom: correct_evidence_retrieved_but_truncated
+  reproduction:
+    prompt_context_snapshot: pcs-20260619-0001
+    replay_status: reproduced
+  ownership:
+    team: knowledge-platform
+    fix_layer: rag_context_budget
+  retest:
+    status: pending
+    added_to_dataset: support-quality-202606
+```
+
 ## 13.1 benchmark
 
 Benchmark 是标准化测试集和指标，适合横向比较模型在特定能力上的表现，例如知识、推理、数学、代码、多语言或安全。它的价值在于可复现、可比较和低成本，能作为模型基础体检。对于模型团队，benchmark 能帮助判断训练或后训练是否带来能力提升；对于平台团队，benchmark 能提供模型目录中的基础能力信号。
@@ -195,6 +314,34 @@ release_gate:
 
 审批记录也应绑定报告。
 
+线上实验的工程实现要复用第 6 章的 `online_experiment_record`，并把结果回写到 `quality_gate_record`。实验不是门禁之外的例外，而是门禁之后的受控验证。实验期间产生的投诉、人工接管、格式错误、引用错误和安全拦截，应通过 `quality_feedback_event` 回流，并按实验 variant 切分。否则线上 A/B 只能告诉你某个指标变了，不能解释是哪类样本、哪个版本、哪个策略造成。
+
+```yaml
+online_eval_summary:
+  experiment_id: exp-support-model-20260619
+  gate_id: qg-af-chat-20260619
+  variants:
+    control:
+      model_version: af-chat-large-202605
+      sample_size: measured
+    treatment:
+      model_version: af-chat-large-202606
+      sample_size: measured
+  primary_metrics:
+    task_success_rate: treatment_non_inferior
+    citation_accuracy: treatment_better
+  guardrails:
+    ttft_p95: no_regression
+    complaint_rate: no_regression
+    cost_per_successful_answer: review_required
+  harvested_feedback:
+    quality_feedback_events: measured
+    new_regression_records: measured
+  decision: expand_or_review
+```
+
+评测平台还应支持“修复层级”统计。一次失败可能要改模型权重、prompt、RAG、工具 schema、Gateway 路由、runtime 参数或客户端展示。每个 `quality_regression_record` 都应填写 `fix_layer`，并在月度质量评审中统计。若多数问题来自 RAG context 截断，继续训练模型收益有限；若多数问题来自 tool schema，应该改工具协议；若多数问题来自 runtime token drift，应该加强 serving quality contract。评测系统的目标是把投资指向真正瓶颈。
+
 ## 常见故障
 
 第一类故障是只看通用 benchmark，忽略领域任务。模型通用分数上升，但客服、代码、RAG 或 Agent 任务下降。排查时应查看任务切片，而不是只看总分。上线门禁应要求目标应用相关评测通过，公开 benchmark 只能作为基础体检。
@@ -211,6 +358,10 @@ release_gate:
 
 还有一类故障是评测通过但 owner 未确认，导致风险被默认接受。
 
+第七类故障是评测数据没有 manifest。样本文件被替换、标注规则变化、judge 模型升级、prompt 模板变化，但报告仍然把新旧分数放在一起比较。解决方法是让每次评测强制绑定 `eval_dataset_manifest`、执行配置和评审规则版本。没有 manifest 的分数只能作为临时探索结果，不能进入发布门禁。
+
+第八类故障是质量回归没有状态机。线上事故被修复后，没有复测、没有 owner、没有加入 gate，几个月后又因另一次模型或 runtime 升级复发。`quality_regression_record` 应成为事故系统和评测系统之间的共同对象，关闭条件必须包括“复现过、修复过、复测过、门禁更新过或明确豁免过”。
+
 ## 性能指标
 
 质量指标包括 benchmark、领域准确率、任务成功率、人工偏好、格式正确率、事实性、引用正确率和工具调用成功率。它们回答模型是否有用。质量指标应按任务切片展示，因为不同应用对“好”的定义不同。单一总分无法支撑模型路由和上线决策。
@@ -224,6 +375,8 @@ release_gate:
 指标还应绑定阈值和 owner。质量不回退由模型团队负责，安全门禁由安全团队负责，延迟和吞吐由平台团队负责，业务指标由应用团队负责。没有 owner 的指标只能展示，不能驱动决策。评测门禁需要责任边界。
 
 指标还要区分硬门禁和观察项。安全越权、严重质量回退和 SLA 失败可能是硬阻断；输出长度变化、轻微成本上升可能进入人工审批。门禁过松会放大风险，过严会阻碍迭代。分级阈值更实用。
+
+质量闭环指标包括 dataset coverage、blind split 占比、反馈到回归的转化率、回归复现率、回归关闭时长、门禁阻断次数、豁免次数、线上实验护栏触发次数和回归重开率。它们衡量评测系统自身是否有效。一个评测体系如果从不阻断发布、从不重开样本、从不发现线上问题，未必说明模型完美，更可能说明评测没有覆盖真实风险。
 
 ## 设计取舍
 
@@ -245,6 +398,7 @@ release_gate:
 - 质量、延迟、吞吐、安全和成本必须一起看。
 - 领域评测和线上 A/B 比单一公开 benchmark 更接近业务真实。
 - 评测 workload 是容量规划的重要输入。
+- `eval_dataset_manifest`、`quality_gate_record`、`quality_regression_record` 和 `online_experiment_record` 把评测从报告变成可回放、可路由、可回归、可审计的生产控制面。
 
 ## 延伸阅读
 

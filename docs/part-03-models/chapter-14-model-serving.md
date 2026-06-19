@@ -298,6 +298,55 @@ drain_contract:
     - replica_stopped
 ```
 
+模型服务还需要 `serving_quality_contract`。它把第 13 章的 `quality_gate_record` 与实际 serving release 绑定，声明本次发布的权重、tokenizer、chat template、runtime、engine config、sampling 默认值、协议行为和质量门禁是一组不可拆开的生产契约。没有这个契约，模型团队可能说质量评测通过，服务团队却上线了不同 tokenizer 或 runtime 参数；SRE 看到线上质量退化时，也无法判断发布是否仍等同于当时评测的候选。
+
+```yaml
+serving_quality_contract:
+  contract_id: sqc-af-chat-20260619-r3
+  release_id: af-chat-large-20260619-r3
+  bound_quality_gate: qg-af-chat-20260619
+  artifacts:
+    weights_digest: sha256:weights
+    tokenizer_digest: sha256:tokenizer
+    chat_template_version: support-v18
+    prompt_policy_version: prompt-policy-202606
+  runtime:
+    engine: vllm
+    engine_config_digest: sha256:engine-config
+    runtime_image_digest: sha256:runtime
+    sampling_defaults:
+      temperature: recorded
+      top_p: recorded
+  protocol_contract:
+    streaming_chunk_schema: openai-compatible-vX
+    usage_timing: final_chunk
+    finish_reason_set: [stop, length, tool_calls, content_filter]
+    error_mapping_version: serving-errors-v6
+  drift_tests:
+    token_count_drift: required
+    output_format_drift: required
+    tool_call_schema_drift: required
+    quality_regression_suite: support-quality-202606
+```
+
+这个契约应在发布前自动验证。第一步是 artifact 校验：digest、大小、权限和缓存状态一致。第二步是协议校验：固定请求的 streaming chunk、usage、finish reason、错误码和 tool call JSON 与 contract 相符。第三步是 token drift：同一组输入在新组合下的 input token 和输出长度分布是否变化，变化是否有解释。第四步是质量回归：运行与 `quality_gate_record` 绑定的评测集，确认没有严重回退。任何一步失败，都应阻止扩大流量。
+
+```mermaid
+flowchart LR
+  Release["serving_release"] --> SQC["serving_quality_contract"]
+  Gate["quality_gate_record"] --> SQC
+  SQC --> Artifact["artifact digest check"]
+  SQC --> Protocol["protocol contract test"]
+  SQC --> Drift["token / output drift test"]
+  SQC --> Eval["quality regression suite"]
+  Artifact --> Decision["canary decision"]
+  Protocol --> Decision
+  Drift --> Decision
+  Eval --> Decision
+```
+
+`serving_quality_contract` 还应进入线上 trace。每个请求至少要能查到 contract id、release id、模型版本和 runtime profile。这样线上反馈进入第 1 章的 `quality_feedback_event` 后，评测平台可以知道应使用哪组 artifact 回放。若 contract id 缺失，线上请求与离线评测之间就断了，质量闭环只能停在“可能是新版本问题”。
+
 ## 常见故障
 
 第一类故障是健康检查过浅。服务端口可用，但模型尚未加载、GPU 不可用、tokenizer 初始化失败或首个推理请求失败。Kubernetes 认为 pod ready，Gateway 开始导流，用户请求失败。健康检查应包含模型 readiness 和最小推理探针，而不只是 HTTP 端口。
@@ -317,6 +366,10 @@ drain_contract:
 第七类故障是 admission 与 runtime 状态脱节。Gateway 认为 endpoint 健康，model server 实际 KV Cache 接近上限或 queue 已经超过 SLO，结果继续接流量造成雪崩。解决方向是让 model server 暴露 admission health，包括 queue p95、active sequence、KV pressure、draining state 和 engine restart，Gateway 按这些信号做可路由健康判断。
 
 第八类故障是 contract test 缺失。新 runtime 版本在样例请求上能回答，但 usage 字段、finish reason、streaming chunk、错误码或 tool calling JSON 与旧版本不同，上游应用和计量系统被破坏。模型服务升级必须把协议契约作为测试对象，而不是只看模型输出文本。
+
+第九类故障是 serving release 与质量门禁脱钩。候选模型在某个 tokenizer、模板、runtime 和 sampling 配置下通过评测，但上线时为了性能调整了 engine config 或默认参数，输出分布和 token 口径发生变化。解决方向是发布必须绑定 `serving_quality_contract`，任何 artifact 或 runtime 变化都要重新计算 token drift 和质量回归，而不是沿用旧 gate。
+
+第十类故障是 canary 只看服务指标。新版本 TTFT、TPOT、错误率都正常，但引用正确率下降、工具 JSON 不稳定或输出更长导致成本上升。模型服务 canary 应消费第 13 章的质量指标和第 6 章的线上实验护栏。服务指标保护可用性，质量指标保护用户价值，二者缺一不可。
 
 ## 性能指标
 
@@ -349,6 +402,8 @@ Runtime 指标包括 queue length、queue time、batch size、prefill time、dec
 
 这里的 token drift 很关键。模型、tokenizer、chat template 或工具 schema 变化后，同一组标准请求的 input token 和 output token 分布可能改变。若 token 数漂移没有解释，成本、延迟和账单都会受影响。发布门禁应把 token drift 当成一等信号。
 
+服务质量契约指标包括 contract 覆盖率、发布请求中 contract id 缺失率、token drift 失败数、协议契约失败数、质量回归失败数、canary 期间质量反馈率、contract 与 gate 不一致次数和回滚后 contract 恢复时间。这些指标衡量模型服务是否真的按评测过的组合运行。一个平台如果经常出现“评测通过但线上不是同一组合”，说明模型服务治理还不合格。
+
 ## 设计取舍
 
 第一个取舍是独立部署与共享部署。独立部署隔离强、性能稳定、排障简单，但资源利用率低；共享部署或 multi-model serving 提高利用率，但增加加载、隔离和观测复杂度。高 SLA 大模型适合独立部署，低频小模型或 adapter 场景可以考虑共享。部署形态应由流量和风险决定。
@@ -369,6 +424,7 @@ Runtime 指标包括 queue length、queue time、batch size、prefill time、dec
 - Batching、autoscaling、canary 和 rollback 是模型服务的关键机制。
 - LLM autoscaling 应关注 token、队列、GPU 和 KV Cache，而不是只看 CPU。
 - 模型发布必须版本化权重、tokenizer、runtime 和配置。
+- `serving_quality_contract` 把模型服务发布与质量门禁绑定，确保线上运行的 artifact/runtime 组合就是被评测、可回放、可回滚的组合。
 
 ## 延伸阅读
 
