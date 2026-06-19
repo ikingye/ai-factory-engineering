@@ -258,6 +258,35 @@ tenant_cost_isolation:
 
 计费隔离还要和安全边界联动。API Key 泄露期间产生的 token 是否计费，取决于合同和平台责任，但无论如何都要先能识别这部分用量。被安全策略拒绝的请求是否收费，取决于是否已经消耗 prefill 或第三方 API；跨区域被拒绝的请求通常不应产生模型成本，但可能产生网关处理成本。成本系统必须消费 Gateway 的 `policy_decision_record`，否则无法解释安全事件的经济影响。
 
+账单争议应有 `billing_dispute_replay`。它不是客服工单备注，而是一组可重放证据：争议窗口内的原始 metering event、policy decision、served model、fallback、错误阶段、stream close、价格版本、折扣、billing hold 和人工修正。它的目标是把“为什么扣了这些钱”变成工程事实，而不是让平台、财务和租户在聚合账单上争论。
+
+```yaml
+billing_dispute_replay:
+  dispute_id: bdr-20260620-001
+  tenant_id: enterprise-a
+  billing_period: 2026-06
+  disputed_scope:
+    project_id: customer-service-prod
+    window: 2026-06-19T00:00Z/2026-06-20T00:00Z
+    models: [af-chat-large]
+  evidence:
+    metering_events: immutable_event_refs
+    policy_decision_records: sampled_or_full_for_scope
+    endpoint_admission_decisions: sampled
+    egress_provider_decisions: required_if_provider_used
+    price_version: price-20260601
+    tenant_cost_isolation: tci-enterprise-a-202606
+  replay_result:
+    usage_matches_invoice: true_or_false
+    disputed_cost_class: normal_usage_or_platform_failure_or_security_hold
+    correction_required: none_or_credit_or_rebill
+  audit:
+    reviewer: billing-ops
+    tenant_notified: true
+```
+
+这个对象也能处理 security hold。若 key 泄露、异常预算消耗或 denial-of-wallet 攻击正在调查，相关 usage 不应直接进入最终账单，而应先标记为 hold。调查结束后，replay 根据责任边界决定正常计费、退款、内部损失或安全赔付。没有 dispute replay，平台即使愿意处理争议，也很难给出可验证依据。
+
 工程实现还应支持重算。价格规则变化、折扣补录、事件迟到或标签修复后，平台可能需要重算某个时间窗口的账单。重算必须基于不可变原始事件和版本化价格规则，而不是覆盖历史聚合结果。这样才能在争议处理和审计时说明“为什么账单发生变化”。可重算能力是计费系统成熟度的重要标志。
 
 落地时可以把链路拆成三类数据集：原始事件表、聚合用量表和账单明细表。原始事件只追加不覆盖；聚合用量可以按小时或天重算；账单明细记录价格规则、折扣和出账批次。每次重算都生成新的版本，并保留旧版本用于审计。在线预算系统则使用近实时聚合结果，不直接依赖月度账单。

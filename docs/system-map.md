@@ -83,7 +83,14 @@ flowchart TB
 | `architecture_decision_record` | 记录 GPU、网络、存储、调度、runtime 和商业模式的取舍。 | 第 44 章 | `change_safety_case`、`production_readiness_review` |
 | `production_readiness_review` | 聚合资源、模型、平台、安全、SRE 和经济证据，决定是否上线。 | 第 44 章 | `online_experiment_record`、`incident_record` |
 | `tenant_boundary` | 定义租户在身份、数据、模型、资源和账单中的边界。 | 第 5、6、27 章 | `policy_decision_record`、`security_audit_event` |
+| `tenant_isolation_evidence` | 证明租户隔离在身份、模型目录、资源池、缓存、trace、存储和计量路径中实际生效。 | 第 5、37、44 章 | `policy_decision_record`、`production_readiness_review` |
 | `policy_decision_record` | 让 Gateway 的 allow/deny/route/fallback 可回放。 | 第 6 章 | `api_key_audit_event`、`routing_quality_scorecard` |
+| `egress_provider_decision` | 记录一次请求是否允许出站到第三方 provider、跨区域 endpoint 或私有 provider，并绑定数据边界和合同。 | 第 6、37、41、44 章 | `policy_decision_record`、`billing_dispute_replay` |
+| `prompt_trace_redaction_record` | 记录 prompt、response、RAG chunk 和 tool arguments 在 trace、日志和导出中的脱敏、引用、TTL 和审批。 | 第 8、37、44 章 | `security_evidence_bundle`、`security_audit_event` |
+| `secret_boundary_evidence` | 证明 KMS、provider credential、registry token、签名 key、STS token 和 break-glass token 没有越界使用或泄露。 | 第 33、37、41、44 章 | `storage_security_boundary`、`security_cost_ledger` |
+| `security_evidence_bundle` | 冻结 key 泄露、provider 越权、trace 泄露、secret 泄露和 denial-of-wallet 所需的跨系统证据。 | 第 37、40、41、44 章 | `security_audit_event`、`billing_dispute_replay` |
+| `denial_of_wallet_incident_record` | 记录 stolen key、长上下文攻击、Agent 循环和昂贵 provider 路由造成的成本型事故。 | 第 40、41、44 章 | `abuse_cost_ledger`、`billing_dispute_replay` |
+| `billing_dispute_replay` | 把账单争议从 invoice 回放到 metering event、policy decision、served model、价格版本和 hold/correction。 | 第 7、41、44 章 | `tenant_cost_isolation`、`security_cost_ledger` |
 | `rag_agent_admission_context` | 把入口身份、数据边界、RAG 范围、工具范围和预算传给下游执行链路。 | 第 6 章 | `retrieval_permission_decision`、`agent_budget_ledger` |
 | `retrieval_permission_decision` | 证明 RAG 在当前用户和数据边界下允许或拒绝哪些候选证据。 | 第 2、6 章 | `rag_context_snapshot`、`tool_security_incident_record` |
 | `rag_context_snapshot` | 冻结最终进入 prompt 的证据、引用、token 预算、截断和冲突处理。 | 第 2、37 章 | `rag_quality_regression_record`、`quality_evidence_bundle` |
@@ -185,7 +192,10 @@ flowchart TB
 | 变更后随机故障 | 第 29、37、38、39、40 章 | change_safety_case、baseline_invalidation_record、reliability_evidence_bundle、recent changes | 检查变更是否失效了准入基线、资源池是否降级、复测是否覆盖真实 workload。 |
 | 扩容后产能没增长 | 第 28、36、38、40、41 章 | capacity_activation_record、rack_capacity_unit、physical/fabric/storage acceptance、workload-fit capacity | 区分 installed、accepted、allocatable 和 workload-fit GPU，定位 power、cooling、fabric、storage 或 baseline 失效限制。 |
 | 上线评审证据不足 | 第 38、40、41、44 章 | production_readiness_review、baseline_invalidation_record、slo_budget_ledger、reliability_cost_ledger | 证据缺口应 block 或 conditional approve，不能靠口头承诺上线。 |
-| 账单争议 | 第 5、6、7、41、42 章 | append-only metering event、tenant boundary、business_model_profile | 区分失败是否计费、streaming 中断、免费额度、租户归属和合约边界。 |
+| API Key 泄露或异常消费 | 第 5、6、37、40、41、44 章 | credential_lifecycle、api_key_audit_event、security_evidence_bundle、denial_of_wallet_incident_record、abuse_cost_ledger | 先吊销或轮换凭据并标记 billing hold，再判断是用户泄露、平台策略缺口还是滥用攻击。 |
+| 第三方 provider 越权路由 | 第 5、6、37、40、41、44 章 | egress_provider_decision、policy_decision_record、data_boundary_policy、provider_contract、security_evidence_bundle | 阻断 provider route，回放数据边界和合同，评估数据暴露、成本和账单修正。 |
+| Trace 或日志疑似泄露敏感 prompt | 第 6、8、33、37、40、44 章 | prompt_trace_redaction_record、security_audit_event、data_boundary_policy、secret_boundary_evidence | 冻结导出权限，确认脱敏和 TTL，评估导出范围并更新观测审批。 |
+| 账单争议 | 第 5、6、7、41、42 章 | billing_dispute_replay、tenant_cost_isolation、policy_decision_record、metering event、business_model_profile | 区分失败是否计费、streaming 中断、免费额度、租户归属、provider 路由、security hold 和合约边界。 |
 | 私有化交付无法升级 | 第 4、29、42、43、44 章 | version matrix、offline package、case evidence、ADR、PRR | 将客户差异收敛到配置和集成层，建立升级与诊断证据。 |
 
 ## 核心链路索引
@@ -199,7 +209,7 @@ flowchart TB
 | 存储数据链路 | 第 10、14、20、33、37、38、39、41 章 | 能从 GPU idle、checkpoint 慢、冷启动慢追到 storage intent、dataset manifest、checkpoint commit、artifact distribution、cache residency、backend telemetry 和成本。 |
 | 数据/模型产物供应链链路 | 第 10、14、33、37、38、39、41、44 章 | 能从训练数据来源追到 dataset lineage、checkpoint restore、artifact provenance、cache residency、cache invalidation、storage security boundary、PRR 和供应链成本。 |
 | 可靠性链路 | 第 28、29、36、37、38、39、40、41、44 章 | 能把 health、maintenance、baseline invalidation、change、fault domain、evidence bundle、incident、error budget、capacity activation、PRR 和经济损失串起来。 |
-| 安全多租户链路 | 第 5、6、7、21、22、27、28、37、40、41 章 | 能解释租户边界、策略决策、runtime privilege、GPU 隔离、审计和成本隔离。 |
+| 安全多租户链路 | 第 5、6、7、8、21、22、27、28、33、37、40、41、44 章 | 能从 API Key、策略决策和数据边界追到 tenant isolation evidence、provider 外联决策、trace 脱敏、secret 边界、安全证据包、denial-of-wallet、账单争议回放和 secure cost/token。 |
 | 质量与发布链路 | 第 6、13、14、37、40、41、44 章 | 能从线上质量退化追到 eval dataset lineage、quality gate execution、routing decision、serving contract、evidence bundle、rollback record、quality cost ledger 和 PRR。 |
 | RAG/Agent 生产控制链路 | 第 2、3、5、6、13、37、40、41、44 章 | 能从用户任务追到 admission context、检索权限、context 快照、工具副作用策略、工具执行记录、预算账本、证据包、安全事故、成本归因和 PRR。 |
 | 行业建设链路 | 第 4、42、43、44 章 | 能把应用想法转成 profile、商业模式、案例诊断、建设计划、ADR、质量门禁和 PRR。 |

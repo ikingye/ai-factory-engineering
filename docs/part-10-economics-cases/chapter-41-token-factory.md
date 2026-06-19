@@ -181,6 +181,34 @@ secure_cost_per_token =
 
 这个账本能防止两个误判。第一个误判是把强隔离租户的成本平均摊给所有租户，导致共享池价格被抬高；第二个误判是为了降低 cost/token 削减审计、清理和隔离，短期成本下降，长期安全事故成本上升。安全成本应按 tenant、resource_class、data_classification 和 service_level 分摊，让用户理解“为什么专属、加密、长保留和强审计更贵”。
 
+安全成本应落成结构化 `security_cost_ledger`，并引用生产证据对象，而不是只按安全团队预算平均分摊。它应区分预防成本、事故成本、争议成本和合规成本：预防成本购买隔离、密钥轮换、脱敏和审计；事故成本来自 key 泄露、trace 泄露、越权路由或 denial-of-wallet；争议成本来自 usage hold、账单重算和客户沟通；合规成本来自证据保留和审计导出。
+
+```yaml
+security_cost_ledger:
+  window: 2026-06
+  tenant: enterprise-a
+  evidence:
+    tenant_isolation_evidence: tie-20260620-001
+    prompt_trace_redaction_records: sampled
+    secret_boundary_evidence: sbe-20260620-001
+    egress_provider_decisions: sampled
+    security_evidence_bundle: seb-20260620-001-if_any
+    billing_dispute_replay: bdr-20260620-001-if_any
+  cost_components:
+    dedicated_isolation_cost: calculated
+    kms_and_secret_rotation_cost: calculated
+    redaction_and_audit_retention_cost: calculated
+    provider_boundary_validation_cost: calculated
+    security_incident_response_cost: calculated_if_any
+    billing_hold_and_replay_cost: calculated_if_any
+  outputs:
+    secure_cost_per_token: calculated
+    security_prevention_cost_per_tenant: calculated
+    security_incident_cost_per_token_delta: calculated
+```
+
+这个 ledger 让安全投入能和产品套餐、租户等级和数据等级对齐。一个高敏租户要求专属资源池、长审计保留、禁止第三方 provider、短期凭据和更强脱敏，那么它的 secure cost/token 应高于普通共享租户。反过来，如果普通租户不需要这些能力，就不应承担高敏租户的隔离成本。安全经济模型的目标不是降低安全，而是让安全边界和价格、SLA、合同可解释地一致。
+
 网络成本也不能只按交换机和光模块折旧平均分摊。对 AI Factory 来说，更大的隐藏成本来自网络退化导致的 GPU idle、训练重跑、checkpoint 叠加、推理 streaming gap 和资源降级。`network_cost_ledger` 应把网络路径证据、通信 critical path 和拥塞事件连接起来：
 
 ```yaml
@@ -312,6 +340,35 @@ adjusted_revenue_per_token =
 ```
 
 滥用经济模型不是为了把所有异常都转嫁给客户，而是为了让平台能快速止血和定责。若异常来自客户 key 泄露，可能触发 credential rotation、billing hold 和争议流程；若来自平台限流缺陷，可能需要退款和策略修复；若来自产品免费额度设计，可能需要调整 guardrail。没有滥用账本，平台只会在月末发现毛利异常。
+
+滥用和 denial-of-wallet 还应进入 `abuse_cost_ledger`。它把异常 token、异常 provider 调用、预算消耗、受影响租户、billing hold 和争议 replay 串起来。这样平台能在小时级别发现经济异常，而不是月末看毛利才发现免费额度被刷、长上下文攻击或 Agent 循环调用。
+
+```yaml
+abuse_cost_ledger:
+  window: 2026-06-20T10:00Z/2026-06-20T11:00Z
+  incident: dow-20260620-001
+  evidence:
+    denial_of_wallet_incident_record: dow-20260620-001
+    security_evidence_bundle: seb-20260620-001
+    billing_dispute_replay: bdr-20260620-001
+    policy_decision_records: sampled
+  suspicious_usage:
+    input_tokens: measured
+    output_tokens: measured
+    provider_calls: measured
+    agent_steps: measured_if_applicable
+  cost_impact:
+    generated_token_cost: calculated
+    provider_cost: calculated
+    displaced_premium_capacity_cost: calculated
+    investigation_and_credit_cost: calculated
+  resolution:
+    billing_hold: active_or_closed
+    tenant_chargeable: true_false_or_split
+    platform_policy_fix_required: true_or_false
+```
+
+这个账本能把“安全异常”转成经营动作：吊销 key、关闭 provider route、收紧预算、退款或追偿、修复 SDK、调整免费额度。对 AI Factory 来说，经济异常往往比技术错误更早暴露滥用；如果成本系统不能按小时级别识别异常 token，安全团队会失去最有效的早期信号。
 
 ## 41.6 GPU 利用率
 

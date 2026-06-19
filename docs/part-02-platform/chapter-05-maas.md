@@ -177,6 +177,36 @@ RAG 和 Agent 会把 MaaS 的租户边界传递到更深的执行链路。普通
 
 因此，MaaS 的身份令牌不应只包含 `tenant_id` 和 `api_key_id`，还应能表达 `user_context`、`delegation_mode`、`project_scope`、`data_boundary_policy`、允许工具范围和审计要求。对于服务账户调用的企业应用，平台应明确哪些动作使用应用身份，哪些动作必须携带最终用户身份；对于高风险 Agent，平台应要求短期凭据、最小工具 scope 和每步策略决策。这个设计会增加接入复杂度，但它避免了最危险的失败模式：模型 API 变成绕过企业权限和审计的后门。
 
+租户边界还需要可验证的 `tenant_isolation_evidence`。`tenant_boundary` 描述“应该如何隔离”，evidence 描述“这次发布、这段时间或这个资源池实际如何隔离”。它要覆盖 identity、模型可见性、资源池、日志/trace、缓存、存储、计量和支持访问。没有 evidence，平台只能声称多租户隔离，而不能在审计、事故或客户质疑时证明隔离有效。
+
+```yaml
+tenant_isolation_evidence:
+  evidence_id: tie-20260620-001
+  tenant_id: enterprise-a
+  scope:
+    projects: [customer-service-prod]
+    endpoints: [af-chat-large-prod]
+    window: 2026-06-20T00:00Z/2026-06-20T24:00Z
+  controls_verified:
+    identity_binding: pass
+    model_catalog_visibility: pass
+    gateway_policy_replay: pass
+    resource_pool_boundary: pass
+    prompt_trace_redaction: pass
+    cache_namespace_isolation: pass
+    storage_security_boundary: pass
+    metering_attribution: pass
+  sampled_evidence:
+    policy_decision_records: sampled
+    endpoint_admission_decisions: sampled
+    security_audit_events: sampled
+    billing_events: sampled
+  exceptions:
+    open: none
+```
+
+这个对象让安全评审从“配置看起来正确”变成“关键路径有证据”。例如某个租户禁止第三方 provider，evidence 要能抽样证明 Gateway 决策确实拒绝了外联；某个租户要求日志脱敏，evidence 要能证明 trace 中只有引用和 hash；某个租户使用专属资源池，evidence 要能证明请求没有进入共享池。它也是后续 PRR 的输入：高敏租户没有隔离证据，不应进入生产。
+
 ## 5.5 租户、项目、配额
 
 租户是资源、权限和账单的组织边界，项目是租户内部的应用或工作空间边界，配额是对模型能力消费的限制。一个企业租户可以包含多个项目，例如客服、办公、研发和数据分析；每个项目有不同模型权限、预算、SLA 和负责人。这个层次能让平台既支持组织级治理，又支持应用级成本归因。没有项目边界，MaaS 很快会变成“租户总账”，无法运营。

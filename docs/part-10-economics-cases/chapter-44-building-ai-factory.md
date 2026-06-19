@@ -466,7 +466,17 @@ production_readiness_review:
     observability:
       reliability_evidence_bundle_trigger: configured
       inference_runtime_diagnostic_bundle: configured
+      security_evidence_bundle_trigger: configured
+      prompt_trace_redaction_record: pass
       token_metering_reconciliation: pass
+    security_and_tenant_boundary:
+      credential_lifecycle: pass
+      api_key_audit_event_stream: configured
+      tenant_isolation_evidence: pass
+      policy_decision_record_replay: pass
+      egress_provider_decision_replay: pass_if_external_or_cross_region_provider
+      secret_boundary_evidence: pass_if_secret_or_provider_involved
+      denial_of_wallet_runbook: ready
     inference_runtime:
       endpoint_admission_decision_replay: pass
       engine_admission_health_freshness: pass
@@ -505,6 +515,9 @@ production_readiness_review:
       slo_budget_ledger: initialized
       reliability_cost_ledger: initialized
       quality_cost_ledger: initialized
+      security_cost_ledger: initialized
+      billing_dispute_replay: ready
+      abuse_cost_ledger: initialized_if_public_or_untrusted_access
       owner_for_error_budget_burn: assigned
   decision_logic:
     block_if:
@@ -513,6 +526,14 @@ production_readiness_review:
       - no_rollback_path
       - no_metering_reconciliation
       - no_incident_owner_or_runbook
+      - no_credential_lifecycle_or_api_key_audit
+      - no_tenant_isolation_evidence_for_multitenant_scope
+      - no_policy_decision_replay_for_gateway_security_policy
+      - external_provider_without_egress_provider_decision
+      - prompt_or_trace_logging_without_redaction_record
+      - secret_or_provider_scope_without_secret_boundary_evidence
+      - public_or_untrusted_access_without_denial_of_wallet_runbook
+      - commercial_billing_without_dispute_replay
       - no_endpoint_admission_decision_replay
       - stale_or_missing_engine_admission_health
       - no_kv_block_ledger_for_target_endpoint

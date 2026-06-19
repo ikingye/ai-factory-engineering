@@ -442,6 +442,36 @@ policy_decision_record:
 
 关键路径失败时，应优先安全拒绝，而不是绕过策略继续转发。
 
+多模型聚合和第三方 provider 路由还需要 `egress_provider_decision`。它专门记录一次请求是否允许出站到外部 provider、跨区域 endpoint 或租户私有 provider。普通路由记录说明“选了谁”，egress decision 说明“为什么可以把数据发出去”。它应绑定 `data_boundary_policy`、tenant boundary、provider 合同、区域、日志策略、训练使用策略和计费口径。没有它，平台很难证明某个敏感请求没有被错误发往第三方。
+
+```yaml
+egress_provider_decision:
+  decision_id: epd-20260620-001
+  trace_id: trace-abc
+  tenant_id: enterprise-a
+  requested_model: af-chat-large
+  candidate_provider: third-party-x
+  data_classification:
+    prompt: confidential
+    attachments: none
+    rag_context: internal_only
+  policies:
+    tenant_boundary: tb-20260619.1
+    data_boundary_policy: dbp-20260610.3
+    provider_contract: provider-x-cn-no-training
+  checks:
+    residency_allowed: false
+    provider_training_disabled: verified
+    prompt_logging_policy: redacted_only
+    billing_disclosure_required: true
+  result:
+    action: deny_provider_route
+    fallback: internal_model_only
+    audit_event: security_audit_event_id
+```
+
+这个对象把“数据边界”从抽象原则变成路由门禁。它也让 fallback 更安全：当内部模型不可用时，Gateway 不能只按可用性切到外部 provider，而必须先证明该租户、该数据等级、该区域和该合同允许外联。对商业平台来说，它还支撑账单解释：用户是否被路由到第三方、第三方价格如何计入、是否使用了合规折扣或禁训合同，都应可追溯。
+
 质量路由需要 `routing_quality_scorecard`。普通路由回答“哪个后端可用”，质量路由回答“这个请求在质量、安全、延迟、成本和业务价值约束下，应该由哪个模型或资源池服务”。同一个模型不必服务所有任务：小模型可以处理低风险分类，大模型服务高价值复杂推理；某个模型在代码场景强，但在客服场景不稳定；某个 provider 便宜但数据边界不满足企业租户。Gateway 应把这些差异显式写入 scorecard，而不是隐藏在 if/else 路由规则里。
 
 ```yaml

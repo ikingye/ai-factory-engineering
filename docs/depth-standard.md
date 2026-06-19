@@ -85,6 +85,24 @@
 | `inference_runtime_cost_ledger` | 第 41 章 | 说明 speculative decoding、PD 分离、KV block、取消浪费和质量成本如何共同决定成功回答成本 |
 | Token Factory ledger | 第 41 章 | 说明 token ledger、resource ledger、阶段成本和毛利约束指标 |
 
+## 安全、身份与租户边界覆盖矩阵
+
+安全多租户链路的目标是让读者能从一次请求或一次事故追到身份、租户边界、数据边界、策略决策、provider 外联、trace 脱敏、secret、审计、账单争议和安全成本。当前覆盖如下：
+
+| 知识点 | 主要章节 | 覆盖要求 |
+| --- | --- | --- |
+| `tenant_boundary` | 第 5、6、44 章 | 说明租户在身份、模型、数据、资源、日志和账单中的边界如何被 Gateway、RAG、Agent、存储、观测和计费共同消费 |
+| `tenant_isolation_evidence` | 第 5、37、44 章 | 说明多租户隔离不是声明，而是 identity、目录、策略、资源池、缓存、trace、存储和计量的抽样证据 |
+| `credential_lifecycle` / `api_key_audit_event` | 第 5、40、44 章 | 说明 API Key、服务账户和短期凭据如何创建、轮换、禁用、审计和进入事故取证 |
+| `policy_decision_record` | 第 6、37、40、44 章 | 说明 Gateway 的 allow、deny、route、fallback、budget、data boundary 和 safety 决策如何回放 |
+| `egress_provider_decision` | 第 6、37、41、44 章 | 说明请求是否允许发往第三方 provider、跨区域 endpoint 或私有 provider，以及 provider 合同和数据边界如何约束 fallback |
+| `prompt_trace_redaction_record` | 第 8、37、44 章 | 说明 prompt、response、RAG chunk、tool arguments 在 trace、日志和导出中如何脱敏、引用化、设 TTL 和审计 |
+| `secret_boundary_evidence` | 第 33、37、41、44 章 | 说明 KMS、provider credential、registry token、签名 key、STS token 和 break-glass token 如何被扫描、挂载、轮换和审计 |
+| `security_evidence_bundle` | 第 37、40、41、44 章 | 说明 key 泄露、provider 越权、trace 泄露和安全成本事故如何冻结跨系统证据 |
+| `denial_of_wallet_incident_record` | 第 40、41、44 章 | 说明 stolen key、长上下文攻击、Agent 循环、昂贵 provider 路由如何造成经济型事故并进入止血和账单处理 |
+| `billing_dispute_replay` | 第 7、41、44 章 | 说明账单争议如何从 invoice 回放到 metering event、policy decision、served model、价格版本、hold 和修正 |
+| `security_cost_ledger` / `abuse_cost_ledger` | 第 41 章 | 说明隔离、密钥、脱敏、审计、security incident、denial-of-wallet 和争议处理如何进入 secure cost/token |
+
 ## 训练任务链路覆盖矩阵
 
 训练任务链路的目标是让读者能从一次训练提交一路追到队列、quota、gang、拓扑放置、NCCL、checkpoint、评测、模型注册和训练 ROI。当前覆盖如下：

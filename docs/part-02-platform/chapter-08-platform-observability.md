@@ -210,6 +210,36 @@ trace_spans:
 
 可观测数据还应支持“请求回放式复盘”。复盘不是重放用户隐私内容，而是用结构化事实重建路径：当时的 policy version、route target、served model、input token bucket、queue、prefill、decode、KV Cache、finish reason、error code 和 metering event。这样，即使 prompt 原文不可见，团队也能解释大多数平台故障。对于确需内容诊断的问题，再走授权采样和脱敏流程。
 
+为了让“可排障”和“不泄露”同时成立，平台应生成 `prompt_trace_redaction_record`。它记录一次请求或一次导出中哪些字段被保留、脱敏、哈希、引用化或拒绝导出，并绑定 `data_boundary_policy`、租户、用途、TTL 和审批。这个对象不是日志处理细节，而是可观测性安全边界的证据。没有它，团队很难证明 trace 中没有明文 prompt、RAG chunk、工具参数或用户隐私。
+
+```yaml
+prompt_trace_redaction_record:
+  redaction_id: ptr-20260620-001
+  trace_id: trace-abc
+  tenant_id: enterprise-a
+  data_boundary_policy: dbp-20260610.3
+  purpose: latency_troubleshooting
+  fields:
+    prompt:
+      action: replace_with_ref_and_hash
+      ref: object://secure-debug/trace-abc/prompt
+      hash: sha256:example
+    response:
+      action: sampled_redacted_summary
+    rag_chunks:
+      action: chunk_ids_only
+    tool_arguments:
+      action: schema_and_hash_only
+  access_control:
+    allowed_roles: [sre-oncall, tenant-approved-debugger]
+    ttl: 7d
+    export_approval: required_for_raw_content
+  audit:
+    security_audit_event: sae-20260620-001
+```
+
+这个记录使观测系统可以被审计。事故期间经常会临时扩大日志、导出 trace、转发诊断包；如果没有 redaction record，安全团队只能事后查谁下载了什么，却不知道下载的数据是否已经符合边界。更好的方式是让每次 trace 采集和导出都先产生脱敏决策，再允许查询和传输。对平台工程师来说，这会多一步流程，但能避免可观测性系统成为最大的数据泄露面。
+
 ```mermaid
 flowchart TB
   Incident["用户反馈 / 告警"] --> TraceQ["按 trace_id 查请求路径"]

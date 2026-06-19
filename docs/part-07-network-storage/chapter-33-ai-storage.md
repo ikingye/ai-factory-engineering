@@ -430,6 +430,36 @@ storage_security_boundary:
 
 这个边界对象能防止很多“存储便利性”演变成安全事故。研究人员不应直接从生产 checkpoint 目录复制权重到个人路径；推理节点不应加载未签名 artifact；RAG 索引构建不应把受限文档写进共享缓存；事故排查不应把未脱敏 trace 导出到普通对象桶。存储安全边界不是阻碍效率，而是让高价值数据的访问、复制、删除和导出可审计、可撤销、可解释。
 
+存储边界还应包含 `secret_boundary_evidence`。AI Factory 中的 secret 不只是 API key，也包括 KMS key、registry token、provider credential、model artifact signing key、object storage STS token、BMC/Redfish 凭据和临时 break-glass token。它们经常跨越 CI/CD、训练任务、推理服务、节点初始化和事故排查路径。如果 secret 边界只靠运维习惯维护，就会在镜像、日志、Notebook、对象存储或 trace 中泄露。
+
+```yaml
+secret_boundary_evidence:
+  evidence_id: sbe-20260620-001
+  scope:
+    tenant: enterprise-a
+    resource_pool: inference-premium-a
+    release: af-chat-large-202606
+  secrets:
+    provider_api_key:
+      storage: secret_manager
+      mounted_as: tmpfs_or_runtime_injection
+      logged: prohibited
+      rotation_state: current
+    model_signing_key:
+      storage: hsm_or_kms
+      exportable: false
+    object_storage_token:
+      ttl: short_lived
+      scope: read_model_artifact_only
+  checks:
+    image_scan_for_secret: pass
+    log_scan_for_secret: pass
+    trace_redaction: pass
+    break_glass_review: pass_if_used
+```
+
+这个对象把 secret 从“配置项”提升为生产证据。模型服务能否访问第三方 provider、训练任务能否读取受限数据、推理节点能否拉取权重，都依赖 secret；同时这些 secret 一旦泄露，会直接变成数据、成本或供应链事故。准入和 PRR 应要求关键 secret 有边界证据，尤其是高敏租户、外部 provider 和模型签名链路。
+
 把数据和模型产物串起来，可以形成一条供应链图。它从 raw dataset 进入 dataset lineage 和 manifest，经过训练生成 checkpoint 和 restore drill，再经过转换、评测和签名生成 model artifact provenance，最终通过 artifact distribution、cache residency 和 cache invalidation 进入 serving。任何一个环节缺证据，模型发布就不可证明。
 
 ```mermaid

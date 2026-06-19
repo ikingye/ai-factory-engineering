@@ -684,6 +684,35 @@ reliability_evidence_bundle:
 
 第七步是建立查询审计和导出审批。AI Factory 的诊断包通常跨越应用、模型、GPU、网络和账单，包含高价值敏感信息。导出完整 trace、原始日志、GPU 进程明细或跨租户拓扑时，应要求用途、范围、TTL 和审批，并自动生成 `security_audit_event`。很多数据泄露不是来自生产请求，而是来自事故期间随手导出的日志包。
 
+安全类事故应生成 `security_evidence_bundle`。它和可靠性诊断包不同，优先回答暴露面、策略决策、数据边界和止血动作：哪把 key 或哪个服务账户被使用，哪些请求被允许或拒绝，是否出站到 provider，trace 是否脱敏，哪些对象被导出，是否触发 billing hold，哪些租户和数据等级受影响。没有这个 bundle，安全团队会在 Gateway、日志、账单、存储和支持系统之间手工拼证据，既慢也容易遗漏。
+
+```yaml
+security_evidence_bundle:
+  bundle_id: seb-20260620-001
+  incident_id: sec-20260620-key-001
+  scope:
+    tenant: enterprise-a
+    credentials: [key_6f2c_redacted]
+    window: incident_window
+  evidence:
+    credential_lifecycle: required
+    api_key_audit_events: required
+    policy_decision_records: required
+    egress_provider_decisions: required_if_provider_candidate
+    prompt_trace_redaction_records: required
+    tenant_isolation_evidence: required_for_multitenant_scope
+    secret_boundary_evidence: required_if_secret_or_provider_involved
+    metering_events: required
+    billing_hold: required_if_cost_under_investigation
+  containment:
+    revoked_credentials: recorded
+    route_blocks: recorded
+    export_freeze: recorded
+    affected_usage_marked_under_review: true
+```
+
+这个 bundle 的关键是同时服务安全、SRE 和财务。Key 泄露既是身份事故，也是成本事故；trace 泄露既是观测事故，也是数据边界事故；第三方 provider 越权路由既是策略事故，也是合同和账单事故。把证据冻结成一个对象，能减少跨团队重复取证，并让后续 `billing_dispute_replay` 和 `production_readiness_review` 使用同一事实。
+
 第八步是建立质量事件采集管道。应用侧的用户反馈、人工接管、重新生成，Gateway 的路由、fallback、实验分桶，模型服务的 release contract，RAG 的引用校验，Agent 的轨迹结果，安全策略的拒答和工具审计，都要进入同一条质量事实流。质量事件不一定全部实时告警，但必须可查询、可抽样、可脱敏、可沉淀为回归样本。否则线上质量会和离线评测长期脱节。
 
 ## 常见故障

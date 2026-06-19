@@ -188,6 +188,40 @@ tool_security_incident_record:
 
 安全复盘必须改变控制面。若事故来自 RAG 权限过滤缺失，应要求 `retrieval_permission_decision` 成为该知识库的强制证据；若来自工具副作用策略过宽，应更新 `tool_side_effect_policy` 并回放历史工具调用；若来自预算或 denial-of-wallet，应把 `agent_budget_ledger` 纳入 Gateway admission；若来自 trace 泄露，应修改 `data_boundary_policy` 和观测导出审批。安全 incident 的关闭条件不是“没有继续报警”，而是相关门禁已更新并通过回放验证。
 
+Denial-of-wallet 是 AI Factory 特有的成本型攻击或误用：攻击者不一定要拿到数据，只要用泄露 key、长上下文、长输出、Agent 循环、工具重试或昂贵 provider 路由快速消耗预算，就能造成经济损失和服务退化。它应像可用性事故一样进入 SRE 流程，因为它会烧掉 token、占用 GPU、触发限流并污染账单。平台应使用 `denial_of_wallet_incident_record` 记录攻击形态、预算消耗、止血动作和账单处理。
+
+```yaml
+denial_of_wallet_incident_record:
+  incident_id: dow-20260620-001
+  trigger:
+    signal: abnormal_token_spend
+    detected_by: budget_anomaly_detector
+  scope:
+    tenant: enterprise-a
+    credentials: [key_6f2c_redacted]
+    models: [af-chat-large]
+    providers: [internal, third_party_x_if_any]
+  evidence:
+    security_evidence_bundle: seb-20260620-001
+    policy_decision_records: required
+    metering_events: required
+    billing_hold: hold-20260620-001
+  attack_or_misuse_pattern:
+    long_context_amplification: observed
+    agent_loop: possible
+    provider_cost_amplification: denied_or_observed
+  containment:
+    revoke_or_rotate_credentials: true
+    tighten_budget: true
+    disable_expensive_provider_route: true_if_applicable
+    notify_tenant_owner: true
+  billing_resolution:
+    disputed_usage_replay: billing_dispute_replay_id
+    cost_classification: malicious_or_user_error_or_platform_gap
+```
+
+这个记录把安全和成本治理连起来。若异常来自用户代码 bug，处理方式可能是预算和 SDK 保护；若来自 key 泄露，处理方式是凭据吊销、usage hold 和安全通知；若来自平台策略过宽，平台应承担部分损失并修复 Gateway admission。把 denial-of-wallet 写成 incident record，能避免它被误当成普通账单异常，也能把防护动作纳入 PRR。
+
 模型质量也会形成 incident。质量事故不一定有 5xx：新模型回答风格错误导致客服投诉，RAG 引用过期政策，Agent 工具轨迹反复失败，安全策略误拒核心业务，runtime 升级导致 JSON schema 失败率升高，都可能是生产事故。SRE 需要定义 `quality_incident_record`，把质量退化、影响面、回滚、样本沉淀和门禁更新纳入同一流程。否则质量问题会被当成“模型效果不好”的普通反馈，无法进入可靠性治理。
 
 ```yaml
