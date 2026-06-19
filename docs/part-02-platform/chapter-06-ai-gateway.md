@@ -214,6 +214,36 @@ flowchart LR
 
 Gateway 还应维护“可路由健康”而不是普通 upstream 健康。模型 endpoint 的 HTTP 端口可用，只说明进程活着；能否接收请求还要看模型是否 loaded、queue 是否过长、KV Cache 是否接近上限、TTFT/TPOT 是否越界、是否处于 draining、是否命中 canary 冻结。Gateway 不需要执行 runtime 调度，但必须消费这些摘要信号，否则路由会把压力推给已经拥塞的副本。
 
+可路由健康应来自 Model Serving 和推理引擎联合上报的 `engine_admission_health`。它不是细粒度 scheduler 状态，而是给 Gateway 的接入摘要：当前 endpoint 对某类请求是否还能在 SLO 内 admission，瓶颈是 queue、prefill、decode、KV block、engine canary 还是 drain。Gateway 根据它选择路由、fallback、拒绝或降级，而不是只看 Kubernetes readiness。
+
+```yaml
+engine_admission_health:
+  endpoint: af-chat-large-prod
+  engine_profile: vllm-prod-h100-v7
+  state: routable_limited
+  observed:
+    queue_p95_ms: measured
+    prefill_queue_depth: measured
+    decode_active_sequences: measured
+    kv_block_pressure: high
+    kv_allocation_failures: zero
+    queue_deadline_miss_rate: low
+    engine_restarts_5m: 0
+  admission_hints:
+    short_context_interactive: allow
+    long_context_interactive: shed_or_route_elsewhere
+    batch_generation: defer
+  guardrails:
+    canary_frozen: false
+    draining: false
+    max_context_tokens_current: 16000
+  freshness:
+    observed_at: recent
+    ttl_ms: policy_defined
+```
+
+这个对象让 Gateway 的路由从“后端活着”升级为“后端能否承诺这类请求”。如果 `kv_block_pressure` 高，Gateway 可以把长上下文流量路由到另一个 pool，同时继续让短请求进入当前 endpoint；如果 `canary_frozen` 为 true，Gateway 应停止扩大新 runtime 流量；如果健康信号过期，生产策略应保守处理。可路由健康的关键是摘要足够稳定，不能把每个 engine 内部指标都泄露到 Gateway，也不能只给一个模糊的 ready。
+
 一个简化路由规则可以这样表达。实际系统还应补充服务等级、数据驻留、模型 capability、灰度版本和观测标签。
 
 ```yaml

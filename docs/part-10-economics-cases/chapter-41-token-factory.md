@@ -213,6 +213,43 @@ network_cost_ledger:
 
 这份账本能回答“网络升级值不值得”的问题。若某个 fabric 的端口利用率很高但没有造成 exposed communication time，扩容优先级未必最高；若某条 rail 的拥塞长期造成大训练 GPU idle，即使平均利用率不高，也可能值得修拓扑、改 checkpoint 窗口或扩容。网络成本必须按 workload 影响计量，而不是按设备价格摊销。
 
+推理运行时优化也必须进入成本账本。Speculative decoding、prefix cache、continuous batching、PD 分离和新的 engine profile 都可能让某个指标变好，同时让另一个成本变坏。`inference_runtime_cost_ledger` 的目标不是给每个 kernel 精确计价，而是让“快了多少、贵了多少、质量是否变、失败是否变多”可以被同一张表回答。
+
+```yaml
+inference_runtime_cost_ledger:
+  window: 2026-06-20T10:00Z/2026-06-20T11:00Z
+  endpoint: af-chat-large-prod
+  serving_release: af-chat-large-20260619-r3
+  engine_profile: vllm-prod-h100-v7
+  workload_slices:
+    - short_chat
+    - long_context_qa
+    - long_generation
+  evidence:
+    kv_block_ledger_rollup: kvbl-rollup-20260620-1000
+    speculative_decoding_report: spec-decode-20260620-001
+    engine_canary_record: engine-canary-20260620-001
+    pd_disaggregation_contract: pd-contract-if-enabled
+    quality_cost_ledger: qcost-20260620-1000
+  cost_components:
+    prefill_gpu_cost: calculated
+    decode_gpu_cost: calculated
+    kv_block_seconds_cost: calculated
+    wasted_kv_after_cancel_cost: calculated
+    draft_model_cost: calculated_if_speculative
+    kv_transfer_cost: calculated_if_pd_enabled
+    failed_or_retried_request_cost: calculated
+  outputs:
+    cost_per_generated_token: calculated
+    cost_per_delivered_token: calculated
+    cost_per_successful_answer: calculated
+    ttft_delta: measured
+    tpot_delta: measured
+    quality_adjusted_margin_delta: calculated
+```
+
+这份账本能防止三类常见误判。第一，speculative decoding 降低 TPOT，但 draft 模型成本、验证开销和质量回归可能让 `cost_per_successful_answer` 上升。第二，PD 分离降低 TTFT，但 KV transfer、两池容量比例和失败语义可能增加运维和重试成本。第三，prefix cache 命中提升 prefill 效率，但过大的缓存生命周期会产生 KV block 秒成本和隐私边界成本。运行时优化只有同时通过延迟、质量、账本和故障语义，才算经济上成立。
+
 ## 41.5 revenue/token
 
 revenue/token 表示每个 token 带来的收入或业务价值。对外 MaaS 平台可能按 input token、output token、reasoning token、模型等级、上下文长度和专属实例收费；企业内部平台可以把收入替换为内部结算、成本节省、效率提升或业务结果。无论哪种模式，都需要让 token 产出与价值单位建立关系。

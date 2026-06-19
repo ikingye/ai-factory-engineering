@@ -82,6 +82,11 @@ flowchart TB
 | `policy_decision_record` | 让 Gateway 的 allow/deny/route/fallback 可回放。 | 第 6 章 | `api_key_audit_event`、`routing_quality_scorecard` |
 | `serving_quality_contract` | 把 weights、tokenizer、template、engine 和质量门禁绑定。 | 第 14 章 | `runtime_quality_gate`、`quality_regression_record` |
 | `runtime_quality_gate` | 防止推理引擎优化破坏质量、协议或成本。 | 第 15 章 | `serving_quality_contract`、`benchmark_matrix` |
+| `engine_admission_health` | 让 Gateway 知道 endpoint 是否还能按 SLO 接收请求。 | 第 6、14、15、37、39 章 | `engine_canary_record`、`incident_record` |
+| `kv_block_ledger` | 把 KV block 分配、释放、prefix cache、租户和泄漏成本串起来。 | 第 1、14、15、37、39、41 章 | `Token Factory ledger`、`runtime_quality_gate` |
+| `engine_canary_record` | 记录 engine/runtime 变更的协议、质量、性能、KV 和成本门禁结果。 | 第 14、15、37、39 章 | `serving_quality_contract`、`runtime_quality_gate` |
+| `inference_runtime_diagnostic_bundle` | 把 TTFT/TPOT/streaming 事故所需证据冻结成诊断包。 | 第 37、39 章 | `incident_record`、`engine_canary_record` |
+| `inference_runtime_cost_ledger` | 把 KV block、draft model、PD transfer、取消浪费和质量成本折算成成功回答成本。 | 第 41 章 | `Token Factory ledger`、`business_model_profile` |
 | `TrainingJob` | 描述一次训练任务的模型、数据、并行、调度和恢复语义。 | 第 10、23 章 | `checkpoint_manifest`、`rank_mapping`、`training_roi_ledger` |
 | `checkpoint_manifest` | 证明 checkpoint 分片、状态和恢复候选有效。 | 第 10、33 章 | `storage_evidence`、`incident_record` |
 | `network_path_evidence` | 把 job/request 映射到 GPU、NIC、rail、switch port 和 baseline。 | 第 30、32、37 章 | `network_diagnostic_bundle`、`fabric_baseline` |
@@ -98,7 +103,8 @@ flowchart TB
 
 | 症状 | 先看章节 | 要找的证据 | 常见下一步 |
 | --- | --- | --- | --- |
-| Chat 首 token 慢 | 第 1、6、14、15 章 | request trace、routing decision、queue depth、prefill time、KV cache pressure | 分离 Gateway 排队、serving 队列、prefill 资源和 runtime admission。 |
+| Chat 首 token 慢 | 第 1、6、14、15 章 | request trace、routing decision、engine_admission_health、prefill time、KV cache pressure | 分离 Gateway 排队、serving 队列、prefill 资源、KV block 和 runtime admission。 |
+| TPOT 变慢或 streaming 断续 | 第 1、14、15、37、39 章 | decode batch、active sequence、kv_block_ledger、engine_canary_record、inference_runtime_diagnostic_bundle | 区分 decode 拥塞、KV block 压力、engine 变更、PD transfer、网关背压和客户端取消。 |
 | output token 便宜但用户不满意 | 第 1、13、14、41 章 | quality_feedback_event、quality_regression_record、quality_cost_ledger | 用 cost per successful answer 替代原始 cost/token 做决策。 |
 | RAG 答案引用错 | 第 2、4、13、37 章 | eval_dataset_manifest、rag_regression_case、permission test、retrieval trace | 分解为文档权限、chunk、rerank、context 拼接和生成忠实性问题。 |
 | Agent 任务成本失控 | 第 3、7、42、41 章 | agent_trajectory_record、tool cost、retry reason、task budget | 加最大步数、预算、人工接管和任务级计费。 |
@@ -118,7 +124,7 @@ flowchart TB
 
 | 链路 | 覆盖页面 | 判断是否读懂的标准 |
 | --- | --- | --- |
-| 推理请求链路 | 第 1、6、8、14、15、37、41 章 | 能从用户请求追到 token 计量、runtime admission、GPU/HBM、streaming 和毛利。 |
+| 推理请求链路 | 第 1、6、8、14、15、37、39、41 章 | 能从用户请求追到 token 计量、runtime admission、KV block、engine canary、PD 分离、GPU/HBM、streaming、诊断包和毛利。 |
 | 训练任务链路 | 第 10、17、18、23、24、33、38、41 章 | 能从任务提交追到 gang、rank mapping、NCCL、checkpoint、评测和训练 ROI。 |
 | GPU 容器链路 | 第 19、21、22、29、38 章 | 能解释 device plugin、CRI、OCI runtime、NVIDIA Container Toolkit、driver/library 注入和容器 smoke test。 |
 | 网络通信链路 | 第 18、30、31、32、37、38、39、41 章 | 能从 NCCL 性能症状追到 GPU/NIC/rail/switch telemetry、fabric baseline、拥塞事件和成本影响。 |

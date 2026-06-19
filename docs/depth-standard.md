@@ -67,6 +67,13 @@
 | 推理引擎 admission model | 第 15 章 | 说明 input tokens、max output、KV block、deadline 和 queue class |
 | continuous batching 与 KV Cache 状态流 | 第 15 章 | 说明 waiting、prefill、active decode、release、usage 的阶段 |
 | benchmark matrix | 第 15 章 | 覆盖短输入短输出、长输入短输出、短输入长输出和生产混合负载 |
+| `engine_admission_health` | 第 6、14、15、37、39 章 | 说明 Gateway 和 Model Serving 如何基于 queue、KV pressure、active sequence、deadline miss 做可路由健康判断 |
+| `kv_block_ledger` | 第 1、14、15、37、39、41 章 | 说明 KV block 分配、释放、碎片、租户归属、prefix cache 和取消泄漏如何进入容量与成本 |
+| `engine_canary_record` | 第 14、15、37、39 章 | 说明 engine/runtime 变更如何同时验证协议、质量、延迟、KV、token drift 和成本 |
+| `speculative_decoding_report` | 第 15、41 章 | 说明 draft/target 模型、接受率、验证开销、质量漂移和真实 cost/token 收益 |
+| `pd_disaggregation_contract` | 第 14、15、37、39 章 | 说明 prefill/decode 分离的 KV 传输、容量比例、失败语义、观测和回滚边界 |
+| `inference_runtime_diagnostic_bundle` | 第 37、39 章 | 说明 TTFT/TPOT/streaming gap 事故如何自动冻结 Gateway、Serving、Runtime、KV、canary 和 PD 证据 |
+| `inference_runtime_cost_ledger` | 第 41 章 | 说明 speculative decoding、PD 分离、KV block、取消浪费和质量成本如何共同决定成功回答成本 |
 | Token Factory ledger | 第 41 章 | 说明 token ledger、resource ledger、阶段成本和毛利约束指标 |
 
 ## 训练任务链路覆盖矩阵

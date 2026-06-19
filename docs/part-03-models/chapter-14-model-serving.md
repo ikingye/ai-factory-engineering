@@ -347,6 +347,114 @@ flowchart LR
 
 `serving_quality_contract` 还应进入线上 trace。每个请求至少要能查到 contract id、release id、模型版本和 runtime profile。这样线上反馈进入第 1 章的 `quality_feedback_event` 后，评测平台可以知道应使用哪组 artifact 回放。若 contract id 缺失，线上请求与离线评测之间就断了，质量闭环只能停在“可能是新版本问题”。
 
+模型服务还应向 Gateway 暴露 `engine_admission_health`。这是 endpoint 级健康摘要，生成方通常是 model server 或 serving control plane，消费方是 AI Gateway、autoscaler 和 SRE。它把内部 queue、active sequence、KV block、deadline miss、drain、canary freeze 等状态压缩成可路由信号，避免 Gateway 把流量送到端口正常但 runtime 已经不可承诺 SLO 的副本组。
+
+```yaml
+engine_admission_health:
+  endpoint: af-chat-large-prod
+  release_id: af-chat-large-20260619-r3
+  serving_quality_contract: sqc-af-chat-20260619-r3
+  engine_profile: vllm-prod-h100-v7
+  state: routable
+  capacity:
+    short_context_slots: available
+    long_context_slots: limited
+    active_sequences: measured
+    queue_deadline_miss_rate: measured
+  kv_cache:
+    block_pressure: medium
+    allocation_failure_rate: zero
+    prefix_cache_hit_rate: measured
+  lifecycle:
+    draining: false
+    canary_frozen: false
+    last_engine_restart: none_recent
+  recommendation:
+    gateway_action: route_short_context_allow_long_context_with_weight
+    autoscaler_action: no_change
+```
+
+这个对象不能代替引擎内部 scheduler，也不应包含每个请求的敏感内容。它的职责是把模型服务“还能接什么流量”表达清楚。对发布系统来说，canary 期间如果 `queue_deadline_miss_rate` 或 `kv_cache.allocation_failure_rate` 上升，应冻结放量；对 Gateway 来说，如果 long context limited，就可以把长上下文请求路由到专用池；对 SRE 来说，健康摘要能解释为什么 endpoint 没有 5xx，但 TTFT 已经开始变差。
+
+模型服务还应汇总请求级 `kv_block_ledger`。推理引擎负责具体 block 分配和释放，Serving 层负责把这些账本按 endpoint、release、tenant、request bucket 和 close reason 汇总成可运营信号。这样 autoscaler、Gateway 和成本系统看到的不是“显存使用率 92%”这种模糊状态，而是哪些请求形态占用了 KV、占用多久、是否产生有效 token、取消后是否及时释放。
+
+```yaml
+kv_block_ledger_rollup:
+  endpoint: af-chat-large-prod
+  serving_release: af-chat-large-20260619-r3
+  engine_profile: vllm-prod-h100-v7
+  window: 2026-06-20T10:00Z/2026-06-20T10:05Z
+  dimensions:
+    tenant: enterprise-a
+    request_bucket: long_context_streaming
+    close_reason: client_cancelled
+  kv_usage:
+    peak_blocks: measured
+    block_seconds: calculated
+    prefix_cache_reused_blocks: measured
+    allocation_failures: measured
+    unreleased_after_close_blocks: zero_or_measured
+  serving_actions:
+    gateway_hint: reduce_long_context_weight
+    autoscaler_hint: scale_decode_or_separate_pool
+    investigation_hint: check_cancel_release_path
+```
+
+这个 rollup 是 Serving 层和 Runtime 层的边界。Runtime 不应该知道商业租户策略，Serving 也不应该重新实现 KV allocator；两者通过账本关联。若某个 release 上线后 `block_seconds` 上升但 output token 没有增加，可能是 prompt 模板、prefix cache key、取消释放路径或 engine 变更造成浪费。若 allocation failures 只集中在长上下文租户，Gateway 应调整路由或上下文限制，而不是全局扩容。
+
+引擎或 runtime 变更还需要 `engine_canary_record`。它比普通 canary 更细，因为 runtime 变更可能同时影响协议、token 口径、KV block、prefix cache、speculative decoding、错误码和成本。记录应绑定 serving release、runtime quality gate 和线上样本，避免“压测通过但线上格式/计费/质量漂移”的事故。
+
+```yaml
+engine_canary_record:
+  canary_id: engine-canary-20260620-001
+  endpoint: af-chat-large-prod
+  from_engine_profile: vllm-prod-h100-v6
+  to_engine_profile: vllm-prod-h100-v7
+  traffic_slice:
+    tenants: [internal_eval, enterprise-a-canary]
+    percent: 5
+    request_buckets: [short_chat, long_context_qa, tool_calling]
+  gates:
+    protocol_contract: pass
+    token_count_drift: explained
+    ttft_p95_regression: pass
+    tpot_p95_regression: pass
+    kv_allocation_failure_rate: pass
+    output_format_regression: pass
+    quality_feedback_guardrail: pass
+    cost_per_successful_answer_delta: pass
+  decision:
+    state: continue_or_freeze_or_rollback
+    rollback_target: vllm-prod-h100-v6
+```
+
+如果服务采用 PD 分离，还需要 `pd_disaggregation_contract`。它声明 prefill pool、decode pool、KV 传输、失败语义、容量比例和回滚方式。PD 分离把一个 replica 内部阶段拆成跨资源池链路，如果没有合同，Gateway、autoscaler 和 SRE 很难判断 TTFT 变差是 prefill 池不足、KV 传输慢、decode 池拥塞，还是两边容量比例失衡。
+
+```yaml
+pd_disaggregation_contract:
+  endpoint: af-chat-large-pd-prod
+  mode: prefill_decode_disaggregated
+  pools:
+    prefill_pool: af-chat-prefill-h100
+    decode_pool: af-chat-decode-h100
+  state_transfer:
+    kv_transfer_protocol: platform_defined
+    max_kv_transfer_ms: policy_defined
+    encryption_or_isolation: required_by_tenant_boundary
+  admission:
+    prefill_queue_budget_ms: policy_defined
+    decode_queue_budget_ms: policy_defined
+    capacity_ratio_prefill_to_decode: measured_and_configured
+  failure_semantics:
+    prefill_failed_before_first_token: retry_or_fallback_allowed
+    kv_transfer_failed: close_with_typed_error
+    decode_failed_after_streaming: no_fallback_emit_partial_usage
+  rollback:
+    fallback_to_monolithic_serving: required
+```
+
+PD 分离合同的价值在于把复杂性显式化。它允许平台先用影子流量和低风险租户验证 KV 传输、容量比例和失败语义，再决定是否让核心 Chat 流量进入。没有这个合同，PD 分离很容易只在 benchmark 中证明 prefill 更快，却在线上引入新的状态传输故障和账单争议。
+
 ## 常见故障
 
 第一类故障是健康检查过浅。服务端口可用，但模型尚未加载、GPU 不可用、tokenizer 初始化失败或首个推理请求失败。Kubernetes 认为 pod ready，Gateway 开始导流，用户请求失败。健康检查应包含模型 readiness 和最小推理探针，而不只是 HTTP 端口。
