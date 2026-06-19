@@ -98,13 +98,18 @@
 | east-west / north-south 分流 | 第 30 章 | 说明训练通信、推理入口、存储路径和管理流量的边界 |
 | scale-up topology contract | 第 31 章 | 说明 NVLink/NVSwitch 域、GPU-to-GPU bandwidth、拓扑碎片和资源等级 |
 | GPU-to-NIC / NUMA 亲和 | 第 31 章、第 32 章 | 说明节点内拓扑如何影响 RDMA、NCCL 和调度 |
+| `gpu_nic_affinity_report` | 第 31 章 | 说明 GPU、NUMA、NIC、rail、container device 和 NCCL interface 选择如何对齐 |
 | `fabric_baseline` | 第 32 章、第 38 章 | 说明 fabric、rail、版本、测试项、失效条件和可调度能力 |
 | 多 rail 放置与诊断 | 第 32 章 | 说明 rank、NIC、rail、leaf group 和 rail balance 的一致性 |
+| `rail_balance_report` | 第 32 章、第 37 章 | 说明设计 rail、实际接口、端口利用、rank 流量和失衡动作 |
+| `fabric_change_record` | 第 32 章、第 38 章 | 说明交换机、NIC、OFED、CNI、NCCL、PFC/ECN 和调度标签变更如何触发回归 |
 | RDMA in container | 第 22 章、第 32 章、第 38 章 | 说明宿主机 RDMA 正常不等于容器内 RDMA 可用 |
 | `network_diagnostic_bundle` | 第 32 章、第 39 章 | 说明 rank mapping、NCCL env、RDMA counters、switch ports、baseline 和 verdict |
+| `congestion_event_record` | 第 30、37、39 章 | 说明 ECN/PFC、队列、水位、流量类别、job 影响和止血动作如何串联 |
 | network telemetry 到业务影响 | 第 37 章 | 说明端口事件如何映射到 job、model、tenant、baseline drift 和 owner |
 | fabric acceptance matrix | 第 38 章 | 说明 same rack、cross rack、cross rail、host/container/Kubernetes 的验收矩阵 |
 | NCCL hang 网络故障树 | 第 39 章 | 说明 rank 退出、GPU/NVLink、RDMA/fabric、container/runtime、collective mismatch 的排查顺序 |
+| `network_cost_ledger` | 第 41 章 | 说明网络退化、拥塞、错误放置和 checkpoint 叠加如何转化为 GPU idle 与 token 成本 |
 
 ## 存储数据链路覆盖矩阵
 

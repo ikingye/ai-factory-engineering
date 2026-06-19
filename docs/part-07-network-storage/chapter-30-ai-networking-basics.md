@@ -254,6 +254,39 @@ network_path_evidence:
 
 这个对象能直接服务三个动作：调度器用它解释 pending 或降级原因，SRE 用它生成 incident 诊断包，容量团队用它发现长期热点。没有这种对象，网络事实会散落在交换机、Prometheus、训练日志和资产系统里，事故中只能手工拼接。
 
+拥塞也应被记录成事件，而不是在事故复盘中笼统写“网络抖动”。一个有用的 `congestion_event_record` 至少要说明拥塞发生在哪个 fabric、哪组 rail、哪些端口、哪些流量类别、持续多长时间、影响了哪些 workload，以及采取了什么动作：
+
+```yaml
+congestion_event_record:
+  event_id: net-cong-20260620-001
+  fabric: train-fabric-a
+  topology_scope:
+    racks: [rack-12, rack-13]
+    rails: [rail1]
+    switch_ports: [leaf12-eth1/17, leaf13-eth1/21]
+  signals:
+    ecn_mark_rate: above_baseline
+    pfc_pause_duration: above_baseline
+    rdma_retransmit: above_baseline
+    queue_occupancy: sustained_high
+    packet_drop: none_or_measured
+  workload_impact:
+    affected_jobs: [train-20260620-017]
+    affected_models: [af-base-v4]
+    exposed_communication_ms: calculated
+    gpu_idle_due_to_network_hours: calculated
+    checkpoint_overlap: true
+  suspected_trigger:
+    traffic_class: checkpoint_plus_all_reduce
+    recent_change: none
+  actions:
+    immediate: throttle_checkpoint_writes
+    scheduling: avoid_rail1_for_large_training
+    follow_up: review_checkpoint_window_and_qos
+```
+
+这份记录能把 ECN、PFC、队列和 RDMA 计数从设备语言翻译成平台语言。若没有 workload impact，拥塞只是网络噪音；若没有端口和 rail，影响无法定位；若没有 action，事件无法闭环。长期积累后，平台可以区分容量不足、调度热点、checkpoint 叠加、QoS 配置问题和硬件退化，而不是把所有长尾都归类为“网络不稳定”。
+
 ## 常见故障
 
 第一类故障是拓扑与调度不一致。某些 rack 的训练任务持续慢，原因是跨 rack 路径 oversubscription 高，或 rank 被放置到不同 rail。调度系统只满足 GPU 数量，却没有满足网络邻近。解决方向是把 rack、leaf、rail 和故障域纳入资源模型。

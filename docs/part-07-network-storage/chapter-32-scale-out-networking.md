@@ -260,6 +260,43 @@ fabric_baseline:
 
 这份 baseline 是调度事实源，不是网络团队内部文档。调度器可以拒绝把大训练放进 baseline 过期的 fabric，SRE 可以在事故中对比当前 counters 与 baseline，容量团队可以看到哪些 fabric 长期处于 limited 或 degraded。
 
+网络变更必须有 `fabric_change_record`。AI Fabric 的一次修改可能来自交换机 firmware、NIC firmware、OFED、CNI、NCCL 默认参数、PFC/ECN、MTU、routing policy、rail mapping 或调度标签。它们经常不是“网络团队内部变更”，而是会改变训练通信、容器 RDMA、checkpoint 并发和推理长尾的生产变更。记录应明确影响范围、失效基线、回归测试和停止条件：
+
+```yaml
+fabric_change_record:
+  change_id: fabric-chg-20260620-003
+  fabric: train-fabric-a
+  change_type: roce_qos_profile_update
+  scope:
+    racks: [rack-12, rack-13]
+    rails: [rail0, rail1]
+    resource_pools: [training-prod-h100]
+  changed_components:
+    switch_config: changed
+    nic_firmware: unchanged
+    ofed: unchanged
+    cni: unchanged
+    nccl_defaults: unchanged
+    scheduler_labels: unchanged
+  invalidates_baselines:
+    - train-fabric-a-20260619
+  required_regression:
+    - host_rdma
+    - container_rdma
+    - nccl_cross_rack
+    - rail_balance
+    - checkpoint_plus_nccl_concurrency
+  stop_conditions:
+    - rdma_retransmit_above_baseline
+    - rail_balance_ratio_below_policy
+    - p99_step_time_regression
+  rollback:
+    method: restore_previous_qos_profile
+    verification: rerun_same_topology_baseline
+```
+
+这份记录的核心是把“网络参数改了”变成可审计的软件发布。它会告诉调度器哪些 baseline 失效，告诉 SRE 故障是否可能与近期变更相关，也告诉容量团队某个 fabric 在回归完成前是否只能 limited 使用。没有这类记录，网络事故常常只能靠人记忆“最近有没有动过交换机”。
+
 第二步是接入调度和资源池。任务提交系统可以根据 fabric 信息提示用户：当前等待是 GPU 不足、rail 不满足、同 rack 不满足，还是 quota 限制。资源池可以标记某个 fabric degraded，调度器避免新任务进入受影响区域。网络状态必须能驱动资源动作。
 
 第三步是建立验收基线。基线应覆盖单节点、跨节点、跨 rack、多 rail、多任务并发、RDMA、NCCL、存储读写和拥塞控制。扩容、新增 rack、交换机升级、NIC firmware、OFED、CNI 或 NCCL 版本变化后，都要回归。验收不是上线前一次性动作，而是持续运营机制。
@@ -296,6 +333,44 @@ network_diagnostic_bundle:
 ```
 
 结构化诊断包能让事故处理变成可重复流程。它也适合沉淀为数据集，用于后续异常检测、容量规划和 runbook 更新。
+
+多 rail 集群还需要 `rail_balance_report`。设计上有四条 rail，不代表运行时流量真的均衡；节点命名、容器设备、NCCL interface 选择、rank placement、ECMP 哈希或某条链路降级，都可能让流量集中到少数 rail。报告应同时看“期望分布”和“实际分布”：
+
+```yaml
+rail_balance_report:
+  report_id: rail-balance-20260620-017
+  workload:
+    job_id: train-042
+    phase: all_reduce
+  expected:
+    rails: [rail0, rail1, rail2, rail3]
+    policy: balanced_by_rank_and_nic
+  observed:
+    selected_interfaces:
+      rail0: [mlx5_0]
+      rail1: [mlx5_1]
+      rail2: [mlx5_2]
+      rail3: [mlx5_3]
+    traffic_share:
+      rail0: measured
+      rail1: measured
+      rail2: measured
+      rail3: measured
+    pfc_ecn_by_rail:
+      rail1: above_baseline
+  verdict:
+    rail_balance_ratio: calculated
+    imbalance_detected: true
+    likely_causes:
+      - rank_mapping_skew
+      - nccl_interface_selection
+      - rail1_congestion
+  action:
+    scheduler: avoid_current_placement_shape
+    sre: run_same_topology_nccl_baseline
+```
+
+这个报告能让“多 rail 没吃满”变成可定位问题。若接口选择错误，修 runtime template；若 rank mapping 偏斜，修调度；若某条 rail 拥塞，修 fabric 或调度避让。不同根因对应不同 owner，不能只让用户手动设置一串 `NCCL_*` 环境变量。
 
 落地流程可以按四个检查点推进：新节点入池前跑主机和容器 RDMA 测试；新 rack 入池前跑跨 rack NCCL 和拥塞基线；新 job 类型上线前确认并行策略与拓扑需求；生产故障后把诊断包自动归档到 incident。这样做的目的不是制造流程负担，而是把网络知识从少数专家脑中沉淀到平台。规模越大，越不能依赖人工记住哪条线、哪个 rack、哪个参数特殊。
 

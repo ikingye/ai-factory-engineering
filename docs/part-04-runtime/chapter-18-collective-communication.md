@@ -314,6 +314,36 @@ GPU 空转时间是最直观的成本信号。
 
 通信指标还应有训练有效性口径。`comm_time_ms` 本身不说明问题，只有当它暴露在 critical path 上并造成 rank 等待时，才直接浪费 GPU。建议记录 `communication_exposed_ms`、`rank_wait_ms` 和 `gpu_idle_due_to_comm_hours`。这样网络优化可以和 GPU 成本直接关联，便于判断是否值得升级 fabric、调整拓扑或修改并行策略。
 
+一份更可用的通信性能记录应把 op、等待关系和成本影响绑定在一起。注意这里不把端口吞吐直接等同于浪费，只有通信处在 step 的关键路径上、且其它 rank 被它阻塞时，才计入 exposed communication waste：
+
+```yaml
+communication_critical_path_record:
+  training_job: train-20260620-017
+  step_window:
+    start_step: 84200
+    end_step: 84300
+  slow_operation:
+    op: all_reduce
+    bucket: grad_bucket_31
+    message_size_bucket: large
+    affected_ranks: [17, 49, 81]
+  timing:
+    op_duration_ms_p50: measured
+    op_duration_ms_p99: measured
+    rank_wait_ms_max: measured
+    communication_exposed_ms: calculated
+  topology:
+    rank_mapping_ref: rank-mapping.json
+    fabric_baseline_id: train-fabric-a-20260619
+    rail_balance_report: rail-balance-20260620-017
+  impact:
+    gpu_idle_due_to_comm_hours: calculated
+    step_time_delta_vs_baseline: calculated
+    suspected_owner: network_or_runtime_or_placement
+```
+
+这个对象能防止两个误判。第一，某个 collective 总耗时很长，但被 backward 完全 overlap，它不是当前 step time 的主因；第二，某个端口出现拥塞计数，但没有对应 rank 等待，也不能直接归因为训练变慢。通信诊断要先证明等待关系，再讨论网络、runtime 或并行策略根因。这样才能把 NCCL profiler、rank timeline、fabric telemetry 和 Token Factory 成本账本接起来。
+
 ## 设计取舍
 
 通信优化的第一个取舍是硬件投入与软件复杂度。更强网络和更好的 scale-up 拓扑可以降低通信瓶颈，但成本高、交付周期长；更复杂的并行策略、overlap 和 bucket 调优可以在现有硬件上提升效率，但会增加调试难度。平台需要基于真实 workload 判断瓶颈，而不是先假设一定要升级网络或一定能靠软件解决。

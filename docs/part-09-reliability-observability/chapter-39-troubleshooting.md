@@ -118,7 +118,9 @@ flowchart TB
   R -->|否| G{GPU 是否有 Xid/ECC/NVLink 异常?}
   G -->|是| GPUFix["隔离 GPU 或节点，跑 GPU/NVLink/NCCL 回归"]
   G -->|否| N{RDMA / NIC / switch port 是否异常?}
-  N -->|是| NetFix["采集 RDMA counters / rail / port，降级 fabric 或避让拓扑"]
+  N -->|是| B{rail 是否失衡或拥塞?}
+  B -->|是| NetFix["采集 rail_balance_report / congestion_event，降级 fabric 或避让拓扑"]
+  B -->|否| NetBase["运行同拓扑 NCCL/RDMA baseline，确认是否 fabric 退化"]
   N -->|否| C{容器与运行时配置是否一致?}
   C -->|否| RuntimeFix["检查 NCCL env / interface / RDMA device / image / OFED"]
   C -->|是| Code{collective 调用是否一致?}
@@ -127,6 +129,34 @@ flowchart TB
 ```
 
 这张图的重点不是穷尽所有原因，而是保证前四类高频问题不会被遗漏：rank 退出、GPU/互联异常、RDMA/fabric 异常、容器或运行时漂移。每个分支都应对应自动采集项，不能只写在文档里。
+
+网络分支里还要避免“看到端口计数就归因网络”的粗糙判断。更可靠的顺序是：先确认 slow op 和 affected ranks，再查这些 rank 的 GPU/NIC/rail/switch port，随后比较 `rail_balance_report`、`congestion_event_record` 和 `fabric_baseline`。如果端口计数异常但没有 rank 等待，可能只是旁路流量；如果 rank 等待明显但端口计数正常，可能是 NCCL interface 选择、container RDMA 可见性或 collective 调用顺序问题。诊断系统应把这两类情况分开。
+
+```yaml
+nccl_hang_network_branch:
+  symptom: nccl_hang_or_step_no_progress
+  required_order:
+    - identify_last_collective_and_affected_ranks
+    - map_rank_to_gpu_nic_rail_switch_port
+    - compare_with_fabric_baseline
+    - attach_rail_balance_report
+    - attach_congestion_event_record_if_present
+    - verify_container_rdma_and_nccl_interface
+  verdicts:
+    rail_imbalance:
+      evidence: rail_balance_ratio_below_policy
+      action: reschedule_or_fix_rank_mapping
+    fabric_congestion:
+      evidence: ecn_pfc_rdma_retransmit_correlates_with_rank_wait
+      action: degrade_fabric_or_throttle_competing_traffic
+    runtime_interface_mismatch:
+      evidence: nccl_selected_interface_not_in_affinity_report
+      action: fix_runtime_template_or_env
+    insufficient_evidence:
+      action: preserve_evidence_and_rerun_same_topology_baseline
+```
+
+这个分支能把网络、调度和 runtime 的责任边界拆开。rail 失衡通常优先查放置和接口选择；拥塞事件通常优先查流量叠加、QoS 和容量；同拓扑 baseline 退化更像 fabric 或硬件问题；容器内接口错配则属于 runtime 模板或设备注入问题。分类越早，止血动作越准确。
 
 存储类故障也需要独立故障树，因为它们经常伪装成 GPU、网络或模型问题。GPU idle 可能来自 data loader，TTFT 上升可能来自权重 cache miss，NCCL 变慢可能被 checkpoint 并发写入放大。
 

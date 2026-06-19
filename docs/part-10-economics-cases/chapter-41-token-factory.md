@@ -181,6 +181,38 @@ secure_cost_per_token =
 
 这个账本能防止两个误判。第一个误判是把强隔离租户的成本平均摊给所有租户，导致共享池价格被抬高；第二个误判是为了降低 cost/token 削减审计、清理和隔离，短期成本下降，长期安全事故成本上升。安全成本应按 tenant、resource_class、data_classification 和 service_level 分摊，让用户理解“为什么专属、加密、长保留和强审计更贵”。
 
+网络成本也不能只按交换机和光模块折旧平均分摊。对 AI Factory 来说，更大的隐藏成本来自网络退化导致的 GPU idle、训练重跑、checkpoint 叠加、推理 streaming gap 和资源降级。`network_cost_ledger` 应把网络路径证据、通信 critical path 和拥塞事件连接起来：
+
+```yaml
+network_cost_ledger:
+  window: 2026-06-20T10:00Z/2026-06-20T11:00Z
+  scope:
+    fabric: train-fabric-a
+    resource_pool: training-prod-h100
+    affected_workloads: [train-20260620-017]
+  evidence:
+    network_path_evidence: net-path-042
+    congestion_event_record: net-cong-20260620-001
+    rail_balance_report: rail-balance-20260620-017
+    communication_critical_path_record: comm-critical-20260620-017
+  cost_components:
+    gpu_idle_due_to_network_hours: calculated
+    failed_or_restarted_gpu_hours: calculated
+    checkpoint_overlap_waste: calculated
+    degraded_capacity_hours: calculated
+    troubleshooting_labor_cost: optional
+  attribution:
+    likely_cause: rail_congestion_or_checkpoint_overlap
+    owner: network_and_scheduler
+    confidence: evidence_based
+  economic_output:
+    network_waste_cost: calculated
+    cost_per_effective_training_token_delta: calculated_if_training_tokens_available
+    roi_case_for_fabric_upgrade: input_to_capacity_planning
+```
+
+这份账本能回答“网络升级值不值得”的问题。若某个 fabric 的端口利用率很高但没有造成 exposed communication time，扩容优先级未必最高；若某条 rail 的拥塞长期造成大训练 GPU idle，即使平均利用率不高，也可能值得修拓扑、改 checkpoint 窗口或扩容。网络成本必须按 workload 影响计量，而不是按设备价格摊销。
+
 ## 41.5 revenue/token
 
 revenue/token 表示每个 token 带来的收入或业务价值。对外 MaaS 平台可能按 input token、output token、reasoning token、模型等级、上下文长度和专属实例收费；企业内部平台可以把收入替换为内部结算、成本节省、效率提升或业务结果。无论哪种模式，都需要让 token 产出与价值单位建立关系。

@@ -351,6 +351,34 @@ baseline_invalidation_policy:
 
 失效规则把准入从一次性门禁变成长期可靠性控制。它不要求每次变更都全量测试，但要求复测范围与风险一致。变更系统提交 `change_safety_case` 后，应自动查询会失效的 baseline；维修工单关闭前，应自动生成对应复测计划；资源池只有看到复测通过，才恢复完整调度能力。
 
+网络 fabric 的失效规则还应绑定 `fabric_change_record`。交换机 QoS、RoCE profile、ECN/PFC 阈值、NIC firmware、OFED、CNI、NCCL 默认参数或调度 rail 标签变化后，不应只验证节点连通性，而要重跑与影响范围匹配的 host/container/Kubernetes 路径。一个可执行的回归门禁可以这样定义：
+
+```yaml
+fabric_regression_gate:
+  change_ref: fabric-chg-20260620-003
+  invalidated_baselines:
+    - train-fabric-a-20260619
+  required_matrix:
+    host_rdma: required
+    container_rdma: required
+    kubernetes_nccl_job: required
+    cross_rack_nccl: required
+    cross_rail_nccl: required
+    checkpoint_plus_nccl_concurrency: required
+    rail_balance_report: required
+  pass_criteria:
+    no_new_rdma_errors: true
+    rail_balance_ratio: within_policy
+    pfc_ecn_delta: within_baseline_band
+    p99_step_time_regression: within_policy
+  scheduling_until_pass:
+    state: limited
+    deny_workload: [large_distributed_training]
+    allow_workload: [single_node_inference, low_priority_batch]
+```
+
+这个门禁把网络变更的风险直接接到资源池状态。它避免两类常见事故：第一，扩容 rack 只测 ping 和单流带宽，生产大训练才发现 rail 失衡；第二，RoCE 参数小改后小规模测试通过，但 checkpoint 与 AllReduce 叠加时出现重传。准入系统不需要每次都全量压测整个集群，但必须让复测范围与变更范围、workload 风险和历史事故相匹配。
+
 ## 38.9 anomaly detection
 
 准入测试的结果应进入异常检测系统。新节点与历史同型号节点对比，如果出现显著偏离，应自动标记；维修回池节点与维修前基线对比，如果拓扑或性能变化，应触发复测；生产运行中，DCGM、NCCL、RDMA、network telemetry、storage latency 和训练吞吐也可以与验收基线比较，提前发现退化。

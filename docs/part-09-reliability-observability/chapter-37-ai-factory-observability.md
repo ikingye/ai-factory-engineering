@@ -222,6 +222,36 @@ flowchart LR
 
 这样做可以避免两类极端：网络团队每天处理大量无业务影响的端口噪音，或业务团队在任务变慢时无法拿到网络层证据。可观测性应该减少争论，而不是制造更多告警。
 
+观测系统应把网络 telemetry 归并为结构化事件。原始 counters 太多，直接暴露给调度器和 SRE 会制造噪音；完全不暴露又会让网络退化无法驱动动作。一个折中做法是生成 `congestion_event_record` 和 `rail_balance_report`，再把它们写入 resource health 和 incident：
+
+```yaml
+network_telemetry_event:
+  event_id: net-telemetry-20260620-009
+  source:
+    fabric: train-fabric-a
+    switch_port: leaf12-eth1/17
+    rail: rail1
+  raw_signals:
+    ecn_mark: increased
+    pfc_pause: increased
+    rdma_retransmit: increased
+    port_utilization: high
+  correlation:
+    network_path_evidence: net-path-042
+    affected_jobs: [train-042]
+    affected_ranks: [17, 49, 81]
+    rail_balance_report: rail-balance-20260620-017
+    fabric_baseline_id: train-fabric-a-20260619
+  derived_events:
+    congestion_event_record: net-cong-20260620-001
+  resource_action:
+    fabric_state: degraded_for_large_training
+    scheduler_weight_delta: reduce
+    evidence_retention: freeze_window
+```
+
+这类事件把设备级观测转化为平台可消费的事实。调度器不需要理解每个 PFC 计数，但需要知道某个 rail 对大训练 degraded；SRE 不需要手工拼端口和 rank，但需要看到哪些 job、哪些 rank、哪条 baseline 支持这个判断；成本系统不需要交换机细节，但需要 `gpu_idle_due_to_network_hours`。观测层的职责就是把这些视角连接起来。
+
 ## 37.9 distributed tracing
 
 Distributed tracing 用于追踪请求经过的服务链路。在 AI Factory 中，推理请求 trace 应覆盖 gateway、auth、quota、routing、model selection、scheduler、model server、prefill、decode、streaming、metering、billing 和 observability export。只有这样，TTFT 或 E2E latency 上升时，才能定位慢在入口、平台、模型服务还是客户端输出。
