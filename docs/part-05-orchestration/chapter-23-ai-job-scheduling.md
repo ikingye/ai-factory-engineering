@@ -259,7 +259,66 @@ Pending reason 应是枚举，而不是自由文本。建议至少区分 `quota_
 
 实现还应有事件模型。准入、借用、抢占、恢复、失败和完成都要产生结构化事件，事件进入 UI、审计、告警和成本系统。没有事件模型，调度系统只能靠日志排障。
 
+训练作业事件应沿着统一生命周期记录，而不是散落在队列、Pod、launcher 和训练日志里。`training_lifecycle_event` 把作业从 submitted、admitted、placement committed、gang started、rendezvous、first effective step、checkpoint、preempting、recovering 到 completed 的关键点串起来。它让用户看到任务卡在哪个阶段，也让成本系统区分等待、启动浪费和有效训练。
+
+```yaml
+training_lifecycle_event:
+  event_id: tle-20260620-001
+  job_id: exp-20260619-001
+  tenant: foundation-model-team
+  queue: training-prod
+  phase: first_effective_step
+  timestamps:
+    submitted_at: recorded
+    admitted_at: recorded
+    placement_committed_at: recorded
+    gang_started_at: recorded
+    rendezvous_completed_at: recorded
+    first_effective_step_at: recorded
+  references:
+    job_admission_event: jae-exp-20260619-001
+    placement_commit_record: pcr-exp-20260619-001
+    rank_mapping: rank-mapping-exp-20260619-001
+    checkpoint_manifest: latest_valid_if_resumed
+  accounting:
+    allocated_gpu_seconds_so_far: measured
+    effective_training_gpu_seconds_so_far: measured
+    startup_waste_gpu_seconds: calculated
+```
+
+这个事件让“任务 pending”“任务 running”“任务开始训练”变成三个不同事实。很多 GPU 浪费发生在 admitted 之后、first effective step 之前：镜像拉取、数据预检、NCCL rendezvous、checkpoint 恢复都可能消耗资源但不产生训练 token。调度系统若只记录 running，会把这些浪费平均摊进训练成本，无法指导优化。
+
 事件模型还应支持订阅。用户订阅作业事件，SRE 订阅异常事件，平台运营订阅 quota 和抢占事件。不同角色看到不同视图，但底层事件源一致。这样调度系统既能服务人机交互，也能服务自动化。
+
+队列治理还需要 `queue_fairness_ledger`。它不是简单的队列长度统计，而是记录每个队列在一个窗口内的 guaranteed、borrowed、lent、preempted、starved 和 effective GPU hours。这样平台才能回答：某队列等待长是因为它超出配额、拓扑不可满足、资源被别人借用，还是策略配置不合理。
+
+```yaml
+queue_fairness_ledger:
+  window: 2026-06-20T00:00Z/2026-06-20T01:00Z
+  cohort: ai-factory-training
+  queues:
+    - queue: training-prod
+      guaranteed_gpus: 512
+      used_gpu_hours: measured
+      borrowed_gpu_hours: measured
+      lent_gpu_hours: measured
+      pending_reasons:
+        gang_capacity: measured
+        topology_unsatisfied: measured
+        quota_insufficient: measured
+      starvation:
+        longest_waiting_job_age: measured
+        starvation_policy_breached: false
+    - queue: research
+      guaranteed_gpus: 256
+      preempted_gpu_hours: measured
+      effective_gpu_hours: measured
+  decisions:
+    rebalance_quota: evaluate
+    adjust_borrowing_policy: optional
+```
+
+这个 ledger 能把调度争议变成数据问题。若 research 长期借出资源但在生产高峰被频繁抢占，说明 borrowing 策略要调；若 training-prod 长期 pending 是拓扑不可满足，而不是 quota 不足，扩容方向应是同 fabric 连续资源，不是单纯增加 GPU；若某队列长期饥饿，应触发运营评审。公平不是平均等待，而是规则、承诺和实际效果一致。
 
 抢占也需要 checkpoint-aware policy。调度器不应只知道某个任务优先级低，还要知道它能否安全释放资源。对于训练任务，抢占点通常是 checkpoint 完成后；对于 batch inference，抢占点是 shard 完成后；对于 online inference，抢占通常应通过 drain 而不是 kill。
 
@@ -277,6 +336,32 @@ preemption_policy:
   accounting:
     record_wasted_gpu_hours: true
 ```
+
+每次抢占还应形成 `preemption_record`。Policy 说明允许怎么抢占，record 说明这一次实际发生了什么。它要记录 notice、safe point、checkpoint、释放资源、浪费 GPU 小时、恢复结果和受影响队列。没有 record，抢占会被视为调度器内部动作，用户只能看到任务被杀。
+
+```yaml
+preemption_record:
+  preemption_id: preempt-20260620-001
+  victim_job: exp-lowprio-042
+  requester:
+    job_id: exp-prod-urgent-017
+    queue: training-prod
+    reason: production_release_blocker
+  policy:
+    safe_point: checkpoint_committed
+    notice_seconds: 600
+  execution:
+    checkpoint_before_release: ckpt-step-80000
+    released_gpus: 128
+    victim_requeued: true
+    recovery_started_at: recorded
+  cost:
+    wasted_gpu_hours: calculated
+    lost_progress_since_checkpoint: calculated
+    requester_wait_time_reduced: calculated
+```
+
+抢占记录应进入 queue fairness ledger 和 training ROI ledger。这样平台才能判断抢占是不是净收益：高优任务提前启动带来的收益，是否大于低优任务损失、重跑和用户体验成本。没有这个账本，抢占会被滥用为容量不足的补丁。
 
 ## 常见故障
 

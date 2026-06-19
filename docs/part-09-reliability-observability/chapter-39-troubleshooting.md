@@ -109,6 +109,41 @@ incident_record:
 
 这个对象的重点是防止事故知识丢失。一次事故不只是“某个节点坏了”，还包括谁受影响、哪些证据支持结论、哪些止血动作有效、哪些基线漏测、哪些变更门禁失效、浪费了多少 GPU 小时或毛利。没有 `incident_record`，复盘会变成会议纪要；有了它，事故可以反向更新准入、变更、资源池和成本模型。
 
+训练类事故应进一步生成 `training_incident_record`。训练事故通常不是一个请求失败，而是大量 GPU 小时、checkpoint、数据版本、rank placement 和模型进度同时受影响。通用 incident 记录影响面，training incident 记录训练生命周期证据，便于判断是否恢复、回滚、重跑、隔离资源或调整调度策略。
+
+```yaml
+training_incident_record:
+  incident_id: inc-20260620-train-001
+  training_job: exp-20260619-001
+  symptom: nccl_hang_or_loss_spike_or_checkpoint_slow
+  lifecycle_context:
+    training_lifecycle_event: tle-20260620-001
+    phase_at_detection: running
+    last_effective_step: measured
+    latest_valid_checkpoint: ckpt-step-120000
+  scheduling_context:
+    job_admission_event: jae-exp-20260619-001
+    placement_commit_record: pcr-exp-20260619-001
+    queue: training-prod
+    preemption_record: optional
+  runtime_evidence:
+    rank_mapping: rank-mapping-exp-20260619-001
+    communication_diagnostic_bundle: optional
+    storage_evidence: optional
+    resource_health_records: recorded
+  impact:
+    allocated_gpu_hours_lost: calculated
+    effective_training_tokens_lost: calculated
+    checkpoint_rollback_distance: calculated
+    model_release_delay: estimated
+  decision:
+    recover_from_checkpoint: true_or_false
+    isolate_resources: [node_or_fabric_or_storage_path]
+    update_queue_or_placement_policy: optional
+```
+
+这个对象能防止训练事故复盘停留在“重启后好了”。如果从 checkpoint 恢复损失很小，优先恢复进度；如果同一 placement 多次触发通信问题，应更新调度策略；如果抢占造成大量 lost progress，应调整 checkpoint-aware preemption；如果 Slurm accounting 和平台 ledger 差异很大，应触发对账。训练事故的结论必须回写训练平台，而不只是关闭工单。
+
 网络与通信类故障尤其需要把故障树和证据链结合。下面的 NCCL hang 入口可以作为值班系统的自动检查顺序：
 
 ```mermaid

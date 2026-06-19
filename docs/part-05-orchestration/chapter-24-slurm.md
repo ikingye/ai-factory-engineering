@@ -229,6 +229,41 @@ slurm_platform_event:
 
 Slurm account、partition 和 job id 还应映射到平台租户、资源池和实验。映射关系不能靠手工表格长期维护，应进入身份和资源管理系统。否则 Slurm accounting 与平台成本系统会长期漂移，同一训练成本在不同报表中出现不同归属。
 
+跨 Slurm 和 Kubernetes 的训练平台还需要 `training_accounting_reconciliation`。Slurm、Kubernetes、队列系统、GPU 资源池和成本仓库都会记录资源使用，但它们的时间边界和状态语义不同。Slurm 可能按 job allocation 计时，Kubernetes 可能按 Pod 生命周期计时，训练框架按 first effective step 计时，成本系统按资源池窗口分摊。对账对象的目标，是把这些口径差异显式化。
+
+```yaml
+training_accounting_reconciliation:
+  reconciliation_id: acct-20260620-001
+  workload:
+    experiment_id: exp-20260619-001
+    scheduler: slurm
+    slurm_job_id: "123456"
+    platform_training_job: train-20260619-001
+  identity_mapping:
+    slurm_account: foundation
+    tenant: foundation-model-team
+    project: base-model-v4
+    cost_center: ai-research
+  resource_mapping:
+    partition: pretrain-h100
+    resource_pool: training-prod-h100
+    nodes: recorded
+    gpu_flavor: h100
+  usage:
+    slurm_allocated_gpu_hours: measured
+    platform_allocated_gpu_hours: measured
+    effective_training_gpu_hours: measured
+    wasted_gpu_hours: calculated
+  artifacts:
+    checkpoint_manifests: recorded
+    model_registry_versions: recorded_if_any
+  diff:
+    status: matched_or_explained
+    explanation: accounting_window_or_failed_step_or_sync_delay
+```
+
+这个对象能解决双平台最常见的争议：Slurm 说某账户用了 10 万 GPU 小时，平台成本报表显示另一个数，模型团队说有效训练只有 7 万 GPU 小时。三者都可能正确，只是口径不同。对账不是为了消灭差异，而是让差异可解释、可重算、可审计。只有完成这一步，Slurm 才能真正进入 AI Factory 的 Token Factory 和训练 ROI 视角。
+
 同步器还应处理失败和延迟。Slurm accounting 可能滞后，日志上传可能失败，模型注册可能需要重试。平台应把同步状态展示出来，避免用户以为训练完成就代表所有产物都已进入平台。工程实现的重点是闭环，而不是单向采集。
 
 提交入口还应加入前置校验。平台可以在 `sbatch` 包装器或 Web/API 入口中检查账户权限、partition 合法性、数据路径、镜像版本、checkpoint 目录和预计资源。能在提交前发现的问题，不应等到作业排队数小时后才失败。前置校验越充分，调度系统越少承受无效作业。

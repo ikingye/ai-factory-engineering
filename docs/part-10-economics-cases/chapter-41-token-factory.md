@@ -340,6 +340,12 @@ flowchart TB
 training_roi_ledger:
   training_job: exp-20260619-001
   model_candidate: af-base-v4-ckpt120000
+  evidence:
+    training_lifecycle_event: tle-20260620-001
+    placement_commit_record: pcr-exp-20260619-001
+    queue_fairness_ledger: qfl-20260620-0000
+    training_accounting_reconciliation: acct-20260620-001
+    training_incident_record: optional
   costs:
     allocated_gpu_hours: measured
     effective_training_gpu_hours: measured
@@ -347,6 +353,8 @@ training_roi_ledger:
       queue_startup: measured
       rendezvous_failure: measured
       failed_restarts: measured
+      preemption_lost_progress: measured
+      placement_degradation: measured
     storage_cost:
       checkpoints: measured
       dataset_reads: measured
@@ -360,9 +368,12 @@ training_roi_ledger:
     inference_cost_delta: measured_after_launch
     revenue_delta: measured_or_estimated
     quality_delta: evaluation_summary
+    opportunity_cost_vs_inference: calculated
 ```
 
 这个 ledger 让训练投资能被追踪到后续结果。若训练模型没有上线，ROI 不能按推理收入计算，但仍可记录为研究资产或失败学习；若模型上线后把 cost/token 降低，收益应回写到训练 ROI；若模型质量提升但推理成本上升，业务要判断 revenue/token 是否足以覆盖。训练 ROI 是跨时间窗口的事实链，不是单次作业报表。
+
+训练 ROI 还应吸收调度与生命周期事实。一个任务“成功完成”并不代表投资效率高：它可能长时间等待 gang，placement 降级导致训练吞吐下降，被抢占后丢失大量进度，或者 Slurm accounting 与平台成本口径没有对齐。`training_lifecycle_event` 说明 GPU 小时在哪个阶段消耗，`queue_fairness_ledger` 说明等待和借用是否符合资源承诺，`placement_commit_record` 说明性能是否受拓扑降级影响，`training_incident_record` 说明失败是否消耗了额外机会成本。把这些事实放入 ROI，训练队列才能和推理毛利在同一张经济表里比较。
 
 ## 工程实现
 

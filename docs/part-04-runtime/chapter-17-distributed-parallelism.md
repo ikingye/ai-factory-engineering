@@ -215,6 +215,35 @@ rank_mapping:
 
 Rank mapping 还应有一致性校验。Tensor Parallel group 是否真的在 same_node，Pipeline 相邻 stage 是否跨越过多网络跳数，Data Parallel group 是否覆盖预期故障域，MoE expert group 是否集中在某个 rack，这些都可以在启动前或启动后自动检查。检查失败时，平台应明确提示“策略未满足”或“降级放置”，而不是让用户从性能下降中猜测。
 
+调度器还应产出 `placement_commit_record`。它把用户提交的并行放置意图、调度器实际分配、放置降级、rank mapping 和后续训练指标绑定起来。`rank_mapping` 是坐标系，`placement_commit_record` 是“这次放置为什么被接受”的审计记录。没有它，团队只能看到任务慢，却不知道是并行策略本身有问题，还是资源不足导致调度器放宽了拓扑约束。
+
+```yaml
+placement_commit_record:
+  job_id: exp-20260619-001
+  parallelism_template: megatron-h100-512gpus-v3
+  requested_intent:
+    tensor_group: same_node_required
+    pipeline_adjacent_stage: same_rack_preferred
+    data_parallel: spread_across_fault_domains
+    rail_policy: balanced
+  committed_placement:
+    nodes: 64
+    racks: [rack-11, rack-12]
+    rank_mapping_ref: rank-mapping-exp-20260619-001
+    rail_balance_report: rail-balance-exp-20260619-001
+  validation:
+    tensor_group_intent: satisfied
+    pipeline_intent: degraded_with_reason
+    gpu_nic_affinity: passed
+    fabric_baseline: passed
+  decision:
+    accepted_by: scheduler_policy_v12
+    degradation_reason: insufficient_same_rack_capacity
+    user_visible_warning: true
+```
+
+这个记录能把调度和 Runtime 指标连接起来。若训练 step time 比模板基线慢，SRE 可以先看 placement 是否降级；若 NCCL hang 只出现在跨 rack placement，平台可以把策略改成拒绝而不是降级；若用户接受了降级等待更短，就应在运行报告里看到它对 tokens/s 和通信占比的影响。放置不是一次内部决策，而是训练性能合同的一部分。
+
 实现流程可以分为四步。第一步，模板根据模型和硬件给出推荐并行配置。第二步，调度器根据 placement 约束选择节点和 GPU，并返回 rank 到设备的映射。第三步，launcher 把映射写入环境变量或配置文件，框架据此初始化通信组。第四步，监控系统收集 step、rank、group 和 topology 维度指标。缺少任何一步，并行策略都无法闭环。生产平台还应在任务启动前做一致性校验，例如总 GPU 数是否等于各并行维度乘积，Tensor Parallel size 是否超过节点内 GPU 数。
 
 落地时还应提供 dry-run 能力。用户提交配置后，平台先返回预计 GPU 数、节点数、通信组、放置约束和可能的排队原因，而不是直接进入长时间 pending。dry-run 能提前发现维度乘积错误、拓扑约束过严或资源池不匹配。对大规模训练而言，提交前发现错误比运行一小时后失败更有价值。

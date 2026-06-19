@@ -86,14 +86,19 @@
 | 训练状态机 | 第 10 章 | 覆盖 submitted、admitted、preflight、rendezvous、running、checkpointing、recovering |
 | checkpoint manifest | 第 10 章 | 说明 sharded checkpoint、optimizer/scheduler/rng/data loader state 和恢复校验 |
 | 并行策略与 rank mapping | 第 17 章 | 说明 rank 到 GPU/NIC/rack/rail/group 的映射和一致性校验 |
+| `placement_commit_record` | 第 17、23、37、39、41 章 | 说明并行放置意图、实际放置、降级原因、rank mapping 和性能影响 |
 | 并行模板 scorecard | 第 17 章 | 说明扩展效率、通信、显存、稳定性和可恢复性基线 |
 | communication diagnostic bundle | 第 18 章 | 说明异常 op、rank、节点、NIC、端口、NCCL 环境和 telemetry 的证据包 |
 | 通信基线库 | 第 18 章、第 38 章 | 说明 NCCL baseline 与真实训练退化对比 |
 | job admission event / pending reason | 第 23 章 | 说明 quota、gang、topology、image、data、checkpoint 和 node baseline 检查 |
-| checkpoint-aware preemption | 第 23 章 | 说明训练抢占点、通知、保存状态和浪费 GPU 小时 |
-| Slurm 平台同步事件 | 第 24 章 | 说明 Slurm job/step/accounting 与 experiment、checkpoint、registry 的统一事件 |
+| `training_lifecycle_event` | 第 23、37、41 章 | 说明 submitted、admitted、placement committed、gang、rendezvous、first effective step、checkpoint、recovering 的阶段事实 |
+| `queue_fairness_ledger` | 第 23、41 章 | 说明 guaranteed、borrowed、lent、preempted、starved 和 effective GPU hours 如何支撑公平运营 |
+| checkpoint-aware preemption / `preemption_record` | 第 23、41 章 | 说明训练抢占点、通知、保存状态、恢复结果和浪费 GPU 小时 |
+| Slurm 平台同步事件 / `training_accounting_reconciliation` | 第 24、41 章 | 说明 Slurm job/step/accounting 与 experiment、checkpoint、registry、平台成本的统一事件和对账 |
 | TrainingJob smoke test | 第 38 章 | 说明 gang、rank mapping、NCCL rendezvous、first effective step 和 checkpoint manifest 验收 |
-| training ROI ledger | 第 41 章 | 说明 allocated/effective/wasted GPU hours、checkpoint、评测、上线收益和成本变化 |
+| `training_lifecycle_telemetry_event` | 第 37 章 | 说明训练生命周期、拓扑、checkpoint 和 GPU 小时口径如何进入观测事实层 |
+| `training_incident_record` | 第 39、41 章 | 说明训练事故如何回指 admission、placement、rank mapping、checkpoint、资源健康和 ROI 损失 |
+| training ROI ledger | 第 41 章 | 说明 allocated/effective/wasted GPU hours、调度等待、放置降级、抢占、checkpoint、评测、上线收益和成本变化 |
 
 ## 网络通信链路覆盖矩阵
 
