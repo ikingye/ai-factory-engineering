@@ -516,6 +516,79 @@ runtime_troubleshooting_stop_rules:
 
 这些 stop rules 的作用是提高排障纪律。资深工程师最容易犯的错误不是不知道工具，而是在证据不完整时过早归因。把“不能下结论”的条件写进 runbook，可以减少事故中凭经验争论，把注意力转向补证据、止血和复测。
 
+推理 runtime 事故也应留下 `inference_runtime_fault_tree_execution`。它把一次 TTFT/TPOT/streaming gap 事故的判断过程结构化：先确认 request shape 和 admission，再检查 prefill、decode、KV、PD、canary、streaming 和 metering close。这样复盘时可以看到“为什么回滚 engine profile”“为什么只关闭长上下文 admission”“为什么不是 Gateway 限流问题”。
+
+```yaml
+inference_runtime_fault_tree_execution:
+  execution_id: irfte-inc-20260620-ttft-001
+  incident_id: inc-20260620-ttft-001
+  diagnostic_bundle: inference-runtime-bundle-20260620-001
+  entry:
+    symptom: ttft_tpot_streaming_gap_or_cancel_waste
+    affected_endpoint: af-chat-large-prod
+    affected_slices: [long_context_qa]
+    first_signal_at: recorded
+  request_state:
+    engine_request_state_ledger_samples: sampled
+    endpoint_admission_decisions: sampled
+    engine_admission_health: eah-af-chat-large-prod
+  branches:
+    gateway_or_route:
+      verdict: ruled_out_or_confirmed_or_unknown
+      evidence: [endpoint_admission_decision, route_weight_change, tenant_limit_event]
+    prefill:
+      verdict: ruled_out_or_confirmed_or_unknown
+      evidence: [prefill_queue, prefix_cache_miss, model_load_event]
+    decode:
+      verdict: ruled_out_or_confirmed_or_unknown
+      evidence: [active_sequence_count, decode_batch, tpot_trace]
+    kv_state:
+      verdict: ruled_out_or_confirmed_or_unknown
+      evidence: [kv_block_ledger, kv_block_leak_forensic_record]
+    pd_transfer:
+      verdict: ruled_out_or_confirmed_or_unknown
+      evidence: [pd_disaggregation_contract, pd_transfer_evidence]
+    canary_or_runtime_change:
+      verdict: ruled_out_or_confirmed_or_unknown
+      evidence: [engine_canary_record, engine_canary_guardrail_action]
+    streaming_or_metering_close:
+      verdict: ruled_out_or_confirmed_or_unknown
+      evidence: [streaming_close_event, metering_events, engine_request_state_ledger]
+  conclusion:
+    most_likely_domain: kv_state_or_pd_transfer_or_engine_regression_or_gateway
+    confidence: low_medium_or_high
+    evidence_gaps: []
+  actions:
+    immediate: [freeze_canary_or_reduce_long_context_or_route_away]
+    runtime: [rollback_engine_profile_or_disable_feature_or_none]
+    accounting: [replay_metering_or_mark_partial_usage]
+    follow_up: [add_prr_drill_or_runtime_gate_or_runbook_branch]
+```
+
+```mermaid
+flowchart TB
+  Bundle["inference_runtime_diagnostic_bundle"] --> State["engine_request_state_ledger"]
+  State --> Tree["inference_runtime_fault_tree_execution"]
+  Tree --> Admission["admission / route"]
+  Tree --> Prefill["prefill / cache / load"]
+  Tree --> Decode["decode / active sequence"]
+  Tree --> KV["KV pressure / leak"]
+  Tree --> PD["PD transfer"]
+  Tree --> Canary["engine canary"]
+  Tree --> Close["streaming + metering close"]
+  Admission --> Action["shed / route / fallback"]
+  Prefill --> Action
+  Decode --> Action
+  KV --> Action
+  PD --> Action
+  Canary --> Action
+  Close --> Action
+  Action --> Cost["inference_runtime_incident_cost_record"]
+  Action --> PRR["runtime PRR / gate update"]
+```
+
+这个执行记录让“推理慢”不再是单一故障。TTFT 异常可能需要预热权重或拆长上下文；TPOT 异常可能要调 decode active sequence；streaming gap 可能是客户端背压或 server flush；取消后 HBM 不降可能是 KV 释放；PD 分离超时可能要切回 monolithic endpoint；canary 触发可能只需要关闭 speculative decoding 的某个 slice。动作越贴近分支，影响面越小。
+
 ## 39.9 故障树分析
 
 故障树分析把故障从症状拆到可能原因、证据和动作。AI Factory 应为高频故障建立标准树：训练 pending、NCCL hang、GPU Xid、推理 TTFT 高、checkpoint 慢、节点 NotReady、存储慢、模型 loss spike 和资源池容量异常。故障树让排障从经验驱动变为流程驱动。

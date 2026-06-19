@@ -315,6 +315,61 @@ inference_runtime_cost_ledger:
 
 这份账本能防止三类常见误判。第一，speculative decoding 降低 TPOT，但 draft 模型成本、验证开销和质量回归可能让 `cost_per_successful_answer` 上升。第二，PD 分离降低 TTFT，但 KV transfer、两池容量比例和失败语义可能增加运维和重试成本。第三，prefix cache 命中提升 prefill 效率，但过大的缓存生命周期会产生 KV block 秒成本和隐私边界成本。运行时优化只有同时通过延迟、质量、账本和故障语义，才算经济上成立。
 
+推理 runtime 事故应进一步生成 `inference_runtime_incident_cost_record`。`inference_runtime_cost_ledger` 是窗口账本，适合持续运营；事故成本记录则解释某次 TTFT、TPOT、streaming gap、KV leak、PD transfer failure 或 canary rollback 造成了多少损失、哪些 token 可计费、哪些成本应归入预防或浪费。没有这个对象，事故会在 SRE 中关闭，但毛利报表只看到平均 cost/token 变差。
+
+```yaml
+inference_runtime_incident_cost_record:
+  record_id: iricr-inc-20260620-ttft-001
+  incident_id: inc-20260620-ttft-001
+  inference_runtime_fault_tree_execution: irfte-inc-20260620-ttft-001
+  diagnostic_bundle: inference-runtime-bundle-20260620-001
+  affected_scope:
+    endpoint: af-chat-large-prod
+    engine_profile: vllm-prod-h100-v7
+    workload_slices: [long_context_qa]
+    tenants: sampled_or_measured
+  evidence:
+    engine_request_state_ledger_samples: sampled
+    kv_block_leak_forensic_record: optional
+    pd_transfer_evidence: optional
+    engine_canary_guardrail_action: optional
+    metering_replay: required
+  cost_breakdown:
+    generated_but_not_delivered_token_cost: calculated
+    failed_or_retried_request_cost: calculated
+    wasted_kv_block_seconds_cost: calculated
+    pd_transfer_retry_cost: calculated_if_pd_enabled
+    canary_capacity_or_rollback_cost: calculated_if_canary
+    sla_credit_or_refund_exposure: estimated_if_customer_visible
+    support_and_engineering_response_cost: measured
+  revenue_treatment:
+    billable_tokens: reconciled
+    non_billable_partial_tokens: reconciled
+    billing_hold_required: true_or_false
+    customer_credit_policy: applied_if_needed
+  ledger_updates:
+    inference_runtime_cost_ledger: append
+    token_ledger: correction_if_needed
+    quality_cost_ledger: append_if_quality_or_format_regressed
+    prr_or_runtime_gate: update_if_preventable
+```
+
+这个对象的关键是把“引擎做了多少工作”和“用户收到了多少价值”分开。Generated token 可能因为客户端断连、streaming flush 失败或 guardrail 中断没有交付；KV block 可能在请求关闭后继续占用；PD transfer 可能已经消耗 prefill 资源但没有进入 decode；canary 回滚可能短期增加成本，却避免更大范围事故。Token Factory 不能只按生成 token 计算收入，也不能只按 delivered token 忽略未交付成本。
+
+```mermaid
+flowchart LR
+  Fault["inference_runtime_fault_tree_execution"] --> Cost["inference_runtime_incident_cost_record"]
+  State["engine_request_state_ledger"] --> Cost
+  Meter["metering replay"] --> Cost
+  KV["kv leak / block seconds"] --> Cost
+  PD["pd transfer retry"] --> Cost
+  Canary["canary guardrail action"] --> Cost
+  Cost --> RuntimeLedger["inference_runtime_cost_ledger"]
+  Cost --> TokenLedger["token ledger correction / hold"]
+  Cost --> Quality["quality_cost_ledger if affected"]
+  Cost --> Gate["runtime gate / PRR update"]
+```
+
 推理 runtime 成本还要计算“预防成本”。Canary 预留的 5% 容量、自动冻结后回滚到旧 profile 的低效率、为了保留诊断证据而增加的 trace 采样、为了修复 KV 泄漏而临时关闭长上下文 admission，都会让短期 cost/token 变差。但这些成本如果阻止了大范围低质量输出、账单争议或 SLA 违约，应该被记为 prevention cost，而不是简单归入浪费。Token Factory 的经济学不是把所有开销压低，而是把能降低风险暴露的开销和无效浪费区分开。
 
 ```yaml

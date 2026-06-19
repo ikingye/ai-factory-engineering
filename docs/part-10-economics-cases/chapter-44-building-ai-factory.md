@@ -560,11 +560,14 @@ production_readiness_review:
     inference_runtime:
       endpoint_admission_decision_replay: pass
       engine_admission_health_freshness: pass
+      engine_request_state_ledger: configured
       kv_block_ledger_rollup: configured
       kv_block_leak_forensic_record_template: ready
       pd_transfer_evidence: pass_if_pd_enabled
       speculative_decoding_regression_guardrail: pass_if_speculative_enabled
       engine_canary_guardrail_action: machine_enforced
+      inference_runtime_fault_tree_execution_dry_run: pass
+      inference_runtime_incident_cost_record_pipeline: configured
     container_gpu_runtime:
       container_gpu_runtime_acceptance_matrix: pass
       oci_runtime_injection_diff: sampled_and_clean
@@ -661,11 +664,14 @@ production_readiness_review:
       - open_launch_risk_without_owner_or_stop_condition
       - no_endpoint_admission_decision_replay
       - stale_or_missing_engine_admission_health
+      - engine_request_state_ledger_missing
       - no_kv_block_ledger_for_target_endpoint
       - recent_kv_incident_without_leak_forensic_record
       - pd_enabled_without_transfer_evidence
       - speculative_enabled_without_regression_guardrail
       - recent_engine_canary_guardrail_failure_unresolved
+      - inference_runtime_fault_tree_dry_run_failed
+      - inference_runtime_incident_cost_record_pipeline_missing
       - no_container_gpu_runtime_acceptance_for_target_pool
       - gpu_device_visibility_reconciliation_failed
       - rdma_or_multigpu_without_gpu_nic_topology_evidence
@@ -732,6 +738,38 @@ training_prr_failure_drill:
 ```
 
 这个演练能把“训练平台可观测”变成可验收事实。很多团队在建设阶段能展示 dashboard，却无法在事故发生时拿到 rank、容器注入、RDMA、checkpoint 和成本的同一条证据链；也有团队能定位技术根因，却无法说明浪费了多少 GPU 小时、是否影响模型发布日期、是否应该暂停扩容。PRR 要求演练这些路径，是为了避免昂贵训练任务成为第一次真实集成测试。
+
+在线推理资源池也需要 runtime 事故演练。演练应覆盖一条真实请求从 Gateway admission 到 engine request state、KV block、streaming close、metering close 和成本记录的闭环。常见演练包括客户端取消、长上下文 KV pressure、PD transfer timeout、engine canary guardrail breach 和 usage close drift。目标不是制造复杂事故，而是证明系统能在短窗口内冻结证据、执行故障树、止血并对账。
+
+```yaml
+inference_runtime_prr_failure_drill:
+  drill_id: inf-prr-drill-20260620-001
+  production_readiness_review: prr-maas-chat-prod-2026-06
+  scope:
+    endpoint: af-chat-large-prod
+    engine_profile: vllm-prod-h100-v7
+    workload_slices: [short_chat, long_context_qa, streaming_generation]
+    injected_or_simulated_symptoms:
+      - client_cancel_after_prefill
+      - kv_block_release_delay
+      - pd_transfer_timeout_if_enabled
+      - engine_canary_guardrail_breach
+  required_outputs:
+    inference_runtime_diagnostic_bundle: generated
+    engine_request_state_ledger: generated
+    inference_runtime_fault_tree_execution: generated
+    inference_runtime_incident_cost_record: generated
+    metering_replay: generated
+    prr_gate_update: generated_if_gap_found
+  pass_criteria:
+    generated_vs_delivered_tokens_reconciled: true
+    kv_blocks_released_or_leak_recorded: true
+    unsafe_full_endpoint_rollback_avoided_if_slice_action_sufficient: true
+    billing_hold_or_correction_recorded_if_needed: true
+    cost_ledger_append_verified: true
+```
+
+这类演练能拦截推理平台最贵的隐性问题：用户已经断开但引擎继续 decode，usage 事件与实际交付不一致，KV block 泄漏让 endpoint 看似 ready 却无法接新请求，PD 分离失败后 prefill 成本无人归属，canary 自动回滚但账本没有记录 prevention cost。若这些路径没有演练，runtime 优化越多，事故越难解释。
 
 从验收到上线的流水线可以用下面的图表示：
 

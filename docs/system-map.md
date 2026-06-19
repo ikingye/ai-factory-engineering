@@ -132,14 +132,17 @@ flowchart TB
 | `runtime_quality_gate` | 防止推理引擎优化破坏质量、协议或成本。 | 第 15 章 | `serving_quality_contract`、`benchmark_matrix` |
 | `endpoint_admission_decision` | 记录 Gateway 对单个请求为什么 admit、shed、fallback、route 或 reject，并绑定 request shape、SLO、budget 和 engine health。 | 第 6、37、39、44 章 | `engine_admission_health`、`inference_runtime_diagnostic_bundle` |
 | `engine_admission_health` | 让 Gateway 知道 endpoint 是否还能按 SLO 接收请求。 | 第 6、14、15、37、39 章 | `engine_canary_record`、`incident_record` |
+| `engine_request_state_ledger` | 记录单个推理请求从 admission、prefill、decode、streaming 到 usage close 的 runtime 状态和计量对账。 | 第 15、39、41、44 章 | `kv_block_ledger`、`inference_runtime_fault_tree_execution`、`inference_runtime_incident_cost_record` |
 | `kv_block_ledger` | 把 KV block 分配、释放、prefix cache、租户和泄漏成本串起来。 | 第 1、14、15、37、39、41 章 | `Token Factory ledger`、`runtime_quality_gate` |
 | `kv_block_leak_forensic_record` | 取证请求关闭后 KV block 是否泄漏、由哪个 allocator/cache/worker/PD session 持有以及影响多少 admission 和成本。 | 第 1、14、37、39、41、44 章 | `kv_block_ledger`、`inference_runtime_cost_ledger` |
 | `engine_canary_record` | 记录 engine/runtime 变更的协议、质量、性能、KV 和成本门禁结果。 | 第 14、15、37、39 章 | `serving_quality_contract`、`runtime_quality_gate` |
 | `engine_canary_guardrail_action` | 记录 canary 护栏触发后的冻结、降权、关闭 feature、回滚和证据保留动作。 | 第 14、15、37、39、41、44 章 | `engine_canary_record`、`inference_runtime_diagnostic_bundle` |
 | `speculative_decoding_regression_record` | 记录 speculative decoding 在真实流量切片上的格式、质量、长度、接受率和成本回归及切片化止血。 | 第 15、37、39、41、44 章 | `speculative_decoding_report`、`runtime_quality_gate` |
 | `pd_transfer_evidence` | 证明 PD 分离中 KV transfer 的时延、完整性、租户隔离、重试、失败语义和瓶颈归因。 | 第 14、37、39、41、44 章 | `pd_disaggregation_contract`、`inference_runtime_diagnostic_bundle` |
-| `inference_runtime_diagnostic_bundle` | 把 TTFT/TPOT/streaming 事故所需证据冻结成诊断包。 | 第 37、39 章 | `incident_record`、`engine_canary_record` |
+| `inference_runtime_diagnostic_bundle` | 把 TTFT/TPOT/streaming 事故所需证据冻结成诊断包。 | 第 37、39 章 | `inference_runtime_fault_tree_execution`、`incident_record`、`engine_canary_record` |
 | `inference_runtime_cost_ledger` | 把 KV block、draft model、PD transfer、取消浪费和质量成本折算成成功回答成本。 | 第 41 章 | `Token Factory ledger`、`business_model_profile` |
+| `inference_runtime_fault_tree_execution` | 记录推理 runtime 故障树的 admission、prefill、decode、KV、PD、canary、streaming 和 metering 分支判断。 | 第 39、44 章 | `inference_runtime_incident_cost_record`、`production_readiness_review` |
+| `inference_runtime_incident_cost_record` | 把推理 runtime 事故的未交付 token、取消浪费、KV 泄漏、PD retry、canary rollback 和账单修正写入经济账本。 | 第 41、44 章 | `inference_runtime_cost_ledger`、`Token Factory ledger`、`production_readiness_review` |
 | `TrainingJob` | 描述一次训练任务的模型、数据、并行、调度和恢复语义。 | 第 10、23 章 | `checkpoint_manifest`、`rank_mapping`、`training_roi_ledger` |
 | `framework_runtime_matrix` | 记录训练框架、CUDA/NCCL/driver、launcher、checkpoint 和观测能力的受控组合。 | 第 16、23、38、44 章 | `training_runtime_spec`、`training_communication_acceptance_matrix` |
 | `training_runtime_spec` | 记录单个训练任务实际使用的 runtime 矩阵、镜像、精度、分布式策略和 checkpoint 配置。 | 第 16、37、39 章 | `framework_runtime_matrix`、`training_debug_bundle` |

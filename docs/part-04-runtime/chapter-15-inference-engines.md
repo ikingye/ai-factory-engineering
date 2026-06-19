@@ -357,6 +357,48 @@ flowchart TB
   Release --> Usage["emit usage + close reason"]
 ```
 
+这条生命周期还应沉淀为 `engine_request_state_ledger`。它不是业务请求日志，而是推理引擎内部状态账本：请求什么时候被接入，是否进入 prefill，分配了多少 KV block，何时开始 decode，stream 是否打开，关闭原因是什么，usage 是否和 streaming 交付一致。没有这张账本，`kv_block_ledger`、`endpoint_admission_decision`、`metering event` 和用户 trace 很难对齐。
+
+```yaml
+engine_request_state_ledger:
+  request_id: req-20260620-001
+  endpoint: af-chat-large-prod
+  engine_profile: vllm-prod-h100-v7
+  serving_release: af-chat-large-20260619-r3
+  request_shape:
+    input_tokens: measured
+    max_output_tokens: requested
+    tenant: enterprise-a
+    workload_slice: long_context_qa
+  admission:
+    endpoint_admission_decision: ead-req-20260620-001
+    admitted_at: recorded
+    queue_class: interactive
+    estimated_kv_blocks: calculated
+  phases:
+    tokenized_at: recorded
+    prefill_started_at: recorded
+    prefill_finished_at: recorded
+    first_token_at: recorded
+    decode_started_at: recorded
+    stream_opened_at: recorded
+    request_closed_at: recorded
+  runtime_state:
+    kv_block_ledger: kvbl-req-20260620-001
+    active_sequence_id: recorded
+    batch_membership_samples: sampled
+    pd_transfer_evidence: optional_if_pd_enabled
+    engine_canary_record: optional_if_canary
+  close:
+    close_reason: stop_cancel_timeout_error_client_disconnect
+    generated_tokens: measured
+    delivered_tokens: measured
+    metering_events: request_admitted_first_token_usage_closed
+    kv_released_before_close_ack: true_or_false
+```
+
+这个账本能解决推理事故中最常见的账实不一致。客户端取消后，如果 `generated_tokens` 增长但 `delivered_tokens` 停止，说明引擎或 streaming 通道没有及时止损；如果 `request_closed_at` 已记录但 KV block 没释放，说明 allocator、prefix cache 或 PD session 可能泄漏；如果 usage close 早于最终 streaming close，计费和用户体验会分叉；如果 Gateway 认为请求 shed，engine 却有 active sequence，说明 admission 和 runtime 状态不同步。生产平台要把这些状态当成一等事实，而不是在事故后从日志里猜。
+
 上线前应执行兼容性测试、基准压测和故障场景测试。兼容性测试检查模型结构、tokenizer、streaming、tool calling 和错误码；基准压测覆盖短 prompt、长 prompt、长输出和混合并发；故障测试覆盖取消、超时、OOM、engine restart 和回滚。推理引擎升级不应只看正常样例。
 
 工程流程还应保留上一稳定配置。引擎版本、模型格式、量化方式和 CUDA/NCCL/driver 组合都可能影响行为。发布新引擎时，应能够同时回滚 runtime 和配置，而不是只回滚镜像。推理引擎是高风险生产依赖，版本管理必须严格。
