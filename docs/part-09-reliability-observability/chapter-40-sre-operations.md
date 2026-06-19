@@ -397,6 +397,25 @@ slo_budget_ledger:
 
 这个账本让 error budget 真正约束系统行为。预算消耗来自变更回归，就应收紧同类变更；来自容量不足，就应进入容量运营；来自 degraded 资源反复回流，就应修资源池和准入；来自模型版本回归，就应调整发布门禁。预算若不能改变策略，就只是事故统计。
 
+SRE 控制面应消费第 37、38、41、44 章的事实对象，而不是只消费告警。`reliability_evidence_bundle` 说明这次预算燃烧的现场证据，`baseline_invalidation_record` 说明哪些资源能力暂时不可信，`capacity_activation_record` 说明可用产能是否足够，`reliability_cost_ledger` 说明事故和预防成本的经济影响，`production_readiness_review` 决定能否继续扩大发布。把这些对象放在同一个控制回路里，SRE 才能对变更、容量和上线节奏施加真实约束。
+
+```mermaid
+flowchart TB
+  Evidence["reliability_evidence_bundle"] --> Incident["incident_record"]
+  Evidence --> Budget["slo_budget_ledger"]
+  Invalidation["baseline_invalidation_record"] --> Pool["resource pool limited state"]
+  Capacity["capacity_activation_record"] --> CapacityPolicy["capacity policy"]
+  Budget --> Policy["release / change / capacity policy"]
+  Incident --> Cost["reliability_cost_ledger"]
+  Cost --> Policy
+  Pool --> PRR["production_readiness_review"]
+  CapacityPolicy --> PRR
+  Policy --> PRR
+  PRR --> Action["approve canary / block / rollback / add capacity"]
+```
+
+这个控制回路的关键是自动化和可解释同时存在。自动化负责在 baseline 失效时限制高风险 workload，在 error budget 快速燃烧时冻结高风险变更，在 capacity activation 不足时阻止新增承诺；可解释性负责告诉业务为什么被限制、需要补哪项证据、恢复条件是什么。SRE 不应成为“最后签字的人”，而应让系统根据事实对象提前阻止错误动作。
+
 质量事故也应消耗 error budget，但口径要独立于可用性。一个模型持续返回低质量答案，HTTP 可用性可能仍然达标，却已经伤害用户任务成功率和客户信任。SRE 可以为核心应用定义 quality SLO，例如任务成功率、引用正确率、工具轨迹成功率、人工接管率或投诉率，并把严重质量回归写入 `slo_budget_ledger`。这样模型质量会影响发布节奏和变更策略，而不是只影响离线评测报告。
 
 第四类工程工作是建立运行例会的数据包。周报不应手工拼图，而应自动生成：本周 SLO、error budget、incident、变更、容量水位、成本异常、行动项状态和下周风险。SRE 会议讨论的是决策和风险，不是临时找数据。

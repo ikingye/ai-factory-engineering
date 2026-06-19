@@ -149,10 +149,10 @@
 | `maintenance_window` | 第 28 章、第 40 章 | 说明计划维护、drain、复测、回滚、容量影响和用户沟通 |
 | `change_safety_case` | 第 29 章、第 40 章 | 说明 driver、kernel、NCCL、OFED、runtime、模型服务变更如何绑定验证、灰度、停止条件和回滚 |
 | `fault_domain_map` | 第 36 章、第 39 章 | 说明 rack、power、cooling、rail、fabric、storage、batch 与 workload 影响面 |
-| `reliability_evidence` | 第 37 章、第 39 章 | 说明 SLO symptom 到 request/job、resource health、baseline、change、fault domain 和 action 的证据链 |
-| `acceptance_baseline` invalidation | 第 38 章 | 说明变更如何使基线失效，并触发影响范围复测 |
+| `reliability_evidence` / `reliability_evidence_bundle` | 第 37 章、第 39 章 | 说明 SLO symptom 到 request/job、resource health、baseline、change、fault domain、action 和现场冻结的证据链 |
+| `acceptance_baseline` invalidation / `baseline_invalidation_record` | 第 28、29、38、40、44 章 | 说明变更和维护如何使基线失效，如何降级资源池，如何触发影响范围复测，并如何进入 SRE/PRR 门禁 |
 | `incident_record` | 第 39 章、第 40 章 | 说明事故时间线、影响面、止血动作、根因证据、成本影响和行动项 |
-| `slo_budget_ledger` | 第 40 章、第 41 章 | 说明 error budget、reliability cost、wasted GPU hours、赔付和毛利之间的关系 |
+| `slo_budget_ledger` / `reliability_cost_ledger` | 第 40 章、第 41 章 | 说明 error budget、reliability cost、wasted GPU hours、赔付、容量延迟和毛利之间的关系 |
 
 ## 物理设施与能源链路覆盖矩阵
 
@@ -165,7 +165,7 @@
 | `power_thermal_envelope` | 第 34 章、第 36 章、第 38 章 | 说明功耗、温度、液冷、降额、满载验收和调度限制 |
 | `rack_capacity_unit` | 第 36 章、第 28 章、第 40 章 | 说明 rack/power/cooling/fabric/storage 如何构成可承诺产能单元 |
 | `physical_acceptance_matrix` | 第 38 章 | 说明 power、cooling、cabling、BMC、full-load、thermal soak 和 workload 的准入矩阵 |
-| `capacity_activation_record` | 第 36 章、第 40 章 | 说明 planned、installed、accepted、limited、allocatable 到 retired 的交付状态流转 |
+| `capacity_activation_record` | 第 36 章、第 40 章、第 41 章 | 说明 planned、installed、bootstrapped、accepted、allocatable、workload-fit、limited 到 retired 的交付状态流转和投产延迟成本 |
 | `energy_ledger` | 第 36 章、第 41 章 | 说明 GPU power、rack power、PUE、tokens/W、joules/token 和 power/cooling-induced waste 的经济归因 |
 
 ## 安全与多租户链路覆盖矩阵
@@ -213,7 +213,7 @@
 | `ai_factory_maturity_assessment` | 第 43 章、第 44 章 | 说明不同 AI Factory 类型如何按目标层、生产层、运营层和经济层做成熟度诊断 |
 | `ai_factory_build_plan` | 第 44 章 | 说明阶段、进入条件、退出条件、owner、证据、风险、停止条件和下一阶段投资如何绑定 |
 | `architecture_decision_record` | 第 44 章 | 说明 GPU、网络、存储、调度、推理引擎和商业模式选择如何记录背景、备选方案、取舍、回滚和复审触发器 |
-| `production_readiness_review` | 第 44 章、第 38 章、第 40 章 | 说明从资源准入、模型质量、SLO、计量、安全、runbook、成本到发布回滚的上线门禁 |
+| `production_readiness_review` | 第 44 章、第 38 章、第 40 章、第 41 章 | 说明从资源准入、基线有效性、模型质量、SLO、计量、安全、runbook、成本到发布回滚的上线门禁 |
 | `acceptance_to_launch_record` | 第 38 章、第 44 章 | 说明资源、模型、服务和应用如何从 accepted、staging、canary、production 到 rollback/scale 的证据流 |
 
 ## 全书循环更新策略

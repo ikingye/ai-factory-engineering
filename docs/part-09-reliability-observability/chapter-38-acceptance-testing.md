@@ -385,6 +385,59 @@ baseline_invalidation_policy:
 
 失效规则把准入从一次性门禁变成长期可靠性控制。它不要求每次变更都全量测试，但要求复测范围与风险一致。变更系统提交 `change_safety_case` 后，应自动查询会失效的 baseline；维修工单关闭前，应自动生成对应复测计划；资源池只有看到复测通过，才恢复完整调度能力。
 
+规则本身还不够，生产系统需要记录每一次实际失效。`baseline_invalidation_record` 描述某次变更、维修或事故让哪些 baseline 失效，哪些资源被降级，哪些 workload 被禁止，复测计划如何执行，以及何时恢复完整可调度能力。Policy 是规则，record 是事实。没有 record，团队只能知道“理论上应该复测”，却不知道本次是否真的把风险从调度路径里移除。
+
+```yaml
+baseline_invalidation_record:
+  invalidation_id: bir-20260620-001
+  trigger:
+    type: change_or_repair_or_incident
+    ref: chg-gpu-baseline-20260619
+    initiated_at: recorded
+  affected_baselines:
+    - h100-rack12-20260619
+    - train-fabric-a-20260619
+    - container-gpu-runtime-20260620
+  affected_scope:
+    resource_pool: training-prod-h100
+    racks: [rack-12]
+    nodes: recorded
+    fault_domains: [dc-a/rack-12/rail-1]
+  invalidated_capabilities:
+    - nccl_multi_node
+    - rdma_in_container
+    - container_gpu_runtime
+  temporary_scheduling_state:
+    resource_state: limited
+    deny_workload: [large_distributed_training, premium_inference]
+    allow_workload: [single_node_debug, low_priority_batch]
+  retest_plan:
+    required:
+      - bootstrap_validation
+      - fabric_acceptance_matrix
+      - container_gpu_runtime_acceptance_matrix
+      - representative_training_job
+    owner: acceptance-platform
+  closure:
+    status: open_or_passed_or_failed
+    restored_capabilities: recorded_after_retest
+    linked_capacity_activation_record: optional
+```
+
+这个记录是变更系统、准入系统和资源池之间的接口。变更开始时，它把受影响资源降级；复测通过后，它恢复能力标签；复测失败时，它让资源停留在 limited、quarantine 或 maintenance。它也为事故复盘提供证据：如果某次 driver 升级后出现 NCCL hang，SRE 可以直接检查相关 baseline 是否被失效、复测是否覆盖容器内 RDMA、调度器是否在失效期间阻止大训练。许多“升级后随机故障”的根因，不是升级本身，而是基线失效没有进入调度控制面。
+
+```mermaid
+flowchart LR
+  Change["change / repair / incident"] --> Invalidate["baseline_invalidation_record"]
+  Invalidate --> Limit["resource pool: limited / deny high-risk workload"]
+  Invalidate --> Retest["required retest plan"]
+  Retest --> Pass{all required tests pass?}
+  Pass -->|yes| Restore["restore capabilities\nallocatable / workload-fit"]
+  Pass -->|no| Quarantine["quarantine / maintenance / vendor fix"]
+  Restore --> PRR["production readiness review can consume evidence"]
+  Quarantine --> Incident["incident / remediation backlog"]
+```
+
 网络 fabric 的失效规则还应绑定 `fabric_change_record`。交换机 QoS、RoCE profile、ECN/PFC 阈值、NIC firmware、OFED、CNI、NCCL 默认参数或调度 rail 标签变化后，不应只验证节点连通性，而要重跑与影响范围匹配的 host/container/Kubernetes 路径。一个可执行的回归门禁可以这样定义：
 
 ```yaml

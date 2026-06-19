@@ -445,6 +445,46 @@ production_readiness_review:
 
 `production_readiness_review` 应和第 38 章的验收基线、第 40 章的 SRE 流程、第 41 章的经济账本连接。它不是独立审批系统，而是把已有证据聚合成上线决策。若某项证据缺失，结论应该是 `block` 或 `conditional_approve`，并明确条件，而不是口头放行。
 
+成熟的 PRR 还应检查“证据是否仍然有效”。很多上线事故不是完全没有验收，而是验收基线已经被 driver、fabric、存储、模型 runtime 或维护动作失效；不是没有容量，而是 capacity activation 只到 installed，没有到 workload-fit；不是没有可观测性，而是缺少事故触发时能冻结的 `reliability_evidence_bundle`。因此 PRR 应把证据有效性作为一等门禁：
+
+```yaml
+production_readiness_review:
+  id: prr-maas-chat-prod-2026-06
+  evidence_validity:
+    acceptance_baselines:
+      status: valid
+      invalidation_records_open: none
+      required_scopes: [resource_pool, fabric, container_gpu_runtime, storage]
+    capacity_activation:
+      capacity_activation_record: dc-a-rack-12-2026-06
+      workload_fit_capacity: sufficient_for_canary
+      limiting_factors_acknowledged: true
+    change_safety:
+      recent_high_risk_changes: reviewed
+      canary_stop_conditions: machine_enforced
+      rollback_drill: passed
+    observability:
+      reliability_evidence_bundle_trigger: configured
+      inference_runtime_diagnostic_bundle: configured
+      token_metering_reconciliation: pass
+    sre_and_economics:
+      slo_budget_ledger: initialized
+      reliability_cost_ledger: initialized
+      owner_for_error_budget_burn: assigned
+  decision_logic:
+    block_if:
+      - open_baseline_invalidation_for_required_scope
+      - no_workload_fit_capacity
+      - no_rollback_path
+      - no_metering_reconciliation
+      - no_incident_owner_or_runbook
+    conditional_approve_if:
+      - limited_capacity_with_explicit_canary_scope
+      - noncritical_observability_gap_with_due_date
+```
+
+这份门禁会迫使上线讨论从“服务能不能访问”转为“证据是否足以承受生产风险”。例如资源池有 GPU，但 `baseline_invalidation_record` 仍然 open，就只能批准单节点低风险 canary，不能批准 premium inference；模型质量门禁通过，但 token 计量未对账，就不能进入商业化计费；容量激活记录显示 cooling_limited，就不能承诺持续满载训练。PRR 的价值在于把这些限制提前暴露，而不是等事故后再解释。
+
 从验收到上线的流水线可以用下面的图表示：
 
 ```mermaid

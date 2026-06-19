@@ -107,7 +107,11 @@ flowchart TB
 | `resource_health_record` | 把 GPU、node、fabric、storage 健康信号转成资源池状态。 | 第 28、37 章 | `maintenance_window`、`security_audit_event` |
 | `gpu_container_runtime_report` | 证明 driver、Toolkit、RuntimeClass/CDI、device plugin 和容器内设备可见性一致。 | 第 21、22、29、38 章 | `gpu_assignment_record`、`acceptance_baseline` |
 | `acceptance_baseline` | 证明资源进入生产池前通过准入，并可用于后续异常对比。 | 第 38 章 | `production_readiness_review`、`baseline_invalidation_policy` |
+| `baseline_invalidation_record` | 记录某次变更、维修或事故让哪些 baseline 失效，资源池如何降级以及如何复测恢复。 | 第 38、44 章 | `change_safety_case`、`capacity_activation_record`、`production_readiness_review` |
+| `reliability_evidence_bundle` | 在事故触发时冻结跨层证据，避免 Pod、端口计数、日志和缓存状态消失后无法复盘。 | 第 37、39 章 | `incident_record`、`slo_budget_ledger`、`reliability_cost_ledger` |
 | `incident_record` | 记录事故时间线、影响面、根因证据、止血动作和行动项。 | 第 39、40 章 | `slo_budget_ledger`、`reliability_cost` |
+| `capacity_activation_record` | 把 planned、installed、accepted、allocatable 和 workload-fit 产能及受限原因写成投产事实。 | 第 36、40、41 章 | `capacity_activation_review`、`reliability_cost_ledger` |
+| `reliability_cost_ledger` | 把事故、SLO 预算、基线失效、容量延迟和预防成本折算进成功 token 成本。 | 第 41 章 | `Token Factory ledger`、`production_readiness_review` |
 | `Token Factory ledger` | 把 token、GPU、能耗、质量、安全、可靠性和收入放到同一账本。 | 第 41 章 | `business_model_profile`、`capacity_activation_review` |
 
 ## 按故障症状进入
@@ -128,6 +132,9 @@ flowchart TB
 | 容器里 RDMA 不通 | 第 22、32、38 章 | RDMA device、CNI、NUMA、container smoke test、fabric baseline | 宿主机 RDMA 正常不代表容器内 RDMA 正常，必须做容器路径验收。 |
 | GPU 降频或 tokens/W 下降 | 第 34、35、36、38、41 章 | power_thermal_envelope、rack_capacity_unit、energy_ledger | 检查 power、cooling、液冷、机柜降额和调度限制。 |
 | 网络退化导致 GPU 空转 | 第 18、30、32、37、39、41 章 | network_path_evidence、congestion_event_record、rail_balance_report、network_cost_ledger | 先量化 exposed communication time 和 idle GPU hours，再决定隔离、避让、限流或扩容。 |
+| 变更后随机故障 | 第 29、37、38、39、40 章 | change_safety_case、baseline_invalidation_record、reliability_evidence_bundle、recent changes | 检查变更是否失效了准入基线、资源池是否降级、复测是否覆盖真实 workload。 |
+| 扩容后产能没增长 | 第 28、36、38、40、41 章 | capacity_activation_record、rack_capacity_unit、physical/fabric/storage acceptance、workload-fit capacity | 区分 installed、accepted、allocatable 和 workload-fit GPU，定位 power、cooling、fabric、storage 或 baseline 失效限制。 |
+| 上线评审证据不足 | 第 38、40、41、44 章 | production_readiness_review、baseline_invalidation_record、slo_budget_ledger、reliability_cost_ledger | 证据缺口应 block 或 conditional approve，不能靠口头承诺上线。 |
 | 账单争议 | 第 5、6、7、41、42 章 | append-only metering event、tenant boundary、business_model_profile | 区分失败是否计费、streaming 中断、免费额度、租户归属和合约边界。 |
 | 私有化交付无法升级 | 第 4、29、42、43、44 章 | version matrix、offline package、case evidence、ADR、PRR | 将客户差异收敛到配置和集成层，建立升级与诊断证据。 |
 
@@ -140,7 +147,7 @@ flowchart TB
 | GPU 容器链路 | 第 19、21、22、29、38 章 | 能解释 device plugin、CRI、OCI runtime、NVIDIA Container Toolkit、driver/library 注入和容器 smoke test。 |
 | 网络通信链路 | 第 18、30、31、32、37、38、39、41 章 | 能从 NCCL 性能症状追到 GPU/NIC/rail/switch telemetry、fabric baseline、拥塞事件和成本影响。 |
 | 存储数据链路 | 第 10、14、20、33、37、38、39、41 章 | 能从 GPU idle、checkpoint 慢、冷启动慢追到 storage intent、dataset manifest、checkpoint commit、artifact distribution、cache residency、backend telemetry 和成本。 |
-| 可靠性链路 | 第 28、29、36、37、38、39、40、41 章 | 能把 health、baseline、change、fault domain、incident、error budget 和经济损失串起来。 |
+| 可靠性链路 | 第 28、29、36、37、38、39、40、41、44 章 | 能把 health、maintenance、baseline invalidation、change、fault domain、evidence bundle、incident、error budget、capacity activation、PRR 和经济损失串起来。 |
 | 安全多租户链路 | 第 5、6、7、21、22、27、28、37、40、41 章 | 能解释租户边界、策略决策、runtime privilege、GPU 隔离、审计和成本隔离。 |
 | 行业建设链路 | 第 4、42、43、44 章 | 能把应用想法转成 profile、商业模式、案例诊断、建设计划、ADR 和 PRR。 |
 

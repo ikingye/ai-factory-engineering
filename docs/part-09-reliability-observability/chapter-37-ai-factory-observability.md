@@ -549,6 +549,42 @@ reliability_evidence:
 
 这个对象让可观测性从“指标查询”变成“事故证据”。SRE 不需要在事故中临时问谁升级了 driver、哪个 rack 在维护、哪些节点健康状态异常、是否偏离基线；系统应在一个证据对象里给出关联。它也能防止误归因：如果没有 change、baseline drift 或 health signal 支持，就不能把 SLO 违约直接归咎于某个底层团队。
 
+在生产系统中，单个 `reliability_evidence` 往往还不够。一次事故可能同时涉及多个请求桶、多个训练 job、多个资源池和多个时间窗口，因此需要 `reliability_evidence_bundle`。它是事故触发后冻结的一组证据快照，包含用户症状、资源状态、变更、基线失效、故障域、SLO 消耗和可执行动作。Bundle 的目标不是替代 `incident_record`，而是在 incident 创建之前保留现场，防止证据随着 Pod 重启、日志轮转、端口计数清零或缓存状态变化而丢失。
+
+```yaml
+reliability_evidence_bundle:
+  bundle_id: reb-20260620-ttft-rack12
+  trigger:
+    source: slo_alert
+    symptom: ttft_p99_regression
+    detected_at: recorded
+  scope:
+    services: [maas-chat-completions]
+    models: [af-chat-large]
+    tenants: measured_or_sampled
+    resource_pools: [inference-premium-a]
+    fault_domains: [dc-a/rack-12]
+  evidence_refs:
+    inference_runtime_diagnostic_bundle: optional
+    training_lifecycle_telemetry_event: optional
+    resource_health_records: [resource-health-017-2]
+    baseline_invalidation_records: [bir-20260620-001]
+    maintenance_windows: [maint-driver-20260619-rack12]
+    change_safety_cases: [chg-gpu-baseline-20260619]
+    storage_evidence: optional
+    network_evidence: optional
+  impact:
+    error_budget_burn: calculated
+    affected_billable_tokens: measured
+    wasted_gpu_hours: calculated_if_applicable
+    estimated_reliability_cost: calculated
+  action_hints:
+    safe_immediate_actions: [route_away, isolate_degraded_node, freeze_canary]
+    unsafe_without_more_evidence: [delete_pods, reset_switch_ports]
+```
+
+这个 bundle 能改变事故前几分钟的工作方式。值班人员先看 bundle，而不是分别打开网关、GPU、网络、资源池、变更系统和成本报表；自动化系统可以根据 bundle 决定是否先摘流量、冻结变更、限制大训练或隔离节点；事后 `incident_record` 引用 bundle，复盘能还原当时看到的证据，而不是依赖事后查询。对 AI Factory 来说，证据冻结是可靠性能力的一部分，因为许多关键状态只在故障窗口存在。
+
 第四步是建立数据质量检查。指标缺失、标签为空、时间戳漂移、重复采集和单位不一致，都会让看板和告警失真。可观测性平台本身也要有 SLO，例如关键指标采集延迟、丢失率和查询可用性。否则事故中最先失效的可能就是观测系统。
 
 第五步是把观测接入动作系统。节点隔离、模型回滚、限流、扩容、cache 预热、工单创建和 incident 升级，都应能由观测信号触发或辅助。观测与动作分离太远，会让自动化恢复停留在口号。

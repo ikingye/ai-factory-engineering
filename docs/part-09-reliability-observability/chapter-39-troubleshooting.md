@@ -109,6 +109,28 @@ incident_record:
 
 这个对象的重点是防止事故知识丢失。一次事故不只是“某个节点坏了”，还包括谁受影响、哪些证据支持结论、哪些止血动作有效、哪些基线漏测、哪些变更门禁失效、浪费了多少 GPU 小时或毛利。没有 `incident_record`，复盘会变成会议纪要；有了它，事故可以反向更新准入、变更、资源池和成本模型。
 
+`incident_record` 应引用第 37 章的 `reliability_evidence_bundle`，而不是在事后重新拼证据。Bundle 表示“事故触发时系统看到什么”，incident 表示“团队基于这些证据做了什么判断和动作”。这个区别很重要：如果事后资源已恢复、Pod 已重建、计数器已清零，再查询得到的是恢复后的世界，不是事故现场。可信复盘必须保留现场快照。
+
+```yaml
+incident_evidence_linkage:
+  incident_id: inc-20260620-ttft-001
+  evidence_bundle: reb-20260620-ttft-rack12
+  evidence_quality:
+    request_trace_coverage: complete_or_partial
+    resource_health_coverage: complete_or_partial
+    baseline_comparison: present
+    change_timeline: present
+    cost_impact: estimated_or_measured
+  postmortem_updates:
+    baseline_invalidation_policy: update_if_gap_found
+    change_safety_case_template: update_stop_condition
+    resource_health_rule: tighten_or_relax
+    runbook: add_branch_or_action
+    reliability_cost_ledger: append_impact
+```
+
+这条 linkage 让复盘结果能回写系统。若 bundle 显示事故前有 `baseline_invalidation_record`，但资源池没有降级，问题在控制面联动；若 bundle 缺少 network evidence，问题在观测覆盖；若 stop condition 没有阻止灰度扩大，问题在 `change_safety_case`；若成本影响没有进入账本，可靠性投入以后仍然难以被解释。诊断体系的成熟标志，是每次事故都能改变至少一个规则、门禁或自动化动作。
+
 训练类事故应进一步生成 `training_incident_record`。训练事故通常不是一个请求失败，而是大量 GPU 小时、checkpoint、数据版本、rank placement 和模型进度同时受影响。通用 incident 记录影响面，training incident 记录训练生命周期证据，便于判断是否恢复、回滚、重跑、隔离资源或调整调度策略。
 
 ```yaml

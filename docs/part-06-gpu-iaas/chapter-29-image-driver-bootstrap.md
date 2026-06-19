@@ -341,6 +341,8 @@ change_safety_case:
 
 这个对象把升级从“执行脚本”提升为“带证据的风险控制”。它要求团队在变更前说明担心什么，在灰度中证明什么，出问题时按什么条件停止。尤其是 driver、kernel、NCCL、OFED 和 NVIDIA Container Toolkit 这类底层组件，变更成功的定义必须是业务路径通过，而不是安装命令返回 0。
 
+`change_safety_case` 的执行结果应自动落到第 38 章的 `baseline_invalidation_record`。如果 safety case 声明 driver 和 container runtime 变更会失效 `nccl_baseline` 与 `container_gpu_runtime_baseline`，那么变更进入窗口时，资源池就应把相关节点降级为 limited；只有 `bootstrap_validation`、容器 GPU smoke、NCCL/RDMA 和代表性 workload 复测通过后，能力标签才恢复。否则 safety case 只是审批材料，不会真正保护调度路径。上线前的 `production_readiness_review` 也应检查目标资源池是否存在未关闭的 baseline invalidation。
+
 第五步是建设漂移检测。节点定期上报 kernel、driver、OFED、runtime、关键配置和镜像版本，与期望 baseline 对比。发现漂移后，可以标记 degraded、阻止新任务、触发重新初始化或进入人工确认。漂移检测是长期运行的保障。
 
 第六步是把诊断包标准化。训练或推理失败时，平台应自动收集主机 baseline、容器镜像 digest、driver、CUDA、NCCL、OFED、环境变量、节点列表和关键日志。诊断包减少跨团队来回询问，也让历史故障可以归档对比。

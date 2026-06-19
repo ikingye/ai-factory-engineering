@@ -523,6 +523,43 @@ reliability_cost =
 
 把可靠性成本显式化，可以防止一个常见误判：为了降低 cost/token 而减少冗余、缩短灰度、跳过准入或压缩维护窗口，短期报表会变好，但长期毛利可能被事故吞掉。Token Factory 不是只计算稳定态成本，还要计算风险成本。SRE 事件一旦进入 ledger，可靠性投入才有经济解释。
 
+可靠性成本应落成 `reliability_cost_ledger`。它把 `incident_record`、`reliability_evidence_bundle`、`slo_budget_ledger`、`baseline_invalidation_record`、`maintenance_window` 和 `capacity_activation_record` 连接到 token、GPU 小时和收入影响。这个 ledger 不是为了把每次事故都精确到财务小数点，而是为了让工程决策能比较数量级：一次跳过灰度节省了多少时间，后续事故消耗了多少 GPU 小时和客户信任；一次准入复测延迟上线，避免了多少重跑和赔付。
+
+```yaml
+reliability_cost_ledger:
+  window: 2026-06
+  scope:
+    service: maas-chat-completions
+    resource_pool: inference-premium-a
+    fault_domain: dc-a/rack-12
+  evidence:
+    incidents: [inc-20260620-ttft-001]
+    reliability_evidence_bundles: [reb-20260620-ttft-rack12]
+    slo_budget_ledger: slo-maas-chat-202606
+    baseline_invalidation_records: [bir-20260620-001]
+    capacity_activation_records: [dc-a-rack-12-2026-06]
+  losses:
+    failed_or_slow_billable_tokens: measured
+    failed_or_slow_requests: measured
+    wasted_gpu_hours: calculated
+    requeued_or_retried_gpu_hours: calculated
+    compensation_or_credit: calculated_if_applicable
+    support_and_oncall_cost: calculated
+    delayed_capacity_cost: calculated
+    delayed_model_launch_cost: calculated_if_training_related
+  prevention_and_control_cost:
+    acceptance_retest_cost: measured
+    canary_capacity_cost: measured
+    hot_spare_cost: measured
+    runbook_and_drill_cost: measured
+  derived:
+    reliability_cost_per_delivered_token: calculated
+    incident_cost_per_successful_answer: calculated
+    prevention_cost_vs_loss_avoided: estimated_policy
+```
+
+这个账本会改变成本优化的讨论方式。若某个资源池长期 `reliability_cost_per_delivered_token` 高，平台应查资源健康、变更节奏、准入覆盖和故障域设计，而不是只压低 GPU 单价；若 prevention cost 很高但事故损失更低，说明可靠性策略可能过度；若 delayed_capacity_cost 持续高，说明采购、机房、准入或资源池激活链路存在瓶颈。可靠性不再是“多花的钱”，而是影响成功 token 成本的生产变量。
+
 质量成本需要单独的 `quality_cost_ledger`。低质量 token 不一定失败，也不一定触发 5xx，但会造成用户追问、重新生成、人工接管、退款、客户支持、投诉、流失、额外评测和修复成本。若这些成本被平均摊进正常请求，平台会误以为某个低成本模型毛利更高，实际却把成本转嫁给运营和客户成功团队。质量成本账本让“便宜但没用的 token”从报表里显形。
 
 ```yaml

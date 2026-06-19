@@ -274,6 +274,8 @@ maintenance_window:
 
 维护窗口的关键是让“资源暂时消失”有解释、有边界、有结束条件。若维护没有 drain 规则，训练任务会被粗暴中断；若没有复测项，坏节点会回流；若没有容量影响，业务会在维护当天才发现 reservation 无法兑现。维护状态必须和资源池、变更系统、调度器和 SLO 预算联动。
 
+维护窗口还应显式触发 baseline 失效。更换 NIC、升级 driver、重插线缆、调整液冷、维修 PDU 或替换 GPU 后，资源不应因为维护窗口关闭就回到 allocatable，而应先生成 `baseline_invalidation_record`，把受影响能力降级，再由第 38 章的复测计划恢复能力。资源池状态机可以把维护结束拆成三步：`maintenance_completed`、`baseline_retest_passed`、`allocatable_restored`。这能避免“工单关闭等于资源健康”的常见误判，也让容量系统看见维护造成的真实产能损失。
+
 ## 28.7 故障隔离
 
 故障隔离是把异常资源从可调度池中移除，并限制故障影响范围。触发源可以是 GPU Xid、ECC 趋势、NVLink error、NCCL test 失败、RDMA error、存储异常、温度告警、功耗异常、掉卡、容器 runtime 故障或用户任务重复失败。隔离的目标，是让坏资源不再继续消耗任务成本。

@@ -332,6 +332,48 @@ capacity_activation_record:
 
 这个记录把扩容从项目管理语言转成平台事实。业务关心何时能用，平台关心能承载哪些 workload，设施关心哪些约束未解除，财务关心投产产能和折旧开始。一个 record 同时回答这些问题，才能避免“已经交付”和“还不能跑生产”之间的口径冲突。
 
+`capacity_activation_record` 还应记录从 installed 到 workload-fit 的损耗链。很多扩容争议来自口径混用：采购合同看 planned GPU，设施看 installed GPU，平台看 accepted GPU，调度看 allocatable GPU，业务真正需要的是能跑某类 workload 的 GPU。下面这个版本把损耗原因写成结构化字段，方便进入容量运营和 Token Factory 经济模型：
+
+```yaml
+capacity_activation_record:
+  batch_id: dc-a-rack-12-2026-06
+  rack_capacity_unit: dc-a-rack-12
+  lifecycle:
+    planned_at: recorded
+    installed_at: recorded
+    bootstrapped_at: recorded
+    accepted_at: recorded
+    allocatable_at: recorded_if_ready
+  capacity_funnel:
+    planned_gpu: 128
+    installed_gpu: 128
+    bootstrapped_gpu: calculated
+    accepted_gpu: calculated
+    allocatable_gpu: calculated
+    workload_fit_gpu:
+      large_distributed_training: calculated
+      premium_inference: calculated
+      checkpoint_heavy_training: calculated
+  limiting_factors:
+    power_limited_gpu: calculated
+    cooling_limited_gpu: calculated
+    fabric_limited_gpu: calculated
+    storage_limited_gpu: calculated
+    baseline_invalid_gpu: calculated
+    maintenance_gpu: calculated
+  evidence:
+    physical_acceptance_matrix: physical-rack12-20260619
+    fabric_acceptance_matrix: train-fabric-a-20260619
+    storage_acceptance_matrix: storage-training-prod-20260619
+    baseline_invalidation_records: recorded_if_any
+  economics:
+    capital_committed: recorded
+    activated_capacity_ratio: calculated
+    delayed_capacity_cost: calculated
+```
+
+这个漏斗能让扩容评审更具体。若 installed 到 accepted 损耗大，问题在交付或准入；若 accepted 到 allocatable 损耗大，问题可能在资源池、维护、健康或变更失效；若 allocatable 到 workload-fit 损耗大，问题多半是拓扑、power/cooling、fabric、storage 或租户 entitlement。不同损耗对应不同 owner，不能都归结为“GPU 没上线”。当 delayed_capacity_cost 进入第 41 章的账本，提前做准入、布线校验和液冷演练就不再是额外开销，而是降低投产延迟成本的工程手段。
+
 实现还需要变更闭环。设施变更、线缆变更、交换机升级、液冷维护、PDU 维修、批量换卡和驱动升级，都应触发相应范围的复测。复测范围不必每次全量，但必须与变更影响面匹配。没有变更闭环，初次验收再严格，也会随着运行时间失效。
 
 工程实现还要给异常资源留出处理路径。验收失败的节点进入 quarantine，部分能力不足的 rack 进入 limited，等待供应商处理的批次进入 blocked。明确状态比隐藏问题更重要，因为平台可以基于状态做调度，而不能基于口头说明做自动化。
