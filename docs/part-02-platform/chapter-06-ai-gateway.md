@@ -195,6 +195,25 @@ Envoy AI Gateway 和 Gateway API Inference Extension 代表了一个趋势：AI 
 
 AI Gateway 工程实现应把路由、配额、fallback 和能力校验表达为版本化策略。策略既要能被控制面管理，也要能在数据面高效执行。一个请求进入 Gateway 后，应生成 trace id，解析租户和模型，校验权限和能力，检查 token 与并发预算，选择 upstream，并在响应结束时写入计量事件。对 streaming 请求，还要在首 token、每段输出、取消和结束时维护状态。
 
+生产 Gateway 的核心不是“路由规则多”，而是 admission chain 清楚。每个请求都应按稳定顺序经过 identity、capability、budget、policy、route、commit 六个阶段。identity 绑定租户和项目；capability 确认模型是否支持请求参数；budget 检查 token、并发和费用上限；policy 执行安全、灰度和 fallback 约束；route 选择 endpoint；commit 写入开始事件和 trace。顺序固定后，拒绝原因才稳定，指标才能按阶段解释。
+
+```mermaid
+flowchart LR
+  Req["HTTP Chat Request"] --> Id["1 identity\nkey / tenant / user"]
+  Id --> Cap["2 capability\nmodel supports features"]
+  Cap --> Budget["3 budget\ntoken / rpm / tpm / cost"]
+  Budget --> Policy["4 policy\nsafety / canary / fallback"]
+  Policy --> Route["5 route\nendpoint / pool / provider"]
+  Route --> Commit["6 commit\ntrace / metering start"]
+  Commit --> Upstream["Model Endpoint"]
+  Id -->|deny| Err["typed error"]
+  Cap -->|deny| Err
+  Budget -->|deny| Err
+  Policy -->|deny| Err
+```
+
+Gateway 还应维护“可路由健康”而不是普通 upstream 健康。模型 endpoint 的 HTTP 端口可用，只说明进程活着；能否接收请求还要看模型是否 loaded、queue 是否过长、KV Cache 是否接近上限、TTFT/TPOT 是否越界、是否处于 draining、是否命中 canary 冻结。Gateway 不需要执行 runtime 调度，但必须消费这些摘要信号，否则路由会把压力推给已经拥塞的副本。
+
 一个简化路由规则可以这样表达。实际系统还应补充服务等级、数据驻留、模型 capability、灰度版本和观测标签。
 
 ```yaml
@@ -219,6 +238,44 @@ route:
       weight: 10
 ```
 
+更完整的策略应把 capability 和 fallback 写成显式约束，避免“可用性提升”变成“能力降级”。下面的例子中，fallback 目标必须满足同样的 streaming 和 tool calling 能力，并且只允许在尚未产生 token 前触发。
+
+```yaml
+gateway_policy:
+  version: 2026-06-19.1
+  match:
+    tenant: enterprise-a
+    model: af-chat-large
+  required_capabilities:
+    - streaming
+    - tool_calling
+    - json_schema_output
+  admission:
+    max_context_tokens: 32000
+    max_output_tokens: 4096
+    max_concurrent_streams: 200
+    token_rate_limit:
+      input_tpm: 2000000
+      output_tpm: 800000
+  routing:
+    primary_pool: inference-premium-a
+    health_inputs:
+      - endpoint_ready
+      - queue_p95_ms
+      - kv_cache_pressure
+      - rolling_ttft_p95_ms
+  fallback:
+    enabled: true
+    allowed_before_first_token: true
+    require_same_capabilities: true
+    targets:
+      - inference-premium-b
+  observability:
+    emit_policy_version: true
+    emit_route_reason: true
+    emit_quota_rule_id: true
+```
+
 上线前应测试关键路径：认证失败、权限拒绝、配额超限、长上下文拒绝、streaming 取消、fallback、灰度命中、后端超时、错误码映射和账单事件。AI Gateway 的正确性不是只看能否转发，而是看每种边界条件是否产生预期策略结果。入口层一旦出错，影响面往往覆盖所有模型和租户。
 
 工程实现还应提供策略审计和回放能力。给定一个历史请求，平台应能用当时的策略版本解释它为什么被允许、拒绝、路由或 fallback。策略回放能帮助事故复盘，也能在发布新策略前做 dry-run，评估会影响哪些租户和模型。没有回放能力，网关策略变更只能靠线上试错。
@@ -226,6 +283,27 @@ route:
 实现时还要关注性能路径。认证、配额和路由需要低延迟执行，复杂策略可以预编译或缓存；计量和日志可以异步写入，但不能丢失关键结束事件。尤其是 streaming 请求，开始、取消和结束都应可靠记录。工程实现要在入口延迟和治理完整性之间做明确设计，而不是把所有逻辑串行阻塞在请求路径上。
 
 关键路径失败时，应优先安全拒绝，而不是绕过策略继续转发。
+
+Gateway 的计量事件应采用 append-only 设计。请求开始、首 token、完成、取消和失败是不同事件，不应只在成功完成时写一条 usage。Append-only 事件能处理 streaming 中断、重试和补账，也便于审计。
+
+```yaml
+metering_events:
+  - type: request_admitted
+    trace_id: trace-abc
+    policy_version: 2026-06-19.1
+    requested_model: af-chat-large
+    route_pool: inference-premium-a
+  - type: first_token
+    ttft_ms: measured
+    served_model: af-chat-large-202606
+  - type: usage_delta
+    input_tokens: 2380
+    output_tokens_generated: 128
+    output_tokens_delivered: 128
+  - type: request_closed
+    close_reason: client_cancelled
+    billable_policy: generated_or_delivered
+```
 
 ## 常见故障
 
@@ -256,6 +334,18 @@ AI Gateway 指标应覆盖入口流量、治理结果、模型后端和成本。
 指标还要按策略版本切分。一次路由规则、限流阈值或 fallback 配置变更后，平台需要比较变更前后的延迟、错误、成本和质量代理指标。若没有策略版本维度，网关变更造成的影响会混在模型流量波动里。AI Gateway 是策略执行点，因此策略本身也应成为观测维度。
 
 性能指标还应连接容量规划。Gateway 看到的是最早的租户和模型流量分布，能提前发现某些模型、区域或资源池的需求增长。若这些指标只用于告警，不进入容量评审，平台会重复在高峰期被动扩容。入口指标是业务需求进入 AI Factory 的第一手信号。
+
+对 Gateway 来说，错误指标必须能指导客户端行为。建议每个对外错误码至少带三类元数据：`retryable`、`billing_impact` 和 `owner_stage`。例如认证失败不可重试、无 token 费用、owner 是 identity；后端超时可能可重试、可能已有部分 token、owner 是 serving；客户端取消不可重试、可能已有 generated token、owner 是 client/runtime 边界。缺少这些元数据，应用会用同一种退避策略处理所有失败，平台也无法把故障归到正确团队。
+
+| 错误类别 | 是否建议立即重试 | 是否可能有 token 成本 | 主要责任阶段 |
+| --- | --- | --- | --- |
+| `auth_failed` | 否 | 否 | identity |
+| `quota_exceeded` | 否，等待配额窗口 | 否 | budget |
+| `context_too_large` | 否，缩短输入 | 否 | capability / budget |
+| `model_unavailable` | 可按策略重试或 fallback | 可能没有 | route / serving |
+| `timeout_after_prefill` | 谨慎重试 | 是 | serving / runtime |
+| `stream_client_cancelled` | 否 | 是，取决于账单策略 | client / streaming |
+| `safety_rejected` | 否 | 通常无输出成本，可能有输入成本 | policy |
 
 ## 设计取舍
 

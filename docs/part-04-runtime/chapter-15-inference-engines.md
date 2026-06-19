@@ -207,6 +207,41 @@ inference_engine:
     prefix_cache: optional
 ```
 
+生产引擎还需要 admission model，用来把应用请求转换成引擎可承载的资源声明。这个模型至少要估算四件事：prefill 需要多少输入 token，decode 可能产生多少输出 token，KV Cache 需要多少 block，deadline 和优先级是什么。没有 admission model，引擎只能在运行中发现资源不够，表现为 queue 抖动、OOM 或请求被动失败。
+
+```yaml
+engine_admission:
+  request_id: trace-abc
+  input_tokens: 2380
+  max_output_tokens: 1024
+  priority: interactive
+  deadline_ms: 30000
+  resource_estimate:
+    kv_blocks: estimated
+    prefill_work: estimated
+    decode_steps_upper_bound: 1024
+  decision:
+    admitted: true
+    queue_class: low_ttft
+    reason: capacity_available
+```
+
+引擎执行时应把请求分成清晰阶段。Tokenized 请求先进入 waiting queue；调度器选择一批进入 prefill；prefill 完成后生成 KV Cache；decode 阶段逐步加入 active set；请求完成、取消或失败后释放 block 并写出 close event。这些状态必须可观测，否则 continuous batching 和 KV Cache 会成为黑盒。
+
+```mermaid
+flowchart TB
+  Tokenized["tokenized request"] --> Waiting["waiting queue"]
+  Waiting --> Admit{"capacity + priority"}
+  Admit -->|admit| Prefill["prefill batch"]
+  Admit -->|reject/backpressure| Reject["typed reject"]
+  Prefill --> KVAlloc["allocate KV blocks"]
+  KVAlloc --> Active["active decode set"]
+  Active --> Step["decode step"]
+  Step --> Active
+  Active -->|finish/cancel/error| Release["release KV blocks"]
+  Release --> Usage["emit usage + close reason"]
+```
+
 上线前应执行兼容性测试、基准压测和故障场景测试。兼容性测试检查模型结构、tokenizer、streaming、tool calling 和错误码；基准压测覆盖短 prompt、长 prompt、长输出和混合并发；故障测试覆盖取消、超时、OOM、engine restart 和回滚。推理引擎升级不应只看正常样例。
 
 工程流程还应保留上一稳定配置。引擎版本、模型格式、量化方式和 CUDA/NCCL/driver 组合都可能影响行为。发布新引擎时，应能够同时回滚 runtime 和配置，而不是只回滚镜像。推理引擎是高风险生产依赖，版本管理必须严格。
@@ -218,6 +253,31 @@ inference_engine:
 还应提供基准测试模板。每次引擎变更都用同一组模型、prompt 分布和并发参数运行，结果才能比较。没有标准模板，性能结论很容易受测试方式影响。
 
 最后，配置应能被 dry-run。发布前用历史请求回放配置，检查是否会拒绝过多请求、改变上下文上限或触发缓存异常。Dry-run 不能覆盖所有问题，但能拦截明显配置错误。
+
+引擎基准测试应避免“固定短 prompt 幻觉”。一个可用的 benchmark 至少包含四类负载：短输入短输出、长输入短输出、短输入长输出、长输入长输出，并按生产比例混合。每类都要记录 TTFT、TPOT、prefill tokens/s、decode tokens/s、KV Cache 峰值、OOM/reject、GPU/HBM 和 cost/token proxy。只报告总 tokens/s，会掩盖交互体验和显存边界。
+
+```yaml
+engine_benchmark_matrix:
+  workloads:
+    - name: short_chat
+      input_tokens: p50_short
+      output_tokens: p50_short
+    - name: long_context_qa
+      input_tokens: p95_long
+      output_tokens: p50_short
+    - name: long_generation
+      input_tokens: p50_short
+      output_tokens: p95_long
+    - name: mixed_prod_shape
+      distribution: production_sampled
+  required_outputs:
+    - ttft_p50_p95_p99
+    - tpot_p50_p95_p99
+    - prefill_tokens_per_second
+    - decode_tokens_per_second
+    - kv_cache_peak_and_failures
+    - engine_errors_by_stage
+```
 
 ## 常见故障
 
@@ -255,6 +315,19 @@ inference_engine:
 
 每个关键指标都应有 owner 和用途。若指标不用于告警、容量、发布或成本决策，就应考虑降采样或删除，避免噪声掩盖真正信号。
 
+引擎指标还要区分“可优化信号”和“保护信号”。可优化信号用于调参，例如 batch size、tokens/s、prefix cache hit；保护信号用于阻止继续接流量，例如 KV allocation failure、engine restart、OOM、decode stall、queue deadline miss。两类信号混在一起会导致错误动作：看到 tokens/s 高就继续导流，但 allocation failure 已经开始上升，最终会把高吞吐推成故障。
+
+| 指标 | 类型 | 典型动作 |
+| --- | --- | --- |
+| prefill tokens/s | 可优化 | 调整 prefill batch、prefix cache、长上下文路由 |
+| decode tokens/s | 可优化 | 调整 active sequence、batching、speculative decoding |
+| KV allocation failure | 保护 | 触发 backpressure、降低 max seq、隔离长上下文 |
+| queue deadline miss | 保护 | 扩容、拆队列、降级低优先级流量 |
+| engine restart | 保护 | 摘除副本、保留现场、回滚版本 |
+| prefix cache hit rate | 可优化 | 调整 prompt 模板和缓存 key |
+
+最终，推理引擎的 dashboard 应能回答三个问题：当前还能不能接新请求，接新请求会不会破坏 SLO，若不能接，瓶颈是 queue、prefill、decode、KV Cache 还是 GPU。答不出这三个问题，指标再多也不够生产级。
+
 ## 设计取舍
 
 第一个取舍是性能与兼容性。高度优化的引擎可能需要严格模型格式、构建流程和硬件版本，兼容范围较窄；通用引擎更容易支持多模型和快速迭代，但极限性能可能不如专用优化。平台可以为核心高流量模型使用深度优化路径，为实验和长尾模型使用通用路径。
@@ -279,5 +352,7 @@ inference_engine:
 ## 延伸阅读
 
 - [vLLM documentation](https://docs.vllm.ai/)
+- [vLLM metrics documentation](https://docs.vllm.ai/en/latest/examples/observability/metrics/)
+- [vLLM benchmarking documentation](https://docs.vllm.ai/en/latest/benchmarking/)
 - [SGLang documentation](https://docs.sglang.ai/)
 - [TensorRT-LLM documentation](https://nvidia.github.io/TensorRT-LLM/)

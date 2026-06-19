@@ -204,6 +204,37 @@ flowchart TB
 
 Token Factory 的工程实现从数据模型开始。每个请求、任务、模型版本、租户、endpoint、replica、GPU pool 和计费计划，都要有稳定标识。计量事件必须记录 input token、output token、reasoning token、cached token、失败状态、延迟、模型版本、路由结果和 trace id。没有这些字段，后续成本和收入都只能粗略平均。
 
+核心账本应采用 token ledger，而不是只存最终账单金额。Ledger 是追加式事实表，记录每个请求或任务产生了哪些 token、这些 token 是否可计费、归属哪个租户和模型、对应哪些成本池。账单、毛利、报表和异常审计都从 ledger 派生。这样，即使价格规则变化，也可以重算账单；即使请求失败，也能保留成本事实。
+
+```yaml
+token_ledger_event:
+  event_id: evt_001
+  trace_id: trace-abc
+  tenant: enterprise-a
+  project: support-copilot
+  requested_model: af-chat-large
+  served_model: af-chat-large-202606
+  endpoint: af-chat-large-prod
+  resource_pool: inference-premium-a
+  token_class:
+    input: 2380
+    output_generated: 642
+    output_delivered: 640
+    reasoning: 0
+    cached_input: 512
+  lifecycle:
+    close_reason: stop
+    failure_stage: none
+    retry_of: null
+  economics:
+    billable_input: 1868
+    billable_output: 640
+    price_plan: enterprise-standard-2026
+    cost_pool: gpu-h100-prod-a
+```
+
+Token ledger 要与资源成本账本对齐。资源账本记录 GPU 小时、功耗、资源池、节点、实例、训练作业和推理 endpoint；token ledger 记录 token 产出。两者通过 resource_pool、endpoint、时间窗口和模型版本关联。早期可以按资源池和时间窗口分摊，成熟后再按 replica、请求阶段或 GPU 时间细化。关键是口径公开，并能解释误差。
+
 第二步是建立成本分摊规则。GPU、电力、机房、网络、存储、平台运维和失败浪费可以按不同维度分摊：推理按 token、模型和资源池；训练按 GPU 小时、作业和项目；共享基础设施按容量或实际使用量。规则不必一开始完美，但必须公开、稳定、可复盘，否则业务无法信任报表。
 
 第三步是把 Token Factory 报表接入运营动作。报表至少按模型、租户、资源池和时间窗口展示 tokens/s、tokens/W、cost/token、revenue/token、毛利、SLO、错误率、缓存命中和浪费。发现长上下文成本异常时触发定价或路由评审；发现失败重试成本升高时触发 SRE；发现某模型毛利下降时触发工程优化或产品策略调整。
@@ -238,6 +269,23 @@ token_factory_report:
 
 第六步是保留人工校正机制。早期成本分摊难免粗糙，特殊客户和内部项目也可能需要例外处理。系统应记录例外原因、审批人和有效期，避免临时调整变成永久黑箱。
 
+经济模型也应明确阶段成本。Input token 主要消耗 prefill，output token 主要消耗 decode，cached input token 可能降低 prefill 但仍有缓存占用成本，失败 token 可能没有收入但有资源消耗。把所有 token 用同一成本平均，会误导定价和优化。
+
+```text
+request_cost =
+    prefill_cost(input_tokens - cached_input_tokens)
+  + cache_cost(cached_input_tokens, kv_cache_lifetime)
+  + decode_cost(output_generated_tokens)
+  + gateway_platform_cost(request_count, stream_duration)
+  + failure_waste_cost(failure_stage, retry_count)
+
+gross_margin =
+    billable_revenue(input_tokens, output_tokens, plan)
+  - allocated_request_cost
+```
+
+这个公式不要求一开始精确到每个 kernel，但要求团队承认不同阶段成本不同。长上下文 RAG 的问题通常在 prefill 和 KV Cache，长文生成的问题通常在 decode，Agent 的问题通常在多次调用和失败重试。成本模型若能按阶段切开，工程优化才会指向正确位置。
+
 ## 常见故障
 
 第一类故障是只看 QPS，不看 token。QPS 上升可能是短请求增长，也可能是 Agent 内部调用放大；QPS 稳定也可能掩盖 input token 和 output token 激增。解决方向是把容量、账单和告警都改成请求数与 token 数并行观察，并按请求形态拆分。
@@ -269,6 +317,18 @@ Token Factory 的产能指标包括 total tokens/s、input tokens/s、output tok
 数据质量指标同样重要。计量缺失率、账单对账差异、成本分摊覆盖率、异常 token 占比和报表延迟，决定这些经济指标是否可信。Token Factory 首先是事实系统，其次才是优化系统。
 
 所有指标都应有 owner 和解释文档。没有 owner 的指标没人修，没人解释的指标容易被误用。经济指标一旦进入预算和绩效，口径治理就成为基础设施的一部分。
+
+Token Factory 指标还需要防止 Goodhart 定律。若只考核 cost/token，团队可能牺牲质量和可靠性；若只考核 tokens/s，团队可能放大低价值 token；若只考核 revenue/token，团队可能忽略失败赔付和长期留存。因此关键经济指标必须配套约束指标。
+
+| 目标指标 | 必须同时约束 | 否则可能出现的问题 |
+| --- | --- | --- |
+| 降低 cost/token | TTFT、TPOT、质量、安全、错误率 | 低成本但用户不可用 |
+| 提高 tokens/s | P99 延迟、KV pressure、失败率 | 高吞吐但长尾恶化 |
+| 提高 revenue/token | 续约、退款、人工接管、支持成本 | 短期高价但长期流失 |
+| 提高 GPU 利用率 | error budget、drain 能力、故障恢复 | 利用率高但无冗余 |
+| 提高 tokens/W | workload 口径、SLO、模型质量 | 只优化容易负载 |
+
+经济 dashboard 应把目标指标和约束指标放在同一页。例如展示某模型 cost/token 下降时，同时展示该模型 TTFT、TPOT、质量评测、fallback 和错误率。没有约束指标的经济优化，很容易把局部成本转嫁给用户体验或 SRE。
 
 ## 设计取舍
 

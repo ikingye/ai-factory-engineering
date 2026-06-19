@@ -48,6 +48,26 @@
 | GPU 容器准入与 smoke test | 第 29 章、第 38 章 | 说明节点入池前如何验证容器内 GPU、NCCL、RDMA |
 | 容器内 GPU 与 RDMA/NIC 协同 | 第 22 章、第 32 章、第 38 章 | 说明 device、NIC、NUMA、RDMA、NCCL 的完整路径 |
 
+## 推理请求链路覆盖矩阵
+
+推理请求链路的目标是让读者能从一个用户 Chat 请求一路追到 Gateway、模型服务、推理引擎、GPU/HBM、streaming、计量和经济模型。当前覆盖如下：
+
+| 知识点 | 主要章节 | 覆盖要求 |
+| --- | --- | --- |
+| Chat API、message、prompt、context 的边界 | 第 1 章 | 说明应用输入如何变成模型 prompt 和 tokenized context |
+| input/output token 与 prefill/decode 的资源差异 | 第 1 章、第 15 章、第 41 章 | 说明 token 对 TTFT、TPOT、KV Cache 和成本的影响 |
+| streaming 生命周期、取消和部分输出计量 | 第 1 章、第 6 章、第 14 章 | 说明 generated token、delivered token、close reason 和 drain |
+| Gateway admission chain | 第 6 章 | 说明 identity、capability、budget、policy、route、commit 的顺序 |
+| 可路由健康与 endpoint picker 思想 | 第 6 章、第 14 章 | 说明 queue、KV pressure、TTFT/TPOT 和 endpoint 状态如何影响路由 |
+| append-only metering event | 第 6 章、第 41 章 | 说明 request_admitted、first_token、usage_delta、request_closed 的账实关系 |
+| OpenTelemetry / GenAI telemetry 语义 | 第 8 章 | 说明通用语义与 AI Factory 自定义标签如何组合 |
+| 模型服务 endpoint/replica 生命周期 | 第 14 章 | 说明 warming、ready、canary、stable、draining、rollback 状态 |
+| serving release 组合版本 | 第 14 章 | 绑定 weights、tokenizer、chat template、runtime、engine config 和 rollback |
+| 推理引擎 admission model | 第 15 章 | 说明 input tokens、max output、KV block、deadline 和 queue class |
+| continuous batching 与 KV Cache 状态流 | 第 15 章 | 说明 waiting、prefill、active decode、release、usage 的阶段 |
+| benchmark matrix | 第 15 章 | 覆盖短输入短输出、长输入短输出、短输入长输出和生产混合负载 |
+| Token Factory ledger | 第 41 章 | 说明 token ledger、resource ledger、阶段成本和毛利约束指标 |
+
 ## 全书循环更新策略
 
 全书更新按“主题链路”推进，而不是按章节孤立推进。每轮选择一条关键链路，补齐机制、图、配置、故障、指标和验收。
