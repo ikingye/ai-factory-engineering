@@ -280,6 +280,63 @@ gateway_policy:
 
 工程实现还应提供策略审计和回放能力。给定一个历史请求，平台应能用当时的策略版本解释它为什么被允许、拒绝、路由或 fallback。策略回放能帮助事故复盘，也能在发布新策略前做 dry-run，评估会影响哪些租户和模型。没有回放能力，网关策略变更只能靠线上试错。
 
+`policy_decision_record` 是 Gateway 最关键的安全证据对象。它记录一次请求在 identity、capability、budget、data boundary、safety、route 和 commit 阶段的输入事实、命中规则、决策结果和策略版本。它不应包含完整 prompt 或敏感响应，而应包含足够解释策略的引用和摘要。这样既能保护数据边界，又能回答“为什么这个请求被允许、拒绝、限流、fallback 或路由到某个资源池”。
+
+```mermaid
+flowchart TB
+  Req["request"] --> Identity["identity check"]
+  Identity --> Boundary["tenant_boundary"]
+  Boundary --> Credential["credential_lifecycle"]
+  Credential --> DataPolicy["data_boundary_policy"]
+  DataPolicy --> Budget["quota / budget"]
+  Budget --> Capability["model capability"]
+  Capability --> Route["route / fallback"]
+  Route --> Decision["policy_decision_record"]
+  Decision --> Audit["security_audit_event"]
+  Decision --> Metering["metering event"]
+  Decision --> Trace["trace context"]
+```
+
+一个简化记录如下。注意这里使用 `prompt_ref` 和 `policy_inputs_hash`，避免把原始敏感内容复制到审计系统；使用 `matched_rules` 和 `effective_policy_versions`，保证策略能回放；使用 `owner_stage`，让拒绝或异常能进入正确团队的队列。
+
+```yaml
+policy_decision_record:
+  decision_id: pdr-20260619-0001
+  trace_id: trace-abc
+  request_id: req-123
+  time: measured
+  subject:
+    tenant_id: enterprise-a
+    project_id: customer-service-prod
+    credential_id: key_6f2c_redacted
+    user_context: present
+  target:
+    requested_model: af-chat-large
+    operation: chat.completions.create
+    requested_region: cn-north
+  policy_inputs:
+    prompt_ref: object://redacted-reference
+    policy_inputs_hash: sha256:example
+    input_token_estimate: measured_or_estimated
+    requested_capabilities: [streaming, tool_calling]
+  effective_policy_versions:
+    tenant_boundary: tb-20260619.1
+    credential_policy: cred-20260601.2
+    gateway_policy: gw-20260619.4
+    data_boundary_policy: dbp-20260610.3
+  matched_rules:
+    - allow_model_af_chat_large
+    - deny_third_party_provider
+    - require_same_region
+  result:
+    action: allow_and_route
+    route_pool: inference-premium-a
+    fallback_allowed: true
+    owner_stage: policy
+```
+
+`policy_decision_record` 还应支持 dry-run。发布新策略前，平台可以拿历史请求做回放，计算新增拒绝、路由变化、fallback 变化、成本变化和受影响租户。成熟 Gateway 的策略发布流程不应是“上线后观察”，而应先回答“如果这条策略昨天生效，会影响哪些请求”。这对安全策略尤其重要，因为过宽会放大风险，过严会中断业务。
+
 实现时还要关注性能路径。认证、配额和路由需要低延迟执行，复杂策略可以预编译或缓存；计量和日志可以异步写入，但不能丢失关键结束事件。尤其是 streaming 请求，开始、取消和结束都应可靠记录。工程实现要在入口延迟和治理完整性之间做明确设计，而不是把所有逻辑串行阻塞在请求路径上。
 
 关键路径失败时，应优先安全拒绝，而不是绕过策略继续转发。
@@ -315,19 +372,19 @@ metering_events:
 
 还有一类常见故障是网关和控制面状态不一致。控制面已经下线模型，数据面仍缓存旧规则；配额已经提升，某个网关实例仍使用旧配置；灰度规则只更新了部分区域。这类问题会表现为同一租户在不同请求中得到不同结果。配置版本和实例一致性检查，是 AI Gateway 运维的基本功。
 
-否则同一策略会在不同实例上表现不同。
+第七类故障是缺少可回放的策略证据。某个请求被拒绝，日志只写了 `forbidden`；某次 fallback 触发，账单只看到 served model 变化；某个 key 被限流，用户不知道是 TPM、预算还是来源限制。缺少 `policy_decision_record` 时，平台只能靠人肉查配置和日志。解决方向是每次 allow、deny、route、fallback、rate_limit 和 safety reject 都留下结构化决策记录。
 
-这种不一致会直接破坏排障可信度。
+第八类故障是数据边界被观测系统绕过。Gateway 正确阻止了请求发往第三方 provider，但把完整 prompt 写入了 trace；RAG 正确做了文档权限过滤，但检索摘要进入了共享日志；安全策略拒绝了工具调用，但工具参数出现在告警通知中。AI Gateway 必须把 `data_boundary_policy` 同时应用到转发、日志、trace、审计和调试导出，而不是只应用到请求路由。
 
-配置漂移要告警。
-
-告警应指向具体实例。
+配置漂移要告警，告警应指向具体实例、策略版本和受影响租户。否则同一策略会在不同实例上表现不同，直接破坏排障可信度。
 
 ## 性能指标
 
 AI Gateway 指标应覆盖入口流量、治理结果、模型后端和成本。入口指标包括请求数、连接数、streaming duration、网关处理延迟、请求体大小、响应体大小和客户端取消率。治理指标包括认证失败、权限拒绝、限流命中、配额拒绝、上下文超限、fallback 次数、灰度流量比例、策略拦截和错误码分布。
 
 后端指标应按 upstream、模型、租户和服务等级切分，包括 TTFT、TPOT、E2E latency、后端错误率、队列等待、超时、健康状态和资源池压力。成本指标包括按路由策略的 input/output token、fallback 成本、租户成本、模型成本和异常 token 消耗。安全指标包括高风险工具请求、策略拒绝、异常 key 调用和跨租户访问拒绝。
+
+安全指标要区分三类：身份风险、策略风险和数据风险。身份风险包括 key 来源异常、过期 key 使用、被禁用 key 重试、同一 key 多地域突增；策略风险包括 deny 率、dry-run 影响请求数、fallback 能力不匹配、越权模型访问尝试；数据风险包括 prompt logging downgrade、第三方 provider 拒绝、跨区域拒绝、trace 脱敏失败和高敏字段命中。把这些指标混成一个 `security_rejected_total`，无法指导安全团队行动。
 
 指标要支持行动。若限流命中高，可能需要调整配额或优化应用；若 fallback 激增，可能是主集群故障或路由策略错误；若 streaming 取消率高，可能是客户端体验、超时或输出过慢；若某 upstream TTFT 升高，可能是队列、prefill 或资源池压力。Gateway dashboard 应帮助团队判断下一步，而不是只显示总请求数。
 

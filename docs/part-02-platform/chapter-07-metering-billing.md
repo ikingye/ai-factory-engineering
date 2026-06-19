@@ -220,6 +220,44 @@ metering_event:
 
 实现时要做对账。网关事件、模型服务事件、账单聚合和可观测指标应能按 trace id 对齐；若 token 数、模型版本或状态不一致，应进入异常表。账单可以允许人工修正，但修正必须保留原因和审批。计量系统的可信度来自可对账，而不是来自某个数据库字段看起来完整。
 
+`tenant_cost_isolation` 是多租户 MaaS 计费的核心对象。它定义哪些成本归属于租户直接用量，哪些成本归属于租户保留容量，哪些属于共享平台 overhead，哪些属于安全或可靠性事故。没有这个对象，平台容易把所有 GPU 成本按 token 平均摊开，导致高 SLA 租户、专属资源池、低利用 reservation、失败重试和免费额度的真实成本都被掩盖。
+
+```yaml
+tenant_cost_isolation:
+  tenant_id: enterprise-a
+  billing_period: 2026-06
+  cost_boundary:
+    direct_usage:
+      token_cost: calculated
+      embedding_cost: calculated
+      rerank_cost: calculated
+      tool_execution_cost: calculated
+    reserved_capacity:
+      pool_id: inference-premium-a
+      reserved_gpu_hours: measured
+      unused_reserved_cost: calculated
+      borrow_policy_credit: calculated
+    shared_overhead:
+      observability: allocated_by_policy
+      gateway: allocated_by_request_share
+      storage_cache: allocated_by_cache_usage
+    exceptional_cost:
+      leaked_key_cost: under_investigation
+      platform_failure_credit: calculated
+      security_incident_hold: policy_defined
+  attribution_keys:
+    - trace_id
+    - project_id
+    - credential_id
+    - served_model
+    - route_pool
+    - policy_decision_id
+```
+
+这个对象让账单争议可拆解。若租户质疑费用增长，平台可以区分是正常 output token 增加、长上下文 input 增加、Agent 中间调用增加、专属容量空闲、fallback 到高成本模型、key 泄露还是平台失败重试。每一种原因对应不同处理：应用优化、预算调整、容量谈判、安全处置、退款或平台修复。没有成本隔离，所有争议都会退化成“账单为什么变贵了”。
+
+计费隔离还要和安全边界联动。API Key 泄露期间产生的 token 是否计费，取决于合同和平台责任，但无论如何都要先能识别这部分用量。被安全策略拒绝的请求是否收费，取决于是否已经消耗 prefill 或第三方 API；跨区域被拒绝的请求通常不应产生模型成本，但可能产生网关处理成本。成本系统必须消费 Gateway 的 `policy_decision_record`，否则无法解释安全事件的经济影响。
+
 工程实现还应支持重算。价格规则变化、折扣补录、事件迟到或标签修复后，平台可能需要重算某个时间窗口的账单。重算必须基于不可变原始事件和版本化价格规则，而不是覆盖历史聚合结果。这样才能在争议处理和审计时说明“为什么账单发生变化”。可重算能力是计费系统成熟度的重要标志。
 
 落地时可以把链路拆成三类数据集：原始事件表、聚合用量表和账单明细表。原始事件只追加不覆盖；聚合用量可以按小时或天重算；账单明细记录价格规则、折扣和出账批次。每次重算都生成新的版本，并保留旧版本用于审计。在线预算系统则使用近实时聚合结果，不直接依赖月度账单。
@@ -234,6 +272,10 @@ metering_event:
 
 还有一类故障是标签错误。API Key 没有项目标签，租户迁移后成本中心没有更新，模型别名指向新版本但计费仍按旧版本，或者测试流量混入生产账单。标签错误不会让请求失败，却会让账单失真。计量系统应定期做标签完整性检查，并把缺失标签的事件放入待修复队列。账单可信度依赖数据治理。
 
+第七类故障是跨租户成本污染。共享推理池中某个低价套餐租户制造了大量长上下文请求，导致 GPU 队列和成本上升，但平台把空闲冗余和失败重试平均摊给所有租户；或者专属资源池的空闲成本被错误摊入共享池，使共享池 cost/token 看起来异常高。解决方向是区分 usage cost、reserved cost、shared overhead 和 exceptional cost，并把 route_pool、service_level、reservation_id 写入原始事件。
+
+第八类故障是安全事件成本无法冻结。某个 key 疑似泄露后，平台继续按正常账单聚合，月底才发现异常 token 已经混入租户账单和毛利报表。更稳妥的做法是密钥异常触发 `billing_hold`，把相关 usage 标记为 under investigation；调查完成后再决定计费、退款、内部损失或安全赔付。计费系统必须支持事件级状态，而不是只能生成最终账单。
+
 故障复盘时要区分“少收、错收、无法解释”。少收影响平台成本回收，错收影响用户信任，无法解释影响治理能力。三者优先级和处理方式不同。成熟平台会为计费事故建立专门流程，包括影响范围、修正账单、通知租户和修复计量链路。计费事故也是生产事故。
 
 还有一种隐蔽故障是“指标好看但口径漂移”。例如模型升级后 tokenizer 改变，token 数下降并不代表成本下降；缓存命中统计变更后，cached token 激增也不一定是优化成功。任何计量口径变化都应发布变更说明，并在报表中标注生效时间。
@@ -243,6 +285,8 @@ metering_event:
 计量系统本身也需要指标。计量完整性包括事件丢失率、重复事件率、对账差异、延迟入账比例和未归属事件比例。用量指标包括按租户、项目、模型、服务等级和时间窗口聚合的 input/output/reasoning token、请求数、任务数和工具调用。成本指标包括 cost per token、GPU allocated cost、第三方 API 成本、失败重试成本、空闲容量和平台 overhead。
 
 收入指标包括 revenue per token、账单金额、折扣金额、免费额度消耗、欠费或超预算金额。毛利指标包括按模型、租户、应用、资源池和时间窗口的 gross margin 与 margin rate。预算指标包括预算使用率、接近预算告警、超预算拒绝和预算调整记录。若这些指标不能按对象维度切分，就无法指导运营。
+
+安全与隔离指标包括按 credential、project 和 tenant 切分的异常用量、被 hold 的 usage、疑似泄露 key 成本、越权请求次数、跨区域拒绝成本、第三方 provider 禁止路由次数和账单争议金额。它们不是安全团队的独立指标，而是成本治理的一部分。多租户平台只要支持共享资源，就必须能说明某个租户没有为另一个租户的异常行为买单。
 
 指标还要服务数据质量。每月出账前，应检查事件完整性、模型价格版本、租户标签、折扣规则、对账差异和异常增长。异常不一定是错误，可能是业务增长或新应用上线，但必须能解释。计量计费系统的性能不是吞吐越高越好，而是及时、准确、可追溯、可解释。账单一旦失去信任，后续所有成本治理都会困难。
 

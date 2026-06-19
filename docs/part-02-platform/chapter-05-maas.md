@@ -26,13 +26,46 @@ MaaS 的关键对象包括 `model`、`endpoint`、`tenant`、`project`、`api_ke
 
 这些对象还要形成一致生命周期。模型从 preview 到 available 再到 deprecated，API Key 从创建到轮换再到禁用，配额从默认到审批提升，路由从灰度到全量，账单从实时用量到月度结算，都应有状态和审计。MaaS 的复杂度不在单次请求，而在这些对象长期演进时仍能保持一致。对象模型越清楚，平台越容易自动化。
 
-对象模型也是跨团队接口。
+对象模型也是跨团队接口。它决定应用、平台、模型、SRE、安全和财务是否在讨论同一件事。没有共同对象，租户边界、访问权限、成本归因和事故影响面都会在不同系统里各说各话。MaaS 的安全治理不是附加在 API 入口的一层校验，而是从 `tenant`、`project`、`api_key`、`model`、`endpoint`、`usage` 和 `audit_event` 这些对象开始。
 
-它决定应用、平台、模型、SRE 和财务是否在讨论同一件事。
+`tenant_boundary` 是 MaaS 必须明确的安全对象。它描述一个租户在身份、项目、模型访问、数据驻留、日志可见性、资源池、预算、SLA 和支持流程上的边界。租户边界不是单个字段，而是一组约束：哪个身份能代表租户调用，哪些模型对它可见，请求数据能否出区域，日志是否可以被平台人员查看，是否允许使用共享资源池，账单和赔付如何归属。边界越清楚，平台越容易做自动化；边界模糊，多租户问题迟早会表现为安全事故或账单争议。
 
-这也是平台自动化的基础。
+一个可执行的 `tenant_boundary` 可以这样表达：
 
-没有共同对象，就没有共同责任。
+```yaml
+tenant_boundary:
+  tenant_id: enterprise-a
+  projects:
+    - project_id: customer-service-prod
+      environment: production
+      owner: team-cs-platform
+      cost_center: cc-llm-cs
+  identity:
+    allowed_principals:
+      - service_account: svc-cs-prod
+      - group: cs-platform-admins
+    require_user_context_for_tools: true
+  model_access:
+    allowed_models:
+      - af-chat-large
+      - af-rerank-base
+    denied_models:
+      - preview-unsafe-experimental
+  data_boundary:
+    residency: cn-north
+    allow_third_party_provider: false
+    prompt_logging: redacted
+    response_logging: redacted
+  resource_boundary:
+    serving_pool: inference-premium-a
+    training_pool: none
+    allow_shared_gpu: false
+  billing_boundary:
+    budget_policy: monthly_budget_with_hard_stop
+    invoice_entity: enterprise-a
+```
+
+这个对象的价值在于让 Platform 层、Gateway、资源池、观测和计费使用同一份边界。Gateway 可以用它拒绝第三方 provider 路由；RAG 服务可以用它过滤文档；观测系统可以决定 trace 脱敏级别；资源池可以决定是否允许共享 GPU；计费系统可以按同一成本中心归账。多租户平台最怕“每层自己理解租户”，因为这种理解迟早会漂移。
 
 ## 系统架构
 
@@ -108,7 +141,37 @@ API Key 的风险在于传播简单。它可能被写入代码仓库、CI 日志
 
 平台还应主动发现异常 key 行为。例如一个测试 key 突然在生产区域高频调用，某个 key 从异常 IP 访问，或一个长期不用的 key 在深夜消耗大量 token，都应触发告警。密钥轮换也要有平滑机制，允许新旧 key 短期并存并观察调用切换。没有这些能力，API Key 泄露会直接变成成本事故和数据风险。
 
-密钥策略应默认最小权限。
+密钥策略应默认最小权限。`credential_lifecycle` 应像证书和云访问密钥一样被管理，而不是作为一次性字符串发给用户。一个 key 的生命周期至少包含 requested、approved、issued、active、rotating、suspended、revoked、expired 和 archived。每次状态变化都要记录操作者、原因、审批、影响范围和回滚方式。生产 key 不应永久有效；高风险模型、高预算项目和 Agent tool calling 场景应使用更短周期、更细 scope 或短期 token。
+
+```yaml
+credential_lifecycle:
+  credential_id: key_6f2c_redacted
+  tenant_id: enterprise-a
+  project_id: customer-service-prod
+  principal_type: service_account
+  scopes:
+    models: [af-chat-large]
+    operations: [chat.completions.create, embeddings.create]
+    tools: [search_docs]
+  constraints:
+    source_networks: [corp-egress-prod]
+    max_tpm: 2000000
+    max_monthly_budget: policy_defined
+    expires_at: policy_defined
+  lifecycle:
+    state: rotating
+    previous_key_valid_until: policy_defined
+    last_used_at: measured
+    abnormal_usage_state: none
+  audit:
+    created_by: platform-admin
+    approved_by: tenant-owner
+    rotation_reason: scheduled
+```
+
+`api_key_audit_event` 应在每次关键动作时追加写入：创建、下载、首次使用、权限修改、来源异常、预算异常、轮换、禁用、恢复和删除。审计事件不能只记录“谁点了按钮”，还要记录生效策略和影响面，例如会影响哪些模型、哪些项目、哪些账单项和哪些正在运行的 Agent。密钥泄露事故中，最重要的问题通常不是“key 是谁创建的”，而是“泄露期间它能访问什么、消耗了多少、是否触碰了数据边界、哪些调用需要作废或追偿”。
+
+MaaS 还要定义 `data_boundary_policy`。大模型请求中可能包含用户输入、企业文档、代码、日志、图片、检索结果和工具返回。平台要明确哪些数据可以进入 prompt，哪些可以写入 trace，哪些可以用于评测，哪些可以进入缓存，哪些可以发送到第三方 provider，哪些只能以引用 ID 存储。缺少数据边界时，可观测性、调试、评测和缓存都会变成潜在泄露面。数据边界不是法律文档，而是 Gateway、RAG、Agent、观测和存储共同执行的技术策略。
 
 ## 5.5 租户、项目、配额
 

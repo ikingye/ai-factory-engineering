@@ -197,6 +197,45 @@ docker run --rm -it \
 
 `--privileged` 能让容器看到更多宿主能力，但这是过宽授权，不是工程方案。特权容器可能访问宿主设备、修改内核相关状态、绕过很多隔离限制。AI 平台为了方便调试偶尔会使用 privileged，但生产模型服务和多租户训练不应依赖它。正确方向是让设备、库、capability、seccomp 和 mount 都以最小权限进入容器，并由调度和审计系统记录。
 
+生产平台需要把这些权限收敛成 `runtime_privilege_profile`，而不是让每个用户在 YAML 中自由组合 `privileged`、`hostPath`、`hostNetwork`、Linux capabilities 和设备挂载。这个 profile 描述某类 workload 允许使用哪些宿主能力、哪些必须由平台注入、哪些只允许 debug 临时豁免。AI Factory 中最危险的错误不是某个容器拿不到 GPU，而是为了让 GPU 可用而把宿主机完整暴露给用户进程。
+
+```yaml
+runtime_privilege_profile:
+  name: gpu-inference-production
+  allowed_namespaces:
+    - maaS-prod
+  workload_types:
+    - online_inference
+  privilege:
+    privileged: false
+    allow_privilege_escalation: false
+    run_as_non_root: true
+    seccomp_profile: RuntimeDefault
+    capabilities:
+      add: []
+      drop: [ALL]
+  host_access:
+    host_network: false
+    host_pid: false
+    host_ipc: conditional_for_nccl_only
+    host_path:
+      allowed: false
+      exceptions:
+        - path: /dev/shm
+          reason: shared_memory_for_inference_engine
+          mode: size_limited_emptydir_preferred
+  devices:
+    gpu: allocated_by_device_plugin
+    rdma: allocated_by_rdma_device_plugin
+    manual_device_mount: denied
+  audit:
+    require_owner: true
+    require_ticket_for_exception: true
+    emit_security_audit_event: true
+```
+
+`runtime_privilege_profile` 应由 admission webhook 或平台控制器执行。对生产 namespace，用户不能直接提交 privileged Pod，也不能随意挂载 `/`, `/var/run`, `/dev`, `/sys`, `/proc`, container runtime socket 或宿主 driver 目录。对需要 RDMA、NCCL 或性能调试的场景，可以通过受控 profile 开放 `IPC_LOCK`、`SYS_NICE`、host IPC 或特定 device，但必须有过期时间和审计。这样平台既能支持高性能 AI workload，又不会把临时调试权限变成长期生产默认值。
+
 NVIDIA 的方案演进可以概括为三代。`nvidia-docker` 1.x 是早期包装器，用户用 `nvidia-docker run` 替代 `docker run`，由额外逻辑挂载 GPU 相关资源；它与原生 Docker 生态耦合较强，后来被淘汰。`nvidia-docker2` 引入 `nvidia-container-runtime`，用户可以通过 `docker run --runtime=nvidia` 使用增强 runtime，同时保留 `nvidia-docker` 作为兼容入口。当前主线是 NVIDIA Container Toolkit，它把 runtime、hook、CLI、library 和配置工具组合起来，支持 Docker、containerd、CRI-O、Podman 等不同 runtime 场景，并提供 `nvidia-ctk` 进行配置。
 
 NVIDIA Container Toolkit 的组件职责要记清楚。`libnvidia-container` 是底层库，负责发现宿主机 NVIDIA driver 能力，并执行设备和库文件注入。`nvidia-container-cli` 是调用该库的命令行工具，可用于 debug 和实际注入。`nvidia-container-runtime-hook` 或 `nvidia-container-toolkit` 作为 OCI hook，在容器创建后、用户进程启动前被调用。`nvidia-container-runtime` 包装低层 runc，修改 OCI spec，把 NVIDIA hook 加入生命周期。`nvidia-ctk` 是配置工具，用于写入 Docker、containerd 等 runtime 配置。
@@ -319,6 +358,25 @@ spec:
 
 落地时还要把准入门禁接到对象创建路径。生产 namespace 可以要求镜像 digest、资源标签、探针、owner、租户、成本中心和安全上下文齐全；GPU workload 可以要求目标节点池已经通过容器 GPU smoke test；训练任务可以要求 queue、quota、checkpoint 和失败策略完整。这些检查应由 admission webhook 或平台控制器自动执行，而不是靠评审 YAML。Kubernetes 允许用户提交很多合法对象，但 AI Factory 只应允许符合生产语义的对象进入关键资源池。
 
+一个 GPU workload 的准入链可以这样组织：
+
+```mermaid
+flowchart LR
+  Submit["Pod / Job / ModelService"] --> Namespace["namespace / tenant check"]
+  Namespace --> Image["image digest / vulnerability gate"]
+  Image --> Security["runtime_privilege_profile"]
+  Security --> Resource["GPU / RDMA resource request"]
+  Resource --> Labels["owner / cost / model labels"]
+  Labels --> Baseline["node pool acceptance baseline"]
+  Baseline --> Admit["admit"]
+  Namespace -->|deny| Reject["typed rejection"]
+  Image -->|deny| Reject
+  Security -->|deny| Reject
+  Resource -->|deny| Reject
+```
+
+准入失败要给出 typed rejection，而不是只告诉用户 “forbidden”。例如 `privileged_not_allowed`、`hostpath_denied`、`gpu_request_missing`、`image_digest_required`、`tenant_label_missing`、`node_pool_not_accepted`。这些拒绝原因既能提升用户体验，也能进入平台指标，帮助团队判断是文档问题、镜像治理问题、权限模型过严，还是用户在绕过平台。
+
 ## 常见故障
 
 第一类故障是 driver/runtime 不匹配。宿主机 driver 太旧，容器内 CUDA runtime 或框架需要更高能力；或者 driver 可支持 CUDA runtime，但 NCCL、PyTorch、TensorRT-LLM 与实际 GPU/OFED 组合没有通过验证。症状包括 `libcuda.so.1` 加载失败、CUDA initialization error、`nvidia-smi` 正常但框架不可用。处理方式是查宿主 driver、容器 CUDA、NCCL、框架版本和官方兼容矩阵，再跑最小 CUDA 与 NCCL 测试。
@@ -327,11 +385,15 @@ spec:
 
 第三类故障是 OCI hook 执行失败。错误可能出现在 cgroup device rule、rootless/container permission、找不到 driver library、`nvidia-container-cli` 初始化失败、legacy image 默认行为或 hook 与 runtime 版本不兼容。Kubernetes 事件通常只显示 `OCI runtime create failed`，需要查看节点日志。生产节点应开启可控 debug 路径，例如在故障节点临时运行 `nvidia-container-cli --debug`，并归档 hook 日志。
 
-第四类故障是 Pod Ready 过早。模型服务端口启动后 readiness 成功，但模型权重还未加载、CUDA graph 未捕获、engine 未 warmup、KV Cache 未初始化或 LoRA adapter 未挂载。表现为发布成功后首批请求大量超时。解决方案是使用 startup probe 保护慢启动，readiness 只在真实模型可服务后通过，并在发布系统中加入 synthetic request。
+第四类故障是 debug 权限泄漏到生产。为了排查一次 NCCL 问题，团队给某个 namespace 开了 privileged、hostNetwork 或宿主 `/dev` 挂载，问题解决后没有回收；后续普通推理 Pod 也继承了过宽权限。症状不一定是即时故障，而是安全边界被长期削弱。解决方向是所有 debug profile 都必须有过期时间、审批和自动回滚，并通过 `security_audit_event` 记录影响范围。
 
-第五类故障是 Service/Gateway 与 streaming 不匹配。Service endpoint 正常，短请求正常，长回答中断。原因可能是 Gateway idle timeout、upstream timeout、客户端取消传播、HTTP/2 连接池、负载均衡重试或应用没有处理 backpressure。排障要用同一个 request id 贯穿 Gateway、Service、Pod、模型 engine 和 token 计量事件。
+第五类故障是用户通过 hostPath 或镜像默认环境绕过设备治理。Pod 没有申请 `nvidia.com/gpu`，但因为 runtime 或镜像默认值看到了 GPU；或者用户挂载宿主 driver 目录和设备文件，绕过 device plugin、quota 和计费。生产平台应拒绝手工设备挂载，并定期扫描容器内可见设备与调度分配记录是否一致。
 
-第六类故障是调度看见 GPU，runtime 看不见 GPU。Scheduler 只根据 allocatable 和 request 做绑定；真正设备注入发生在 kubelet/device plugin/CRI/runtime 链路。若 device plugin 上报异常、分配结果缺失、runtime hook 没执行或环境变量被镜像覆盖，就会出现节点有 GPU、Pod 也申请了 GPU、容器里却不可用。此时要同时查 `kubectl describe node`、device plugin log、Pod allocated resources、containerd log 和容器内 `/dev/nvidia*`。
+第六类故障是 Pod Ready 过早。模型服务端口启动后 readiness 成功，但模型权重还未加载、CUDA graph 未捕获、engine 未 warmup、KV Cache 未初始化或 LoRA adapter 未挂载。表现为发布成功后首批请求大量超时。解决方案是使用 startup probe 保护慢启动，readiness 只在真实模型可服务后通过，并在发布系统中加入 synthetic request。
+
+第七类故障是 Service/Gateway 与 streaming 不匹配。Service endpoint 正常，短请求正常，长回答中断。原因可能是 Gateway idle timeout、upstream timeout、客户端取消传播、HTTP/2 连接池、负载均衡重试或应用没有处理 backpressure。排障要用同一个 request id 贯穿 Gateway、Service、Pod、模型 engine 和 token 计量事件。
+
+第八类故障是调度看见 GPU，runtime 看不见 GPU。Scheduler 只根据 allocatable 和 request 做绑定；真正设备注入发生在 kubelet/device plugin/CRI/runtime 链路。若 device plugin 上报异常、分配结果缺失、runtime hook 没执行或环境变量被镜像覆盖，就会出现节点有 GPU、Pod 也申请了 GPU、容器里却不可用。此时要同时查 `kubectl describe node`、device plugin log、Pod allocated resources、containerd log 和容器内 `/dev/nvidia*`。
 
 ## 性能指标
 

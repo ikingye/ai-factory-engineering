@@ -46,6 +46,39 @@ GPU 资源池架构通常包括 inventory collector、health controller、mainte
 
 这也是资源池 API 设计的核心：既要服务自动化调度，也要服务人类排障和经营分析。
 
+在多租户平台中，资源池还必须有 entitlement 视图。`resource_pool_entitlement` 描述某个租户、项目或服务等级可以使用哪些资源等级、是否允许共享、是否可以预留、能否借用低优资源、需要什么审批。没有 entitlement，调度器只能看到资源可用，却不知道某个租户是否有资格使用这组 GPU；计费系统也无法区分正常共享、专属承诺和越权分配。
+
+```yaml
+resource_pool_entitlement:
+  entitlement_id: ent-enterprise-a-premium
+  tenant_id: enterprise-a
+  projects:
+    - customer-service-prod
+  allowed_resource_classes:
+    - gpu-container-full-card
+    - gpu-mig-dedicated-profile
+  denied_resource_classes:
+    - gpu-time-slicing-best-effort
+  data_classification:
+    max_allowed: confidential
+  sharing_policy:
+    allow_shared_node: false
+    allow_shared_gpu: false
+    allow_same_tenant_colocation: true
+  reservation_policy:
+    max_reserved_gpu: policy_defined
+    max_duration: policy_defined
+    approval_required: true
+  preemption_policy:
+    can_borrow_idle_capacity: true
+    can_be_preempted_by: none_for_premium
+  audit:
+    policy_version: ent-20260619.1
+    approved_by: platform-capacity-owner
+```
+
+Entitlement 不等同于 quota。Quota 说“最多能用多少”，entitlement 说“允许用什么类型、在什么边界下使用”。一个租户可能有 100 张 GPU quota，但只允许使用专属节点池；另一个租户 quota 较小，却可以使用 best-effort 共享池。把两者混在一起，会导致安全租户被调度到不该使用的共享资源，或低风险任务占用高隔离资源造成浪费。
+
 ```mermaid
 flowchart LR
   Inventory["inventory / asset"] --> State["health & maintenance state"]
@@ -116,9 +149,35 @@ Reclaim 还与抢占相关。低优先级任务借用资源后，高优先级 re
 
 Reclaim 还应区分安全清理和性能恢复。安全清理关注数据、凭据和缓存是否残留，性能恢复关注 GPU、MIG、驱动、进程和节点状态是否回到基线。两个目标都满足，资源才适合再次分配。
 
-回收完成后应留下验证记录，否则平台无法证明资源复用是安全且干净的。
+回收完成后应留下验证记录，否则平台无法证明资源复用是安全且干净的。第 27 章中的 `clean_to_reuse_record` 应在这里成为状态流转门禁：allocation 释放后进入 reclaim，清理和复验通过后才能进入 allocatable；失败则进入 quarantine 或 maintenance。资源池不能只相信 Pod 删除、VM 删除或租约结束，因为这些动作只说明控制面对象消失，不说明设备、缓存、凭据和本地数据已经恢复到可复用状态。
 
-记录也能支持审计。
+资源池还应记录 `security_audit_event`。创建 reservation、修改 entitlement、解除 isolation、强制 reclaim、手工覆盖 inventory、访问完整 GPU UUID 和邻居租户信息，都属于高价值操作。审计事件至少包含操作者、租户、资源对象、旧值、新值、审批、原因、策略版本和影响范围。GPU 资源池中的状态变更直接影响成本、隔离和 SLA，不能只靠普通操作日志。
+
+```yaml
+security_audit_event:
+  event_id: sae-20260619-0001
+  time: measured
+  actor:
+    type: human
+    id: sre-oncall-a
+    role: gpu-pool-admin
+  action: override_resource_state
+  resource:
+    node: gpu-node-001
+    gpu_uuid: GPU-xxxx
+    pool: inference-premium-a
+  before:
+    state: quarantine
+  after:
+    state: allocatable
+  evidence:
+    clean_to_reuse_record: ctr-20260619-0001
+    dcgm_health: passed
+    approval_ticket: ticket-123
+  impact:
+    tenants_potentially_affected: [enterprise-a]
+    capacity_delta_gpu: 1
+```
 
 ## 28.5 health state
 

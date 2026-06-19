@@ -149,6 +149,22 @@
 | `capacity_activation_record` | 第 36 章、第 40 章 | 说明 planned、installed、accepted、limited、allocatable 到 retired 的交付状态流转 |
 | `energy_ledger` | 第 36 章、第 41 章 | 说明 GPU power、rack power、PUE、tokens/W、joules/token 和 power/cooling-induced waste 的经济归因 |
 
+## 安全与多租户链路覆盖矩阵
+
+安全与多租户链路的目标是让读者能从一次 API Key 泄露、越权模型调用、跨租户数据风险、GPU 共享隔离争议、runtime privilege 误配或账单归属异常，一路追到 tenant boundary、credential lifecycle、policy decision、runtime privilege、GPU isolation、resource pool、audit event 和成本隔离。当前覆盖如下：
+
+| 知识点 | 主要章节 | 覆盖要求 |
+| --- | --- | --- |
+| `tenant_boundary` | 第 5 章、第 6 章、第 27 章 | 说明租户在身份、项目、模型、数据、资源池、网络、存储、观测和账单中的边界 |
+| `credential_lifecycle` / `api_key_audit_event` | 第 5 章、第 6 章、第 37 章 | 说明 API Key、service account、短期 token 的创建、轮换、禁用、异常检测和审计 |
+| `policy_decision_record` | 第 6 章、第 40 章 | 说明 Gateway 策略如何记录 allow/deny/route/fallback、规则版本、输入事实和可回放决策 |
+| `tenant_cost_isolation` | 第 7 章、第 41 章 | 说明共享池、专属池、免费额度、失败成本、reservation 和账单争议如何归属到租户 |
+| `runtime_privilege_profile` | 第 21 章、第 22 章 | 说明 container privilege、hostPath、capability、seccomp、device 注入、RDMA device 和 debug 豁免 |
+| `gpu_isolation_matrix` | 第 22 章、第 27 章 | 说明整卡、MIG、time-slicing、vGPU、PCIe passthrough 和容器共享的隔离边界 |
+| `data_boundary_policy` | 第 5 章、第 6 章、第 37 章 | 说明 prompt、response、RAG 文档、模型权重、日志、trace、cache 和导出数据的边界 |
+| `bmc_driver_access_policy` | 第 27 章、第 28 章 | 说明 BMC、driver、kernel、MIG 配置、节点维护和资源池状态变更的特权边界 |
+| `security_audit_event` | 第 28 章、第 37 章、第 40 章 | 说明租户、操作者、策略、资源、时间线、证据和影响面如何进入不可变审计事件 |
+
 ## 全书循环更新策略
 
 全书更新按“主题链路”推进，而不是按章节孤立推进。每轮选择一条关键链路，补齐机制、图、配置、故障、指标和验收。
