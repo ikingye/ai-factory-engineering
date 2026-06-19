@@ -66,6 +66,49 @@ flowchart TB
   Model --> Action
 ```
 
+诊断系统最终应生成 `incident_record`，把排障现场变成可复盘、可审计、可改进的事实对象：
+
+```yaml
+incident_record:
+  incident_id: inc-20260619-ttft-rack12
+  severity: sev2
+  entry:
+    source: slo_alert
+    symptom: ttft_p99_regression
+    detected_at: recorded
+  impact:
+    tenants: measured
+    models: [af-chat-large]
+    requests_failed_or_slow: measured
+    wasted_gpu_hours: calculated_if_applicable
+    estimated_margin_impact: calculated
+  timeline:
+    first_signal: recorded
+    mitigated_at: recorded
+    recovered_at: recorded
+  evidence:
+    reliability_evidence_id: rel-evt-001
+    recent_changes: [chg-gpu-baseline-20260619]
+    health_records: [resource-health-017-2]
+    fault_domains: [dc-a/rack-12]
+    baselines_compared: [h100-rack12-20260619]
+  mitigation:
+    immediate_actions:
+      - reroute_model_endpoint
+      - isolate_degraded_node
+    user_communication: required_if_customer_visible
+  root_cause:
+    status: confirmed_or_probable_or_unknown
+    category: change_regression
+    confidence: medium
+  follow_up:
+    - update_change_safety_case_stop_condition
+    - add_baseline_invalidation_rule
+    - improve_canary_coverage
+```
+
+这个对象的重点是防止事故知识丢失。一次事故不只是“某个节点坏了”，还包括谁受影响、哪些证据支持结论、哪些止血动作有效、哪些基线漏测、哪些变更门禁失效、浪费了多少 GPU 小时或毛利。没有 `incident_record`，复盘会变成会议纪要；有了它，事故可以反向更新准入、变更、资源池和成本模型。
+
 网络与通信类故障尤其需要把故障树和证据链结合。下面的 NCCL hang 入口可以作为值班系统的自动检查顺序：
 
 ```mermaid

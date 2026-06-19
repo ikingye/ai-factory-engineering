@@ -62,6 +62,25 @@ flowchart TB
   Cost --> ErrorBudget
 ```
 
+在 AI Factory 中，这个控制回路还要接入资源事实。SLO 违约不是单独的服务事件，可能来自 resource health、maintenance window、change safety、acceptance baseline 或 fault domain。更完整的可靠性回路如下：
+
+```mermaid
+flowchart LR
+  SLOEvent["SLO / training failure / cost anomaly"] --> Evidence["reliability_evidence"]
+  Evidence --> Incident["incident_record"]
+  Evidence --> Health["resource_health_record"]
+  Evidence --> ChangeCase["change_safety_case"]
+  Evidence --> Baseline["acceptance baseline"]
+  Evidence --> FaultDomain["fault_domain_map"]
+  Incident --> Budget["slo_budget_ledger"]
+  Budget --> Policy["freeze / canary / isolate / reroute / add capacity"]
+  Policy --> Scheduler["scheduler / gateway / resource pool"]
+  Scheduler --> Metrics["observability and cost feedback"]
+  Metrics --> SLOEvent
+```
+
+这张图表达的不是工具集成，而是治理顺序：先确认用户或生产能力是否受影响，再收集证据，再进入 incident、健康状态、变更安全、基线和故障域，最后由 error budget 和成本影响决定动作。缺少这个回路，SRE 很容易只处理告警，而不能改变调度、发布和资源治理。
+
 ## 40.1 SLO
 
 SLO 是 Service Level Objective，服务等级目标。AI Factory 的 SLO 应按服务类型定义。在线推理可以定义 availability、TTFT、TPOT、E2E latency、错误率、限流率、token streaming 中断率和模型路由成功率；训练平台可以定义作业准入延迟、排队可解释率、作业成功率、checkpoint 成功率、恢复时间和非用户原因失败率。
@@ -207,9 +226,45 @@ change_request:
     - nccl_bandwidth_regression
     - training_failure_rate_increase
     - gpu_xid_spike
+  linked_safety_case: chg-gpu-baseline-20260619
+  baseline_invalidation:
+    - nccl_baseline
+    - container_gpu_runtime_baseline
 ```
 
 工程实现还应把模板嵌入工具。变更系统自动生成验证项，incident 系统自动拉取诊断包，容量系统自动给出水位预测。模板如果只存在文档里，执行质量会随人波动。
+
+SLO 和 error budget 也应落成账本，而不是只在 dashboard 上画曲线。`slo_budget_ledger` 记录预算被什么事件消耗、影响哪个资源池或模型、是否与变更或维护相关、消耗是否转化为成本：
+
+```yaml
+slo_budget_ledger:
+  period: 2026-06
+  scope:
+    service: maas-chat-completions
+    model: af-chat-large
+    tier: premium
+  objective:
+    metric: ttft_p99
+    target: policy_defined
+    allowed_error_budget: calculated
+  burn_events:
+    - incident_id: inc-20260619-ttft-rack12
+      budget_burn: calculated
+      cause_class: change_regression
+      linked_change: chg-gpu-baseline-20260619
+      linked_fault_domain: dc-a/rack-12
+      customer_visible: true
+      reliability_cost:
+        failed_or_slow_requests: measured
+        wasted_gpu_hours: calculated
+        compensation_or_credit: calculated_if_applicable
+  policy_state:
+    release_policy: canary_only
+    infra_change_policy: freeze_high_risk
+    capacity_policy: add_hot_spare_or_reroute
+```
+
+这个账本让 error budget 真正约束系统行为。预算消耗来自变更回归，就应收紧同类变更；来自容量不足，就应进入容量运营；来自 degraded 资源反复回流，就应修资源池和准入；来自模型版本回归，就应调整发布门禁。预算若不能改变策略，就只是事故统计。
 
 第四类工程工作是建立运行例会的数据包。周报不应手工拼图，而应自动生成：本周 SLO、error budget、incident、变更、容量水位、成本异常、行动项状态和下周风险。SRE 会议讨论的是决策和风险，不是临时找数据。
 

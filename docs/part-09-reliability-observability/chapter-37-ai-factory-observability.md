@@ -285,6 +285,45 @@ network_evidence:
 
 这个字段不要求所有系统使用同一个数据库，但要求它们使用同一组关联键。只要关联键稳定，时序库、日志系统、trace backend、对象存储诊断包和数据仓库就可以协同工作。
 
+可靠性事件还应生成 `reliability_evidence`。它把用户可见症状、资源状态、准入基线、近期变更和故障域放到同一张证据表里：
+
+```yaml
+reliability_evidence:
+  symptom:
+    type: slo_violation
+    metric: ttft_p99
+    scope: model_endpoint
+    affected_tenants: measured
+  workload_context:
+    requests_or_jobs: linked
+    model_or_training_job: required
+    resource_pool: required
+  resource_context:
+    health_records:
+      - resource_health_record_id
+    acceptance_baselines:
+      - baseline_id
+    fault_domains:
+      - rack-12
+      - power-a
+      - rail-1
+  change_context:
+    recent_changes:
+      - change_safety_case_id
+    maintenance_windows:
+      - maintenance_window_id
+  impact:
+    failed_requests: measured
+    wasted_gpu_hours: calculated_if_training
+    error_budget_burn: calculated
+    estimated_cost: calculated
+  recommended_action:
+    immediate: rollback_or_isolate_or_reroute
+    follow_up: retest_update_runbook_or_capacity
+```
+
+这个对象让可观测性从“指标查询”变成“事故证据”。SRE 不需要在事故中临时问谁升级了 driver、哪个 rack 在维护、哪些节点健康状态异常、是否偏离基线；系统应在一个证据对象里给出关联。它也能防止误归因：如果没有 change、baseline drift 或 health signal 支持，就不能把 SLO 违约直接归咎于某个底层团队。
+
 第四步是建立数据质量检查。指标缺失、标签为空、时间戳漂移、重复采集和单位不一致，都会让看板和告警失真。可观测性平台本身也要有 SLO，例如关键指标采集延迟、丢失率和查询可用性。否则事故中最先失效的可能就是观测系统。
 
 第五步是把观测接入动作系统。节点隔离、模型回滚、限流、扩容、cache 预热、工单创建和 incident 升级，都应能由观测信号触发或辅助。观测与动作分离太远，会让自动化恢复停留在口号。

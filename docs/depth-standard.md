@@ -120,6 +120,21 @@
 | 存储故障树 | 第 39 章 | 说明 GPU idle、checkpoint slow、model load slow 如何定位到 dataset/checkpoint/artifact/cache |
 | 存储经济账本 | 第 41 章 | 说明 dataset read、checkpoint、artifact retention、cache miss 和 storage-induced GPU idle 的成本归因 |
 
+## 可靠性与运维链路覆盖矩阵
+
+可靠性链路的目标是让读者能从 SLO 违约、训练失败、GPU degraded、变更回归或机房故障一路追到 health state、maintenance window、acceptance baseline、fault domain、incident、error budget、change safety 和经济损失。当前覆盖如下：
+
+| 知识点 | 主要章节 | 覆盖要求 |
+| --- | --- | --- |
+| `resource_health_record` | 第 28 章、第 37 章 | 说明 GPU/node/fabric/storage 健康信号如何转成资源池状态和调度动作 |
+| `maintenance_window` | 第 28 章、第 40 章 | 说明计划维护、drain、复测、回滚、容量影响和用户沟通 |
+| `change_safety_case` | 第 29 章、第 40 章 | 说明 driver、kernel、NCCL、OFED、runtime、模型服务变更如何绑定验证、灰度、停止条件和回滚 |
+| `fault_domain_map` | 第 36 章、第 39 章 | 说明 rack、power、cooling、rail、fabric、storage、batch 与 workload 影响面 |
+| `reliability_evidence` | 第 37 章、第 39 章 | 说明 SLO symptom 到 request/job、resource health、baseline、change、fault domain 和 action 的证据链 |
+| `acceptance_baseline` invalidation | 第 38 章 | 说明变更如何使基线失效，并触发影响范围复测 |
+| `incident_record` | 第 39 章、第 40 章 | 说明事故时间线、影响面、止血动作、根因证据、成本影响和行动项 |
+| `slo_budget_ledger` | 第 40 章、第 41 章 | 说明 error budget、reliability cost、wasted GPU hours、赔付和毛利之间的关系 |
+
 ## 全书循环更新策略
 
 全书更新按“主题链路”推进，而不是按章节孤立推进。每轮选择一条关键链路，补齐机制、图、配置、故障、指标和验收。

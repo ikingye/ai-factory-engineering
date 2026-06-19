@@ -243,6 +243,53 @@ kubectl logs gpu-smoke
 
 第四步是设计升级流水线。新 baseline 先进入实验池，跑基础测试和典型 workload；通过后进入小规模灰度；灰度期间观察训练、推理、NCCL、RDMA 和故障指标；最后批量推广。每一步都要有回滚条件。环境升级不应靠人工记忆，而应由流水线推动。
 
+对底层环境变更，应要求提交 `change_safety_case`。它不是额外审批文书，而是机器可读的变更安全论证：说明变更对象、风险假设、兼容矩阵、验证证据、灰度范围、停止条件、回滚路径和基线失效范围。示例：
+
+```yaml
+change_safety_case:
+  change_id: chg-gpu-baseline-20260619
+  target:
+    baseline_from: gpu-node-2026-05
+    baseline_to: gpu-node-2026-06
+    components:
+      kernel: changed
+      nvidia_driver: changed
+      cuda_runtime: unchanged
+      nccl: changed
+      ofed: unchanged
+      nvidia_container_toolkit: changed
+  risk_hypotheses:
+    - driver_module_build_failure
+    - nccl_bandwidth_regression
+    - container_gpu_runtime_hook_regression
+    - rdma_in_container_visibility_regression
+  required_evidence:
+    pre_change:
+      - current_acceptance_baseline
+      - affected_workload_inventory
+    canary:
+      - gpu_burn_in
+      - nvbandwidth
+      - nccl_multi_node
+      - kubernetes_gpu_pod_smoke
+      - representative_training_job
+      - representative_inference_endpoint
+  stop_conditions:
+    - new_xid_above_baseline
+    - nccl_regression_outside_allowed_band
+    - container_smoke_failure
+    - ttft_or_step_time_regression
+  rollback:
+    method: restore_previous_golden_image
+    validation_after_rollback: bootstrap_validation
+  invalidates_baselines:
+    - driver_dependent_acceptance
+    - nccl_baseline
+    - container_gpu_runtime_baseline
+```
+
+这个对象把升级从“执行脚本”提升为“带证据的风险控制”。它要求团队在变更前说明担心什么，在灰度中证明什么，出问题时按什么条件停止。尤其是 driver、kernel、NCCL、OFED 和 NVIDIA Container Toolkit 这类底层组件，变更成功的定义必须是业务路径通过，而不是安装命令返回 0。
+
 第五步是建设漂移检测。节点定期上报 kernel、driver、OFED、runtime、关键配置和镜像版本，与期望 baseline 对比。发现漂移后，可以标记 degraded、阻止新任务、触发重新初始化或进入人工确认。漂移检测是长期运行的保障。
 
 第六步是把诊断包标准化。训练或推理失败时，平台应自动收集主机 baseline、容器镜像 digest、driver、CUDA、NCCL、OFED、环境变量、节点列表和关键日志。诊断包减少跨团队来回询问，也让历史故障可以归档对比。

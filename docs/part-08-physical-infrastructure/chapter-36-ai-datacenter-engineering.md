@@ -155,6 +155,42 @@ Cabling 还影响可维护性。线缆布局混乱会延长维修时间，增加
 
 故障域也应进入发布策略。模型服务灰度发布时，如果新旧版本落在同一故障域，灰度本身无法验证故障隔离能力。
 
+平台应维护 `fault_domain_map`，把物理和逻辑故障域变成可查询对象。示例：
+
+```yaml
+fault_domain_map:
+  domain_id: dc-a/rack-12
+  hierarchy:
+    region: dc-a
+    room: room-3
+    row: row-b
+    rack: rack-12
+  shared_dependencies:
+    power_domain: pdu-a-12
+    cooling_domain: cdu-loop-2
+    network_domains:
+      leaf_pair: leaf-12-a-b
+      rail: [rail-0, rail-1]
+    storage_path: pfs-client-group-4
+    bmc_network: bmc-segment-7
+  members:
+    nodes: [gpu-node-001, gpu-node-002]
+    gpu_count: recorded
+  scheduling_semantics:
+    colocate_for: [low_latency_training]
+    spread_for: [premium_inference, control_plane]
+    avoid_if_state: [power_limited, cooling_limited, fabric_degraded]
+  incident_queries:
+    impact_lookup_keys:
+      - node
+      - switch_port
+      - pdu
+      - cdu
+      - delivery_batch
+```
+
+这张 map 的价值在事故中最明显。PDU 告警不是“设施事件”，而是会影响哪些 node、GPU、job、endpoint、tenant 和 reservation；leaf 维护不是“网络事件”，而是会影响哪些训练拓扑；某批线缆问题不是“现场问题”，而是能否继续把对应 rack 放入高优训练池。故障域 map 把物理世界翻译成调度、发布和 SRE 能消费的事实。
+
 ## 36.8 交付验收
 
 交付验收把机房建设结果转化为可用资源。它不仅包括服务器能开机，还包括电力、制冷、BMC、管理网、业务网、训练 fabric、存储路径、OS、driver、CUDA、NCCL、RDMA、GPU burn-in、nvbandwidth、storage benchmark 和真实 workload 压测。验收范围必须覆盖从物理到模型运行的关键路径。
