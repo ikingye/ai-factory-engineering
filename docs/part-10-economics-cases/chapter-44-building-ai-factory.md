@@ -1186,6 +1186,64 @@ flowchart LR
   Gate -->|fail| Rollback["rollback / quarantine / retest"]
 ```
 
+网络 fabric 变更也应进入 PRR 演练。很多 AI Factory 在建设阶段会把网络变更当作基础设施内部维护：交换机配置改完、端口 up、RDMA 小测试通过，就恢复生产。这个做法在普通服务集群里有时可以接受，在大训练和高性能推理场景里风险很高，因为真实影响要经过 rank placement、NCCL interface、rail balance、checkpoint overlap、调度标签和成本账本才会显现。PRR 必须证明一次 fabric 变更失败时，系统能自动降级资源、阻止高风险 workload、保留证据、执行故障树、生成成本记录并完成回滚复测。
+
+```yaml
+fabric_change_prr_drill:
+  drill_id: fab-prr-drill-20260620-001
+  production_readiness_review: prr-training-prod-2026-06
+  scope:
+    fabric: train-fabric-a
+    change_type: roce_qos_profile_update
+    resource_pools: [training-prod-h100]
+    workload_slices:
+      - 64gpu_same_rack_training
+      - 256gpu_cross_rack_training
+      - checkpoint_heavy_training
+      - distributed_evaluation
+  injected_or_simulated_failures:
+    - pfc_ecn_profile_drift
+    - rail_balance_ratio_below_policy
+    - container_rdma_path_mismatch
+    - nccl_selected_interface_changed
+    - checkpoint_plus_nccl_overlap_regression
+    - scheduler_restores_allocatable_before_gate_pass
+  required_outputs:
+    fabric_change_record: generated
+    baseline_invalidation_record: generated
+    fabric_change_regression_gate: pass_or_block_recorded
+    fabric_change_acceptance_matrix: generated
+    network_diagnostic_bundle: generated
+    congestion_fault_tree_execution: generated
+    network_incident_cost_record: generated_if_failure_injected
+    communication_regression_record: pass_or_fail_recorded
+    scheduler_state_transition: limited_then_restored_only_after_pass
+  pass_criteria:
+    large_training_blocked_while_baseline_invalidated: true
+    container_and_kubernetes_paths_validated_not_only_host_rdma: true
+    pfc_ecn_qos_drift_detected: true
+    rail_imbalance_classified_with_owner: true
+    rollback_rehearsed_and_same_topology_retested: true
+    cost_ledger_append_verified_if_failure_injected: true
+    prr_gate_blocks_when_evidence_missing: true
+```
+
+```mermaid
+flowchart LR
+  Drill["fabric_change_prr_drill"] --> Change["fabric_change_record"]
+  Change --> Invalidate["baseline_invalidation_record"]
+  Invalidate --> Gate["fabric_change_regression_gate"]
+  Gate --> Matrix["fabric_change_acceptance_matrix"]
+  Matrix --> Diag["network_diagnostic_bundle"]
+  Diag --> Fault["congestion_fault_tree_execution"]
+  Fault --> Cost["network_incident_cost_record"]
+  Gate --> Scheduler["scheduler limited / restored"]
+  Cost --> PRR["PRR fabric gate update"]
+  Scheduler --> PRR
+```
+
+这类演练能拦截三种高损失事故。第一种是“回归跑了，但没管调度状态”：baseline 已失效，调度器仍把 512 卡任务放进受影响 fabric。第二种是“网络单项通过，但 workload 组合失败”：host RDMA 正常，Kubernetes 容器里的 NCCL 选择了错误 NIC，或 checkpoint 与 AllReduce 叠加后触发拥塞。第三种是“事故成本不可见”：训练只是慢了半小时，没有失败票据，结果 GPU idle、checkpoint 回滚和模型发布延迟都没有进入经济账本。PRR 通过标准必须覆盖证据、动作和成本，不能只覆盖网络连通性。
+
 从验收到上线的流水线可以用下面的图表示：
 
 ```mermaid

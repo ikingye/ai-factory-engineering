@@ -331,6 +331,70 @@ network_cost_ledger:
 
 这份账本能回答“网络升级值不值得”的问题。若某个 fabric 的端口利用率很高但没有造成 exposed communication time，扩容优先级未必最高；若某条 rail 的拥塞长期造成大训练 GPU idle，即使平均利用率不高，也可能值得修拓扑、改 checkpoint 窗口或扩容。网络成本必须按 workload 影响计量，而不是按设备价格摊销。
 
+网络事故还应有更细的 `network_incident_cost_record`。`network_cost_ledger` 适合按窗口汇总网络经济性，`network_incident_cost_record` 则用于一次具体事故或一次 fabric 变更回归。它必须区分“网络设备坏了”与“网络路径让 workload 变贵了”。一次 PFC/ECN 配置漂移、rail 失衡、错误 rank placement、checkpoint 与 NCCL 叠加、推理权重加载占用训练 fabric，都会产生不同成本和 owner。
+
+```yaml
+network_incident_cost_record:
+  incident_id: inc-20260620-fabric-001
+  linked_evidence:
+    fabric_change_record: fabric-chg-20260620-003_if_recent
+    fabric_change_regression_gate: fcg-20260620-003_if_recent
+    fabric_change_acceptance_matrix: fcam-20260620-003_if_recent
+    congestion_fault_tree_execution: cfte-20260620-001
+    network_diagnostic_bundle: ndb-20260620-001
+    rail_balance_report: rail-balance-20260620-017
+    collective_trace_record: ctr-20260620-017
+    communication_critical_path_record: ccpr-20260620-017
+    checkpoint_overlap_evidence: cko-20260620-017_if_present
+  affected_scope:
+    fabric: train-fabric-a
+    racks: [rack-12, rack-13]
+    rails: [rail1]
+    affected_jobs: [train-20260620-017]
+    affected_endpoints: []
+    affected_gpu_count: 256
+    affected_window: 2026-06-20T10:12Z/2026-06-20T10:26Z
+  cost_components:
+    exposed_communication_wait_gpu_hours: calculated
+    full_job_idle_gpu_hours: calculated_if_hang
+    requeue_or_restart_gpu_hours: calculated_if_restarted
+    checkpoint_replay_or_rollback_cost: calculated_if_checkpoint_affected
+    degraded_capacity_opportunity_cost: calculated
+    fallback_or_route_cost: calculated_if_inference_affected
+    acceptance_retest_cost: measured
+    remediation_engineering_cost: measured_or_allocated
+    delayed_model_release_cost: calculated_if_training_milestone_impacted
+  attribution:
+    primary_domain: pfc_ecn_qos_or_rail_imbalance_or_scheduler_placement_or_storage_overlap
+    shared_owners: [network, platform-scheduler, training-runtime]
+    confidence: evidence_based
+    not_counted_as_network_cost:
+      - compute_skew_without_network_wait
+      - data_loader_wait_without_fabric_overlap
+      - model_code_collective_mismatch
+  ledger_outputs:
+    append_to_network_cost_ledger: true
+    append_to_reliability_cost_ledger: true
+    update_training_roi_ledger: true_if_training
+    update_prr_gate: fabric_change_prr_drill_if_gap_found
+```
+
+这个对象能防止两种相反误判。第一种是把所有端口异常都算成网络事故成本，导致网络团队为旁路流量或非关键路径指标背锅；第二种是只要训练最终完成，就忽略通信等待造成的 GPU 小时浪费。正确口径是只计算暴露在 workload critical path 上的损失，并把证据链写清楚。若通信等待没有阻塞 step，不应进入 full job idle；若 checkpoint overlap 放大了拥塞，就应把成本分摊到存储策略和 fabric 策略；若 scheduler 把 rank 放进不满足拓扑的节点集合，就应把成本分摊到调度和资源画像。
+
+```mermaid
+flowchart LR
+  Cong["congestion_fault_tree_execution"] --> Cost["network_incident_cost_record"]
+  Critical["communication_critical_path_record"] --> Cost
+  Rail["rail_balance_report"] --> Cost
+  Ckpt["checkpoint_overlap_evidence"] --> Cost
+  Cost --> NetworkLedger["network_cost_ledger"]
+  Cost --> Reliability["reliability_cost_ledger"]
+  Cost --> ROI["training_roi_ledger"]
+  Cost --> PRR["fabric_change_prr_drill update"]
+```
+
+对 Token Factory 来说，网络事故成本最终会落到 `cost_per_effective_training_token`、`cost_per_successful_answer` 或 delayed revenue。训练侧关注的是有效训练进展是否被拖慢，推理侧关注的是 token streaming、TTFT/TPOT、fallback 和 SLO credit 是否被影响。网络成本模型若只停在交换机预算，无法指导业务取舍；若能落到成功 token 和有效 step，才会进入容量规划、变更门禁和商业优先级。
+
 推理运行时优化也必须进入成本账本。Speculative decoding、prefix cache、continuous batching、PD 分离和新的 engine profile 都可能让某个指标变好，同时让另一个成本变坏。`inference_runtime_cost_ledger` 的目标不是给每个 kernel 精确计价，而是让“快了多少、贵了多少、质量是否变、失败是否变多”可以被同一张表回答。
 
 ```yaml

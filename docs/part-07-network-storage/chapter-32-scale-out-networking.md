@@ -303,6 +303,86 @@ fabric_change_record:
 
 因此，网络变更发布单应绑定两份事实：`fabric_baseline` 说明 fabric 在指定拓扑内具备什么能力，`communication_regression_record` 说明代表性训练在这次变更后是否仍满足 Runtime 合同。前者由网络和平台基础设施共同负责，后者由 Runtime、调度和训练平台共同负责。分工清楚后，事故中就不会把“网络连通”误认为“训练通信健康”。
 
+更进一步，fabric 变更应有独立的 `fabric_change_regression_gate`。它不是 `fabric_change_record` 的重复，而是把变更从“批准执行”推进到“允许恢复调度能力”的门禁。`fabric_change_record` 说明改了什么、为什么改、影响哪些资源；`fabric_change_regression_gate` 则说明哪些证据已经证明变更没有破坏 workload。二者的关系类似代码发布中的 change ticket 和 release gate：前者负责意图和审计，后者负责可生产性。
+
+这个门禁必须同时看五类事实。第一是配置事实：PFC/ECN/QoS/MTU、routing policy、switch firmware、NIC firmware、OFED、CNI 和 NCCL 默认值是否与期望版本一致。第二是路径事实：host、container 和 Kubernetes job 是否都走到预期 RDMA device、GID、NIC、rail 和 switch port。第三是 workload 事实：代表性 NCCL test、短训练、checkpoint overlap 和混部流量是否仍在基线范围内。第四是调度事实：scheduler label、taint、resource pool state 和 queue admission 是否与变更状态同步。第五是恢复事实：回滚或降级后能否恢复 baseline，而不是只把配置改回去。
+
+```yaml
+fabric_change_regression_gate:
+  gate_id: fcg-20260620-003
+  change_ref: fabric-chg-20260620-003
+  fabric: train-fabric-a
+  affected_scope:
+    racks: [rack-12, rack-13]
+    rails: [rail0, rail1]
+    resource_pools: [training-prod-h100]
+    scheduler_labels:
+      fabric.train-fabric-a/baseline: invalidated
+      fabric.train-fabric-a/state: limited
+  required_evidence:
+    fabric_baseline_before: train-fabric-a-20260619
+    fabric_baseline_after: train-fabric-a-20260620-candidate
+    config_diff:
+      switch_qos: attached
+      pfc_ecn: attached
+      mtu: attached
+      routing_policy: attached
+      nic_firmware: attached
+      ofed: attached
+      cni: attached
+      nccl_defaults: attached
+    path_validation:
+      host_rdma: pass
+      container_rdma: pass
+      kubernetes_nccl_job: pass
+      selected_nccl_interfaces: match_expected_rails
+      gpu_nic_topology_evidence: attached
+    workload_regression:
+      nccl_cross_rack: within_baseline
+      rail_balance_report: within_policy
+      checkpoint_plus_nccl_concurrency: within_policy
+      representative_training_collective_trace: within_policy
+      communication_regression_record: pass
+    scheduler_integration:
+      degraded_label_applied_before_gate: true
+      large_training_denied_until_pass: true
+      restored_labels_after_pass: true
+  stop_conditions:
+    - rdma_retransmit_above_baseline
+    - ecn_or_pfc_delta_unexplained
+    - rail_balance_ratio_below_policy
+    - p99_step_time_regression
+    - container_rdma_path_differs_from_host_path
+    - scheduler_restored_capacity_before_gate_pass
+  rollback_or_downgrade:
+    rollback_config_ref: roce-qos-profile-20260619
+    downgrade_state: fabric_limited_no_large_training
+    verification: rerun_same_topology_gate
+  decision:
+    state: pass_or_block_or_conditional
+    owner: network-platform-sre
+    expires_at: 2026-06-27T00:00:00Z
+```
+
+这份 gate 的关键字段是 `scheduler_integration` 和 `expires_at`。许多网络变更事故并不是测试完全没跑，而是测试期间资源已经恢复为 fully schedulable，或者临时 conditional approve 永久存在。Gate 应先让资源降级，再证明可以恢复，最后写入新的 baseline；如果证据过期或回归未完成，调度器应继续拒绝大训练进入该 fabric。网络能力只有进入调度事实源，才能真正保护生产任务。
+
+```mermaid
+flowchart LR
+  Change["fabric_change_record"] --> Invalidate["invalidate fabric_baseline"]
+  Invalidate --> Limit["resource pool state: limited"]
+  Limit --> Evidence["collect config + path + workload evidence"]
+  Evidence --> Gate["fabric_change_regression_gate"]
+  Gate -->|pass| NewBase["publish new fabric_baseline"]
+  Gate -->|block| Downgrade["keep limited / quarantine"]
+  Gate -->|conditional| Canary["small topology canary only"]
+  NewBase --> Scheduler["restore scheduler labels"]
+  Downgrade --> FaultTree["congestion_fault_tree_execution if incident"]
+  Canary --> Monitor["telemetry watch window"]
+  Monitor --> Gate
+```
+
+在 RoCE 环境中，这个 gate 尤其重要。PFC、ECN 和 QoS 的配置漂移不会总是表现为立即失败，轻载 ping、iperf 或两节点 RDMA 可能全部通过；只有多 rack、多 rail、checkpoint 并发和真实 rank placement 叠加时，队列水位、pause storm 或重传才出现。把这些验证写进 gate，可以把“网络看起来正常”升级为“AI workload 证据正常”。
+
 第二步是接入调度和资源池。任务提交系统可以根据 fabric 信息提示用户：当前等待是 GPU 不足、rail 不满足、同 rack 不满足，还是 quota 限制。资源池可以标记某个 fabric degraded，调度器避免新任务进入受影响区域。网络状态必须能驱动资源动作。
 
 第三步是建立验收基线。基线应覆盖单节点、跨节点、跨 rack、多 rail、多任务并发、RDMA、NCCL、存储读写和拥塞控制。扩容、新增 rack、交换机升级、NIC firmware、OFED、CNI 或 NCCL 版本变化后，都要回归。验收不是上线前一次性动作，而是持续运营机制。

@@ -199,13 +199,18 @@
 | 多 rail 放置与诊断 | 第 32 章 | 说明 rank、NIC、rail、leaf group 和 rail balance 的一致性 |
 | `rail_balance_report` | 第 32 章、第 37 章 | 说明设计 rail、实际接口、端口利用、rank 流量和失衡动作 |
 | `fabric_change_record` | 第 32 章、第 38 章 | 说明交换机、NIC、OFED、CNI、NCCL、PFC/ECN 和调度标签变更如何触发回归 |
+| `fabric_change_regression_gate` | 第 32、38、44 章 | 说明 fabric 变更如何从配置变更推进到可恢复调度能力，覆盖配置、路径、workload、调度和回滚证据 |
+| `fabric_change_acceptance_matrix` | 第 38、44 章 | 说明 host/container/Kubernetes RDMA、NCCL、rail、PFC/ECN/QoS、checkpoint+NCCL 和 scheduler state 如何组合验收 |
 | RDMA in container | 第 22 章、第 32 章、第 38 章 | 说明宿主机 RDMA 正常不等于容器内 RDMA 可用 |
 | `network_diagnostic_bundle` | 第 32 章、第 39 章 | 说明 rank mapping、NCCL env、RDMA counters、switch ports、baseline 和 verdict |
 | `congestion_event_record` | 第 30、37、39 章 | 说明 ECN/PFC、队列、水位、流量类别、job 影响和止血动作如何串联 |
 | network telemetry 到业务影响 | 第 37 章 | 说明端口事件如何映射到 job、model、tenant、baseline drift 和 owner |
 | fabric acceptance matrix | 第 38 章 | 说明 same rack、cross rack、cross rail、host/container/Kubernetes 的验收矩阵 |
 | NCCL hang 网络故障树 | 第 39 章 | 说明 rank 退出、GPU/NVLink、RDMA/fabric、container/runtime、collective mismatch 的排查顺序 |
+| `congestion_fault_tree_execution` | 第 39、44 章 | 说明拥塞、rail 失衡、PFC/ECN/QoS、RDMA/NIC、NCCL runtime、checkpoint overlap、混部流量和观测缺口如何执行故障树 |
 | `network_cost_ledger` | 第 41 章 | 说明网络退化、拥塞、错误放置和 checkpoint 叠加如何转化为 GPU idle 与 token 成本 |
+| `network_incident_cost_record` | 第 41、44 章 | 说明一次 fabric 事故或变更回归如何把通信等待、重启、降级容量、checkpoint 回退、fallback 和复测成本写入经济账本 |
+| `fabric_change_prr_drill` | 第 44 章 | 说明 fabric 变更上线前如何演练 baseline 失效、调度降级、拥塞故障树、回滚复测和成本账本 |
 
 ## 存储数据链路覆盖矩阵
 

@@ -297,6 +297,126 @@ nccl_hang_network_branch:
 
 这个分支能把网络、调度和 runtime 的责任边界拆开。rail 失衡通常优先查放置和接口选择；拥塞事件通常优先查流量叠加、QoS 和容量；同拓扑 baseline 退化更像 fabric 或硬件问题；容器内接口错配则属于 runtime 模板或设备注入问题。分类越早，止血动作越准确。
 
+当症状已经明确为网络拥塞或 fabric 变更后的通信回归，应进入 `congestion_fault_tree_execution`。它和上面的 NCCL hang 分支不同：NCCL hang 是从“任务不前进”进入，拥塞故障树是从“通信变慢、重传、ECN/PFC 异常、rail 失衡或变更后退化”进入。它的目标不是证明网络一定有问题，而是把拥塞、错误放置、checkpoint 叠加、runtime 漂移和观测缺口拆开。
+
+```yaml
+congestion_fault_tree_execution:
+  execution_id: cfte-20260620-001
+  trigger:
+    symptom: step_time_spike_or_nccl_bandwidth_regression
+    detected_by: communication_regression_record_or_congestion_event_record
+    recent_change:
+      fabric_change_record: fabric-chg-20260620-003
+      fabric_change_regression_gate: fcg-20260620-003
+  scope:
+    affected_jobs: [train-20260620-017]
+    affected_racks: [rack-12, rack-13]
+    affected_rails: [rail1]
+    affected_collectives: [all_reduce, reduce_scatter]
+    affected_time_window: 2026-06-20T10:12Z/2026-06-20T10:26Z
+  required_evidence:
+    rank_mapping: attached
+    gpu_nic_topology_evidence: attached
+    network_path_evidence: attached
+    rail_balance_report: attached
+    congestion_event_record: attached_if_present
+    fabric_baseline: train-fabric-a-20260619
+    fabric_change_acceptance_matrix: fcam-20260620-003_if_recent_change
+    collective_trace_record: attached
+    checkpoint_overlap_evidence: attached
+    container_rdma_validation: attached
+    nccl_env_contract: attached
+  branches:
+    workload_or_rank_placement:
+      checks:
+        - rank_groups_cross_unexpected_rack_or_rail
+        - tensor_or_expert_group_violates_rank_topology_contract
+        - placement_commit_record_contains_degraded_reason
+      action_if_confirmed: reschedule_or_fix_topology_constraint
+    fabric_path_or_rail:
+      checks:
+        - rail_balance_ratio_below_policy
+        - switch_port_errors_or_retransmit_correlate_with_affected_ranks
+        - same_topology_nccl_baseline_regressed
+      action_if_confirmed: degrade_fabric_or_isolate_rail
+    pfc_ecn_qos:
+      checks:
+        - pfc_pause_or_ecn_mark_delta_above_baseline
+        - qos_queue_mapping_differs_from_policy
+        - pause_or_ecn_spike_matches_collective_window
+      action_if_confirmed: rollback_or_repair_qos_profile
+    rdma_nic_stack:
+      checks:
+        - gid_mtu_ofed_firmware_diff
+        - rdma_device_error_or_retransmit_on_selected_nic
+        - container_path_differs_from_host_path
+      action_if_confirmed: cordon_node_or_retest_rdma_stack
+    nccl_runtime:
+      checks:
+        - selected_interface_not_expected
+        - nccl_version_or_env_changed
+        - algorithm_or_channel_count_changed_without_gate
+      action_if_confirmed: rollback_runtime_template_or_update_nccl_env_contract
+    storage_overlap:
+      checks:
+        - checkpoint_window_overlaps_collective_spike
+        - artifact_or_dataset_traffic_shares_training_fabric
+        - storage_benchmark_regressed_in_same_window
+      action_if_confirmed: throttle_or_reschedule_checkpoint_and_storage_traffic
+    concurrent_workload:
+      checks:
+        - background_training_or_batch_job_started_same_window
+        - quota_or_mixed_traffic_policy_allows_unbounded_burst
+        - inference_or_model_load_traffic_shares_fabric
+      action_if_confirmed: apply_traffic_policy_or_queue_isolation
+    telemetry_gap:
+      checks:
+        - missing_switch_port_counter
+        - missing_rank_to_port_mapping
+        - missing_container_rdma_evidence
+      action_if_confirmed: preserve_unknown_verdict_and_open_observability_action
+  verdict:
+    most_likely_domain: fabric_path_or_pfc_ecn_qos_or_storage_overlap_or_unknown
+    confidence: evidence_based
+    stop_the_bleeding:
+      - deny_new_large_training_on_affected_fabric
+      - move_checkpoint_heavy_jobs_out_of_window
+      - rollback_recent_qos_profile_if_gate_failed
+    required_followups:
+      - update_fabric_change_acceptance_matrix
+      - append_network_incident_cost_record
+      - update_prr_fabric_change_drill_if_gap_found
+```
+
+这份执行记录最重要的是把“拥塞”从一个网络词变成系统判断。若 `workload_or_rank_placement` 成立，根因可能是调度没有保持 tensor group 或 rail 亲和；若 `pfc_ecn_qos` 成立，根因更像 fabric 配置漂移；若 `storage_overlap` 成立，单纯扩网络可能不是最佳修复，调整 checkpoint 窗口、隔离存储流量或优化 manifest 更有效；若只有 `telemetry_gap` 成立，就不能写成网络根因，只能写成证据不足并补观测。高级排障的价值在于保留不确定性，而不是把复杂事故硬归因给某一层。
+
+```mermaid
+flowchart TB
+  Symptom["communication regression / congestion signal"] --> Bundle["network_diagnostic_bundle"]
+  Bundle --> Tree["congestion_fault_tree_execution"]
+  Tree --> Placement["workload / rank placement"]
+  Tree --> Fabric["fabric path / rail"]
+  Tree --> QoS["PFC / ECN / QoS"]
+  Tree --> RDMA["RDMA / NIC stack"]
+  Tree --> Runtime["NCCL / runtime env"]
+  Tree --> Storage["checkpoint / storage overlap"]
+  Tree --> Mixed["concurrent workload"]
+  Tree --> Gap["telemetry gap"]
+  Placement --> Action["action + owner + confidence"]
+  Fabric --> Action
+  QoS --> Action
+  RDMA --> Action
+  Runtime --> Action
+  Storage --> Action
+  Mixed --> Action
+  Gap --> Action
+  Action --> Cost["network_incident_cost_record"]
+  Action --> Gate["fabric_change_acceptance_matrix update"]
+  Action --> PRR["fabric_change_prr_drill update"]
+```
+
+值班时可以先止血再完成树，但不能先下根因结论。对大训练池，常见止血动作包括暂停 affected fabric 的新大训练、把 checkpoint-heavy job 移出拥塞窗口、隔离异常 rail、回滚最近 QoS profile、降低背景批量任务优先级、或把推理权重加载迁移到独立窗口。这些动作降低损失，但最终仍要通过故障树把影响、证据、owner 和复测写清楚。
+
 存储类故障也需要独立故障树，因为它们经常伪装成 GPU、网络或模型问题。GPU idle 可能来自 data loader，TTFT 上升可能来自权重 cache miss，NCCL 变慢可能被 checkpoint 并发写入放大。
 
 ```mermaid

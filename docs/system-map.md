@@ -206,6 +206,11 @@ flowchart TB
 | `network_path_evidence` | 把 job/request 映射到 GPU、NIC、rail、switch port 和 baseline。 | 第 30、32、37 章 | `network_diagnostic_bundle`、`fabric_baseline` |
 | `rail_balance_report` | 证明多 rail 设计在真实 rank 和端口流量中被正确使用。 | 第 32、37、38 章 | `fabric_change_record`、`network_cost_ledger` |
 | `congestion_event_record` | 把 ECN/PFC、队列、水位、流量类别和 workload 影响串成拥塞证据。 | 第 30、37、39 章 | `network_diagnostic_bundle`、`incident_record` |
+| `fabric_change_regression_gate` | 把 fabric 变更后的配置、路径、workload、调度状态和回滚复测证据固化为恢复调度能力的门禁。 | 第 32、38、44 章 | `fabric_change_record`、`fabric_change_acceptance_matrix`、`production_readiness_review` |
+| `fabric_change_acceptance_matrix` | 验证 host/container/Kubernetes RDMA、NCCL、rail、PFC/ECN/QoS、checkpoint+NCCL 和 scheduler state。 | 第 38、44 章 | `fabric_change_regression_gate`、`acceptance_baseline`、`congestion_fault_tree_execution` |
+| `congestion_fault_tree_execution` | 记录通信回归或拥塞事故在 placement、fabric path、PFC/ECN、RDMA、NCCL、storage overlap、混部和观测缺口分支上的判断。 | 第 39、44 章 | `network_incident_cost_record`、`fabric_change_acceptance_matrix` |
+| `network_incident_cost_record` | 把网络事故的 exposed communication wait、GPU idle、重启、降级容量、checkpoint 回退、fallback 和复测成本写入经济账本。 | 第 41、44 章 | `network_cost_ledger`、`reliability_cost_ledger`、`production_readiness_review` |
+| `fabric_change_prr_drill` | 演练 fabric 变更上线前的 baseline 失效、调度降级、容器/Kubernetes 路径验证、拥塞故障树、回滚和成本账本。 | 第 44 章 | `production_readiness_review`、`network_incident_cost_record` |
 | `storage_evidence` | 把 dataset、checkpoint、artifact、cache、backend 和 workload impact 证据串起来。 | 第 33、37、39、41 章 | `storage_acceptance_matrix`、`storage_cost_ledger` |
 | `resource_health_record` | 把 GPU、node、fabric、storage 健康信号转成资源池状态。 | 第 28、37 章 | `maintenance_window`、`security_audit_event` |
 | `gpu_container_runtime_report` | 证明 driver、Toolkit、RuntimeClass/CDI、device plugin 和容器内设备可见性一致。 | 第 21、22、29、38 章 | `gpu_assignment_record`、`acceptance_baseline` |

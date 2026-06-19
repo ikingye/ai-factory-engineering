@@ -701,6 +701,98 @@ fabric_regression_gate:
 
 这个门禁把网络变更的风险直接接到资源池状态。它避免两类常见事故：第一，扩容 rack 只测 ping 和单流带宽，生产大训练才发现 rail 失衡；第二，RoCE 参数小改后小规模测试通过，但 checkpoint 与 AllReduce 叠加时出现重传。准入系统不需要每次都全量压测整个集群，但必须让复测范围与变更范围、workload 风险和历史事故相匹配。
 
+更完整的验收应形成 `fabric_change_acceptance_matrix`。它把第 32 章的 `fabric_change_regression_gate` 拆成可执行矩阵，避免“门禁通过”只是一行结论。矩阵的行不是工具名，而是路径和风险：host RDMA、container RDMA、Kubernetes NCCL、same rack、cross rack、cross rail、checkpoint+NCCL、混部背景流量、调度标签、回滚验证。矩阵的列也不只是 pass/fail，而要记录配置版本、路径证据、workload 影响、资源状态和失败动作。
+
+```yaml
+fabric_change_acceptance_matrix:
+  acceptance_id: fcam-20260620-003
+  change_ref: fabric-chg-20260620-003
+  fabric_change_regression_gate: fcg-20260620-003
+  target_scope:
+    fabric: train-fabric-a
+    racks: [rack-12, rack-13]
+    rails: [rail0, rail1]
+    workload_slices:
+      - 64gpu_tensor_parallel_training
+      - 256gpu_data_parallel_training
+      - checkpoint_heavy_training
+      - distributed_evaluation
+  configuration_evidence:
+    switch_firmware: recorded
+    nic_firmware: recorded
+    ofed: recorded
+    cni: recorded
+    nccl: recorded
+    mtu: uniform
+    pfc_profile: matches_policy
+    ecn_profile: matches_policy
+    qos_queue_mapping: matches_policy
+    scheduler_labels: limited_until_gate_pass
+  matrix:
+    host_rdma:
+      topology: [same_rack, cross_rack, cross_rail]
+      result: pass
+      evidence: rdma_bw_latency_counters_attached
+    container_rdma:
+      runtime: kubernetes_pod
+      result: pass
+      evidence: rdma_device_and_gid_visible_in_container
+    kubernetes_nccl_job:
+      gpu_count: [8, 64, 256]
+      result: pass
+      evidence: nccl_logs_selected_interfaces_attached
+    rail_balance:
+      result: pass
+      evidence: rail_balance_report_attached
+      policy: no_rail_above_policy_skew
+    congestion_control:
+      result: pass
+      evidence: ecn_pfc_rdma_retransmit_within_baseline
+    checkpoint_plus_nccl_concurrency:
+      result: pass
+      evidence: checkpoint_overlap_evidence_attached
+    mixed_background_traffic:
+      result: pass_or_limited
+      evidence: competing_flow_profile_attached
+    scheduler_state:
+      before_gate: limited
+      after_gate: allocatable_if_pass
+      deny_until_pass: [large_distributed_training]
+    rollback_rehearsal:
+      result: pass
+      evidence: previous_qos_profile_restore_and_retest
+  failure_classification:
+    pfc_ecn_drift: repair_switch_profile_and_retest_matrix
+    container_path_mismatch: repair_cni_or_rdma_device_plugin
+    rail_imbalance: repair_label_or_rank_mapping_or_cabling
+    workload_regression_only: enter_congestion_fault_tree_execution
+    scheduler_state_mismatch: block_restore_and_fix_resource_pool_sync
+```
+
+这张矩阵强调三个容易漏掉的点。第一，host 通过不代表容器通过，容器通过不代表 Kubernetes 训练模板走了正确接口；因此必须把测试放到生产运行位置。第二，NCCL test 通过不代表 checkpoint 与通信叠加通过；高优训练池必须测组合窗口。第三，回滚不是把配置文件恢复，而是恢复后同拓扑基线也通过，并且调度状态同步回正确能力。没有这三点，fabric 变更验收会留下大量“轻载正常、生产失败”的空间。
+
+```mermaid
+flowchart TB
+  Change["fabric change"] --> Matrix["fabric_change_acceptance_matrix"]
+  Matrix --> Host["host RDMA"]
+  Matrix --> Container["container RDMA"]
+  Matrix --> K8s["Kubernetes NCCL job"]
+  Matrix --> Cong["PFC / ECN / QoS counters"]
+  Matrix --> Workload["checkpoint + NCCL + mixed traffic"]
+  Matrix --> Scheduler["scheduler labels / pool state"]
+  Host --> Decision{all required evidence pass?}
+  Container --> Decision
+  K8s --> Decision
+  Cong --> Decision
+  Workload --> Decision
+  Scheduler --> Decision
+  Decision -->|yes| Baseline["publish refreshed fabric_baseline"]
+  Decision -->|no| Limited["keep limited / quarantine"]
+  Limited --> FaultTree["congestion_fault_tree_execution"]
+```
+
+准入平台还应保留矩阵的原始证据，而不只是汇总状态。事故发生时，SRE 需要知道当时是哪组节点、哪组 rail、哪版 OFED、哪个 NCCL 环境、哪个 checkpoint overlap 用例通过了测试；否则无法判断生产症状是新退化、测试覆盖不足，还是 workload 形态变化。矩阵越接近真实 workload，后续异常检测越有依据。
+
 ## 38.9 anomaly detection
 
 准入测试的结果应进入异常检测系统。新节点与历史同型号节点对比，如果出现显著偏离，应自动标记；维修回池节点与维修前基线对比，如果拓扑或性能变化，应触发复测；生产运行中，DCGM、NCCL、RDMA、network telemetry、storage latency 和训练吞吐也可以与验收基线比较，提前发现退化。
