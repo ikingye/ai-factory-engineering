@@ -399,6 +399,42 @@ storage_evidence:
 
 这个对象是第 37 章观测、第 38 章准入、第 39 章故障树和第 41 章成本账本的交叉点。它不要求所有存储后端使用同一种实现，但要求它们用相同关联键表达事实。否则训练、推理、存储和财务团队会各自拥有一部分证据，却无法形成共同结论。
 
+数据和模型供应链事故还需要 `supply_chain_invalidation_evidence`。`cache_invalidation_record` 说明“应当失效什么”，但生产系统还要证明“失效动作是否已经到达所有会使用旧内容的地方”。这些地方包括 model registry 指针、节点本地 NVMe、rack cache、RAG index cache、训练 dataset cache、推理 replica 的已加载权重、autoscaler 的预热队列和调度器的节点可用状态。只改 registry 指针，不能证明旧权重、旧 tokenizer 或旧索引已经离开生产路径。
+
+```yaml
+supply_chain_invalidation_evidence:
+  evidence_id: scie-20260620-af-chat-large-r3
+  trigger:
+    reason: artifact_recalled_or_tokenizer_bug_or_data_deletion_or_index_rebuild
+    cache_invalidation_record: cir-af-chat-large-20260620-001
+    storage_security_boundary: ssb-model-and-training-prod
+  affected_objects:
+    model_artifact_provenance: map-af-chat-large-20260619-r3
+    model_artifact_distribution: mad-af-chat-large-20260619-r3
+    tokenizer: tok-af-chat-large-20260619
+    rag_index: optional
+    dataset_manifest: optional_if_training_or_rag
+  propagation:
+    registry_pointer_updated: true
+    scheduler_blocked_invalid_cache_nodes: true
+    autoscaler_uses_replacement_cache_only: true
+    running_replicas_drained_or_verified: measured
+    local_nvme_cache_invalidated: measured
+    rack_cache_invalidated: measured
+  verification:
+    digest_replay: pass
+    sampled_node_cache_scan: pass
+    serving_release_trace_replay: pass
+    rag_context_snapshot_replay: pass_if_rag
+    audit_log_immutable: true
+  residual_risk:
+    nodes_unreachable: []
+    allowed_temporary_exemptions: []
+    block_prr_until_closed: true
+```
+
+这个对象把“撤销”从控制面动作变成可验证事实。若某个 tokenizer 修复了 token count bug，旧 tokenizer cache 仍然被部分 replica 使用，账单和质量都会继续漂移；若某个模型 artifact 因签名或许可证问题被撤销，节点本地 cache 仍然 ready，调度器就可能把新 replica 放到不可信节点；若 RAG 索引因权限策略更新而重建，旧索引 cache 未撤销，敏感文档仍可能被检索。供应链撤销的验收标准不是“发布系统显示成功”，而是所有可能消费旧对象的路径都被阻断、替换或记录为豁免。
+
 AI 存储还要提供 `storage_security_boundary`。训练数据、RAG 文档、checkpoint、模型权重、adapter、prompt log、trace 和 billing record 的敏感级别不同，访问者也不同。存储层不能只依赖上层应用“不要读错路径”，而要把命名空间、加密、KMS key、IAM/RBAC、审计、导出、保留和删除策略写成边界对象。尤其是 checkpoint 和模型 artifact，它们可能泄露训练数据特征或商业能力，不能被当作普通文件共享。
 
 ```yaml

@@ -612,6 +612,8 @@ production_readiness_review:
       checkpoint_restore_drill: required_for_model_release_from_training
       model_artifact_provenance: required_for_serving_release
       cache_invalidation_record_replay: pass_for_release_and_rollback
+      supply_chain_invalidation_evidence: pass_if_artifact_tokenizer_index_or_data_recalled
+      supply_chain_incident_cost_record_pipeline: configured
       storage_security_boundary: valid_for_sensitive_data
       supply_chain_acceptance_matrix: pass_for_production_scope
     sre_and_economics:
@@ -701,6 +703,8 @@ production_readiness_review:
       - checkpoint_without_restore_drill
       - artifact_without_provenance_or_signature
       - invalid_cache_not_blocked_from_scheduling
+      - supply_chain_invalidation_without_propagation_evidence
+      - supply_chain_incident_cost_record_pipeline_missing
       - missing_storage_security_boundary_for_sensitive_data
       - supply_chain_acceptance_matrix_not_passed
     conditional_approve_if:
@@ -770,6 +774,38 @@ inference_runtime_prr_failure_drill:
 ```
 
 这类演练能拦截推理平台最贵的隐性问题：用户已经断开但引擎继续 decode，usage 事件与实际交付不一致，KV block 泄漏让 endpoint 看似 ready 却无法接新请求，PD 分离失败后 prefill 成本无人归属，canary 自动回滚但账本没有记录 prevention cost。若这些路径没有演练，runtime 优化越多，事故越难解释。
+
+数据和模型产物供应链也要演练“撤销”。PRR 不能只检查 dataset lineage、checkpoint restore 和 artifact provenance 是否存在，还要验证某个对象被撤销后，旧 cache、旧 release、旧 RAG index 和调度状态是否同步失效。供应链撤销演练尤其适合在 tokenizer 修复、模型 artifact 召回、RAG 权限策略更新、数据删除请求和私有化离线升级前执行。
+
+```yaml
+supply_chain_prr_invalidation_drill:
+  drill_id: sc-prr-drill-20260620-001
+  production_readiness_review: prr-maas-chat-prod-2026-06
+  scope:
+    serving_release: af-chat-large-20260619-r3
+    resource_pool: inference-premium-a
+    cache_scopes: [local_nvme, rack_cache, registry_pointer]
+    optional_rag_index: kb-index-20260618.3
+  simulated_or_controlled_events:
+    - tokenizer_digest_recall
+    - model_artifact_signature_revoke
+    - rag_index_permission_rebuild_if_applicable
+  required_outputs:
+    cache_invalidation_record: generated
+    supply_chain_invalidation_evidence: generated
+    storage_security_boundary_check: pass
+    scheduler_blocks_invalid_cache_nodes: verified
+    serving_trace_replay_uses_replacement_artifact: verified
+    supply_chain_incident_cost_record: generated
+  pass_criteria:
+    no_new_replica_uses_invalid_cache: true
+    running_replicas_drained_or_verified: true
+    replacement_cache_ready_before_scale: true
+    billing_hold_or_replay_recorded_if_tokenizer_changed: true
+    prr_gate_update_generated_if_gap_found: true
+```
+
+这个演练的价值在于暴露“控制面成功、数据面失败”的风险。Registry 指针已经更新，但本地 NVMe 仍保留旧权重；RAG 索引权限已经修复，但 rack cache 仍可命中旧索引；tokenizer digest 已撤销，但某些 warmed replica 仍使用旧模板；调度器看到节点 cache ready，却不知道它是 invalid ready。AI Factory 的供应链安全不是只签名和登记来源，还要能撤销、阻断、预热替代版本并计算影响成本。
 
 从验收到上线的流水线可以用下面的图表示：
 

@@ -394,6 +394,54 @@ runtime_prevention_cost:
 
 这个账本让 runtime 团队和业务团队能讨论同一个问题：一次自动止血到底是“过度保守”还是“避免更大损失”。如果 guardrail 经常触发但没有避免实际损失，阈值可能过严；如果每次触发都避免了高价值租户事故，预留 canary 容量和诊断采样就是合理成本。
 
+数据和模型产物供应链事故也会改变 token 经济性。旧权重、旧 tokenizer、旧 RAG 索引或受限数据缓存继续被调度使用时，问题不一定表现为 5xx；它可能表现为 token 计量漂移、质量回归、合规风险、冷启动变慢、回滚失败或客户账单争议。`supply_chain_incident_cost_record` 应把这些成本从普通存储费用中拆出来：
+
+```yaml
+supply_chain_incident_cost_record:
+  record_id: scicr-20260620-artifact-recall-001
+  trigger:
+    reason: artifact_recall_or_tokenizer_bug_or_data_deletion_or_rag_index_permission_fix
+    supply_chain_invalidation_evidence: scie-20260620-af-chat-large-r3
+    cache_invalidation_record: cir-af-chat-large-20260620-001
+  affected_scope:
+    serving_releases: [af-chat-large-20260619-r3]
+    endpoints: [af-chat-large-prod]
+    tenants: measured_or_sampled
+    resource_pools: [inference-premium-a]
+  cost_breakdown:
+    invalid_cache_served_token_cost: calculated_if_any
+    token_count_reconciliation_cost: calculated_if_tokenizer_changed
+    forced_cache_rewarm_cost: calculated
+    cold_start_or_capacity_loss_cost: calculated
+    rag_index_rebuild_cost: calculated_if_rag
+    checkpoint_or_artifact_retention_extension_cost: calculated
+    compliance_review_and_customer_credit_cost: calculated_if_needed
+  revenue_treatment:
+    billing_hold_required: true_or_false
+    affected_invoice_windows: recorded
+    credit_or_rebill_policy: applied_if_needed
+  ledger_updates:
+    storage_cost_ledger: append
+    inference_runtime_cost_ledger: append_if_serving_impacted
+    quality_cost_ledger: append_if_quality_regressed
+    security_cost_ledger: append_if_boundary_violation
+    production_readiness_review: update_if_preventable
+```
+
+这个记录能防止把供应链事故误算成“存储成本上升”。强制重建 cache 会增加冷启动和对象存储请求，延长旧 checkpoint 保留会增加容量成本，RAG 索引重建会消耗 embedding 和向量库写入，tokenizer 修复会触发 usage replay 和账单冻结，模型 artifact 召回会导致 canary 暂停或回滚。这些成本都来自同一个供应链事件，应该进入同一张经济表，而不是分散在存储、推理、客服和财务报表里。
+
+```mermaid
+flowchart LR
+  Invalidation["cache_invalidation_record"] --> Evidence["supply_chain_invalidation_evidence"]
+  Evidence --> Cost["supply_chain_incident_cost_record"]
+  Cost --> Storage["storage_cost_ledger"]
+  Cost --> Runtime["inference_runtime_cost_ledger"]
+  Cost --> Quality["quality_cost_ledger"]
+  Cost --> Security["security_cost_ledger"]
+  Cost --> Billing["billing hold / replay / credit"]
+  Cost --> PRR["PRR / supply chain gate update"]
+```
+
 ## 41.5 revenue/token
 
 revenue/token 表示每个 token 带来的收入或业务价值。对外 MaaS 平台可能按 input token、output token、reasoning token、模型等级、上下文长度和专属实例收费；企业内部平台可以把收入替换为内部结算、成本节省、效率提升或业务结果。无论哪种模式，都需要让 token 产出与价值单位建立关系。

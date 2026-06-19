@@ -176,8 +176,10 @@ flowchart TB
 | `model_artifact_distribution` | 绑定权重、tokenizer、template、digest、预热和回滚对象。 | 第 14、33 章 | `cache_residency`、`serving_quality_contract` |
 | `cache_residency` | 描述模型或数据在 node/rack/pool 的缓存状态。 | 第 14、33、41 章 | `storage_evidence`、`storage_cost_ledger` |
 | `cache_invalidation_record` | 记录模型、tokenizer、template、RAG 索引或数据缓存为何失效、影响哪些节点、如何阻断复用和重新预热。 | 第 14、33、38、39 章 | `storage_evidence`、`production_readiness_review` |
+| `supply_chain_invalidation_evidence` | 证明 artifact、tokenizer、RAG index 或数据撤销后，旧 registry/cache/running replica/调度状态是否真正被阻断。 | 第 33、41、44 章 | `cache_invalidation_record`、`supply_chain_incident_cost_record`、`production_readiness_review` |
 | `storage_security_boundary` | 定义训练数据、checkpoint、模型权重、adapter、日志和 trace 的命名空间、权限、加密、审计、导出和删除边界。 | 第 33、37、38、41 章 | `security_audit_event`、`supply_chain_acceptance_matrix` |
 | `supply_chain_acceptance_matrix` | 验证数据 lineage、checkpoint restore、模型 provenance、缓存撤销和存储安全边界是否满足生产门禁。 | 第 38、44 章 | `production_readiness_review`、`storage_cost_ledger` |
+| `supply_chain_incident_cost_record` | 把供应链撤销、旧缓存误用、tokenizer 修正、RAG index 重建、cache rewarm、账单冻结和客户 credit 写入经济账本。 | 第 41、44 章 | `storage_cost_ledger`、`inference_runtime_cost_ledger`、`production_readiness_review` |
 | `network_path_evidence` | 把 job/request 映射到 GPU、NIC、rail、switch port 和 baseline。 | 第 30、32、37 章 | `network_diagnostic_bundle`、`fabric_baseline` |
 | `rail_balance_report` | 证明多 rail 设计在真实 rank 和端口流量中被正确使用。 | 第 32、37、38 章 | `fabric_change_record`、`network_cost_ledger` |
 | `congestion_event_record` | 把 ECN/PFC、队列、水位、流量类别和 workload 影响串成拥塞证据。 | 第 30、37、39 章 | `network_diagnostic_bundle`、`incident_record` |

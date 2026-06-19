@@ -184,10 +184,12 @@
 | `model_artifact_distribution` | 第 14 章、第 33 章 | 说明权重、tokenizer、template、digest、缓存预热和 readiness 的关系 |
 | `cache_residency` | 第 14 章、第 33 章、第 41 章 | 说明本地 NVMe、rack cache、权重 cache 与调度、冷启动和成本归因的关系 |
 | `cache_invalidation_record` | 第 14 章、第 33 章、第 38 章、第 39 章、第 41 章、第 44 章 | 说明权重、tokenizer、template、RAG 索引和数据缓存撤销后如何阻止调度复用旧缓存，并如何重新预热 |
+| `supply_chain_invalidation_evidence` | 第 33、41、44 章 | 说明 artifact、tokenizer、RAG index 或数据撤销后，registry、调度、autoscaler、running replica、local NVMe 和 rack cache 是否真正失效 |
 | `storage_security_boundary` | 第 33 章、第 37 章、第 38 章、第 41 章、第 44 章 | 说明训练数据、checkpoint、模型权重、adapter、prompt log、trace 和导出路径的命名空间、权限、加密、审计和删除边界 |
 | `data_path_evidence` / `storage_evidence` | 第 33 章、第 37 章、第 39 章、第 41 章 | 说明 workload 到 path、manifest、client、cache、backend、telemetry 和 impact 的证据链 |
 | `storage_acceptance_matrix` / `storage_composite_regression_gate` | 第 38 章 | 说明 dataset read、checkpoint write/restore、model load、cache miss 以及 NCCL+checkpoint+artifact 并发门禁 |
 | `supply_chain_acceptance_matrix` | 第 38 章、第 44 章 | 说明 dataset lineage、checkpoint restore、artifact provenance、cache invalidation 和 storage security boundary 如何成为生产资源和模型上线门禁 |
+| `supply_chain_incident_cost_record` | 第 41、44 章 | 说明供应链撤销、旧缓存误用、tokenizer 口径修正、RAG index 重建、cache rewarm、账单冻结和客户 credit 如何进入经济账本 |
 | 存储故障树 | 第 39 章 | 说明 GPU idle、checkpoint slow、model load slow 如何定位到 dataset/checkpoint/artifact/cache，并要求 workload impact 证据 |
 | `storage_cost_ledger` | 第 41 章 | 说明 dataset read、checkpoint、artifact retention、cache miss、local NVMe 保留和 storage-induced GPU idle 的成本归因 |
 
