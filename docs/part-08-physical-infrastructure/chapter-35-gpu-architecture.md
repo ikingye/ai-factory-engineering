@@ -199,6 +199,51 @@ gpu_capability:
 
 实现时还要保留验证来源。某个 capability 是厂商声明、实验室测试、灰度验证还是线上生产基线，可信度不同。资源池可以使用这些状态决定调度范围：experimental 只给测试项目，validated 可给灰度，production 才进入 SLA 池。这样能避免新硬件能力未经验证就影响关键业务。
 
+更进一步，平台应维护 `gpu_capability_scorecard`，把硬件能力、软件成熟度和 workload 结果放在同一个评估对象里：
+
+```yaml
+gpu_capability_scorecard:
+  gpu_family: next_gen_gpu_pool
+  scope:
+    resource_pool: inference-and-training-canary
+    server_profile: gpu_server_profile_class_a
+  hardware_capability:
+    hbm_capacity: recorded
+    hbm_bandwidth_class: high
+    tensor_core_precision:
+      bf16: supported
+      fp8: supported
+      int8: supported
+    interconnect_domain: nvswitch_or_equivalent
+    power_thermal_envelope: validated
+  software_validation:
+    driver_cuda_nccl: validated
+    inference_engine:
+      vllm: validated_for_selected_models
+      tensorrt_llm: experimental_or_validated
+    training_framework:
+      pytorch: validated
+      megatron_or_fsdp: validated_if_used
+  workload_results:
+    long_context_inference:
+      tokens_per_second: measured
+      ttft_tpot: measured
+      quality_gate: passed
+      cost_per_token_delta: calculated
+    distributed_training:
+      step_time: measured
+      scaling_efficiency: measured
+      stability: measured
+  production_state:
+    status: validated
+    allowed_tiers: [canary, internal_prod]
+    blocked_until:
+      - quality_gate_for_sensitive_models
+      - full_power_thermal_soak
+```
+
+Scorecard 能避免两类错误。第一，把厂商规格直接当成生产能力，忽略 runtime、模型质量和机房约束。第二，因为早期某个模型没有吃到收益，就否定整个新硬件。更合理的做法是按 workload、runtime、精度、质量和能效逐项记录，让 GPU 代际迁移成为可复盘的工程过程。
+
 能力画像还应定期刷新。driver、engine、模型版本和 kernel 优化变化后，同一 GPU 的生产能力也会变化。画像如果不随软件演进更新，就会逐渐变成过期文档。
 
 刷新不一定全量重测，但关键 runtime 和关键模型必须保留基线。这样升级收益和回归风险才可比较。

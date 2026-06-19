@@ -106,6 +106,37 @@ tokens/W 还提醒团队不要只追求 GPU utilization。GPU 忙但功耗高、
 
 在电力受限的数据中心，tokens/W 还会改变产品优先级。高能效、高毛利、低风险 workload 可以优先获得容量；低能效且低价值的批量任务可以错峰或迁移。能效因此从设施指标进入业务调度。
 
+能效需要 `energy_ledger` 支撑。它把 GPU power、rack power、PUE 或设施开销、token 产出和 workload 标签放在同一张账本里：
+
+```yaml
+energy_ledger:
+  window: 2026-06-19T10:00Z/2026-06-19T11:00Z
+  scope:
+    rack_capacity_unit: dc-a-rack-12
+    resource_pool: inference-prod-h100
+    model: af-chat-large
+  energy:
+    gpu_power_kwh: measured
+    node_power_kwh: measured
+    rack_power_kwh: measured
+    facility_overhead_factor: measured_or_policy_defined
+  production:
+    input_tokens: measured
+    output_tokens: measured
+    billable_tokens: calculated
+    tokens_per_watt: calculated
+    joules_per_token: calculated
+  constraints:
+    power_limited: false
+    cooling_limited: false
+    throttle_seconds: measured
+  economics:
+    energy_cost_per_token: calculated
+    power_cooling_induced_waste: calculated
+```
+
+这个账本让 tokens/W 可审计。否则团队很容易只用 GPU board power 估算能效，忽略 rack power、制冷开销、降频、低利用率和失败 token。能效优化也应能回溯到具体模型、资源池、rack 和时间窗口，才可能指导调度、定价和扩容。
+
 ## 41.4 cost/token
 
 cost/token 是生产单个 token 的单位成本。最简单的公式是 total cost 除以 total tokens，但真正可用的成本模型必须拆分成本项和 token 口径。GPU 折旧或租赁、电力、制冷、机房、网络、存储、平台研发、运维、准入、故障、失败重试、闲置冗余和免费额度都会影响真实成本。

@@ -135,6 +135,20 @@
 | `incident_record` | 第 39 章、第 40 章 | 说明事故时间线、影响面、止血动作、根因证据、成本影响和行动项 |
 | `slo_budget_ledger` | 第 40 章、第 41 章 | 说明 error budget、reliability cost、wasted GPU hours、赔付和毛利之间的关系 |
 
+## 物理设施与能源链路覆盖矩阵
+
+物理设施链路的目标是让读者能从 tokens/W、GPU 降频、机柜降额、液冷告警或扩容不达预期一路追到 GPU server、compute tray、power shelf、rack、cooling domain、capacity unit、acceptance baseline、调度能力和经济影响。当前覆盖如下：
+
+| 知识点 | 主要章节 | 覆盖要求 |
+| --- | --- | --- |
+| `gpu_server_profile` | 第 34 章、第 28 章 | 说明 CPU/GPU/HBM/PCIe/NVLink/NIC/NVMe/BMC/power/cooling 如何组成可调度服务器画像 |
+| `gpu_capability_scorecard` | 第 35 章、第 41 章 | 说明芯片能力、runtime 验证、模型适配、能效和生产成熟度的评分口径 |
+| `power_thermal_envelope` | 第 34 章、第 36 章、第 38 章 | 说明功耗、温度、液冷、降额、满载验收和调度限制 |
+| `rack_capacity_unit` | 第 36 章、第 28 章、第 40 章 | 说明 rack/power/cooling/fabric/storage 如何构成可承诺产能单元 |
+| `physical_acceptance_matrix` | 第 38 章 | 说明 power、cooling、cabling、BMC、full-load、thermal soak 和 workload 的准入矩阵 |
+| `capacity_activation_record` | 第 36 章、第 40 章 | 说明 planned、installed、accepted、limited、allocatable 到 retired 的交付状态流转 |
+| `energy_ledger` | 第 36 章、第 41 章 | 说明 GPU power、rack power、PUE、tokens/W、joules/token 和 power/cooling-induced waste 的经济归因 |
+
 ## 全书循环更新策略
 
 全书更新按“主题链路”推进，而不是按章节孤立推进。每轮选择一条关键链路，补齐机制、图、配置、故障、指标和验收。

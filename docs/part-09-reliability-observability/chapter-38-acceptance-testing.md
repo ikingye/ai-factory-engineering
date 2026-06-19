@@ -185,6 +185,39 @@ storage_acceptance_matrix:
 
 矩阵的目标是避免“存储通过”这种粗糙结论。一个存储池可以适合训练数据读取，但不适合高峰模型冷启动；可以适合单 job checkpoint，但不适合多个大任务同时 checkpoint。准入结果应表达适用 workload，而不是只给一个 pass/fail。
 
+物理设施也需要独立准入矩阵。GPU burn-in、NCCL 和存储都通过，并不代表 rack 可以长期满载运行；BMC 不可达、PDU 冗余异常、液冷流量不足或线缆映射缺失，都会让资源不适合进入生产池。
+
+```yaml
+physical_acceptance_matrix:
+  baseline_id: physical-rack12-20260619
+  scope:
+    rack_capacity_unit: dc-a-rack-12
+    servers: attached
+  dimensions:
+    facility: [power, cooling, liquid_loop, cabling, bmc]
+    workload: [sustained_training, inference_burst, checkpoint_concurrent]
+    duration: [smoke, soak, maintenance_recovery]
+  required_evidence:
+    - rack_power_under_load
+    - pdu_redundancy_state
+    - inlet_outlet_or_coolant_temperature
+    - throttle_reason
+    - bmc_redfish_reachable
+    - cabling_lldp_mapping
+    - power_thermal_envelope
+  result:
+    sustained_training: pass
+    inference_burst: pass
+    maintenance_recovery: pass
+    cooling_failover: limited
+  schedulable_for:
+    premium_inference: true
+    large_distributed_training: true
+    cooling_fault_tolerance_test: limited
+```
+
+这个矩阵把设施验收从“电力和冷却看起来正常”变成 workload 级证据。它能说明某个 rack 是否能承载持续训练，是否能应对推理突发，是否在维护或 failover 后需要降级。准入系统应把结果写入 `rack_capacity_unit` 和资源池状态。
+
 ## 38.7 network benchmark
 
 Network benchmark 需要覆盖管理网、BMC 网、业务网、存储网和训练通信网。对 RDMA 网络，应检查链路状态、MTU、PFC/ECN、拥塞控制、丢包、错误包、带宽、延迟、RDMA error、重传和多 rail 负载均衡。对普通以太网络，也要检查 Service、DNS、镜像拉取、对象存储访问、控制面连通性和推理入口路径。

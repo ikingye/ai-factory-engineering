@@ -181,6 +181,29 @@ Capacity operation 是容量运营。它回答未来需要多少 GPU、哪种 GP
 
 容量运营也要关注碎片。GPU 总量充足不代表能启动 512 卡训练；某个模型副本需要同节点多卡，也不能由零散 GPU 满足。容量系统应同时展示总量、连续拓扑域、资源等级、租户配额和故障保留，否则“还有很多 GPU”会变成误导性结论。
 
+物理扩容还应进入容量运营例会。每批新资源都应有 `capacity_activation_record`，展示 planned、installed、accepted、allocatable 和 limited 的数量，以及限制来自 power、cooling、fabric、storage、BMC 还是准入。容量团队不应把采购到货当作产能上线，也不应把已安装服务器当作可售资源。AI Factory 的容量口径应以 workload-fit capacity 为准。
+
+```yaml
+capacity_activation_review:
+  period: weekly
+  batches:
+    - capacity_activation_record: dc-a-rack-12-2026-06
+      planned_gpu: recorded
+      installed_gpu: recorded
+      accepted_gpu: calculated
+      allocatable_gpu: calculated
+      limited_gpu:
+        cooling_limited: calculated
+        fabric_limited: calculated
+        storage_limited: calculated
+      business_commitment:
+        can_sell_premium_inference: true
+        can_schedule_large_training: true
+        can_accept_new_reservation: policy_decision
+```
+
+这个 review 的价值是让交付、SRE、平台和业务使用同一口径。若某批 GPU 已安装但因为液冷 failover 未通过只能 limited，上线计划就应调整；若 rack 可跑推理但不适合大训练，销售或内部资源承诺也要相应限制。容量运营不是月底看利用率，而是持续把物理交付转成可用资源产品。
+
 ## 40.8 cost operation
 
 Cost operation 是成本运营。AI Factory 的成本包括 GPU 折旧或租赁、电力、制冷、网络、存储、软件、运维、机房、失败重跑和机会成本。推理服务最终关注 cost per token、revenue per token、tokens/W 和毛利；训练关注 GPU 小时、实验效率、失败率、checkpoint 成本和模型 ROI。
