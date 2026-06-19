@@ -237,6 +237,8 @@ quality_incident_record:
     model_version: af-chat-large-202606
     serving_quality_contract: sqc-af-chat-20260619-r3
     online_experiment: exp-support-model-20260619
+    online_experiment_guardrail: oeg-support-20260620
+    eval_slice_contract: esc-support-202606
   impact:
     affected_requests: measured
     human_handoffs: measured
@@ -245,13 +247,17 @@ quality_incident_record:
   mitigation:
     action: rollback_experiment_variant
     route_policy: fallback_to_baseline_model
+    serving_rollback_record: srr-20260620-001
+    rollback_drill_status: valid
   follow_up:
     quality_regression_records: [qrr-20260619-0007]
     gate_update_required: true
+    golden_set_governance_review: required
+    human_feedback_evidence: [hfe-support-20260620-001]
     owner_team: knowledge-platform
 ```
 
-质量事故的止血动作包括冻结实验、回滚模型或 prompt、禁用某个路由 scorecard、把高风险任务切回基线模型、暂停 Agent 自动执行、临时提高人工接管、限制某类 RAG 索引或关闭 runtime 优化。质量事故的复盘输出必须进入 `quality_regression_record` 和 `quality_gate_record`，而不是只写“已优化 prompt”。关闭条件应包含复现、修复、复测、门禁更新和线上观察窗口。
+质量事故的止血动作包括冻结实验、回滚模型或 prompt、禁用某个路由 scorecard、把高风险任务切回基线模型、暂停 Agent 自动执行、临时提高人工接管、限制某类 RAG 索引或关闭 runtime 优化。质量事故的复盘输出必须进入 `quality_regression_record` 和 `quality_gate_record`，而不是只写“已优化 prompt”。关闭条件应包含复现、修复、复测、门禁更新和线上观察窗口。若事故发生在实验期间，还必须检查 `online_experiment_guardrail` 是否按规则冻结；若通过回滚止血，还必须检查 `serving_rollback_drill` 是否有效，避免事故后才发现回滚路径从未验证。
 
 ## 40.5 change management
 
@@ -430,13 +436,21 @@ quality_change_request:
     task_slices: [policy_lookup, rag_citation]
   linked_records:
     quality_gate_record: qg-af-chat-20260619
+    quality_gate_execution: qge-af-chat-20260620-001
+    eval_slice_contract: esc-support-202606
+    golden_set_governance_record: gsg-support-202606
     serving_quality_contract: sqc-af-chat-20260619-r3
     online_experiment_record: exp-support-model-20260619
+    online_experiment_guardrail: oeg-support-20260620
+    serving_rollback_drill: srd-af-chat-20260620
   validation:
     - offline_quality_gate
+    - eval_slice_contract_coverage
+    - golden_set_governance_valid
     - protocol_contract_test
     - token_drift_test
     - canary_quality_telemetry
+    - rollback_drill_valid
   stop_conditions:
     - citation_failure_rate_increase
     - complaint_rate_increase
@@ -446,6 +460,8 @@ quality_change_request:
     model_or_route: baseline_model
     prompt_template: previous_version
 ```
+
+质量变更系统的责任是阻止“证据不充分的发布”。如果 `eval_slice_contract` 没覆盖目标任务，变更应退回评测设计；如果 golden set 近期发生未授权访问或 judge drift 未回放，门禁结果应降级；如果 online experiment guardrail 没有硬停止规则，灰度不应进入外部客户；如果 rollback drill 失效，发布只能进入低风险 shadow 或内部 canary。SRE 的角色不是重新评测模型，而是确认质量证据足以承担生产风险。
 
 工程实现还应把模板嵌入工具。变更系统自动生成验证项，incident 系统自动拉取诊断包，容量系统自动给出水位预测。模板如果只存在文档里，执行质量会随人波动。
 
@@ -530,7 +546,7 @@ flowchart TB
 
 质量事故也应消耗 error budget，但口径要独立于可用性。一个模型持续返回低质量答案，HTTP 可用性可能仍然达标，却已经伤害用户任务成功率和客户信任。SRE 可以为核心应用定义 quality SLO，例如任务成功率、引用正确率、工具轨迹成功率、人工接管率或投诉率，并把严重质量回归写入 `slo_budget_ledger`。这样模型质量会影响发布节奏和变更策略，而不是只影响离线评测报告。
 
-质量事故的控制回路应和技术事故同级。`quality_evidence_bundle` 冻结线上质量现场，`rag_agent_evidence_bundle` 补充 RAG 权限、context、Agent 工具和预算证据，`quality_gate_execution` 说明发布前门禁依据，`routing_quality_decision_record` 说明 Gateway 为什么选择某个模型，`serving_rollback_record` 说明如何止血，`quality_cost_ledger` 说明低质量 token 的经济影响。SRE 不能只问“是否 5xx”，而要问“用户任务是否成功，质量预算是否被消耗，是否需要冻结模型或路由变更”。
+质量事故的控制回路应和技术事故同级。`quality_evidence_bundle` 冻结线上质量现场，`rag_agent_evidence_bundle` 补充 RAG 权限、context、Agent 工具和预算证据，`quality_gate_execution` 说明发布前门禁依据，`eval_slice_contract` 和 `golden_set_governance_record` 说明评测覆盖和样本可信度，`online_experiment_guardrail` 说明实验止血规则，`routing_quality_decision_record` 说明 Gateway 为什么选择某个模型，`serving_rollback_record` 和 `serving_rollback_drill` 说明如何止血以及回滚能力是否被预演，`quality_cost_ledger` 说明低质量 token 的经济影响。SRE 不能只问“是否 5xx”，而要问“用户任务是否成功，质量预算是否被消耗，是否需要冻结模型或路由变更”。
 
 ```mermaid
 flowchart TB
@@ -540,8 +556,11 @@ flowchart TB
   QEvidence --> QBudget["quality error budget"]
   RAEB --> QIncident
   Gate["quality_gate_execution"] --> QIncident
+  Slice["eval_slice_contract / golden set governance"] --> QIncident
+  Guardrail["online_experiment_guardrail"] --> QIncident
   Route["routing_quality_decision_record"] --> QIncident
   QIncident --> Rollback["serving_rollback_record / route freeze"]
+  Drill["serving_rollback_drill"] --> Rollback
   QIncident --> Cost["quality_cost_ledger"]
   Cost --> Policy["release and routing policy"]
   QBudget --> Policy
@@ -574,6 +593,8 @@ flowchart TB
 
 第八类故障是质量事故不进 SRE 流程。模型发布后投诉上升，团队只在应用群里讨论；RAG 引用错误被修了一个 prompt，但没有回归样本；Agent 工具失败导致人工接管增加，却没有触发变更冻结。解决方向是定义 `quality_incident_record` 和 quality SLO，让质量退化像延迟和错误率一样进入 incident、error budget、复盘和门禁。
 
+第九类故障是质量变更缺少证据有效性检查。模型通过了某个评测报告，但目标 task slice 没有契约，golden set 已经被训练访问，线上实验没有停止规则，回滚演练也已过期。发布后出现质量事故时，SRE 才发现没有可用证据。解决方向是让 `quality_change_request` 强制绑定 `eval_slice_contract`、`golden_set_governance_record`、`online_experiment_guardrail` 和 `serving_rollback_drill`。
+
 ## 性能指标
 
 可靠性指标包括 SLO 达成率、SLA 违约次数、error budget 消耗、incident 数量、MTTD、MTTA、MTTR、复发率、自动恢复成功率和复盘行动项完成率。它们衡量系统是否稳定、团队是否能快速恢复、组织是否在学习。
@@ -586,6 +607,8 @@ flowchart TB
 
 质量运营指标包括 quality incident 数量、quality error budget burn、回归样本关闭时长、质量变更冻结次数、实验护栏触发次数、人工接管率、低质量 token 成本、质量事故复发率和门禁豁免次数。这些指标让 SRE 能判断质量治理是否有效。若质量事故频繁复发，问题可能不在模型一次性修复，而在评测集、发布门禁或观测事实层不足。
 
+质量 SRE 指标还应覆盖证据有效性：目标 task slice 有契约的发布比例、golden set governance 通过率、线上实验 guardrail 自动冻结次数、guardrail 触发到冻结耗时、rollback drill 有效覆盖率、human feedback evidence 到 regression 的转化率、质量 incident 关闭时门禁更新比例和 quality evidence bundle 完整率。这些指标能暴露质量治理系统本身是否可靠。
+
 指标还应能按资源等级拆分。高优生产池、实验池、训练池和推理池的目标不同，混在一起看会误导。分层指标能让运营策略更精确，也能解释为什么不同资源价格不同。
 
 指标体系还需要防止局部优化。GPU utilization 提高但排队时间变长，tokens/s 提高但错误率上升，成本下降但复发事故增加，都不是单纯成功。SRE dashboard 应把收益指标和约束指标放在同一屏，让团队看到取舍，而不是只追逐一个数字。
@@ -597,6 +620,8 @@ flowchart TB
 第一个取舍是严格 SLO 与成本。更严格 SLO 提升用户信任，但需要更多冗余、预留、缓存和运维投入；较宽松 SLO 降低成本，但可能限制业务场景。不同租户和模型应使用不同等级，不应让所有 workload 共享同一可靠性成本。
 
 第二个取舍是迭代速度与 error budget。更快变更提升性能和效率，但消耗错误预算；过度保守会阻碍优化，导致成本长期偏高。Error budget 的作用，是让团队在预算充足时加速，在预算不足时稳住。它把争论变成规则。
+
+质量治理还有一个取舍是实验速度与证据强度。如果每次小改都要求完整 golden set、人工评审和回滚演练，模型团队会绕过流程；如果所有实验只看少量线上指标，质量事故会变成用户代价。实用做法是按 blast radius 分级：内部 shadow 可以轻门禁，外部 canary 必须有 experiment guardrail，高价值租户和默认模型必须有 slice contract、golden governance、rollback drill 和 quality cost 归因。
 
 第三个取舍是高利用率与恢复能力。GPU 利用率越高，成本看起来越低，但故障迁移、推理峰值和训练抢占需要余量。没有余量的系统在正常时很好看，在事故时很脆弱。容量运营要保留有目的的冗余。
 
@@ -615,6 +640,7 @@ flowchart TB
 - 变更、升级、事故和复盘需要标准流程与自动化支撑。
 - 容量运营和成本运营是 AI Factory 可靠性的一部分。
 - 质量退化、RAG 引用错误、Agent 轨迹失败和安全误拒/漏拒应进入 SRE 的 quality incident、quality SLO 和变更门禁，而不是停留在模型效果讨论。
+- 质量变更必须检查评测切片、golden set、实验护栏和回滚演练的证据有效性，否则“评测通过”和“可回滚”都只是口头承诺。
 
 ## 延伸阅读
 

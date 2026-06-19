@@ -487,6 +487,67 @@ serving_rollback_record:
 
 这个记录能避免两类事故。第一类是“半回滚”：只回滚权重，没有回滚 tokenizer 或 chat template，线上行为仍然不同；第二类是“证据清空”：回滚删掉了新版本副本和日志，导致后续无法解释质量退化。生产回滚既要快，也要保留足够证据。对高价值模型，回滚记录应进入 PRR 和 SRE 复盘，证明同类问题在下一次 release gate 中被覆盖。
 
+回滚能力还必须演练，形成 `serving_rollback_drill`。`serving_rollback_record` 证明某次事故中做了什么，drill 证明在没有事故时平台也能按预期回滚。很多系统文档写着“支持回滚”，实际只验证了 deployment 镜像回退；真正的模型服务回滚还要覆盖权重、tokenizer、chat template、engine config、Gateway route、experiment variant、cache、warming、drain、metering 和 evidence preservation。没有演练，事故时才会发现旧权重已从节点 cache 清理、旧 tokenizer 没有签名、Gateway route 无法快速切回，或回滚后 usage 口径变化导致账单争议。
+
+```yaml
+serving_rollback_drill:
+  drill_id: srd-af-chat-20260620
+  endpoint: af-chat-large-prod
+  baseline_release: af-chat-large-20260612-r9
+  candidate_release: af-chat-large-20260619-r3
+  drill_scope:
+    traffic: shadow_or_internal_canary
+    tenants: [internal_eval]
+    request_slices:
+      - short_chat
+      - rag_citation
+      - tool_call_json
+      - long_context_streaming
+  components_verified:
+    gateway_route_weight: pass
+    endpoint_state_transition: pass
+    weights_and_adapter_digest: pass
+    tokenizer_digest: pass
+    chat_template_version: pass
+    runtime_image_and_engine_config: pass
+    cache_invalidation_record: pass
+    model_artifact_distribution: pass
+    streaming_drain: pass
+    usage_and_metering_schema: pass
+    quality_evidence_bundle_preserved: pass
+  timing:
+    detect_to_freeze: measured
+    freeze_to_route_restore: measured
+    route_restore_to_quality_recovery_probe: measured
+  recovery_probes:
+    protocol_contract_test: pass
+    token_drift_back_to_baseline: pass
+    golden_slice_smoke: pass
+    cost_metering_reconciliation: pass
+  decision:
+    rollback_capability_valid_until: next_major_runtime_or_artifact_change
+    blockers: []
+```
+
+这个演练应在三类变化后自动失效：第一，artifact 供应链变化，例如权重、adapter、tokenizer、模板、签名和分发路径改变；第二，runtime 变化，例如推理引擎、container runtime、GPU driver、CDI/NRI、batch 策略或 PD 分离策略改变；第三，Gateway 和计量变化，例如路由策略、experiment 平台、usage schema、价格版本或计费 pipeline 改变。失效后，PRR 不应接受“理论可回滚”的说法，而要重新跑 drill。回滚是生产能力，不是文档承诺。
+
+```mermaid
+flowchart LR
+  Candidate["candidate release"] --> Drill["serving_rollback_drill"]
+  Baseline["baseline release"] --> Drill
+  Drill --> Route["Gateway route restore"]
+  Drill --> Artifact["weights / tokenizer / template restore"]
+  Drill --> Runtime["runtime / engine config restore"]
+  Drill --> Cache["cache invalidation and warmup"]
+  Drill --> Meter["usage and billing reconciliation"]
+  Drill --> Probe["quality and protocol recovery probes"]
+  Probe --> Verdict{"drill pass?"}
+  Verdict -->|yes| PRR["production readiness review"]
+  Verdict -->|no| Block["block release / fix rollback path"]
+```
+
+对在线大模型，回滚演练还要验证“回滚不会制造第二次事故”。例如长 streaming 请求在 drain 期间应完成或按协议终止，不能被新旧 release 同时计费；回滚到旧 tokenizer 后，正在执行的 RAG context 和 tool call JSON 不能被旧模板误解析；旧版本容量不足时，Gateway 应降低流量而不是把所有请求压回 baseline；证据保留应发生在删除 candidate 副本之前。一次合格的 drill 至少要证明回滚路径、容量路径、证据路径和计量路径同时成立。
+
 模型服务还应向 Gateway 暴露 `engine_admission_health`。这是 endpoint 级健康摘要，生成方通常是 model server 或 serving control plane，消费方是 AI Gateway、autoscaler 和 SRE。它把内部 queue、active sequence、KV block、deadline miss、drain、canary freeze 等状态压缩成可路由信号，避免 Gateway 把流量送到端口正常但 runtime 已经不可承诺 SLO 的副本组。
 
 ```yaml
@@ -713,6 +774,8 @@ PD 分离是否值得上线，不能只看平均 TTFT。若 `pd_transfer_evidenc
 
 第十类故障是 canary 只看服务指标。新版本 TTFT、TPOT、错误率都正常，但引用正确率下降、工具 JSON 不稳定或输出更长导致成本上升。模型服务 canary 应消费第 13 章的质量指标和第 6 章的线上实验护栏。服务指标保护可用性，质量指标保护用户价值，二者缺一不可。
 
+第十一类故障是回滚未经演练。事故中发现旧 release 的权重还在 registry，但节点 cache 已清理，旧 tokenizer 没有随 release 签名，Gateway route 只能回滚流量不能回滚 experiment sticky assignment，或者 usage schema 回退后账单 pipeline 不兼容。解决方向是维护 `serving_rollback_drill`，并让 artifact、runtime、Gateway、cache 和计量任一关键变化自动要求重跑。没有 drill 的回滚能力不能进入高 SLA 承诺。
+
 ## 性能指标
 
 请求指标包括 QPS、并发、成功率、错误率、取消率、超时率、streaming duration 和 fallback 率。它们回答服务是否可用、谁受影响、错误在哪里发生。请求指标应按 endpoint、model version、replica、tenant 和 route 切分。全局平均值无法支撑发布回滚。
@@ -746,6 +809,8 @@ Runtime 指标包括 queue length、queue time、batch size、prefill time、dec
 
 服务质量契约指标包括 contract 覆盖率、发布请求中 contract id 缺失率、token drift 失败数、协议契约失败数、质量回归失败数、canary 期间质量反馈率、contract 与 gate 不一致次数和回滚后 contract 恢复时间。这些指标衡量模型服务是否真的按评测过的组合运行。一个平台如果经常出现“评测通过但线上不是同一组合”，说明模型服务治理还不合格。
 
+回滚演练指标包括 drill 覆盖的 endpoint 比例、最近一次有效 drill 距离当前 release 的变更跨度、detect-to-freeze、freeze-to-route-restore、baseline capacity readiness、cache invalidation replay 通过率、usage reconciliation 通过率、drain 成功率、回滚后 golden slice smoke 通过率和 drill blocker 关闭时长。它们衡量的是“事故来临前是否真的能退回去”。回滚时间短但证据丢失、计量错乱或质量未恢复，都不能算合格回滚。
+
 ## 设计取舍
 
 第一个取舍是独立部署与共享部署。独立部署隔离强、性能稳定、排障简单，但资源利用率低；共享部署或 multi-model serving 提高利用率，但增加加载、隔离和观测复杂度。高 SLA 大模型适合独立部署，低频小模型或 adapter 场景可以考虑共享。部署形态应由流量和风险决定。
@@ -760,6 +825,8 @@ Runtime 指标包括 queue length、queue time、batch size、prefill time、dec
 
 最终取舍应由 workload profile 决定。流量稳定、高价值、低延迟的模型，和低频、best-effort 的模型，不应使用同一种 serving 策略。
 
+回滚还有一个取舍：保留旧版本容量与降低空闲成本。高价值 endpoint 保留 baseline 热容量和 cache，会增加成本，但能在质量或协议事故中快速止血；低价值或低频 endpoint 可以接受较慢回滚，但必须在 SLA 中说明。工程上不应把所有模型都做成最高等级，而应按租户价值、请求风险、输出副作用和业务承诺确定 rollback class。Rollback class 应进入 endpoint contract 和 PRR。
+
 ## 小结
 
 - 模型服务是模型能力生产化的执行层，连接网关、推理引擎和 GPU。
@@ -767,6 +834,7 @@ Runtime 指标包括 queue length、queue time、batch size、prefill time、dec
 - LLM autoscaling 应关注 token、队列、GPU 和 KV Cache，而不是只看 CPU。
 - 模型发布必须版本化权重、tokenizer、runtime 和配置。
 - `serving_quality_contract` 把模型服务发布与质量门禁绑定，确保线上运行的 artifact/runtime 组合就是被评测、可回放、可回滚的组合。
+- `serving_rollback_drill` 证明回滚不是纸面能力，而是覆盖 artifact、runtime、Gateway、cache、drain、计量和质量探针的生产演练。
 
 ## 延伸阅读
 

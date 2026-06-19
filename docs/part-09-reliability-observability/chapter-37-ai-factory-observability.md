@@ -465,11 +465,16 @@ quality_evidence_bundle:
     experiment_id: exp-support-model-20260619
   evidence_refs:
     quality_telemetry_events: sampled
+    human_feedback_evidence: sampled
     routing_quality_decision_records: sampled
     serving_quality_contract: sqc-af-chat-20260619-r3
     quality_gate_execution: qge-af-chat-20260620-001
+    eval_slice_contract: esc-support-202606
     eval_dataset_lineage_record: edl-support-quality-20260620
+    golden_set_governance_record: gsg-support-202606
+    online_experiment_guardrail: oeg-support-20260620
     serving_rollback_record: optional
+    serving_rollback_drill: srd-af-chat-20260620
   impact:
     low_quality_tokens: estimated
     human_handoff_delta: measured
@@ -477,7 +482,31 @@ quality_evidence_bundle:
     quality_cost_estimate: calculated
 ```
 
-这个 bundle 能把“用户说不好”变成可复盘的工程证据。SRE 可以判断是否要冻结 canary，评测团队可以把样本加入 regression，Gateway 团队可以检查路由是否误选小模型，模型服务团队可以检查 serving contract 是否和 gate execution 一致，商业团队可以看到低质量 token 的成本。质量观测不是满意度看板，而是质量控制面的输入。
+这个 bundle 能把“用户说不好”变成可复盘的工程证据。SRE 可以判断是否要冻结 canary，评测团队可以把样本加入 regression，Gateway 团队可以检查路由是否误选小模型，模型服务团队可以检查 serving contract 是否和 gate execution 一致，商业团队可以看到低质量 token 的成本。新增的 `eval_slice_contract` 和 `golden_set_governance_record` 用来判断“当初的门禁是否覆盖这个失败切片、样本是否可信”；`online_experiment_guardrail` 用来判断“实验是否按停止规则止血”；`serving_rollback_drill` 用来判断“回滚能力是否在事故前被验证”。质量观测不是满意度看板，而是质量控制面的输入。
+
+质量证据包还应有完整性检查。一个 bundle 如果只有用户反馈，没有 serving contract、route decision、experiment variant 和 slice contract，只能说明有投诉，不能说明责任层级；如果有 gate execution 但没有 golden set governance，不能证明门禁数据可信；如果有 rollback record 但没有 rollback drill，不能证明平台在事故前具备可预期回滚能力。观测系统应为 bundle 计算 evidence completeness，并把缺失项作为 SRE 复盘和 PRR 的输入。
+
+```yaml
+quality_evidence_completeness:
+  bundle_id: qeb-20260620-support-001
+  required_for_release_regression:
+    quality_telemetry_events: present
+    human_feedback_evidence: present_if_user_visible_quality_issue
+    routing_quality_decision_records: present
+    serving_quality_contract: present
+    quality_gate_execution: present
+    eval_slice_contract: present
+    eval_dataset_lineage_record: present
+    golden_set_governance_record: present
+    online_experiment_guardrail: present_if_experiment
+    serving_rollback_record: present_if_mitigated_by_rollback
+    serving_rollback_drill: present_if_high_sla_endpoint
+  verdict:
+    completeness: sufficient_or_gap
+    missing_blocks_prr: true_or_false
+```
+
+这类完整性检查能减少质量复盘中的争议。没有它，团队容易围绕“模型是不是退化了”争论；有了它，先判断证据是否足以归因，再决定是否扩大排查。对资深平台团队来说，观测的成熟度不是曲线多，而是证据是否能支撑决策：冻结、回滚、更新评测集、调整路由、补演练或赔付客户。
 
 RAG 和 Agent 还需要更细的证据包，因为它们的失败通常发生在模型之外。`rag_agent_evidence_bundle` 应冻结 RAG 权限决策、context 快照、Agent 工具执行、工具副作用策略、预算账本和安全审计。它不替代 `quality_evidence_bundle`，而是后者在 RAG/Agent task slice 下必须引用的子证据。没有这些引用，质量事故很容易被误判成“模型回答不好”，实际根因可能是检索越权、context 截断、工具 schema 漂移、外部系统超时或预算策略过早停止。
 

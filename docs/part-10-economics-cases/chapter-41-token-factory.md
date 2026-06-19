@@ -747,8 +747,13 @@ quality_cost_ledger:
     quality_evidence_bundle: qeb-20260620-support-001
     rag_agent_evidence_bundle: raeb-20260620-001
     quality_gate_execution: qge-af-chat-20260620-001
+    eval_slice_contract: esc-support-202606
+    golden_set_governance_record: gsg-support-202606
+    online_experiment_guardrail: oeg-support-20260620
+    human_feedback_evidence: sampled
     routing_quality_decision_records: sampled
     serving_rollback_records: [srr-20260620-001]
+    serving_rollback_drills: [srd-af-chat-20260620]
     rag_quality_regression_records: [rqr-20260619-0007]
     agent_budget_ledgers: sampled
     agent_tool_execution_records: sampled
@@ -765,16 +770,23 @@ quality_cost_ledger:
     support_ticket_cost: calculated
     churn_risk_cost: estimated_policy
     rework_cost: calculated
+    experiment_harm_cost: calculated_from_guardrail_breach
     failed_tool_execution_cost: calculated_if_agent
     security_containment_cost: calculated_if_tool_incident
   prevention_cost:
     evaluation_run_cost: measured
+    eval_slice_contract_maintenance_cost: allocated
+    golden_set_governance_cost: allocated
     human_labeling_cost: measured
+    human_feedback_review_cost: measured
     red_team_cost: measured
     regression_suite_cost: measured
+    rollback_drill_cost: measured
   derived:
     quality_adjusted_cost_per_token: calculated
     cost_per_successful_answer: calculated
+    cost_per_successful_task_by_slice: calculated
+    rollback_drill_prevention_value: estimated_from_loss_avoided
     value_token_ratio: calculated
 ```
 
@@ -799,11 +811,40 @@ cost_per_successful_answer =
 
 质量成本账本还应能反向更新路由和发布策略。若 `routing_quality_decision_record` 显示某个 task slice 被频繁路由到便宜模型，但 `quality_cost_ledger` 显示人工接管和投诉成本上升，Gateway scorecard 应降低该模型在该切片的权重；若 `serving_rollback_record` 显示一次质量回滚避免了持续低质量损失，预留 canary 容量和回滚演练就有经济依据；若某次 `quality_gate_execution` 的 prevention cost 很高但几乎没有线上质量损失，团队可以评审门禁是否过度。质量经济模型的作用不是惩罚模型团队，而是让质量投入、路由策略和商业结果在同一张表里对齐。
 
+评测和治理成本也要分清“浪费”和“保险”。`eval_slice_contract` 维护、golden set 访问审计、human feedback review、线上实验 guardrail 和 rollback drill 都会消耗预算，但它们保护的是高价值任务的毛利下限。一次 guardrail 自动冻结可能减少当日 token 收入，却避免更多退款、人工接管和客户流失；一次 rollback drill 看起来没有产出 token，却能把事故恢复时间从不可控变成可估计。经济上应比较 prevention cost 与 loss avoided，而不是把所有治理成本都当作 overhead。
+
+```yaml
+quality_prevention_value_record:
+  window: 2026-06-20T00:00Z/2026-06-21T00:00Z
+  scope:
+    application: support-chat
+    task_slice: rag_citation
+  prevention_actions:
+    online_experiment_guardrail_freeze:
+      guardrail: oeg-support-20260620
+      experiment_harm_cost_observed: calculated
+      projected_loss_without_freeze: estimated_policy
+    serving_rollback_drill:
+      drill: srd-af-chat-20260620
+      rollback_time_confidence: improved
+      projected_incident_loss_reduction: estimated_policy
+    golden_set_governance:
+      governance_record: gsg-support-202606
+      avoided_invalid_release_decision: estimated_policy
+  derived:
+    prevention_cost: calculated
+    loss_avoided: estimated_policy
+    prevention_roi: calculated_or_review
+```
+
+这个记录不能被误用成精确财务承诺，因为许多损失只能估算；它的价值是让工程治理进入同一套商业语言。没有这张账，团队只会看到评测、人工、演练和 guardrail 的成本，看不到它们避免了多少低质量 token、错误路由、账单争议和客户支持成本。Token Factory 的经济性不是把每个流程压到最低，而是把每个 token 生产成“有用、可计量、可承诺”的输出。
+
 ```mermaid
 flowchart LR
   Tokens["generated / delivered tokens"] --> Base["base request cost"]
   Feedback["quality_feedback_event"] --> Loss["quality losses\nhandoff / refund / rework"]
-  Eval["eval / labeling / regression"] --> Prevent["prevention cost"]
+  Eval["eval / labeling / regression\nslice / golden / drill"] --> Prevent["prevention cost"]
+  Guardrail["experiment guardrail / rollback drill"] --> Prevent
   Base --> QCost["quality_cost_ledger"]
   Loss --> QCost
   Prevent --> QCost

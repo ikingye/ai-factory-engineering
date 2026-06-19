@@ -107,6 +107,98 @@ eval_dataset_manifest:
     exclude_from_training: true
 ```
 
+Manifest 之后还需要 `eval_slice_contract`。Manifest 说明“有哪些样本”，slice contract 说明“每个任务切片为什么存在、最低覆盖要求是什么、由谁解释、失败后阻断什么生产动作”。很多评测体系看起来样本很多，但关键业务切片没有最低样本策略：高价值客户、长上下文、拒答、引用、工具调用、跨语言、低价模型 fallback 和人工接管场景混在一个总分里。这样总分上升时，团队无法知道核心业务是否真的安全。Slice contract 把评测从样本集合提升为发布契约。
+
+```yaml
+eval_slice_contract:
+  contract_id: esc-support-202606
+  dataset_id: support-quality-202606
+  owner: model-quality
+  business_binding:
+    application: support-chat
+    primary_business_metric: resolved_ticket_without_handoff
+    protected_segments:
+      - enterprise_high_value_customer
+      - regulated_knowledge_base
+  slices:
+    - slice_id: rag_citation
+      purpose: verify_answer_grounded_in_allowed_evidence
+      minimum_coverage_policy: policy_defined_by_risk
+      required_metrics:
+        - citation_precision
+        - citation_recall_on_required_evidence
+        - answer_supported_by_citation
+        - refusal_when_no_allowed_evidence
+      hard_gates:
+        no_high_severity_regression: required
+        permission_replay_pass: required
+      owner: knowledge-platform
+    - slice_id: tool_call_json
+      purpose: protect_agent_and_api_contract
+      required_metrics:
+        - schema_validity
+        - tool_selection_accuracy
+        - no_unapproved_side_effect
+      hard_gates:
+        valid_json_for_contract_cases: required
+        side_effect_policy_replay: required
+      owner: agent-platform
+    - slice_id: low_cost_fallback
+      purpose: verify_small_model_route_does_not_raise_handoff_cost
+      required_metrics:
+        - task_success_rate
+        - human_handoff_delta
+        - cost_per_successful_answer
+      hard_gates:
+        no_negative_margin_for_target_plan: required
+      owner: gateway-and-economics
+  release_binding:
+    quality_gate_record: qg-af-chat-20260619
+    online_experiment_guardrail: oeg-support-20260620
+```
+
+这个对象的核心不是固定样本数量，而是固定风险口径。样本数量可以随业务规模、流量和风险等级调整，但每个切片必须能回答三件事：为什么这个切片保护生产价值，哪些指标是硬门禁，失败后谁负责解释和修复。若 `rag_citation` 切片失败，不能用通用问答分数抵消；若 `low_cost_fallback` 切片导致人工接管上升，不能只说 token 成本下降。切片契约让评测门禁和商业决策共享同一套任务边界。
+
+Golden set 还需要独立治理。Golden set 通常指长期保留、用于版本比较和回归判断的高价值样本集合；holdout 或 blind split 则是受控访问、用于防止调参过拟合的盲测部分。它们不能被随意复制到训练、prompt 调参或公开报告中。生产系统里常见的失败不是没有 golden set，而是 golden set 被多轮优化、人工挑选、样本泄漏和 judge 漂移污染后，仍然被当作可信门禁。
+
+```yaml
+golden_set_governance_record:
+  governance_id: gsg-support-202606
+  dataset_id: support-quality-202606
+  protected_splits:
+    golden_regression: object://eval/support/golden@sha256:example
+    blind_holdout: object://eval/support/holdout@sha256:example
+  access_control:
+    readers: [model-quality]
+    raw_sample_export: denied_by_default
+    reviewer_ui_redaction: required
+    break_glass_approval: security_and_quality_owner
+  leakage_control:
+    excluded_from_training: enforced
+    excluded_from_sft_and_dpo: enforced
+    prompt_tuning_access: denied
+    overlap_scan_against_training_manifests: pass
+    access_audit_window: continuous
+  freshness_control:
+    stale_case_policy: review_or_retire_when_business_rule_changes
+    new_failure_intake: from_quality_regression_record
+    slice_distribution_review: required_per_release_train
+  judge_drift_control:
+    rubric_version: support-rubric-v5
+    judge_model_version: judge-202606
+    human_anchor_cases: required
+    judge_upgrade_requires_backtest: true
+  release_decision:
+    usable_for_gate: true
+    invalidation_conditions:
+      - overlap_with_training_data
+      - unapproved_raw_export
+      - judge_upgrade_without_backtest
+      - stale_business_policy
+```
+
+Golden set 的治理记录让“评测可信度”本身可审计。若一次模型升级在 golden regression 上通过，但治理记录显示 blind holdout 曾被导出给训练团队，门禁结论应降级；若业务政策改变导致历史拒答案例不再适用，旧样本应退役或改标，而不是继续制造假回归；若 judge model 升级后没有用人工 anchor cases 回放，分数变化不能直接解释为模型变化。评测系统的可信度取决于样本、rubric、judge 和访问控制共同成立。
+
 评测数据还需要 `eval_dataset_lineage_record`。Manifest 描述数据集应该是什么，lineage record 记录这次数据集版本实际如何生成、从哪些线上反馈或回归样本吸收、经过哪些脱敏和标注、是否进入训练排除列表、judge 或 rubric 是否变化。没有 lineage，团队看到评测分数变化时，无法区分是模型变了，还是评测集、评审规则或样本构成变了。
 
 ```yaml
@@ -435,6 +527,96 @@ online_eval_summary:
   decision: expand_or_review
 ```
 
+线上实验还需要 `online_experiment_guardrail`。`online_experiment_record` 记录实验是什么，guardrail 记录实验允许伤害多少、何时自动停止、如何保护随机化和归因。没有 guardrail 的 A/B 很容易出现三类错误：第一，随机化单元选错，把同一用户会话切到多个模型，污染多轮上下文；第二，只看主指标，忽略投诉、人工接管、安全拦截和成本；第三，实验失败后没有冻结样本和路由证据，导致结论争议无法复盘。
+
+```yaml
+online_experiment_guardrail:
+  guardrail_id: oeg-support-20260620
+  experiment_id: exp-support-model-20260619
+  randomization:
+    unit: user_or_conversation
+    stickiness: required_for_multi_turn
+    exclusion:
+      - high_risk_tenants_without_approval
+      - users_in_active_incident
+      - requests_without_trace_or_contract_id
+  exposure_control:
+    initial_percent: small_canary
+    max_percent_before_human_review: policy_defined
+    ramp_requires:
+      - quality_gate_execution_valid
+      - serving_quality_contract_match
+      - no_open_sev1_quality_regression
+  guardrail_metrics:
+    safety_block_miss: hard_stop
+    citation_failure_rate: freeze_and_collect_bundle
+    human_handoff_rate: freeze_if_regressed
+    complaint_rate: freeze_if_regressed
+    ttft_p95: freeze_if_slo_regressed
+    cost_per_successful_answer: review_if_regressed
+  stop_rules:
+    automatic_freeze: enabled
+    route_weight_to_candidate: set_to_zero_on_hard_stop
+    evidence_bundle: quality_evidence_bundle_required
+    rollback_record: required_if_serving_reverted
+  attribution_requirements:
+    task_slice: required
+    routing_quality_decision_record: sampled
+    serving_quality_contract: required
+    quality_feedback_event_variant: required
+```
+
+护栏的价值在于把“实验伦理”和“工程止血”落到控制面。实验可以允许小范围探索，但不能允许无限制伤害用户任务。对于客服、代码、安全和工具执行这类高风险场景，实验必须有 blast radius、停止规则和证据保留。若 treatment 的主指标略好，但 `human_handoff_rate` 和 `cost_per_successful_answer` 同时恶化，不能简单扩大流量；若随机化单元不是 conversation，多轮对话的质量差异可能被历史上下文污染。A/B 的可信度来自实验设计和护栏，而不只是统计显著性。
+
+```mermaid
+flowchart TB
+  Gate["quality_gate_execution"] --> Guardrail["online_experiment_guardrail"]
+  Contract["serving_quality_contract"] --> Guardrail
+  Guardrail --> Experiment["online_experiment_record"]
+  Experiment --> Telemetry["quality_telemetry_event by variant"]
+  Telemetry --> Stop{"guardrail breached?"}
+  Stop -->|no| Ramp["continue / ramp"]
+  Stop -->|yes| Freeze["freeze traffic expansion"]
+  Freeze --> Bundle["quality_evidence_bundle"]
+  Freeze --> Rollback["serving_rollback_record if needed"]
+  Bundle --> Regression["quality_regression_record"]
+  Regression --> Dataset["eval_slice_contract / golden set update"]
+```
+
+人类反馈也要结构化成 `human_feedback_evidence`。用户点踩、客服工单、人工接管、标注员评分和专家评审常常存在不同系统里，若没有统一证据对象，质量团队只能看到“有人说不好”，无法把反馈变成回归样本和质量成本。这个对象应保留来源、任务切片、上下文引用、评审规则、冲突处理、隐私边界和后续动作。
+
+```yaml
+human_feedback_evidence:
+  evidence_id: hfe-support-20260620-001
+  source:
+    type: user_feedback_crm_human_review
+    feedback_event: qfe-20260620-0042
+    reviewer_role: support_domain_expert
+    consent_and_privacy_policy: applied
+  binding:
+    request_id: req-20260620-001
+    trace_id: trace-20260620-001
+    task_slice: rag_citation
+    experiment_id: exp-support-model-20260619
+    serving_quality_contract: sqc-af-chat-20260619-r3
+    routing_quality_decision_record: rqdr-20260620-001
+  review:
+    rubric_version: support-rubric-v5
+    label:
+      task_success: false
+      citation_supported: false
+      should_handoff: true
+    disagreement_resolution: adjudicated_if_conflict
+    severity: high
+  downstream_actions:
+    quality_regression_record: qrr-20260620-0012
+    add_to_eval_slice: rag_citation
+    golden_set_candidate: true
+    quality_cost_ledger: qcost-20260620-support
+```
+
+这份证据把人工判断从“主观意见”变成生产事实。它不要求把用户原文无限制复制到评测平台，而是通过脱敏引用和上下文快照保留可回放性。若客服专家判定应该转人工，路由和成本系统就能把该请求计入 `cost_per_successful_answer`；若多个评审对同一类样本分歧很大，问题可能不是模型，而是 rubric 不清；若某个 experiment variant 收集到大量高严重度反馈，guardrail 应冻结放量。人类反馈的工程目标是闭环，而不是收集更多表单。
+
 评测平台还应支持“修复层级”统计。一次失败可能要改模型权重、prompt、RAG、工具 schema、Gateway 路由、runtime 参数或客户端展示。每个 `quality_regression_record` 都应填写 `fix_layer`，并在月度质量评审中统计。若多数问题来自 RAG context 截断，继续训练模型收益有限；若多数问题来自 tool schema，应该改工具协议；若多数问题来自 runtime token drift，应该加强 serving quality contract。评测系统的目标是把投资指向真正瓶颈。
 
 ## 常见故障
@@ -457,6 +639,12 @@ online_eval_summary:
 
 第八类故障是质量回归没有状态机。线上事故被修复后，没有复测、没有 owner、没有加入 gate，几个月后又因另一次模型或 runtime 升级复发。`quality_regression_record` 应成为事故系统和评测系统之间的共同对象，关闭条件必须包括“复现过、修复过、复测过、门禁更新过或明确豁免过”。
 
+第九类故障是评测切片没有契约。报告里有几千条样本和一个总分，但没有说明高价值客户、RAG 引用、拒答、工具调用和低价 fallback 各自的最低门禁。结果某个切片严重退化却被平均分掩盖。解决方向是为关键任务维护 `eval_slice_contract`，让失败切片直接阻断对应发布、路由或商业承诺。
+
+第十类故障是 golden set 被污染。样本被导出到训练、prompt 调参或演示材料后，模型在 golden set 上越来越好，线上却没有改善。排查时应看 `golden_set_governance_record` 的访问审计、overlap scan、judge drift backtest 和 stale case review。被污染或失效的 golden set 不能作为发布证据，只能作为历史参考。
+
+第十一类故障是线上实验没有护栏。A/B 主指标上涨，但人工接管、投诉或安全拦截恶化；或者实验没有会话粘性，多轮上下文被 control 和 treatment 混用。`online_experiment_guardrail` 应定义随机化单元、排除范围、停止规则、证据包和回滚动作。没有护栏的实验不应进入高价值租户。
+
 ## 性能指标
 
 质量指标包括 benchmark、领域准确率、任务成功率、人工偏好、格式正确率、事实性、引用正确率和工具调用成功率。它们回答模型是否有用。质量指标应按任务切片展示，因为不同应用对“好”的定义不同。单一总分无法支撑模型路由和上线决策。
@@ -473,6 +661,8 @@ online_eval_summary:
 
 质量闭环指标包括 dataset coverage、blind split 占比、反馈到回归的转化率、回归复现率、回归关闭时长、门禁阻断次数、豁免次数、线上实验护栏触发次数和回归重开率。它们衡量评测系统自身是否有效。一个评测体系如果从不阻断发布、从不重开样本、从不发现线上问题，未必说明模型完美，更可能说明评测没有覆盖真实风险。
 
+还应增加证据有效性指标，包括每个 `eval_slice_contract` 的覆盖状态、slice owner 响应时间、golden set 最近访问异常数、overlap scan 结果、judge drift backtest 通过率、线上实验 guardrail freeze 次数、human feedback 进入 regression 的转化率、人工评审分歧率和高严重度反馈关闭时长。这些指标衡量评测控制面是否可信。质量门禁的危险不只是模型退化，还包括门禁本身失效。
+
 ## 设计取舍
 
 第一个取舍是覆盖面与速度。全量评测覆盖广，但耗时长；快速 smoke test 能高频执行，但只能发现明显问题。成熟平台通常分层：开发阶段跑快速回归，候选发布前跑完整评测，高风险模型增加人工和红队，线上灰度继续观察。评测不必每次都最重，但门禁要与风险匹配。
@@ -487,6 +677,10 @@ online_eval_summary:
 
 评测体系本身也需要版本化，避免标准变化后旧结论被误读。
 
+还有一个取舍是 golden set 稳定性与业务新鲜度。长期稳定样本便于版本比较，但业务规则、知识库、用户输入和攻击方式会变化；频繁更新样本能覆盖新风险，却削弱长期趋势可比性。可行做法是把核心 anchor cases、golden regression、blind holdout 和新鲜线上样本分层管理：anchor 负责校准 judge，golden 负责回归，holdout 负责门禁，新鲜样本负责发现新风险。不同集合回答不同问题，不应混成一包。
+
+线上实验也有速度与保护的取舍。低风险体验优化可以快速小流量验证，高风险模型、工具、RAG 权限或低价路由必须有更严格 blast radius。Guardrail 越严格，迭代越慢；guardrail 越宽松，用户伤害和成本争议越大。生产平台的目标不是禁止实验，而是让实验失败时影响范围有限、证据完整、回滚路径清楚。
+
 ## 小结
 
 - 模型评测是上线门禁，不是排行榜装饰。
@@ -494,6 +688,7 @@ online_eval_summary:
 - 领域评测和线上 A/B 比单一公开 benchmark 更接近业务真实。
 - 评测 workload 是容量规划的重要输入。
 - `eval_dataset_manifest`、`quality_gate_record`、`quality_regression_record` 和 `online_experiment_record` 把评测从报告变成可回放、可路由、可回归、可审计的生产控制面。
+- `eval_slice_contract`、`golden_set_governance_record`、`online_experiment_guardrail` 和 `human_feedback_evidence` 决定质量证据是否足以支撑高价值生产发布。
 
 ## 延伸阅读
 
