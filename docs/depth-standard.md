@@ -51,7 +51,12 @@
 | GPU 容器准入与 smoke test | 第 29 章、第 38 章 | 说明节点入池前如何验证容器内 GPU、NCCL、RDMA |
 | 容器内 GPU 与 RDMA/NIC 协同 | 第 22 章、第 32 章、第 38 章 | 说明 device、NIC、NUMA、RDMA、NCCL 的完整路径 |
 | `gpu_nic_topology_evidence` | 第 22 章、第 38 章、第 39 章 | 说明多卡和 RDMA 任务中 GPU、NUMA、NIC、rail、NCCL interface 和 switch port 如何绑定成运行事实 |
-| `container_runtime_change_record` | 第 40 章、第 44 章、第 41 章 | 说明 containerd/runc/Toolkit/CDI/NRI/device plugin strategy 变更如何触发复测、PRR 和成本归因 |
+| `container_runtime_change_record` | 第 21、22、38、40、41、44 章 | 说明 containerd/runc/Toolkit/CDI/NRI/device plugin strategy 变更如何触发复测、PRR 和成本归因 |
+| `container_runtime_change_acceptance` | 第 38、44 章 | 说明 runtime 变更后如何验证 host/runtime/Kubernetes、CDI、RuntimeClass、可见性对账、DCGM 标签和 RDMA 拓扑 |
+| `gpu_operator_upgrade_evidence` | 第 22、44 章 | 说明 GPU Operator 升级如何证明 Toolkit、device plugin、DCGM exporter、MIG/Runtime 策略和观测 schema 没有破坏生产路径 |
+| `container_gpu_runtime_fault_tree_execution` | 第 39、44 章 | 说明 CreateContainerError、CDI 解析失败、可见性错配、MIG/整卡错配和容器 RDMA 问题如何执行故障树 |
+| `container_runtime_incident_cost_record` | 第 41、44 章 | 说明容器 runtime 事故如何把失败扩容、可见性错配、拓扑错配、回滚复测和观测断链写入可靠性成本 |
+| `container_runtime_prr_change_drill` | 第 44 章 | 说明 Toolkit/CDI/NRI/RuntimeClass/device plugin 变更上线前如何演练非 GPU Pod、单 GPU、MIG、多卡 RDMA、故障树、回滚和成本账本 |
 
 ## 推理请求链路覆盖矩阵
 

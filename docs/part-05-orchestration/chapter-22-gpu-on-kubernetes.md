@@ -131,6 +131,23 @@ gpu_device_plugin_policy:
 
 这个策略对象解决的是“同一个资源池内设备分配语义一致”。如果某些节点使用 envvar，某些节点使用 CDI，`gpu_assignment_record`、准入测试和用户诊断报告必须能区分；否则同样的 Pod 在不同节点上会有不同的失败模式。生产平台更推荐每个资源池固定一种策略，只有升级期间短暂混合，并由 admission 控制受影响范围。
 
+Device plugin 策略变更必须进入第 21 章的 `container_runtime_change_record`。从 envvar 切到 CDI，看起来只是 device plugin 配置项变化，实际会改变 kubelet Allocate 返回内容、CRI 传递给 runtime 的设备描述、OCI spec 中的 env/mount/device 差异、容器内 `NVIDIA_VISIBLE_DEVICES` 语义、MIG 标识和诊断入口。若 GPU Operator 同时升级 Toolkit 或 device plugin，变更面还会扩大。平台应禁止“只改 DaemonSet 参数”的生产变更，除非同一记录里已经说明 containerd/CDI/NRI 支持、RuntimeClass 策略、准入矩阵和回滚路径。
+
+```mermaid
+flowchart LR
+  Policy["gpu_device_plugin_policy"] --> Allocate["kubelet Allocate\nresource -> device ids"]
+  Allocate --> Strategy{"device_list_strategy"}
+  Strategy --> Env["envvar\nNVIDIA_VISIBLE_DEVICES"]
+  Strategy --> CDI["CDI device names\ncdi spec"]
+  Env --> Diff["oci_runtime_injection_diff"]
+  CDI --> Diff
+  Diff --> Recon["gpu_device_visibility_reconciliation"]
+  Recon --> Assignment["gpu_assignment_record"]
+  Assignment --> Telemetry["DCGM / billing / incident"]
+```
+
+这条图的关键是把 device plugin 的输出纳入全链路证据。很多故障不是 device plugin 没注册，而是它的分配语义和 runtime 消费语义不一致：device plugin 认为已经给了 CDI device name，containerd 没启 CDI；device plugin 仍用 envvar，镜像默认值覆盖了 visible devices；MIG mixed 策略下资源名和 CDI device name 不一致；device plugin 重启后 kubelet 资源视图与容器内事实脱节。`gpu_assignment_record` 应引用策略版本和分配事件，才能在事故中判断是策略错、runtime 错还是容器内探测错。
+
 ## 22.2 GPU Operator
 
 GPU Operator 使用 Kubernetes Operator 模式管理 GPU 节点软件栈。典型组件包括 NVIDIA Driver、NVIDIA Container Toolkit、GPU Device Plugin、DCGM Exporter、Node Feature Discovery 和 MIG Manager。它的价值在于把 GPU 节点配置声明化、自动化，减少手工安装和版本漂移。对于大规模 Kubernetes GPU 集群，这是重要的运维能力。
@@ -180,6 +197,32 @@ gpu_operator_management_boundary:
 ```
 
 这个边界对象能避免“自动化双写”。例如 driver 由 golden image 固定时，Operator 的 driver DaemonSet 应关闭；MIG layout 由资源池控制器管理时，Operator 的 MIG manager 不应独立修改节点；device plugin 策略从 envvar 切到 CDI 时，containerd 基线也必须同步升级。Operator 是运维工具，不是责任边界的替代品。
+
+GPU Operator 升级还要关注观测 schema。DCGM exporter 标签、device plugin 资源名、MIG entity id、Pod 到 GPU 的映射方式、CDI device name 和 RuntimeClass handler 都可能在升级后变化。若监控标签变化但成本系统和故障诊断没有同步，平台会出现“设备仍在跑，账本却断链”的问题。Operator 变更因此要同时验证运行路径和观测路径：Pod 能否启动，容器内 GPU 是否正确，DCGM 指标是否带 pod/namespace/GPU UUID，账单能否把 token 或 GPU hour 归到同一分配记录。
+
+```yaml
+gpu_operator_upgrade_evidence:
+  upgrade_id: gou-20260620-001
+  linked_change_record: crc-gpu-runtime-20260620-001
+  from_version: pinned_previous
+  to_version: pinned_next
+  affected_components:
+    - container_toolkit
+    - device_plugin
+    - dcgm_exporter
+  validation:
+    gpu_operator_management_boundary: reviewed
+    container_gpu_runtime_acceptance_matrix: pass_on_canary_pool
+    gpu_device_visibility_reconciliation: pass
+    dcgm_metric_schema_compatible: pass
+    pod_to_gpu_uuid_mapping_preserved: pass
+    rollback_chart_and_values_available: true
+  rollout_decision:
+    expand_to_prod_pool: true_or_false
+    required_follow_up: []
+```
+
+这个证据对象补齐了 Operator 的控制面风险。GPU Operator 的价值在自动化，但自动化组件一旦改变设备注入、指标标签或 MIG 配置，影响范围可能比单个业务发布更大。把升级结果绑定到 `container_runtime_change_record`，可以让第 38 章的准入、第 39 章的故障树、第 41 章的可靠性成本和第 44 章的 PRR 使用同一事实，而不是各自判断“Operator 看起来正常”。
 
 ## 22.3 GPU resource request
 

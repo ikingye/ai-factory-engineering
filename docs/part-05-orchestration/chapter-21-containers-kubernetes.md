@@ -503,6 +503,70 @@ gpu_device_visibility_reconciliation:
 
 这个对象应成为 GPU Pod admission、节点准入和事故排查的共同证据。容器里完全看不到 GPU 是硬失败；容器里看到过多 GPU 是隔离和计费失败；容器里看到的 UUID 与分配记录不同，则可能把一个租户的任务放到另一个租户的设备上。生产系统必须把这些情况区分开，不能都写成 “GPU unavailable”。
 
+容器 GPU runtime 的变更必须有 `container_runtime_change_record`。它记录一次 containerd、runc、NVIDIA Container Toolkit、GPU Operator、device plugin strategy、RuntimeClass、CDI spec 生成方式或 NRI 插件启用的变更。这个对象的核心不是“升级了哪个版本”，而是说明变更如何影响设备分配、OCI spec 注入、容器内可见性、RDMA/NCCL、准入基线和回滚路径。GPU 容器链路一旦漂移，症状可能出现在很多层：Pod `CreateContainerError`、容器看到错误 GPU、NCCL 找错接口、推理副本扩容失败、训练任务首个 collective 超时。没有变更记录，复盘只能在节点配置和日志里追历史。
+
+```yaml
+container_runtime_change_record:
+  change_id: crc-gpu-runtime-20260620-001
+  scope:
+    cluster: ai-prod-k8s
+    node_pools: [h100-inference-canary]
+    affected_runtime_paths:
+      - containerd_runtime_handler
+      - nvidia_container_toolkit
+      - gpu_device_plugin_strategy
+      - cdi_spec_generation
+  before:
+    container_runtime: containerd-1.7.x
+    runtime_handler: nvidia
+    toolkit_version: pinned_previous
+    device_list_strategy: envvar
+    injection_mode: legacy_hook
+    nri_plugin_enabled: false
+  after:
+    container_runtime: containerd-1.7.x
+    runtime_handler: default_with_cdi
+    toolkit_version: pinned_next
+    device_list_strategy: cdi
+    injection_mode: native_cdi
+    nri_plugin_enabled: false
+  evidence_required:
+    - container_runtime_config_hash
+    - runtimeclass_handler_mapping_if_used
+    - cdi_spec_hash
+    - oci_runtime_injection_diff
+    - gpu_device_visibility_reconciliation
+    - container_gpu_runtime_acceptance_matrix
+    - gpu_nic_topology_evidence_if_rdma
+  rollout:
+    canary_nodes: [gpu-node-001]
+    max_unavailable_gpu_capacity: policy_defined
+    rollback_to_previous_runtime_path: documented_and_tested
+  decision:
+    status: canary_passed_or_blocked_or_rolled_back
+    block_reasons: []
+```
+
+这个记录要和普通变更单区分开。普通变更单关注谁批准、何时执行；`container_runtime_change_record` 关注运行时路径是否仍然能证明“分配事实、注入事实、容器内事实一致”。从 legacy hook 迁移到 CDI，或从 RuntimeClass handler 迁移到 runtime 原生 CDI 注入时，不能只跑一个 `nvidia-smi` Pod。平台应至少验证：非 GPU Pod 不会看到 GPU，单 GPU Pod 只看到被分配 GPU，MIG Pod 不会看到整卡，多 GPU/RDMA Pod 的 GPU/NIC 拓扑仍匹配，失败时资源池会自动从 allocatable 降级为 limited 或 quarantine。
+
+```mermaid
+flowchart TB
+  Change["container_runtime_change_record"] --> Scope["scope\nnode pool / runtime path / strategy"]
+  Scope --> Canary["canary node pool"]
+  Canary --> Diff["oci_runtime_injection_diff"]
+  Canary --> Recon["gpu_device_visibility_reconciliation"]
+  Canary --> Matrix["container_gpu_runtime_acceptance_matrix"]
+  Matrix --> Verdict{pass?}
+  Diff --> Verdict
+  Recon --> Verdict
+  Verdict -->|pass| Rollout["expand rollout"]
+  Verdict -->|fail| Quarantine["cordon / rollback / retest"]
+  Quarantine --> Cost["reliability_cost_ledger"]
+  Rollout --> Baseline["acceptance baseline refresh"]
+```
+
+这条闭环也解释了为什么“CDI 是新方向”不等于“可以直接全量切换”。官方 NVIDIA 文档已经把 Container Toolkit 描述为包含 runtime、hook、library/CLI 的组件栈，并且 GPU Operator 较新版本开始把 CDI 作为 Kubernetes workload 容器 GPU 注入的默认路径；同时 NRI 插件提供了不依赖 `nvidia` runtime class 的注入方式。生产平台应该跟随标准化方向，但必须以资源池为单位迁移、以准入矩阵证明、以 PRR 门禁约束，而不是把官方默认值当成自己的生产验收结论。
+
 落地时还要把准入门禁接到对象创建路径。生产 namespace 可以要求镜像 digest、资源标签、探针、owner、租户、成本中心和安全上下文齐全；GPU workload 可以要求目标节点池已经通过容器 GPU smoke test；训练任务可以要求 queue、quota、checkpoint 和失败策略完整。这些检查应由 admission webhook 或平台控制器自动执行，而不是靠评审 YAML。Kubernetes 允许用户提交很多合法对象，但 AI Factory 只应允许符合生产语义的对象进入关键资源池。
 
 一个 GPU workload 的准入链可以这样组织：

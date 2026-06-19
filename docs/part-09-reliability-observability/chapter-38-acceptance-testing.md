@@ -637,6 +637,40 @@ flowchart TB
 
 这张图说明准入失败不是一个终点，而是自动修复和门禁的入口。失败分类必须足够具体，才能决定修 runtime、修 CDI、隔离节点还是修 RDMA/拓扑。复测通过后刷新 baseline，PRR 才能消费新的证据；如果只保留一份失败报告，不改变资源池状态，准入就没有真正保护生产。
 
+当触发源是容器 runtime 或 GPU Operator 变更时，准入矩阵还应输出 `container_runtime_change_record` 的验收结果。它把“变更前后到底改变了什么”与“准入是否通过”绑定起来：如果从 legacy hook 切换到 CDI，矩阵必须证明 CDI spec 可解析、RuntimeClass 或默认 runtime 策略一致、容器内可见设备与分配记录一致、MIG 与 RDMA 组合没有退化；如果只是升级 Toolkit patch version，也要证明 OCI 注入 diff 没有新增不期望的设备、mount 或 capability。这样变更不会只停留在工单里，而会进入资源池状态和 PRR。
+
+```yaml
+container_runtime_change_acceptance:
+  acceptance_id: crca-20260620-001
+  container_runtime_change_record: crc-gpu-runtime-20260620-001
+  scope:
+    node_pool: h100-inference-canary
+    nodes_tested: sampled_and_representative
+  required_tests:
+    host_cli:
+      nvidia_container_cli_info: pass
+      driver_library_resolution: pass
+    runtime_cli:
+      docker_or_ctr_gpu_smoke: pass_if_supported
+      cdi_device_resolution: pass_if_cdi
+    kubernetes:
+      runtimeclass_mapping: pass_if_runtimeclass
+      non_gpu_pod_no_gpu_visible: pass
+      single_gpu_pod_visibility_reconciliation: pass
+      multi_gpu_pod_visibility_reconciliation: pass_if_multigpu_pool
+      mig_profile_visibility_reconciliation: pass_if_mig_pool
+      rdma_gpu_nic_topology_evidence: pass_if_rdma
+    observability:
+      dcgm_pod_gpu_uuid_mapping: pass
+      metering_resource_label_continuity: pass
+  decision:
+    refresh_acceptance_baseline: true
+    allow_rollout_beyond_canary: true_or_false
+    rollback_required: true_or_false
+```
+
+这份验收结果应能阻断发布。若 `non_gpu_pod_no_gpu_visible` 失败，说明隔离边界被破坏；若 `single_gpu_pod_visibility_reconciliation` 失败，说明分配和注入不一致；若 `dcgm_pod_gpu_uuid_mapping` 失败，说明观测和账单会断链；若 `rdma_gpu_nic_topology_evidence` 失败，多卡训练不能进入生产池。准入的目标不是证明“容器能启动”，而是证明 runtime 变更没有破坏隔离、拓扑、观测和经济归因。
+
 ```yaml
 acceptance_pipeline:
   scope: rack-12

@@ -657,6 +657,77 @@ flowchart TB
 
 这棵树的价值是把“安全事故”拆成不同责任和成本路径。若 credential 分支确认泄露，优先轮换、冻结和争议计费；若 provider egress 分支确认越权，优先关外联、审计合同和通知受影响租户；若 spend velocity 分支确认免费额度被刷但没有数据越界，重点是预算 guard、billing hold 和产品策略修复；若 trace export 分支确认泄露，必须进入数据事件和导出审计。不同分支的技术动作、客户沟通和经济处理完全不同，不能用同一个“security issue”标签糊掉。
 
+容器 GPU runtime 故障也需要单独故障树。入口症状包括 `CreateContainerError`、`OCI runtime create failed`、容器内 `nvidia-smi` 看不到 GPU、Pod 申请 1 张 GPU 却看到多张、MIG Pod 看到整卡、CDI device 无法解析、RuntimeClass handler 不存在、`libcuda.so.1` 加载失败、容器内 RDMA device 缺失，以及升级后只有 Kubernetes Pod 失败而 Docker smoke test 通过。它们都发生在调度和应用之间，容易被误判为模型代码、driver 或 Kubernetes 控制面问题。
+
+```yaml
+container_gpu_runtime_fault_tree_execution:
+  execution_id: cgrfte-20260620-001
+  incident_id: inc-20260620-gpu-runtime-001
+  entry:
+    symptom: create_container_error_or_visible_device_mismatch_or_cdi_resolution_failed
+    affected_node_pool: h100-inference-canary
+    affected_workloads: [gpu-smoke-runtimeclass, af-chat-large-canary]
+    recent_change: crc-gpu-runtime-20260620-001
+  evidence:
+    container_runtime_change_record: crc-gpu-runtime-20260620-001
+    container_gpu_runtime_acceptance_matrix: container-gpu-runtime-20260620
+    oci_runtime_injection_diff: sampled
+    gpu_assignment_record: sampled
+    gpu_device_visibility_reconciliation: sampled
+    gpu_operator_upgrade_evidence: optional
+  branches:
+    runtime_handler:
+      verdict: ruled_out_or_confirmed_or_unknown
+      evidence: [runtimeclass_handler_mapping, containerd_config_hash, kubelet_cri_endpoint]
+      action_if_confirmed: rollback_runtime_handler_or_patch_config
+    cdi_or_hook:
+      verdict: ruled_out_or_confirmed_or_unknown
+      evidence: [cdi_spec_hash, oci_runtime_injection_diff, nvidia_container_cli_log]
+      action_if_confirmed: regenerate_cdi_spec_or_rollback_toolkit
+    device_plugin_strategy:
+      verdict: ruled_out_or_confirmed_or_unknown
+      evidence: [device_plugin_strategy, kubelet_allocate_event, gpu_assignment_record]
+      action_if_confirmed: restore_strategy_or_redeploy_device_plugin
+    visibility_reconciliation:
+      verdict: ruled_out_or_confirmed_or_unknown
+      evidence: [gpu_device_visibility_reconciliation, nvidia_smi_inside_container, cuda_probe]
+      action_if_confirmed: cordon_node_and_block_pool_rollout
+    rdma_topology:
+      verdict: ruled_out_or_confirmed_or_unknown
+      evidence: [gpu_nic_topology_evidence, rdma_device_plugin_log, nccl_env_contract]
+      action_if_confirmed: repair_rdma_device_path_or_topology_labels
+  conclusion:
+    most_likely_domain: runtime_handler_or_cdi_or_device_plugin_or_visibility_or_rdma_or_unknown
+    confidence: low_medium_or_high
+    evidence_gaps: []
+  outputs:
+    baseline_invalidation_record: generated_if_pool_scope_affected
+    reliability_cost_ledger: append_if_production_impact
+    prr_gate_update: generated_if_gate_gap_found
+```
+
+```mermaid
+flowchart TB
+  Symptom["GPU container symptom"] --> Change["recent container_runtime_change_record?"]
+  Change --> Evidence["collect runtime config / OCI diff / assignment / visibility"]
+  Evidence --> Handler["runtime handler / RuntimeClass"]
+  Evidence --> CDI["CDI spec / NVIDIA hook"]
+  Evidence --> DP["device plugin strategy / Allocate"]
+  Evidence --> Visible["container visibility reconciliation"]
+  Evidence --> RDMA["RDMA + GPU/NIC topology"]
+  Handler --> Verdict["fault domain + confidence"]
+  CDI --> Verdict
+  DP --> Verdict
+  Visible --> Verdict
+  RDMA --> Verdict
+  Verdict --> Action["cordon / rollback / regenerate CDI / retest"]
+  Action --> Baseline["baseline invalidation / refresh"]
+  Action --> Cost["reliability_cost_ledger"]
+  Baseline --> PRR["container runtime PRR gate"]
+```
+
+这个故障树的关键是先对齐三类事实：Kubernetes 分配事实、OCI 注入事实和容器内观察事实。Docker smoke test 通过，只证明主机和 Docker 路径可用；Kubernetes Pod 失败，仍可能是 kubelet CRI endpoint、RuntimeClass、containerd config、device plugin strategy、CDI spec 或 admission 策略问题。反过来，Kubernetes Pod `Running` 且 `nvidia-smi` 成功，也不证明隔离正确，必须检查是否看到未分配 GPU、MIG/整卡边界是否正确、RDMA device 是否匹配。故障树把这些检查固化下来，避免每次都从头猜。
+
 ## 39.9 故障树分析
 
 故障树分析把故障从症状拆到可能原因、证据和动作。AI Factory 应为高频故障建立标准树：训练 pending、NCCL hang、GPU Xid、推理 TTFT 高、checkpoint 慢、节点 NotReady、存储慢、模型 loss spike 和资源池容量异常。故障树让排障从经验驱动变为流程驱动。

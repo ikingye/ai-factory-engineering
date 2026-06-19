@@ -864,6 +864,57 @@ flowchart LR
 
 安全 PRR 的通过标准应避免两个极端。一个极端是把所有 provider 外联都禁止，牺牲多模型聚合和成本优化；另一个极端是把所有外联都交给业务配置，平台无法证明边界。更合理的做法是把 provider、区域、数据等级、日志策略、训练使用策略、价格、fallback 目标和客户披露写成 `egress_provider_decision`，让允许和拒绝都能回放。denial-of-wallet 也类似：不是所有成本突增都要封禁，而是要根据身份、历史、审批和风险分层采取降级、人工确认、冻结、hold 或放行。
 
+容器 GPU runtime 也应有 PRR 演练。任何涉及 containerd/CRI-O、runc、NVIDIA Container Toolkit、GPU Operator、device plugin strategy、RuntimeClass、CDI spec 生成、NRI 插件或 MIG 暴露策略的变更，都可能同时影响调度、启动、隔离、观测和成本。PRR 不能只检查 DaemonSet Ready，也不能只跑 `nvidia-smi`。它必须演练从变更记录、准入矩阵、OCI diff、可见性对账、故障树到成本账本的完整路径。
+
+```yaml
+container_runtime_prr_change_drill:
+  drill_id: cr-prr-drill-20260620-001
+  production_readiness_review: prr-maas-chat-prod-2026-06
+  scope:
+    node_pool: h100-inference-canary
+    runtime_change: crc-gpu-runtime-20260620-001
+    migration_path: legacy_hook_to_cdi
+    workload_slices:
+      - non_gpu_pod
+      - single_gpu_inference
+      - mig_inference_if_applicable
+      - multigpu_rdma_training_if_applicable
+  required_outputs:
+    container_runtime_change_record: reviewed
+    gpu_operator_upgrade_evidence: generated_if_operator_changed
+    container_runtime_change_acceptance: pass
+    oci_runtime_injection_diff: sampled_and_clean
+    gpu_device_visibility_reconciliation: pass
+    container_gpu_runtime_fault_tree_execution: generated_by_controlled_failure
+    container_runtime_incident_cost_record: generated_if_failure_injected
+    baseline_invalidation_record: generated_if_runtime_path_changed
+  pass_criteria:
+    non_gpu_pod_cannot_see_gpu: true
+    assigned_gpu_uuid_matches_container_view: true
+    no_unexpected_devices_mounts_or_capabilities: true
+    cdi_or_runtimeclass_failure_is_classified: true
+    dcgm_pod_gpu_uuid_mapping_preserved: true
+    rollback_to_previous_runtime_path_rehearsed: true
+    cost_ledger_append_verified_if_failure_injected: true
+```
+
+这类演练能拦截 GPU Kubernetes 平台最常见的“局部验证幻觉”：节点上 `nvidia-smi` 正常，但 Kubernetes Pod 没走同一个 runtime；单 GPU smoke 正常，但 MIG 或多卡 RDMA 路径失败；Pod 能看到 GPU，但看到的是未分配 GPU；Operator 组件 Ready，但 DCGM 标签变化导致账本断链。容器 runtime 是 token 生产线的底座，PRR 要证明它的变更不会破坏分配、注入、隔离、观测和经济归因。
+
+```mermaid
+flowchart LR
+  Drill["container_runtime_prr_change_drill"] --> Change["container_runtime_change_record"]
+  Change --> Accept["container_runtime_change_acceptance"]
+  Accept --> Diff["oci_runtime_injection_diff"]
+  Accept --> Recon["gpu_device_visibility_reconciliation"]
+  Accept --> Fault["container_gpu_runtime_fault_tree_execution"]
+  Fault --> Cost["container_runtime_incident_cost_record"]
+  Diff --> Gate["PRR container runtime gate"]
+  Recon --> Gate
+  Cost --> Gate
+  Gate -->|pass| Rollout["rollout beyond canary"]
+  Gate -->|fail| Rollback["rollback / quarantine / retest"]
+```
+
 从验收到上线的流水线可以用下面的图表示：
 
 ```mermaid

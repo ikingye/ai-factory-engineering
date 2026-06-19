@@ -1062,6 +1062,48 @@ reliability_cost_ledger:
 
 容器 runtime 和拓扑证据也要进入经济口径。一次 `visible_device_mismatch` 可能让租户用到未授权 GPU、造成账单争议或安全事故；一次 GPU/NIC 拓扑错配可能让训练 step time 增加，消耗大量无效 GPU 小时；一次 CDI spec 失效可能让扩容副本全部卡在 `CreateContainerError`，推理峰值流量下 TTFT 违约。把这些事件记入 `reliability_cost_ledger`，可以证明为什么要投入 runtime 准入、设备可见性对账和拓扑证据采集。它们不是额外文书，而是在保护 token 生产线不被底层漂移吞噬。
 
+当容器 runtime 变更本身造成影响时，应生成 `container_runtime_incident_cost_record`。它专门计算 Toolkit/CDI/NRI/RuntimeClass/device plugin strategy 变更带来的无效成本：Pod 创建失败导致的扩容缺口，GPU Pod 看错设备导致的租户隔离或账单争议，多卡训练因为 RDMA/GPU 拓扑错配产生的 GPU idle，Operator 升级后 DCGM 标签变化导致的计量断链，以及回滚、复测和客户沟通成本。没有这个对象，runtime 事故会被平均摊进可靠性成本，团队很难判断是否值得投入更严格的准入和 canary。
+
+```yaml
+container_runtime_incident_cost_record:
+  incident_id: inc-20260620-gpu-runtime-001
+  linked_evidence:
+    container_runtime_change_record: crc-gpu-runtime-20260620-001
+    container_gpu_runtime_fault_tree_execution: cgrfte-20260620-001
+    container_runtime_change_acceptance: crca-20260620-001
+    gpu_device_visibility_reconciliation: sampled
+    oci_runtime_injection_diff: sampled
+  affected_scope:
+    node_pool: h100-inference-canary
+    affected_pods: measured
+    affected_gpu_hours: calculated
+    affected_requests: measured_if_inference
+    affected_training_jobs: measured_if_training
+  cost_components:
+    failed_pod_start_capacity_cost: calculated
+    visible_device_mismatch_billing_risk: calculated_if_any
+    runtime_rollback_and_retest_cost: measured
+    training_gpu_idle_due_to_topology_mismatch: calculated_if_any
+    inference_slo_or_credit_cost: calculated_if_any
+    observability_reconciliation_cost: calculated_if_metric_labels_changed
+  prevention_signal:
+    missing_gate: runtime_canary_or_visibility_reconciliation_or_dcgm_schema_check
+    recommended_prr_gate_update: required_if_gap_found
+```
+
+```mermaid
+flowchart LR
+  Change["container_runtime_change_record"] --> Fault["container_gpu_runtime_fault_tree_execution"]
+  Fault --> Cost["container_runtime_incident_cost_record"]
+  Accept["container_runtime_change_acceptance"] --> Cost
+  Recon["gpu_device_visibility_reconciliation"] --> Cost
+  Cost --> Reliability["reliability_cost_ledger"]
+  Cost --> Abuse["billing / tenant dispute if visible mismatch"]
+  Cost --> PRR["container runtime PRR gate update"]
+```
+
+这份记录能把“底层小升级”翻译成 Token Factory 语言。一次 CDI spec 生成错误如果只影响 canary 节点，成本可能只是复测和回滚；如果它发生在生产推理池高峰前，成本就包括未启动副本、TTFT 违约、fallback、客户 credit 和支持工单；如果可见性错配让 Pod 看到了未分配 GPU，成本还包括隔离风险和账单争议。成本分层后，平台才能决定下一次 runtime 变更是否需要更长 canary、更严格 PRR，或把 Operator 升级与 driver/Toolkit release train 合并管理。
+
 质量成本需要单独的 `quality_cost_ledger`。低质量 token 不一定失败，也不一定触发 5xx，但会造成用户追问、重新生成、人工接管、退款、客户支持、投诉、流失、额外评测和修复成本。若这些成本被平均摊进正常请求，平台会误以为某个低成本模型毛利更高，实际却把成本转嫁给运营和客户成功团队。质量成本账本让“便宜但没用的 token”从报表里显形。
 
 ```yaml
