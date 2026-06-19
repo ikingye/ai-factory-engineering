@@ -107,6 +107,7 @@ nav:
           - 第 43 章：案例研究: part-10-economics-cases/chapter-43-case-studies.md
           - 第 44 章：从 0 到 1 建设 AI Factory: part-10-economics-cases/chapter-44-building-ai-factory.md
   - 参考资料:
+      - 系统地图与工程索引: system-map.md
       - 术语表: glossary.md
       - 写作规范: style-guide.md
       - 深度标准与覆盖矩阵: depth-standard.md
