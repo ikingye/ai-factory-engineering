@@ -603,6 +603,9 @@ quality_change_request:
     quality_gate_execution: qge-af-chat-20260620-001
     eval_slice_contract: esc-support-202606
     golden_set_governance_record: gsg-support-202606
+    eval_contamination_invalidation_record: none_open
+    judge_drift_calibration_record: jdcr-support-20260620-001
+    quality_feedback_intake_pipeline: qfip-support-202606
     serving_quality_contract: sqc-af-chat-20260619-r3
     online_experiment_record: exp-support-model-20260619
     online_experiment_guardrail: oeg-support-20260620
@@ -611,6 +614,9 @@ quality_change_request:
     - offline_quality_gate
     - eval_slice_contract_coverage
     - golden_set_governance_valid
+    - no_open_eval_contamination_invalidation
+    - judge_drift_calibrated_or_gate_rerun
+    - feedback_intake_correlation_healthy
     - protocol_contract_test
     - token_drift_test
     - canary_quality_telemetry
@@ -620,12 +626,14 @@ quality_change_request:
     - complaint_rate_increase
     - safety_false_allow
     - cost_per_successful_answer_regression
+    - feedback_replayability_drop
+    - gate_evidence_invalidated
   rollback:
     model_or_route: baseline_model
     prompt_template: previous_version
 ```
 
-质量变更系统的责任是阻止“证据不充分的发布”。如果 `eval_slice_contract` 没覆盖目标任务，变更应退回评测设计；如果 golden set 近期发生未授权访问或 judge drift 未回放，门禁结果应降级；如果 online experiment guardrail 没有硬停止规则，灰度不应进入外部客户；如果 rollback drill 失效，发布只能进入低风险 shadow 或内部 canary。SRE 的角色不是重新评测模型，而是确认质量证据足以承担生产风险。
+质量变更系统的责任是阻止“证据不充分的发布”。如果 `eval_slice_contract` 没覆盖目标任务，变更应退回评测设计；如果 `eval_contamination_invalidation_record` 仍 open，门禁结果不能用于高价值发布；如果 judge drift 未回放，自动评测阈值需要重标定或 gate 重跑；如果 `quality_feedback_intake_pipeline` 关联 trace 和 replay 的比例下降，线上灰度会失去学习能力；如果 online experiment guardrail 没有硬停止规则，灰度不应进入外部客户；如果 rollback drill 失效，发布只能进入低风险 shadow 或内部 canary。SRE 的角色不是重新评测模型，而是确认质量证据足以承担生产风险。
 
 工程实现还应把模板嵌入工具。变更系统自动生成验证项，incident 系统自动拉取诊断包，容量系统自动给出水位预测。模板如果只存在文档里，执行质量会随人波动。
 

@@ -595,6 +595,9 @@ production_readiness_review:
       eval_slice_contract: esc-support-202606
       eval_dataset_lineage_record: edl-support-quality-20260620
       golden_set_governance_record: gsg-support-202606
+      eval_contamination_invalidation_record: none_open
+      judge_drift_calibration_record: pass_if_judge_or_rubric_changed
+      quality_feedback_intake_pipeline: configured
       routing_quality_scorecard: rqs-20260619-support
       serving_rollback_record_template: ready
       serving_rollback_drill: pass_for_target_endpoint
@@ -698,6 +701,9 @@ production_readiness_review:
       - no_eval_slice_contract_for_target_task
       - no_eval_dataset_lineage_for_required_task_slices
       - stale_or_contaminated_golden_set
+      - open_eval_contamination_invalidation_record
+      - judge_or_rubric_change_without_calibration
+      - feedback_intake_pipeline_without_trace_replay
       - online_experiment_without_guardrail
       - high_sla_serving_without_recent_rollback_drill
       - human_feedback_not_linked_to_regression_or_gate
@@ -1002,6 +1008,54 @@ flowchart LR
   Production --> Telemetry["telemetry + cost + feedback"]
   Telemetry -->|"drift / incident / cost overrun"| PRR
 ```
+
+质量证据本身也要演练失效路径。PRR 不能只检查 `quality_gate_execution` 是否通过，还要验证当评测集被污染、judge 漂移、反馈 pipeline 丢失 trace 或线上实验护栏触发时，系统是否会阻断放量、重跑门禁、冻结实验并把成本写入账本。否则团队会在报告上看到“质量通过”，但这个通过结论可能已经失效。
+
+```yaml
+quality_evidence_prr_invalidation_drill:
+  drill_id: qe-prr-invalid-20260620-001
+  production_readiness_review: prr-maas-chat-prod-2026-06
+  scope:
+    application: support-chat
+    task_slices: [rag_citation, tool_call_json]
+    serving_release: af-chat-large-20260619-r3
+  simulated_or_controlled_events:
+    - golden_set_unauthorized_export
+    - overlap_scan_detects_training_contamination
+    - judge_model_upgrade_without_backtest
+    - feedback_events_missing_prompt_context_snapshot
+    - online_experiment_guardrail_hard_stop
+  required_outputs:
+    eval_contamination_invalidation_record: generated_if_contamination
+    judge_drift_calibration_record: generated_if_judge_changed
+    quality_feedback_intake_pipeline: evidence_health_report
+    quality_evidence_validity: generated
+    quality_cost_ledger: prevention_cost_appended
+    production_readiness_review: gate_updated
+  pass_criteria:
+    invalid_gate_not_usable_for_high_value_release: true
+    judge_threshold_rebaseline_or_gate_rerun_required: true
+    feedback_without_replay_not_promoted_to_gate_case: true
+    experiment_freeze_preserves_quality_evidence_bundle: true
+    quality_evidence_validity_cost_recorded: true
+```
+
+```mermaid
+flowchart TB
+  Drill["quality_evidence_prr_invalidation_drill"] --> Contam["eval_contamination_invalidation_record"]
+  Drill --> Judge["judge_drift_calibration_record"]
+  Drill --> Intake["quality_feedback_intake_pipeline health"]
+  Contam --> Validity["quality_evidence_validity"]
+  Judge --> Validity
+  Intake --> Validity
+  Validity --> Gate{"gate evidence usable?"}
+  Gate -->|yes| Ramp["continue canary / ramp"]
+  Gate -->|no| Block["block high-value release\nrerun gate / replace data"]
+  Block --> Cost["quality_cost_ledger\nprevention cost + avoided loss"]
+  Cost --> PRR["PRR gate update"]
+```
+
+这类演练会暴露质量治理的底层问题：golden set 访问审计只是记录但不会阻断，judge 升级改变分数却没有阈值重标定，反馈事件没有 prompt context snapshot 导致无法复现，实验 hard stop 后没有保留质量证据包。高水平的 AI Factory 不只是有评测报告，而是知道评测报告什么时候不能再被相信。
 
 最后，建设计划应落到时间节奏。下面的 30/60/90/180 天不是固定日历，而是用于提醒第一阶段应该产出什么证据。不同组织可以调整顺序，但不应跳过证据。
 

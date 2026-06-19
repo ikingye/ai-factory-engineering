@@ -259,6 +259,131 @@ eval_dataset_lineage_record:
 
 这让评测可以检查系统行为，而不只是模型输出。RAG gate 可以重放同一用户权限下的检索和 context assembly，确认没有越权证据进入模型；Agent gate 可以重放工具策略，确认高风险动作被确认或拒绝，预算控制没有被绕过。若离线评测样本缺少这些绑定，只能测“模型看到一段文本后怎么答”，不能测 AI Factory 真实生产链路。
 
+线上反馈进入评测系统还需要一条明确的 intake pipeline。`quality_feedback_event` 是入口，但不是所有反馈都能直接进入门禁样本：有些是用户误用，有些缺少 trace，有些包含敏感数据，有些只是低严重度偏好，有些需要人工裁决。`quality_feedback_intake_pipeline` 负责把反馈从“原始信号”变成可复现、可标注、可进入回归或可丢弃的质量事实。它的目标不是最大化样本数量，而是最大化样本的可解释性和可用性。
+
+```yaml
+quality_feedback_intake_pipeline:
+  pipeline_id: qfip-support-202606
+  sources:
+    - frontend_thumbs_down
+    - regenerate_clicked
+    - crm_complaint
+    - human_handoff
+    - agent_run_failed
+    - safety_or_policy_escalation
+  required_correlation:
+    request_id: required
+    trace_id: required
+    serving_quality_contract: required
+    routing_quality_decision_record: required_if_routed
+    experiment_id: required_if_experiment
+    prompt_context_snapshot: required_for_replay
+  triage:
+    severity_routing:
+      sev1: quality_incident
+      high: regression_candidate
+      medium: sampling_queue
+      low: aggregate_metric
+    failure_layer_labels:
+      - model_behavior
+      - prompt_template
+      - rag_retrieval
+      - rag_context_assembly
+      - tool_policy
+      - gateway_route
+      - runtime_protocol
+      - client_rendering
+      - user_misuse
+  privacy:
+    raw_prompt_export: denied_by_default
+    use_references: [prompt_ref, response_ref, context_snapshot_ref]
+    pii_redaction_before_labeling: required
+  outputs:
+    human_feedback_evidence: generated_if_reviewed
+    quality_regression_record: generated_if_reproduced
+    eval_dataset_lineage_record_update: generated_if_added_to_dataset
+    quality_cost_ledger_update: generated_if_user_visible_loss
+```
+
+这条 pipeline 的关键控制点是 reproduction。一个反馈如果无法用当时的 serving contract、prompt template、retrieval snapshot、tool trace 和 route decision 重放，就不能直接作为门禁样本，只能作为 aggregate signal 或人工调查线索。反过来，高严重度且可复现的反馈应自动生成 `quality_regression_record`，并进入目标 `eval_slice_contract` 的候选样本池。这样线上反馈不会变成噪声池，也不会在客服系统和模型团队之间丢失。
+
+```mermaid
+flowchart TB
+  Feedback["quality_feedback_event"] --> Correlate["correlate\ntrace / contract / route / experiment"]
+  Correlate --> Privacy["redact / reference\nprompt and context"]
+  Privacy --> Triage["triage severity + failure layer"]
+  Triage --> Replay{"replayable?"}
+  Replay -->|yes| Review["human_feedback_evidence\nrubric review"]
+  Replay -->|no| Aggregate["aggregate signal\nmissing evidence action"]
+  Review --> Regression["quality_regression_record"]
+  Regression --> Dataset["eval_dataset_lineage_record update"]
+  Regression --> Cost["quality_cost_ledger update"]
+  Aggregate --> Observability["quality evidence completeness metric"]
+```
+
+评测证据还会失效，因此需要 `eval_contamination_invalidation_record`。很多团队只在创建 golden set 时做污染检查，却忽略后续访问、导出、prompt 调参、训练数据合并、外包标注和 judge 升级都会改变证据可信度。一旦发现 golden set 或 holdout 被未授权访问、与训练数据重叠、样本业务规则过期、label 规则被改写，相关 gate execution 就不应继续作为生产放行依据，直到完成替换、重标或降级。
+
+```yaml
+eval_contamination_invalidation_record:
+  invalidation_id: ecir-support-20260620-001
+  dataset_id: support-quality-202606
+  affected_splits:
+    - golden_regression
+    - blind_holdout
+  trigger:
+    type: unauthorized_access_or_overlap_or_stale_policy_or_judge_change
+    detected_by: access_audit_and_overlap_scan
+  evidence:
+    golden_set_governance_record: gsg-support-202606
+    eval_dataset_lineage_record: edl-support-quality-20260620
+    access_audit_events: sampled
+    overlap_scan_report: attached
+    affected_quality_gate_executions: [qge-af-chat-20260620-001]
+  decision:
+    gate_status: invalidated_or_degraded
+    allowed_use: historical_reference_only_until_remediated
+    production_readiness_review: block_high_value_release
+  remediation:
+    remove_contaminated_cases: required_if_confirmed
+    relabel_or_replace_cases: required
+    regenerate_blind_split: required_if_holdout_affected
+    rerun_quality_gate_execution: required
+```
+
+这个对象让“评测集不可信”成为可执行状态，而不是质量团队内部备注。若 `gate_status` 已 invalidated，Gateway 不能用该 execution 扩大高价值流量，serving release 不能把它作为质量证据，PRR 不能批准外部客户上线。很多组织在模型事故后才发现评测集早已被训练或调参污染；更好的做法是让污染检测直接失效门禁证据，并要求重新执行 gate。
+
+AI judge 也需要治理。Judge model、rubric 和解析器升级会改变分数，甚至改变回归趋势。如果没有 `judge_drift_calibration_record`，团队可能把 judge 变严误判为模型退化，也可能把 judge 变松误判为模型提升。校准记录应使用人工 anchor cases、历史模型输出和跨版本 backtest，对比新旧 judge 的一致性、偏差、严重样本漏判和任务切片影响。
+
+```yaml
+judge_drift_calibration_record:
+  calibration_id: jdcr-support-20260620-001
+  judge_change:
+    previous_judge: judge-202605
+    candidate_judge: judge-202606
+    rubric_version: support-rubric-v5
+    parser_version: eval-parser-v3
+  calibration_sets:
+    human_anchor_cases: support-anchor-202606
+    historical_outputs:
+      - af-chat-large-202605
+      - af-chat-large-202606
+    high_risk_slices:
+      - rag_citation
+      - safety_sensitive_request
+      - tool_call_json
+  results:
+    agreement_with_human_anchor: measured
+    severity_flip_rate: measured
+    false_pass_on_high_severity: measured
+    score_shift_by_slice: measured
+  decision:
+    usable_for_gate: true_or_false
+    requires_threshold_rebaseline: true_or_false
+    affected_gate_executions_to_rerun: [qge-af-chat-20260620-001]
+```
+
+Judge 校准不是追求 judge 永远不变，而是让变化可解释。新的 judge 可能更好，但只要它改变了阈值含义，就必须重跑或重标关键 gate；某些 slice 的 score shift 可能很大，阈值需要重新标定；如果高严重度样本 false pass 增加，不能进入生产门禁。把 judge 当作基础设施组件治理，才能让自动评测长期可信。
+
 `quality_gate_record` 是把评测结果转成发布决策的对象。它应记录候选、基线、门禁维度、阈值、通过或失败、豁免、owner、审批和后续动作。门禁不应只说 pass/fail，还要表达“在哪些任务切片通过，哪些指标观察，哪些风险被接受”。这样第 14 章的 serving release、第 6 章的 Gateway 路由和第 40 章的 SRE 变更管理才能消费同一事实。
 
 ```yaml

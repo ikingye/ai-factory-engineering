@@ -265,11 +265,14 @@
 | `eval_slice_contract` | 第 13 章、第 37 章、第 40 章、第 44 章 | 说明每个业务任务切片为什么存在、最低覆盖要求、硬门禁、owner、业务指标和失败后阻断的发布或路由动作 |
 | `eval_dataset_lineage_record` | 第 13 章、第 44 章 | 说明评测数据集版本实际如何生成、脱敏、标注、去重、切片、排除训练污染，并解释分数变化来自模型还是评测口径 |
 | `golden_set_governance_record` | 第 13 章、第 37 章、第 40 章、第 44 章 | 说明 golden regression、blind holdout、访问控制、训练排除、overlap scan、样本过期和 judge drift 如何治理，防止门禁样本污染 |
+| `eval_contamination_invalidation_record` | 第 13 章、第 37 章、第 40 章、第 41 章、第 44 章 | 说明评测集、golden set 或 holdout 被污染、过期或与训练数据重叠时，如何失效门禁证据、重跑 gate 并阻断高价值发布 |
+| `judge_drift_calibration_record` | 第 13 章、第 37 章、第 40 章、第 41 章、第 44 章 | 说明 judge model、rubric 或 parser 升级后如何用人工 anchor 和历史输出校准漂移、重标阈值并决定 gate 是否重跑 |
 | `quality_gate_record` | 第 13 章、第 14 章、第 40 章 | 说明模型、prompt、RAG、工具、runtime、成本和安全指标如何组成上线门禁 |
 | `quality_gate_execution` | 第 13 章、第 6 章、第 14 章、第 40 章、第 44 章 | 说明某次门禁执行的输入、环境、数据 lineage、judge/rubric、结果、豁免和发布动作，避免只保存静态 pass/fail |
 | `online_experiment_record` | 第 6 章、第 13 章、第 14 章 | 说明 A/B、canary、流量切分、护栏指标、统计窗口、回滚和影响范围 |
 | `online_experiment_guardrail` | 第 13 章、第 37 章、第 40 章、第 44 章 | 说明线上实验的随机化单元、会话粘性、排除范围、停止规则、自动冻结、证据包和回滚要求 |
 | `quality_feedback_event` | 第 1 章、第 2 章、第 3 章、第 37 章 | 说明用户反馈、人工接管、引用错误、工具失败和投诉如何进入质量事实层 |
+| `quality_feedback_intake_pipeline` | 第 13 章、第 37 章、第 40 章、第 41 章、第 44 章 | 说明线上反馈如何经过关联、脱敏、triage、replay、人工评审和回归样本治理，避免噪声和不可复现样本污染门禁 |
 | `human_feedback_evidence` | 第 13 章、第 37 章、第 40 章、第 41 章、第 44 章 | 说明用户点踩、CRM、人工接管、专家评审和标注如何绑定 trace、task slice、rubric、experiment、regression 和质量成本 |
 | `rag_context_snapshot` | 第 2 章、第 13 章、第 37 章 | 说明 RAG 最终进入 prompt 的证据、引用、token 预算、截断原因、冲突处理和无答案策略如何被冻结 |
 | `rag_quality_regression_record` | 第 2 章、第 13 章、第 37 章 | 说明 RAG 线上反馈如何绑定权限决策、context 快照、索引版本、失败层级、owner 和复测门禁 |

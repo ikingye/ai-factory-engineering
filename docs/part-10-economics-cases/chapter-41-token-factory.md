@@ -1159,6 +1159,9 @@ quality_cost_ledger:
     quality_gate_execution: qge-af-chat-20260620-001
     eval_slice_contract: esc-support-202606
     golden_set_governance_record: gsg-support-202606
+    eval_contamination_invalidation_record: none_or_linked
+    judge_drift_calibration_record: jdcr-support-20260620-001
+    quality_feedback_intake_pipeline: qfip-support-202606
     online_experiment_guardrail: oeg-support-20260620
     human_feedback_evidence: sampled
     routing_quality_decision_records: sampled
@@ -1187,6 +1190,9 @@ quality_cost_ledger:
     evaluation_run_cost: measured
     eval_slice_contract_maintenance_cost: allocated
     golden_set_governance_cost: allocated
+    eval_contamination_scan_cost: allocated
+    judge_drift_calibration_cost: allocated
+    feedback_intake_triage_cost: measured
     human_labeling_cost: measured
     human_feedback_review_cost: measured
     red_team_cost: measured
@@ -1222,6 +1228,32 @@ cost_per_successful_answer =
 质量成本账本还应能反向更新路由和发布策略。若 `routing_quality_decision_record` 显示某个 task slice 被频繁路由到便宜模型，但 `quality_cost_ledger` 显示人工接管和投诉成本上升，Gateway scorecard 应降低该模型在该切片的权重；若 `serving_rollback_record` 显示一次质量回滚避免了持续低质量损失，预留 canary 容量和回滚演练就有经济依据；若某次 `quality_gate_execution` 的 prevention cost 很高但几乎没有线上质量损失，团队可以评审门禁是否过度。质量经济模型的作用不是惩罚模型团队，而是让质量投入、路由策略和商业结果在同一张表里对齐。
 
 评测和治理成本也要分清“浪费”和“保险”。`eval_slice_contract` 维护、golden set 访问审计、human feedback review、线上实验 guardrail 和 rollback drill 都会消耗预算，但它们保护的是高价值任务的毛利下限。一次 guardrail 自动冻结可能减少当日 token 收入，却避免更多退款、人工接管和客户流失；一次 rollback drill 看起来没有产出 token，却能把事故恢复时间从不可控变成可估计。经济上应比较 prevention cost 与 loss avoided，而不是把所有治理成本都当作 overhead。
+
+评测证据失效也要进入质量经济模型。`eval_contamination_invalidation_record` 会带来重标、替换样本、重跑 gate 和延迟发布成本；`judge_drift_calibration_record` 会消耗人工 anchor、历史输出回放和阈值重标定成本；`quality_feedback_intake_pipeline` 会消耗 triage 和隐私处理成本。但这些成本保护的是错误放量的下行风险。若污染的 golden set 放行了低质量模型，后续人工接管、退款和客户流失通常更贵；若 judge 变松导致严重样本漏判，质量事故会从评测平台转移到用户现场。
+
+```yaml
+quality_evidence_validity_cost:
+  window: 2026-06-20
+  scope:
+    application: support-chat
+    task_slices: [rag_citation, tool_call_json]
+  prevention_cost:
+    contamination_scan: calculated
+    golden_set_replacement: calculated_if_needed
+    judge_drift_calibration: calculated
+    gate_rerun_gpu_and_labeling: calculated
+    feedback_intake_triage_and_redaction: calculated
+  avoided_loss_model:
+    blocked_invalid_gate_release: true_or_false
+    estimated_low_quality_token_loss_avoided: calculated_if_blocked
+    estimated_handoff_or_refund_loss_avoided: calculated_if_blocked
+  ledger_updates:
+    quality_cost_ledger: append
+    commercial_pnl_ledger: append_if_customer_or_product_margin_impacted
+    production_readiness_review: update_if_gate_invalidated
+```
+
+这个成本对象能帮助团队解释为什么维护评测集和校准 judge 不是研究洁癖。它们是质量保险机制的一部分。成熟的 AI Factory 应把质量证据有效性成本和事故损失放在同一张账本里：如果 gate 失效率高，说明评测治理需要投资；如果治理成本高但很少拦截风险，说明门禁可能过重。经济模型应该帮助找到合适强度，而不是简单削减质量治理。
 
 ```yaml
 quality_prevention_value_record:

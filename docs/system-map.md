@@ -133,8 +133,11 @@ flowchart TB
 | `eval_slice_contract` | 把业务任务切片、最低覆盖、硬门禁、owner 和失败后阻断动作写成发布契约。 | 第 13、40、44 章 | `quality_gate_execution`、`online_experiment_guardrail` |
 | `eval_dataset_lineage_record` | 记录评测数据版本如何生成、清洗、标注、切片、排污和变更。 | 第 13 章 | `quality_gate_execution`、`production_readiness_review` |
 | `golden_set_governance_record` | 证明 golden set、blind holdout、访问、训练排除、overlap scan、样本过期和 judge drift 处于受控状态。 | 第 13、37、40、44 章 | `quality_gate_execution`、`production_readiness_review` |
+| `eval_contamination_invalidation_record` | 评测集、golden set 或 holdout 被污染、过期或与训练数据重叠时，失效门禁证据并触发重跑或替换样本。 | 第 13、37、40、41、44 章 | `quality_evidence_validity`、`production_readiness_review` |
+| `judge_drift_calibration_record` | 用人工 anchor 和历史输出校准 judge model、rubric 或 parser 变化，判断阈值是否需要重标定。 | 第 13、37、40、41、44 章 | `quality_gate_execution`、`quality_evidence_validity` |
 | `quality_gate_execution` | 记录一次质量门禁执行的输入、环境、结果、豁免和发布动作。 | 第 13、44 章 | `routing_quality_decision_record`、`serving_rollback_record` |
 | `online_experiment_guardrail` | 记录线上实验随机化单元、会话粘性、排除范围、护栏指标、停止规则和证据保留动作。 | 第 13、37、40、44 章 | `quality_evidence_bundle`、`quality_cost_ledger` |
+| `quality_feedback_intake_pipeline` | 把线上反馈经过关联、脱敏、triage、replay、人工评审和回归样本治理，防止不可复现或敏感样本污染门禁。 | 第 13、37、40、41、44 章 | `human_feedback_evidence`、`quality_regression_record` |
 | `human_feedback_evidence` | 把用户反馈、CRM、人工接管、专家评审和标注绑定到 trace、task slice、rubric、regression 和成本。 | 第 13、37、41 章 | `quality_regression_record`、`quality_cost_ledger` |
 | `serving_quality_contract` | 把 weights、tokenizer、template、engine 和质量门禁绑定。 | 第 14 章 | `runtime_quality_gate`、`quality_regression_record` |
 | `serving_rollback_record` | 记录一次回滚触发、范围、组件、证据保留、恢复结果和后续门禁。 | 第 14、40 章 | `quality_regression_record`、`production_readiness_review` |
@@ -231,6 +234,7 @@ flowchart TB
 | Engine canary 触发但影响面不清 | 第 14、15、37、39、41、44 章 | engine_canary_record、engine_canary_guardrail_action、endpoint_admission_decision、inference_runtime_cost_ledger | 检查是否冻结放量、降权、回滚或关闭 feature，并确认动作是否恢复 SLO 与成本。 |
 | output token 便宜但用户不满意 | 第 1、13、14、41 章 | quality_feedback_event、quality_regression_record、quality_cost_ledger | 用 cost per successful answer 替代原始 cost/token 做决策。 |
 | 模型上线后质量退化 | 第 6、13、14、37、40、41 章 | quality_gate_execution、eval_slice_contract、golden_set_governance_record、serving_quality_contract、quality_evidence_bundle、quality_cost_ledger | 先冻结质量证据，再判断是评测覆盖不足、golden set 失效、serving 组合漂移、路由策略变化、RAG/Agent 依赖变化还是模型本身退化。 |
+| 质量门禁证据失效 | 第 13、37、40、41、44 章 | eval_contamination_invalidation_record、judge_drift_calibration_record、quality_feedback_intake_pipeline、quality_evidence_validity、quality_evidence_prr_invalidation_drill | 先停止使用失效 gate 作为放量依据，重跑或替换评测集，校准 judge，修复反馈关联和 replay，再更新 PRR 与质量成本账本。 |
 | A/B 结果争议 | 第 6、13、14、37、40 章 | online_experiment_record、online_experiment_guardrail、routing_quality_decision_record、quality_gate_execution、randomization unit | 检查随机化单元、会话粘性、排除范围、护栏指标、停止规则、统计窗口和是否混入 fallback 流量。 |
 | 便宜模型导致人工接管上升 | 第 6、7、13、37、41 章 | routing_quality_decision_record、routing_quality_scorecard、human_feedback_evidence、quality_cost_ledger | 按 task slice 计算 cost per successful answer，必要时调整路由权重、capability gate 或商业定价。 |
 | 回滚后仍未恢复质量 | 第 14、37、39、40、44 章 | serving_rollback_record、serving_rollback_drill、serving_quality_contract、quality_evidence_bundle、release diff、Gateway route | 检查是否只回滚权重但未回滚 tokenizer、template、engine config、RAG 索引、tool policy 或 Gateway route，并确认回滚演练是否覆盖目标组件。 |

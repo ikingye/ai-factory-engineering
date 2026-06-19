@@ -556,6 +556,33 @@ quality_evidence_completeness:
 
 这类完整性检查能减少质量复盘中的争议。没有它，团队容易围绕“模型是不是退化了”争论；有了它，先判断证据是否足以归因，再决定是否扩大排查。对资深平台团队来说，观测的成熟度不是曲线多，而是证据是否能支撑决策：冻结、回滚、更新评测集、调整路由、补演练或赔付客户。
 
+质量证据包还应检查“证据是否仍然有效”。`quality_gate_execution` 通过并不代表永久有效：评测集可能被污染，judge 可能升级，rubric 可能改变，线上反馈 pipeline 可能丢失 trace，golden set 可能过期。观测系统应把 `eval_contamination_invalidation_record`、`judge_drift_calibration_record` 和 `quality_feedback_intake_pipeline` 的状态纳入 bundle，避免 SRE 在质量事故中引用已经失效的门禁证据。
+
+```yaml
+quality_evidence_validity:
+  evidence_id: qev-support-20260620-001
+  quality_evidence_bundle: qeb-20260620-support-001
+  gate_validity:
+    quality_gate_execution: qge-af-chat-20260620-001
+    eval_contamination_invalidation_record: none_open_for_required_slices
+    judge_drift_calibration_record: jdcr-support-20260620-001
+    threshold_rebaseline_required: false
+  feedback_pipeline_validity:
+    quality_feedback_intake_pipeline: qfip-support-202606
+    trace_correlation_success_rate: measured
+    replayable_feedback_rate: measured
+    missing_prompt_context_snapshot_rate: measured
+  decision_support:
+    gate_evidence_usable_for_prr: true_or_false
+    require_gate_rerun_before_ramp: true_or_false
+    recommended_actions:
+      - rerun_quality_gate_if_invalidation_open
+      - freeze_experiment_if_feedback_correlation_broken
+      - recalibrate_judge_if_threshold_shifted
+```
+
+这个对象让质量观测从“事故现场”扩展到“证据可信度”。如果 feedback pipeline 关联失败率很高，线上负反馈不能可靠进入回归；如果 judge drift 未校准，自动评测分数不能作为放量依据；如果 contamination invalidation 仍 open，PRR 应阻断高价值客户。质量证据的有效性本身需要被观测，不能依赖人工记忆。
+
 RAG 和 Agent 还需要更细的证据包，因为它们的失败通常发生在模型之外。`rag_agent_evidence_bundle` 应冻结 RAG 权限决策、context 快照、Agent 工具执行、工具副作用策略、预算账本和安全审计。它不替代 `quality_evidence_bundle`，而是后者在 RAG/Agent task slice 下必须引用的子证据。没有这些引用，质量事故很容易被误判成“模型回答不好”，实际根因可能是检索越权、context 截断、工具 schema 漂移、外部系统超时或预算策略过早停止。
 
 ```yaml
