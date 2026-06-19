@@ -268,6 +268,43 @@ route:
       weight: 10
 ```
 
+生产网关还应把每次接入判断写成 `endpoint_admission_decision`。`engine_admission_health` 告诉 Gateway 某个 endpoint 当前能接什么形态的流量；`endpoint_admission_decision` 则记录某个请求为什么被允许、拒绝、延后、降级或路由到另一个 endpoint。前者是可路由健康摘要，后者是请求级可回放证据。没有后者，事故复盘只能知道“当时 pool 压力高”，不能证明某个租户请求是否被正确处理。
+
+```yaml
+endpoint_admission_decision:
+  decision_id: ead-20260620-001
+  request_id: req-20260620-001
+  trace_id: trace-abc
+  tenant: enterprise-a
+  service_tier: premium_interactive
+  request_shape:
+    estimated_input_tokens: 8192
+    max_output_tokens: 1024
+    stream: true
+    workload_slice: long_context_streaming
+    deadline_ms: 30000
+  candidates:
+    - endpoint: af-chat-large-prod
+      engine_admission_health: eah-af-chat-large-prod-1020
+      decision: shed
+      reason: kv_block_pressure_high_for_long_context
+    - endpoint: af-chat-large-longctx
+      engine_admission_health: eah-af-chat-large-longctx-1020
+      decision: admit
+      reason: long_context_slots_available
+  policy_context:
+    route_policy_version: 2026-06-20.3
+    budget_policy_version: 2026-06-20.1
+    canary_guardrail: no_block
+    fallback_allowed_before_first_token: true
+  result:
+    action: route
+    selected_endpoint: af-chat-large-longctx
+    metering_start_event: request_admitted
+```
+
+这个对象的价值在三类场景最明显。第一，用户投诉首 token 慢时，可以回放当时是否错误地把长上下文请求送进短上下文池。第二，runtime canary 出现 guardrail breach 时，可以证明 Gateway 是否停止扩大新 engine profile 的流量。第三，账单或 SLA 争议时，可以说明请求是被正常 admission、被 shed、被 fallback，还是在尚未产生 token 前被拒绝。它让 AI Gateway 的策略从“配置存在”变成“决策可审计”。
+
 更完整的策略应把 capability 和 fallback 写成显式约束，避免“可用性提升”变成“能力降级”。下面的例子中，fallback 目标必须满足同样的 streaming 和 tool calling 能力，并且只允许在尚未产生 token 前触发。
 
 ```yaml

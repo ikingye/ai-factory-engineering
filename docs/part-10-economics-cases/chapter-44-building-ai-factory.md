@@ -467,6 +467,14 @@ production_readiness_review:
       reliability_evidence_bundle_trigger: configured
       inference_runtime_diagnostic_bundle: configured
       token_metering_reconciliation: pass
+    inference_runtime:
+      endpoint_admission_decision_replay: pass
+      engine_admission_health_freshness: pass
+      kv_block_ledger_rollup: configured
+      kv_block_leak_forensic_record_template: ready
+      pd_transfer_evidence: pass_if_pd_enabled
+      speculative_decoding_regression_guardrail: pass_if_speculative_enabled
+      engine_canary_guardrail_action: machine_enforced
     container_gpu_runtime:
       container_gpu_runtime_acceptance_matrix: pass
       oci_runtime_injection_diff: sampled_and_clean
@@ -505,6 +513,13 @@ production_readiness_review:
       - no_rollback_path
       - no_metering_reconciliation
       - no_incident_owner_or_runbook
+      - no_endpoint_admission_decision_replay
+      - stale_or_missing_engine_admission_health
+      - no_kv_block_ledger_for_target_endpoint
+      - recent_kv_incident_without_leak_forensic_record
+      - pd_enabled_without_transfer_evidence
+      - speculative_enabled_without_regression_guardrail
+      - recent_engine_canary_guardrail_failure_unresolved
       - no_container_gpu_runtime_acceptance_for_target_pool
       - gpu_device_visibility_reconciliation_failed
       - rdma_or_multigpu_without_gpu_nic_topology_evidence

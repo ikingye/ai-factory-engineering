@@ -542,6 +542,39 @@ kv_block_ledger_rollup:
 
 这个 rollup 是 Serving 层和 Runtime 层的边界。Runtime 不应该知道商业租户策略，Serving 也不应该重新实现 KV allocator；两者通过账本关联。若某个 release 上线后 `block_seconds` 上升但 output token 没有增加，可能是 prompt 模板、prefix cache key、取消释放路径或 engine 变更造成浪费。若 allocation failures 只集中在长上下文租户，Gateway 应调整路由或上下文限制，而不是全局扩容。
 
+当 rollup 显示取消、超时或 worker restart 后仍有 `unreleased_after_close_blocks`，Serving 层应自动生成 `kv_block_leak_forensic_record`，并把它挂到 incident、runtime canary 和成本账本。这个记录不是 runtime 内部 debug 文件，而是跨 Gateway、model server、engine 和计量系统的生命周期对账。它至少要证明三件事：请求关闭信号是否到达所有组件，KV allocator 是否释放了引用，泄漏是否影响后续 admission。
+
+```yaml
+kv_block_leak_forensic_record:
+  forensic_id: kv-leak-20260620-001
+  endpoint: af-chat-large-prod
+  serving_release: af-chat-large-20260619-r3
+  engine_profile: vllm-prod-h100-v7
+  trigger:
+    signal: unreleased_after_close_blocks
+    detected_by: kv_block_ledger_rollup
+    window: 2026-06-20T10:00Z/2026-06-20T10:05Z
+  lifecycle_reconciliation:
+    gateway_close_event: client_cancelled
+    model_server_close_event: propagated
+    engine_close_event: missing_or_delayed
+    metering_close_event: request_closed
+  allocator_evidence:
+    orphaned_blocks: measured
+    owning_sequence_ids: sampled
+    prefix_cache_refs: sampled
+    release_latency_ms: measured
+  production_impact:
+    admission_rejects_caused: calculated
+    kv_block_seconds_wasted: calculated
+    affected_tenants: [enterprise-a]
+  action:
+    immediate: freeze_long_context_admission_or_restart_worker
+    permanent: fix_cancel_release_path_and_add_regression
+```
+
+这份取证记录能阻止“重启副本就算修复”的坏习惯。重启可以释放显存，但不能解释泄漏发生在哪个生命周期边界；如果不把 close event、allocator owner 和 admission impact 关联起来，同类问题会在下一次客户端取消风暴、网关超时调整或 PD transfer 故障中复发。Serving 层的职责是把 runtime 细节翻译成可运营事实。
+
 引擎或 runtime 变更还需要 `engine_canary_record`。它比普通 canary 更细，因为 runtime 变更可能同时影响协议、token 口径、KV block、prefix cache、speculative decoding、错误码和成本。记录应绑定 serving release、runtime quality gate 和线上样本，避免“压测通过但线上格式/计费/质量漂移”的事故。
 
 ```yaml
@@ -567,6 +600,35 @@ engine_canary_record:
     state: continue_or_freeze_or_rollback
     rollback_target: vllm-prod-h100-v6
 ```
+
+Canary 的动作也应被结构化保存为 `engine_canary_guardrail_action`。`engine_canary_record` 说明观测结果，guardrail action 说明系统实际做了什么：冻结放量、摘除 endpoint、降低长上下文权重、关闭 speculative decoding、回滚 engine profile，还是只延长观察窗口。没有动作记录，团队只能知道“guardrail 触发过”，不知道当时有没有止血、止血范围多大、是否影响 SLA 和成本。
+
+```yaml
+engine_canary_guardrail_action:
+  action_id: ecga-20260620-001
+  canary_id: engine-canary-20260620-001
+  trigger:
+    guardrail: kv_allocation_failure_rate
+    observed_delta: regressed
+    affected_slices: [long_context_qa]
+  automated_action:
+    freeze_traffic_expansion: true
+    route_weight_change:
+      from_candidate_percent: 5
+      to_candidate_percent: 0
+    gateway_policy_patch: ead_policy_patch_20260620_001
+    runtime_feature_patch:
+      speculative_decoding: disabled_if_related
+  evidence_preserved:
+    endpoint_admission_decisions: sampled
+    kv_block_leak_forensic_record: kv-leak-20260620-001
+    inference_runtime_diagnostic_bundle: inc-20260620-ttft-001
+  outcome:
+    slo_recovered: true_or_false
+    cost_impact_recorded: inference_runtime_cost_ledger
+```
+
+这个动作对象把发布系统、Gateway 和 runtime 连接起来。它要求自动止血必须留下证据，不能只改一个配置开关；也要求成本系统知道 canary 预留容量和回滚带来的资源浪费。对高价值 endpoint，guardrail action 应进入 SRE 复盘：如果动作太慢，说明检测或自动化不足；如果动作过于激进，说明护栏阈值或切片定义需要修订。
 
 如果服务采用 PD 分离，还需要 `pd_disaggregation_contract`。它声明 prefill pool、decode pool、KV 传输、失败语义、容量比例和回滚方式。PD 分离把一个 replica 内部阶段拆成跨资源池链路，如果没有合同，Gateway、autoscaler 和 SRE 很难判断 TTFT 变差是 prefill 池不足、KV 传输慢、decode 池拥塞，还是两边容量比例失衡。
 
@@ -594,6 +656,38 @@ pd_disaggregation_contract:
 ```
 
 PD 分离合同的价值在于把复杂性显式化。它允许平台先用影子流量和低风险租户验证 KV 传输、容量比例和失败语义，再决定是否让核心 Chat 流量进入。没有这个合同，PD 分离很容易只在 benchmark 中证明 prefill 更快，却在线上引入新的状态传输故障和账单争议。
+
+合同之外，还需要请求级或窗口级 `pd_transfer_evidence`。合同描述“应该如何传”，evidence 描述“实际如何传”。它记录一次 prefill 到 decode 的状态转移，包括 KV 大小、传输时延、完整性校验、租户隔离、重试、失败阶段和对 TTFT/TPOT 的贡献。没有这个对象，PD 分离事故会退化成 prefill 团队、decode 团队和网络团队互相猜测。
+
+```yaml
+pd_transfer_evidence:
+  transfer_id: pdx-20260620-001
+  request_id: req-20260620-001
+  endpoint: af-chat-large-pd-prod
+  pd_disaggregation_contract: pd-contract-20260620
+  pools:
+    prefill_replica: prefill-7
+    decode_replica: decode-3
+  kv_state:
+    context_tokens: 8192
+    kv_blocks_transferred: measured
+    checksum_or_integrity: pass
+    tenant_isolation_context: enterprise-a
+  timing:
+    prefill_queue_ms: measured
+    prefill_compute_ms: measured
+    kv_transfer_ms: measured
+    decode_admission_wait_ms: measured
+  failure_semantics:
+    retries: measured
+    fallback_allowed: before_first_token_only
+    partial_usage_emitted: true_or_false
+  verdict:
+    transfer_within_contract: true_or_false
+    bottleneck: prefill_queue_or_transfer_or_decode_wait
+```
+
+PD 分离是否值得上线，不能只看平均 TTFT。若 `pd_transfer_evidence` 显示 transfer 时延长尾抵消了 prefill 池收益，或者 decode admission wait 长期高于 prefill compute 节省，系统应回到 monolithic endpoint 或重调两池比例。若 integrity 或租户隔离证据缺失，即使性能好也不能进入高敏租户。PD 分离把一次推理变成分布式状态机，因此证据粒度必须跟着升级。
 
 ## 常见故障
 

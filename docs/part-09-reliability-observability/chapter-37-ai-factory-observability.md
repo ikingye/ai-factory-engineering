@@ -521,10 +521,15 @@ inference_runtime_diagnostic_bundle:
   evidence:
     request_trace: required
     routing_decisions: required
+    endpoint_admission_decisions: required
     engine_admission_health: required
     kv_block_ledger_rollup: required
+    kv_block_leak_forensic_record: required_if_unreleased_blocks
     engine_canary_record: required_if_recent_change
+    engine_canary_guardrail_action: required_if_guardrail_triggered
     pd_disaggregation_contract: required_if_enabled
+    pd_transfer_evidence: required_if_pd_enabled
+    speculative_decoding_regression_record: required_if_speculative_enabled
     metering_events: request_admitted_first_token_usage_closed
   runtime_snapshot:
     prefill_queue: measured
@@ -538,6 +543,22 @@ inference_runtime_diagnostic_bundle:
 ```
 
 这类诊断包的关键是“事故触发时自动冻结”。推理请求生命周期很短，容器、stream 连接和临时 queue 状态很快消失；如果只在事后查询聚合指标，许多证据已经不可恢复。观测系统应在 TTFT、TPOT、streaming gap、canary guardrail 或 KV release latency 越界时，保存一个短窗口的细粒度证据，同时通过数据分级避免把原始 prompt 和 response 无限制扩散。
+
+诊断包还要保存“动作证据”。很多事故不是缺少指标，而是自动系统已经做了几次动作：Gateway 改过权重，canary 冻结过放量，runtime 关闭过 speculative decoding，autoscaler 扩过 decode pool。这些动作如果不进入 bundle，复盘会把事故看成静态状态，忽略控制面在过程中改变了现场。`endpoint_admission_decision` 和 `engine_canary_guardrail_action` 应按时间线写入，帮助 oncall 判断当前状态是原始故障，还是自动止血后的残留影响。
+
+```mermaid
+flowchart LR
+  Trigger["TTFT / TPOT / KV release / canary breach"] --> Bundle["inference_runtime_diagnostic_bundle"]
+  Bundle --> Admission["endpoint_admission_decision"]
+  Bundle --> KV["kv_block_leak_forensic_record"]
+  Bundle --> PD["pd_transfer_evidence"]
+  Bundle --> Spec["speculative_decoding_regression_record"]
+  Bundle --> Action["engine_canary_guardrail_action"]
+  Action --> Cost["inference_runtime_cost_ledger"]
+  Bundle --> Incident["incident_record / runbook"]
+```
+
+这张图的含义是：观测系统不只收集“慢了多少”，还要收集“为什么接入、哪里泄漏、状态如何传输、优化是否回归、系统做了什么”。当这些对象都存在时，一次推理事故可以被重放；当它们缺失时，团队只能从聚合曲线猜测。
 
 ```yaml
 observability_labels:

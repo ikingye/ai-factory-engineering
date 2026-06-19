@@ -390,10 +390,15 @@ inference_latency_runtime_branch:
   mandatory_evidence:
     request_trace: required
     routing_decision: required
+    endpoint_admission_decision: required
     engine_admission_health: required
     kv_block_ledger: required_for_kv_or_long_context
+    kv_block_leak_forensic_record: required_if_unreleased_blocks
     engine_canary_record: required_if_recent_runtime_change
+    engine_canary_guardrail_action: required_if_guardrail_triggered
     pd_disaggregation_contract: required_if_pd_enabled
+    pd_transfer_evidence: required_if_pd_enabled
+    speculative_decoding_regression_record: required_if_speculative_enabled
   branch_checks:
     gateway_queue:
       signal: gateway_queue_ms_high
@@ -410,12 +415,33 @@ inference_latency_runtime_branch:
     engine_regression:
       signal: canary_guardrail_failed
       action: freeze_or_rollback_engine_profile
+    speculative_regression:
+      signal: draft_overhead_or_schema_failure_or_cost_regression
+      action: disable_speculative_for_slice_and_update_gate
     pd_transfer:
       signal: kv_transfer_ms_high_or_pool_ratio_mismatch
       action: rebalance_prefill_decode_or_fallback_monolithic
 ```
 
 这个分支也定义了“不能下结论”的条件。没有 request shape，就不能判断 QPS 是否真的异常；没有 `engine_admission_health`，就不能区分 endpoint ready 与 endpoint 可承诺；没有 `kv_block_ledger`，就不能把 HBM 高水位归因到长上下文、泄漏、碎片或 prefix cache；没有 canary 记录，就不能把 runtime 变更排除在外。排障文档应明确这些证据缺失时的下一步采集动作，而不是让值班人员凭经验猜。
+
+运行时故障树还要区分“根因证据”和“止血动作”。`endpoint_admission_decision` 用来判断 Gateway 是否把请求送错池；`kv_block_leak_forensic_record` 用来判断请求关闭后状态是否泄漏；`pd_transfer_evidence` 用来判断 PD 分离的慢点在 prefill、transfer 还是 decode admission；`speculative_decoding_regression_record` 用来判断加速特性是否只在某些切片破坏质量或成本；`engine_canary_guardrail_action` 用来判断系统是否已经冻结、降权或回滚。缺少动作证据时，不能把“当前指标恢复”直接解释为“故障已解决”，因为可能只是自动系统临时绕过了问题。
+
+```yaml
+runtime_troubleshooting_stop_rules:
+  cannot_claim_gateway_correct:
+    unless: endpoint_admission_decision_replayed
+  cannot_claim_kv_leak_absent:
+    unless: kv_block_ledger_closed_and_leak_forensic_clean
+  cannot_claim_pd_healthy:
+    unless: pd_transfer_evidence_within_contract
+  cannot_claim_speculative_safe:
+    unless: speculative_decoding_regression_record_absent_or_closed
+  cannot_claim_canary_contained:
+    unless: engine_canary_guardrail_action_recorded_and_effective
+```
+
+这些 stop rules 的作用是提高排障纪律。资深工程师最容易犯的错误不是不知道工具，而是在证据不完整时过早归因。把“不能下结论”的条件写进 runbook，可以减少事故中凭经验争论，把注意力转向补证据、止血和复测。
 
 ## 39.9 故障树分析
 

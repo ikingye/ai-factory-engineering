@@ -227,17 +227,26 @@ inference_runtime_cost_ledger:
     - long_generation
   evidence:
     kv_block_ledger_rollup: kvbl-rollup-20260620-1000
+    kv_block_leak_forensic_record: kv-leak-20260620-001-if-any
     speculative_decoding_report: spec-decode-20260620-001
+    speculative_decoding_regression_record: spec-reg-20260620-001-if-any
     engine_canary_record: engine-canary-20260620-001
+    engine_canary_guardrail_action: ecga-20260620-001-if-any
     pd_disaggregation_contract: pd-contract-if-enabled
+    pd_transfer_evidence: pdx-rollup-20260620-1000-if-enabled
+    endpoint_admission_decision_sample: sampled
     quality_cost_ledger: qcost-20260620-1000
   cost_components:
     prefill_gpu_cost: calculated
     decode_gpu_cost: calculated
     kv_block_seconds_cost: calculated
     wasted_kv_after_cancel_cost: calculated
+    kv_leak_block_seconds_cost: calculated_if_leak_detected
     draft_model_cost: calculated_if_speculative
+    speculative_regression_cost: calculated_if_quality_or_format_regressed
     kv_transfer_cost: calculated_if_pd_enabled
+    pd_transfer_retry_cost: calculated_if_pd_enabled
+    canary_capacity_and_rollback_cost: calculated
     failed_or_retried_request_cost: calculated
   outputs:
     cost_per_generated_token: calculated
@@ -249,6 +258,30 @@ inference_runtime_cost_ledger:
 ```
 
 这份账本能防止三类常见误判。第一，speculative decoding 降低 TPOT，但 draft 模型成本、验证开销和质量回归可能让 `cost_per_successful_answer` 上升。第二，PD 分离降低 TTFT，但 KV transfer、两池容量比例和失败语义可能增加运维和重试成本。第三，prefix cache 命中提升 prefill 效率，但过大的缓存生命周期会产生 KV block 秒成本和隐私边界成本。运行时优化只有同时通过延迟、质量、账本和故障语义，才算经济上成立。
+
+推理 runtime 成本还要计算“预防成本”。Canary 预留的 5% 容量、自动冻结后回滚到旧 profile 的低效率、为了保留诊断证据而增加的 trace 采样、为了修复 KV 泄漏而临时关闭长上下文 admission，都会让短期 cost/token 变差。但这些成本如果阻止了大范围低质量输出、账单争议或 SLA 违约，应该被记为 prevention cost，而不是简单归入浪费。Token Factory 的经济学不是把所有开销压低，而是把能降低风险暴露的开销和无效浪费区分开。
+
+```yaml
+runtime_prevention_cost:
+  window: 2026-06-20T10:00Z/2026-06-20T11:00Z
+  triggers:
+    - engine_canary_guardrail_action: ecga-20260620-001
+    - kv_block_leak_forensic_record: kv-leak-20260620-001
+  prevention_cost_components:
+    reserved_canary_capacity_cost: calculated
+    rollback_to_less_efficient_profile_cost: calculated
+    diagnostic_sampling_cost: calculated
+    temporary_shed_revenue_loss: calculated
+  avoided_loss_estimate:
+    avoided_slo_penalty: estimated
+    avoided_low_quality_answer_cost: estimated
+    avoided_billing_dispute_cost: estimated
+  decision:
+    keep_guardrail: true
+    tune_threshold: review_if_false_positive_high
+```
+
+这个账本让 runtime 团队和业务团队能讨论同一个问题：一次自动止血到底是“过度保守”还是“避免更大损失”。如果 guardrail 经常触发但没有避免实际损失，阈值可能过严；如果每次触发都避免了高价值租户事故，预留 canary 容量和诊断采样就是合理成本。
 
 ## 41.5 revenue/token
 

@@ -98,9 +98,14 @@ flowchart TB
 | `serving_quality_contract` | 把 weights、tokenizer、template、engine 和质量门禁绑定。 | 第 14 章 | `runtime_quality_gate`、`quality_regression_record` |
 | `serving_rollback_record` | 记录一次回滚触发、范围、组件、证据保留、恢复结果和后续门禁。 | 第 14、40 章 | `quality_regression_record`、`production_readiness_review` |
 | `runtime_quality_gate` | 防止推理引擎优化破坏质量、协议或成本。 | 第 15 章 | `serving_quality_contract`、`benchmark_matrix` |
+| `endpoint_admission_decision` | 记录 Gateway 对单个请求为什么 admit、shed、fallback、route 或 reject，并绑定 request shape、SLO、budget 和 engine health。 | 第 6、37、39、44 章 | `engine_admission_health`、`inference_runtime_diagnostic_bundle` |
 | `engine_admission_health` | 让 Gateway 知道 endpoint 是否还能按 SLO 接收请求。 | 第 6、14、15、37、39 章 | `engine_canary_record`、`incident_record` |
 | `kv_block_ledger` | 把 KV block 分配、释放、prefix cache、租户和泄漏成本串起来。 | 第 1、14、15、37、39、41 章 | `Token Factory ledger`、`runtime_quality_gate` |
+| `kv_block_leak_forensic_record` | 取证请求关闭后 KV block 是否泄漏、由哪个 allocator/cache/worker/PD session 持有以及影响多少 admission 和成本。 | 第 1、14、37、39、41、44 章 | `kv_block_ledger`、`inference_runtime_cost_ledger` |
 | `engine_canary_record` | 记录 engine/runtime 变更的协议、质量、性能、KV 和成本门禁结果。 | 第 14、15、37、39 章 | `serving_quality_contract`、`runtime_quality_gate` |
+| `engine_canary_guardrail_action` | 记录 canary 护栏触发后的冻结、降权、关闭 feature、回滚和证据保留动作。 | 第 14、15、37、39、41、44 章 | `engine_canary_record`、`inference_runtime_diagnostic_bundle` |
+| `speculative_decoding_regression_record` | 记录 speculative decoding 在真实流量切片上的格式、质量、长度、接受率和成本回归及切片化止血。 | 第 15、37、39、41、44 章 | `speculative_decoding_report`、`runtime_quality_gate` |
+| `pd_transfer_evidence` | 证明 PD 分离中 KV transfer 的时延、完整性、租户隔离、重试、失败语义和瓶颈归因。 | 第 14、37、39、41、44 章 | `pd_disaggregation_contract`、`inference_runtime_diagnostic_bundle` |
 | `inference_runtime_diagnostic_bundle` | 把 TTFT/TPOT/streaming 事故所需证据冻结成诊断包。 | 第 37、39 章 | `incident_record`、`engine_canary_record` |
 | `inference_runtime_cost_ledger` | 把 KV block、draft model、PD transfer、取消浪费和质量成本折算成成功回答成本。 | 第 41 章 | `Token Factory ledger`、`business_model_profile` |
 | `TrainingJob` | 描述一次训练任务的模型、数据、并行、调度和恢复语义。 | 第 10、23 章 | `checkpoint_manifest`、`rank_mapping`、`training_roi_ledger` |
@@ -147,8 +152,12 @@ flowchart TB
 
 | 症状 | 先看章节 | 要找的证据 | 常见下一步 |
 | --- | --- | --- | --- |
-| Chat 首 token 慢 | 第 1、6、14、15 章 | request trace、routing decision、engine_admission_health、prefill time、KV cache pressure | 分离 Gateway 排队、serving 队列、prefill 资源、KV block 和 runtime admission。 |
+| Chat 首 token 慢 | 第 1、6、14、15 章 | request trace、endpoint_admission_decision、engine_admission_health、prefill time、KV cache pressure | 回放 Gateway 接入决策，分离 Gateway 排队、serving 队列、prefill 资源、KV block 和 runtime admission。 |
 | TPOT 变慢或 streaming 断续 | 第 1、14、15、37、39 章 | decode batch、active sequence、kv_block_ledger、engine_canary_record、inference_runtime_diagnostic_bundle | 区分 decode 拥塞、KV block 压力、engine 变更、PD transfer、网关背压和客户端取消。 |
+| 客户端取消后 GPU/HBM 仍被占用 | 第 1、14、15、37、39、41 章 | kv_block_ledger、kv_block_leak_forensic_record、streaming close event、metering close event | 对账 Gateway、model server、engine close event，定位 allocator、prefix cache、decode worker 或 PD session 泄漏，并折算 block 秒成本。 |
+| PD 分离上线后 TTFT 长尾变差 | 第 14、15、37、39、44 章 | pd_disaggregation_contract、pd_transfer_evidence、endpoint_admission_decision、engine_admission_health | 判断慢在 prefill queue、KV transfer、decode admission 还是容量比例，必要时切回 monolithic endpoint。 |
+| Speculative decoding 开启后格式/成本回归 | 第 15、37、39、41、44 章 | speculative_decoding_report、speculative_decoding_regression_record、engine_canary_guardrail_action、quality_cost_ledger | 按 workload slice 关闭 speculative、更新 runtime gate，并计算 draft overhead、质量回归和 prevention cost。 |
+| Engine canary 触发但影响面不清 | 第 14、15、37、39、41、44 章 | engine_canary_record、engine_canary_guardrail_action、endpoint_admission_decision、inference_runtime_cost_ledger | 检查是否冻结放量、降权、回滚或关闭 feature，并确认动作是否恢复 SLO 与成本。 |
 | output token 便宜但用户不满意 | 第 1、13、14、41 章 | quality_feedback_event、quality_regression_record、quality_cost_ledger | 用 cost per successful answer 替代原始 cost/token 做决策。 |
 | 模型上线后质量退化 | 第 6、13、14、37、40、41 章 | quality_gate_execution、eval_dataset_lineage_record、serving_quality_contract、quality_evidence_bundle、quality_cost_ledger | 先冻结质量证据，再判断是评测覆盖不足、serving 组合漂移、路由策略变化、RAG/Agent 依赖变化还是模型本身退化。 |
 | A/B 结果争议 | 第 6、13、14、37、40 章 | online_experiment_record、routing_quality_decision_record、quality_gate_execution、task slice、randomization unit | 检查随机化单元、样本污染、会话粘性、护栏指标、统计窗口和是否混入 fallback 流量。 |

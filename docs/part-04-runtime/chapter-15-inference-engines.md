@@ -212,6 +212,34 @@ speculative_decoding_report:
 
 这个报告能防止“局部快、整体贵”。如果 long generation 的 TPOT 明显下降且质量不退化，可以只对这类请求开启；如果 strict JSON 或 tool calling 的格式失败率上升，即使接受率高，也应禁止。Speculative decoding 应由 workload slice 控制，而不是作为全局 engine 开关。
 
+上线后还需要 `speculative_decoding_regression_record`。`speculative_decoding_report` 回答“灰度前评测是否值得打开”，regression record 回答“打开后哪类真实流量发生退化，系统如何止血”。Speculative decoding 的退化不一定表现为模型答案错误，也可能是 JSON 结构更不稳定、工具参数漂移、输出长度变长、finish reason 分布变化、draft 模型占用资源导致其它请求变慢，或者接受率在某些语言/领域切片上突然下降。
+
+```yaml
+speculative_decoding_regression_record:
+  regression_id: spec-reg-20260620-001
+  endpoint: af-chat-large-prod
+  speculative_decoding_report: spec-decode-20260620-001
+  engine_canary_record: engine-canary-20260620-001
+  affected_slices:
+    - strict_json_tool_calling
+    - multilingual_support_chat
+  regression_signals:
+    acceptance_rate_delta: degraded
+    tpot_delta: improved_or_degraded
+    output_length_drift: increased
+    json_schema_failure_delta: regressed
+    cost_per_successful_answer_delta: worsened
+  containment:
+    disable_speculative_for_slices: [strict_json_tool_calling]
+    keep_enabled_for_slices: [long_generation]
+    gateway_policy_patch: ead_policy_patch_20260620_002
+  follow_up:
+    draft_model_candidate: retrain_or_replace
+    runtime_quality_gate_required: true
+```
+
+这个记录避免把 speculative decoding 当成单一开关。成熟平台会按任务切片、模型能力和质量要求做 feature gating：长文本生成可以启用，严格 JSON/tool calling 可以关闭；内部低风险流量可以尝试，高价值客户先不启用。这样做的代价是策略更复杂，但收益是 runtime 优化不再和业务质量互相伤害。
+
 ## 15.7 prefix cache
 
 Prefix cache 缓存相同或可复用 prompt 前缀的计算结果，减少重复 prefill。系统提示词、工具 schema、固定模板、RAG 框架提示和多轮对话中的稳定历史，都可能形成可复用前缀。命中后，引擎可以跳过部分重复计算，降低 TTFT 和 prefill cost。对于长系统提示或工具描述，收益可能明显。
@@ -438,6 +466,21 @@ engine_canary_record:
 ```
 
 对于 speculative decoding，质量门禁要特别看 acceptance rate 之外的指标。Draft 模型的接受率高，不代表业务质量不变；采样参数、验证实现、停止条件和 tokenizer 兼容都可能改变输出行为。评测应比较输出长度、拒答率、结构化输出失败率、tool call 参数稳定性和用户可见错误。若收益主要来自少量长输出任务，Gateway 应按任务切片启用，而不是全局打开。
+
+Runtime 门禁还应定义自动止血动作。推理引擎问题的窗口很短，等人工确认后再调路由，往往已经消耗大量 token、产生用户可见失败或污染质量反馈。`engine_canary_guardrail_action` 应作为 canary 的配套对象：当 token drift、KV allocation failure、JSON failure、draft overhead、PD transfer timeout 或 cost per successful answer 越界时，系统应能冻结放量、关闭特性、降权 endpoint 或回滚 engine profile，并把动作写回 Gateway、Serving 和成本账本。
+
+```mermaid
+flowchart LR
+  Canary["engine_canary_record"] --> Guard{"guardrail breach?"}
+  Guard -->|no| Promote["continue / promote"]
+  Guard -->|yes| Action["engine_canary_guardrail_action"]
+  Action --> GW["patch Gateway route / admission"]
+  Action --> Runtime["disable feature or rollback profile"]
+  Action --> Bundle["freeze diagnostic evidence"]
+  Action --> Cost["record rollback and prevention cost"]
+```
+
+止血动作要足够细。Speculative decoding 失败时，不一定要回滚整个模型服务，可以只按 workload slice 关闭 speculative；KV 泄漏时，可能需要冻结长上下文 admission，而不是停止短请求；PD transfer 超时时，可以把新请求切回 monolithic endpoint，同时让已开始 streaming 的请求按合同结束。自动动作越接近真实故障边界，越能减少爆炸半径。
 
 对于 prefix cache，质量门禁要看缓存 key 和数据边界。错误的 cache key 可能跨租户复用敏感前缀，过度动态的 key 又会导致低命中率和高内存占用。评测应验证模型版本、tokenizer、chat template、租户、数据等级和工具 schema 是否进入 cache key；还要确认缓存失效后输出行为一致。Prefix cache 是性能优化，同时也是状态管理和安全边界。
 

@@ -171,6 +171,42 @@ kv_block_ledger:
 
 这个 ledger 对应用也有反馈价值。若一个应用的 prompt 模板经常造成高 `prefill_blocks_reserved`，说明上下文预算需要重做；若 prefix cache 命中很低，说明系统提示、工具 schema 或 RAG 模板中有过多动态字段；若取消后释放延迟高，说明 streaming 生命周期没有打通。KV Cache 的治理不是只靠底层引擎，应用的上下文结构同样决定缓存效率。
 
+对 Chat 请求来说，最危险的 KV 问题不是“显存使用率高”，而是请求生命周期已经结束，KV block 仍然被 allocator、prefix cache、decode worker 或异常恢复路径持有。用户取消 streaming、网关超时、客户端断网、engine worker 重启、PD transfer 失败，都可能让业务侧认为请求结束，而 runtime 侧仍保留状态。生产系统应把这类问题沉淀为 `kv_block_leak_forensic_record`，而不是等到整池 HBM 压力升高后才从聚合指标倒推。
+
+```yaml
+kv_block_leak_forensic_record:
+  forensic_id: kv-leak-20260620-001
+  request_id: req-20260620-001
+  tenant: enterprise-a
+  endpoint: af-chat-large-prod
+  engine_profile: vllm-prod-h100-v7
+  close_event:
+    close_reason: client_cancelled
+    close_seen_by_gateway: true
+    close_seen_by_model_server: true
+    close_seen_by_engine: true_or_false
+  allocation_snapshot:
+    blocks_at_prefill_end: measured
+    peak_blocks: measured
+    blocks_expected_after_close: 0
+    blocks_observed_after_close: measured
+    release_latency_ms: measured
+  suspected_owner:
+    allocator_state: active_or_orphaned
+    decode_worker: worker_id_if_known
+    prefix_cache_ref: cache_key_if_retained
+    pd_transfer_session: transfer_id_if_enabled
+  impact:
+    leaked_block_seconds: calculated
+    affected_admission_decisions: [endpoint_admission_decision_ids]
+    tenant_quota_impact: calculated
+  remediation:
+    action: force_release_or_restart_or_disable_cache_path
+    regression_test: cancel_timeout_disconnect_restart_cases
+```
+
+这份记录把“取消后 GPU 还忙”拆成可验证事实。首先看 close event 是否在 Gateway、model server 和 engine 三处闭合；其次看 allocator 是否仍有 orphaned block；再看 prefix cache 或 PD transfer 是否持有引用；最后把泄漏 block 秒折算到 admission 失败和成本。没有这份记录，团队很容易把泄漏误判为流量增长、长上下文变多或 GPU 不够，结果用扩容掩盖 lifecycle bug。
+
 ## 1.8 应用体验如何反向决定基础设施设计
 
 应用体验目标会一路向下传导。产品要求首 token 很快出现，平台就要减少网关排队、控制长 prompt、优化 prefill 调度，必要时把长上下文请求和短对话请求拆到不同资源池。产品要求低成本生成长报告，推理服务就要更重视吞吐、batching、异步任务和取消策略。产品要求稳定的工具调用和引用，平台就要记录每次模型调用、检索、工具结果和 token 成本。用户界面的一项体验要求，最终会变成运行时和基础设施的设计约束。
