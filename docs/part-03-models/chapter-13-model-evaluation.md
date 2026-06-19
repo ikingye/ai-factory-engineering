@@ -744,6 +744,71 @@ human_feedback_evidence:
 
 评测平台还应支持“修复层级”统计。一次失败可能要改模型权重、prompt、RAG、工具 schema、Gateway 路由、runtime 参数或客户端展示。每个 `quality_regression_record` 都应填写 `fix_layer`，并在月度质量评审中统计。若多数问题来自 RAG context 截断，继续训练模型收益有限；若多数问题来自 tool schema，应该改工具协议；若多数问题来自 runtime token drift，应该加强 serving quality contract。评测系统的目标是把投资指向真正瓶颈。
 
+多模态模型还需要专门的 `multimodal_quality_gate_execution`。通用文本 gate 无法覆盖媒体链路的关键风险：OCR 是否漏字，ASR 是否错分段，表格结构是否错列，图像区域引用是否对齐，视频抽帧是否漏掉关键片段，模型回答是否来自允许的媒体证据，敏感信息是否被正确脱敏。多模态评测不应只问“模型描述图片是否正确”，而要验证从上传、预处理、派生产物、模型输入到答案引用的完整系统行为。
+
+```yaml
+multimodal_quality_gate_execution:
+  execution_id: mm-qge-claims-20260620
+  scope:
+    application: claims-document-review
+    multimodal_workload_profile: mwp-claims-document-review-202606
+    serving_release: claims-mm-model-20260620-r2
+  media_inputs:
+    manifests:
+      - media_artifact_manifest: mam-claims-doc-20260620-001
+        media_type: scanned_pdf
+        derived_artifacts_required:
+          - ocr_text
+          - layout_blocks
+          - page_images
+          - visual_embeddings
+  slices:
+    ocr_fidelity:
+      metrics: [field_exactness, low_confidence_region_reviewed]
+      hard_gate: pass
+    table_extraction:
+      metrics: [cell_alignment, header_mapping, numeric_consistency]
+      hard_gate: pass_for_financial_fields
+    visual_grounding:
+      metrics: [answer_region_iou_or_region_match, unsupported_visual_claim_rate]
+      hard_gate: pass
+    citation_to_source_region:
+      metrics: [page_region_citation_precision, citation_click_replay]
+      hard_gate: pass
+    privacy_and_safety:
+      metrics: [redaction_leak_rate, sensitive_media_refusal]
+      hard_gate: pass
+  execution_environment:
+    preprocessing_pipeline_records: [mppr-claims-20260620-001]
+    judge_rubric: multimodal-claims-rubric-v3
+    human_review_required_for: [low_confidence_ocr, claim_denial_recommendation]
+  decision:
+    action: approve_canary_or_block
+    blocked_slices: []
+    required_follow_up: []
+```
+
+这个 gate 的关键是引用 `media_artifact_manifest` 和 `media_processing_pipeline_record`。如果 OCR 产物已经缺失关键字段，模型回答错误不能简单算作模型能力不足；如果表格解析错列，后续 LLM 再强也可能生成错误理赔结论；如果答案引用的是页码但没有 region，用户无法审计证据；如果视频任务只评最终文字，不评抽帧覆盖，系统可能在关键帧缺失时仍然给出自信回答。多模态门禁必须把媒体处理和模型行为一起评估。
+
+```mermaid
+flowchart TB
+  Manifest["media_artifact_manifest"] --> Slices["multimodal eval slices"]
+  Pipeline["media_processing_pipeline_record"] --> Slices
+  Slices --> OCR["OCR / ASR fidelity"]
+  Slices --> Layout["layout / table extraction"]
+  Slices --> Ground["visual grounding\nregion / frame / timestamp"]
+  Slices --> Safety["privacy / safety / redaction"]
+  OCR --> Gate["multimodal_quality_gate_execution"]
+  Layout --> Gate
+  Ground --> Gate
+  Safety --> Gate
+  Gate --> Serving["serving release / canary"]
+  Gate --> Cost["multimodal_cost_ledger"]
+  Gate --> Regression["quality_regression_record"]
+```
+
+多模态评测还要处理人工复核。对于合同、票据、医疗影像、保险理赔、工业质检和合规审查，模型输出即使通过自动 gate，也可能需要人工确认关键字段、区域引用和风险结论。人工复核不应只在业务系统里打一个“通过”，而应生成 `human_feedback_evidence` 或质量复核记录，绑定 media manifest、页码/区域、rubric、评审人角色和后续动作。这样，后续模型升级才能知道哪些样本是高价值回归，哪些错误来自 OCR，哪些错误来自模型推理。
+
 ## 常见故障
 
 第一类故障是只看通用 benchmark，忽略领域任务。模型通用分数上升，但客服、代码、RAG 或 Agent 任务下降。排查时应查看任务切片，而不是只看总分。上线门禁应要求目标应用相关评测通过，公开 benchmark 只能作为基础体检。

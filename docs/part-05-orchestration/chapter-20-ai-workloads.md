@@ -169,6 +169,71 @@ data_processing_output:
 
 这让 data processing 从普通离线任务变成 AI Factory 的数据供应链节点。任务完成状态由 manifest 发布和校验定义，而不是由容器 exit code 定义。
 
+多模态预处理应被单独建模为 media processing workload。它既像数据处理，又直接影响在线用户体验：用户上传文件后，系统需要扫描、解码、OCR、ASR、抽帧、切片、embedding、布局分析和安全检测；有些步骤可以异步排队，有些步骤决定用户是否能继续对话；有些步骤主要消耗 CPU，有些步骤需要 GPU 或专用加速库。把它隐藏在应用后端里，会让调度、成本、故障和清理都不可见。
+
+```yaml
+media_processing_workload:
+  workload_id: media-proc-claims-20260620-017
+  source_profile: multimodal_workload_profile:mwp-claims-document-review-202606
+  tenant: enterprise-a
+  priority: production_async
+  media:
+    input_type: scanned_pdf
+    object_ref: object://uploads/claims/redacted
+    data_classification: restricted
+    expected_derived_artifacts:
+      - page_images
+      - ocr_text
+      - layout_blocks
+      - table_cells
+      - embeddings
+  stages:
+    virus_scan:
+      resource: cpu
+      failure_semantics: reject_before_processing
+    page_render:
+      resource: cpu_or_gpu
+      retry: idempotent_by_page_digest
+    ocr:
+      resource: gpu_or_cpu_accelerated
+      output_manifest_required: true
+    layout_analysis:
+      resource: gpu_optional
+      output_manifest_required: true
+    embedding:
+      resource: embedding_gpu_pool
+      output_manifest_required: true
+  scheduling:
+    queue: media-processing-prod
+    max_concurrency_per_tenant: policy_defined
+    preemption: allowed_before_model_inference_only
+  storage:
+    media_artifact_manifest: required
+    cleanup_policy: tied_to_retention_and_task_state
+  observability:
+    emit_media_processing_pipeline_record: true
+    emit_multimodal_metering_event: true
+```
+
+这个 spec 能解释为什么多模态不是普通 Job。第一，阶段资源不同，不能只申请一个固定 GPU；第二，阶段输出要进入 `media_artifact_manifest`，否则重试和清理不可控；第三，计量单位不是单一 token，而是页、帧、秒、tile、OCR token、embedding 和存储天数；第四，失败语义影响用户体验和账单，上传前拒绝、OCR 后失败、模型生成后失败，处理动作完全不同。调度层要理解这些阶段，才能给出 pending reason、重试策略和成本归因。
+
+```mermaid
+flowchart LR
+  Upload["uploaded media object"] --> Admit["media workload admission\nquota / type / retention"]
+  Admit --> Scan["virus / policy scan"]
+  Scan --> Decode["decode / render\npages / frames / audio chunks"]
+  Decode --> Extract["OCR / ASR / layout / embedding"]
+  Extract --> Manifest["media_artifact_manifest"]
+  Manifest --> Model["multimodal model serving"]
+  Manifest --> Index["RAG / vector index"]
+  Scan --> Meter["multimodal_metering_event"]
+  Decode --> Meter
+  Extract --> Meter
+  Model --> Meter
+```
+
+调度 media workload 时，还要避免它挤占关键推理和训练。OCR、ASR、视觉 embedding 和视频抽帧可能在峰值时消耗大量 GPU 或 CPU；如果它们和在线推理共池，用户会看到 TTFT 变差；如果它们和训练共用存储，checkpoint 会抖动。更稳妥的方式是把 media processing 放入独立队列和资源池，允许低风险任务使用可抢占资源，但要求每个 stage 有幂等输出和 manifest checkpoint。这样，预处理可以利用低峰资源，又不会把媒体链路变成生产 SLO 的黑洞。
+
 ## 20.7 HPC-style job
 
 HPC-style job 强调批式提交、队列、资源独占、拓扑、长时间运行、强通信和命令行工作流。大规模预训练与传统 HPC 有许多共同点：用户提交作业，申请多个节点，要求高性能网络，运行数小时到数周，依赖 checkpoint 和日志。Slurm 在这类场景中仍然重要，因为它长期服务于类似的调度模型。

@@ -379,6 +379,62 @@ cache_invalidation_record:
 
 `cache_invalidation_record` 让缓存进入发布和安全控制面。若某个 tokenizer 修复了严重 tokenization bug，旧 tokenizer cache 必须失效；若某个模型 artifact 被撤销，所有节点的 cache residency 都要从 ready 变成 invalid；若回滚需要旧版本热容量，失效策略又不能把旧稳定版本提前清理。缓存不是简单 LRU，它承载发布安全和恢复时间目标。
 
+多模态模型服务还需要 `multimodal_serving_contract`。文本模型的 serving release 主要绑定权重、tokenizer、chat template、runtime 和 sampling；多模态服务还要绑定 media processor、image/audio/video encoder、tile 或 frame 策略、最大页数/帧数、派生产物引用、source region 格式、同步/异步边界和计量口径。否则，预处理管线和模型服务会各自升级：OCR 输出字段改了，模型仍按旧 schema 解析；抽帧策略变了，评测 gate 没有重跑；客户端要求引用页码，服务只返回一段文字。
+
+```yaml
+multimodal_serving_contract:
+  contract_id: mmsc-claims-doc-20260620-r2
+  endpoint: claims-document-review-prod
+  model_artifacts:
+    weights: registry/models/claims-mm@sha256:weights
+    tokenizer: registry/tokenizers/claims-mm@sha256:tokenizer
+    vision_encoder: registry/models/vision-encoder@sha256:vision
+    processor_config: registry/processors/claims-mm@sha256:processor
+  media_inputs:
+    supported_types: [scanned_pdf, image]
+    requires_media_artifact_manifest: true
+    max_pages_or_tiles: policy_defined
+    accepted_derived_artifacts:
+      - ocr_text
+      - layout_blocks
+      - page_images
+      - visual_embeddings
+  runtime:
+    inference_engine: vllm_or_sglang_or_custom_mm_runtime
+    batching_policy: separate_text_prefill_from_media_prefill_if_supported
+    streaming: answer_stream_after_media_ready
+    cancellation_semantics: stop_decode_and_preserve_media_manifest
+  output_contract:
+    citations:
+      required_for_claims: true
+      coordinate_system: page_pixel_coordinates
+      fields: [page, region, artifact_ref, confidence]
+    usage:
+      emit_multimodal_metering_event: true
+      include_text_tokens: true
+      include_media_units: true
+  gates:
+    multimodal_quality_gate_execution: mm-qge-claims-20260620
+    media_pipeline_compatibility: pass
+    source_region_replay: pass
+    redaction_policy: pass
+```
+
+这个 contract 把模型服务和第 33 章的媒体 manifest 连接起来。请求进入 endpoint 时，服务不应直接读一个任意文件路径，而应消费已准入的 `media_artifact_manifest`；模型输出中的引用不应是自由文本，而应引用 manifest 中的 page、frame、time range 或 region；usage 事件不应只写 output token，而应写页数、tile、OCR token、视觉 encoder cost 和派生产物存储。这样，SRE 能定位媒体链路阶段，评测能重放同一派生产物，计费能对账，删除请求也能找到所有引用。
+
+```mermaid
+flowchart LR
+  Request["multimodal request"] --> Contract["multimodal_serving_contract"]
+  Manifest["media_artifact_manifest"] --> Contract
+  Contract --> Processor["processor / encoder\nOCR refs / image tiles / audio chunks"]
+  Processor --> Runtime["multimodal runtime\nprefill / decode"]
+  Runtime --> Output["answer + citations\npage / region / timestamp"]
+  Runtime --> Meter["multimodal_metering_event"]
+  Contract --> Gate["multimodal_quality_gate_execution"]
+```
+
+多模态 serving 的发布风险通常来自 schema 漂移，而不只是权重本身。OCR service 从 `bbox` 改成 `polygon`，视觉 encoder 调整 tile size，视频 pipeline 改变 frame sampling，processor config 调整 resize 规则，都可能改变模型输入和答案引用。`multimodal_serving_contract` 应把这些变化视为 serving 变更，触发 compatibility test、质量 gate 和成本漂移检查。不能因为权重 digest 没变，就认为多模态服务行为没变。
+
 模型服务还应提供 drain contract。Drain contract 至少说明：停止接收新请求的信号是什么，已有 streaming 请求最大等待多久，超时后如何关闭，已生成 token 如何计量，KV Cache 如何释放，副本退出前必须上报哪些事件。没有 drain contract，滚动升级、节点维护和缩容都会随机打断用户。
 
 ```yaml

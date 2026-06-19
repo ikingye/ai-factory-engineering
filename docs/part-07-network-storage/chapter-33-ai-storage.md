@@ -435,6 +435,120 @@ supply_chain_invalidation_evidence:
 
 这个对象把“撤销”从控制面动作变成可验证事实。若某个 tokenizer 修复了 token count bug，旧 tokenizer cache 仍然被部分 replica 使用，账单和质量都会继续漂移；若某个模型 artifact 因签名或许可证问题被撤销，节点本地 cache 仍然 ready，调度器就可能把新 replica 放到不可信节点；若 RAG 索引因权限策略更新而重建，旧索引 cache 未撤销，敏感文档仍可能被检索。供应链撤销的验收标准不是“发布系统显示成功”，而是所有可能消费旧对象的路径都被阻断、替换或记录为豁免。
 
+多模态链路还需要 `media_artifact_manifest`。文本请求通常只需要 prompt、response 和 trace；多模态请求会产生原始文件、页面图、缩略图、OCR 文本、ASR 文本、抽帧、布局块、表格结构、视觉 embedding、检索索引、模型输出和人工复核记录。若这些产物没有统一 manifest，系统无法证明答案来自哪个源文件、哪个页码、哪一帧或哪一段音频，也无法执行删除、保留、审计和计费。多模态存储的第一原则是：原始媒体和派生产物都必须可追溯。
+
+```yaml
+media_artifact_manifest:
+  manifest_id: mam-claims-doc-20260620-001
+  source:
+    tenant: enterprise-a
+    application: claims-document-review
+    upload_id: upl-20260620-001
+    original_object:
+      uri: object://media/enterprise-a/claims/redacted.pdf
+      digest: sha256:original
+      media_type: application/pdf
+      data_classification: restricted
+      retention_policy: claims_doc_retention_v3
+      permission_snapshot: acl-snap-20260620-001
+  derived_artifacts:
+    page_images:
+      count: measured
+      uri_prefix: object://media-derived/claims/page-images/
+      digest_manifest: sha256:pages
+    ocr_text:
+      uri: object://media-derived/claims/ocr.jsonl
+      engine_profile: ocr-runtime-v6
+      language_hints: [zh, en]
+      confidence_distribution: measured
+    layout_blocks:
+      uri: object://media-derived/claims/layout.json
+      includes_tables: true
+      coordinate_system: page_pixel_coordinates
+    visual_embeddings:
+      uri: object://media-derived/claims/embeddings.parquet
+      embedding_model: vision-embed-202606
+      index_version: optional_if_indexed
+  lineage:
+    media_processing_pipeline_record: mppr-claims-20260620-001
+    multimodal_workload_profile: mwp-claims-document-review-202606
+    preprocessing_image: registry/media-pipeline@sha256:example
+    security_scan: pass
+  controls:
+    encryption: kms-key-enterprise-a
+    export_requires_approval: true
+    derived_artifact_delete_with_source: true
+    training_use: denied_by_default
+  usage:
+    serving_requests: [req-20260620-001]
+    quality_gate_executions: [mm-qge-claims-20260620]
+    metering_events: [mmme-20260620-001]
+```
+
+这个 manifest 让媒体文件不再是“对象存储里的一堆文件”。当用户质疑答案时，系统能从回答引用回到页码、布局块和 OCR 文本；当客户要求删除原始文件时，系统能找到所有派生对象和索引条目；当成本异常时，账本能知道某次请求消耗了多少页渲染、OCR、embedding、存储和模型推理；当评测失败时，第 13 章的多模态门禁能重放同一组派生产物，而不是依赖当时临时目录是否还存在。
+
+`media_processing_pipeline_record` 则记录这次媒体流水线实际如何执行。Manifest 描述结果，pipeline record 描述过程：每个 stage 的输入、输出、runtime、耗时、失败、重试和资源消耗。很多多模态事故发生在模型之前，例如 PDF 解码库升级导致表格错位，OCR 语言识别错误导致关键字段缺失，视频抽帧策略改变导致漏掉目标帧。如果没有 pipeline record，团队会把所有问题归因给模型“看错了”，实际根因可能是派生产物已经错误。
+
+```yaml
+media_processing_pipeline_record:
+  pipeline_id: mppr-claims-20260620-001
+  manifest_id: mam-claims-doc-20260620-001
+  stages:
+    upload_admission:
+      status: pass
+      checks: [content_type, size, tenant_quota, retention_policy]
+    security_scan:
+      status: pass
+      scanner_version: media-scan-v4
+    page_render:
+      status: pass
+      runtime_image: pdf-renderer@sha256:example
+      pages_rendered: measured
+      retries: measured
+    ocr:
+      status: pass_or_degraded
+      runtime_image: ocr-runtime@sha256:example
+      low_confidence_regions: measured
+      output: ocr_text
+    layout_analysis:
+      status: pass
+      tables_detected: measured
+      output: layout_blocks
+    embedding:
+      status: pass
+      model: vision-embed-202606
+      output: visual_embeddings
+  resource_usage:
+    cpu_seconds: measured
+    gpu_seconds: measured_if_used
+    storage_written_bytes: measured
+    queue_wait_ms_by_stage: measured
+  failure_semantics:
+    partial_outputs_committed: true_or_false
+    safe_to_retry_from_stage: recorded
+    cleanup_required: true_or_false
+```
+
+```mermaid
+flowchart TB
+  Original["original media object"] --> Manifest["media_artifact_manifest"]
+  Original --> Pipeline["media_processing_pipeline_record"]
+  Pipeline --> Pages["page images / frames"]
+  Pipeline --> Text["OCR / ASR text"]
+  Pipeline --> Layout["layout / tables / regions"]
+  Pipeline --> Embed["visual/audio embeddings"]
+  Pages --> Manifest
+  Text --> Manifest
+  Layout --> Manifest
+  Embed --> Manifest
+  Manifest --> Serving["multimodal serving"]
+  Manifest --> Eval["multimodal_quality_gate_execution"]
+  Manifest --> Meter["multimodal_metering_event"]
+  Manifest --> Delete["retention / delete / audit"]
+```
+
+媒体 manifest 还必须进入安全边界。原始文件和派生产物的敏感度不一定相同：缩略图可能暴露个人信息，OCR 文本可能比原 PDF 更容易被搜索和泄露，embedding 可能泄露语义信息，抽帧可能包含人脸或工牌。删除原始文件但保留 OCR、embedding 或帧索引，通常不满足真实删除要求。因此，`storage_security_boundary` 应要求 `derived_artifact_delete_with_source`、训练使用默认拒绝、导出审批、不可变审计和按租户 KMS key 加密。多模态系统最危险的地方，常常不是模型，而是派生产物被当成普通缓存长期留存。
+
 AI 存储还要提供 `storage_security_boundary`。训练数据、RAG 文档、checkpoint、模型权重、adapter、prompt log、trace 和 billing record 的敏感级别不同，访问者也不同。存储层不能只依赖上层应用“不要读错路径”，而要把命名空间、加密、KMS key、IAM/RBAC、审计、导出、保留和删除策略写成边界对象。尤其是 checkpoint 和模型 artifact，它们可能泄露训练数据特征或商业能力，不能被当作普通文件共享。
 
 ```yaml

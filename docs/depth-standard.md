@@ -93,6 +93,23 @@
 | `inference_runtime_incident_cost_record` | 第 41、44 章 | 说明推理 runtime 事故如何把未交付 token、取消浪费、KV 泄漏、PD retry、canary rollback 和账单修正写入经济账本 |
 | Token Factory ledger | 第 41 章 | 说明 token ledger、resource ledger、阶段成本和毛利约束指标 |
 
+## 多模态与媒体链路覆盖矩阵
+
+多模态链路的目标是让读者能从一次文件、图片、音频或视频请求，一路追到应用画像、媒体上传、对象存储、预处理、派生产物、模型服务、质量门禁、计量、成本、删除和 PRR 演练。当前覆盖如下：
+
+| 知识点 | 主要章节 | 覆盖要求 |
+| --- | --- | --- |
+| `multimodal_workload_profile` | 第 4、20、44 章 | 说明媒体类型、页数/帧数/音频时长、预处理链路、人工复核、保留策略和计量单位如何进入应用画像 |
+| `media_processing_workload` | 第 20 章 | 说明 OCR、ASR、抽帧、layout、embedding 等阶段如何被调度、重试、计量和隔离 |
+| `media_artifact_manifest` | 第 33、37、41、44 章 | 说明原始媒体、页面图、OCR/ASR、layout、embedding、权限、保留和派生产物如何形成可追溯事实源 |
+| `media_processing_pipeline_record` | 第 33、37、41、44 章 | 说明上传、扫描、解码、渲染、OCR/ASR、layout、embedding 的阶段、runtime、耗时、失败和资源消耗 |
+| `multimodal_serving_contract` | 第 14、37、44 章 | 说明多模态 serving 如何绑定 processor、encoder、tile/frame 策略、source region、media manifest、输出引用和 usage 口径 |
+| `multimodal_quality_gate_execution` | 第 13、14、37、44 章 | 说明 OCR/ASR fidelity、表格抽取、视觉 grounding、source region citation、隐私脱敏和人工复核如何成为发布门禁 |
+| `multimodal_evidence_bundle` | 第 37、44 章 | 说明多模态事故如何冻结 manifest、pipeline record、serving contract、quality gate、metering event 和 retention/delete 证据 |
+| `multimodal_metering_event` | 第 41、44 章 | 说明 text token、OCR token、页、tile、音频秒、视频帧、预处理 CPU/GPU 秒、模型 GPU 秒和存储天数如何计量 |
+| `multimodal_cost_ledger` | 第 41、44 章 | 说明上传扫描、OCR/ASR、layout/抽帧、encoder、LLM 推理、派生产物存储、失败重试和人工复核如何进入单位经济 |
+| `multimodal_prr_drill` | 第 44 章 | 说明文件损坏、超限、OCR 低置信、表格回归、引用坐标错配、删除派生产物和部分失败计量如何在上线前演练 |
+
 ## 安全、身份与租户边界覆盖矩阵
 
 安全多租户链路的目标是让读者能从一次请求或一次事故追到身份、租户边界、数据边界、策略决策、provider 外联、trace 脱敏、secret、审计、账单争议和安全成本。当前覆盖如下：

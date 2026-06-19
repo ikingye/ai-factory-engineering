@@ -1295,6 +1295,97 @@ flowchart LR
   QCost --> ROI["model and training ROI"]
 ```
 
+多模态 workload 不能只用 text token 计费和算成本。一次扫描 PDF 问答可能消耗文件上传、病毒扫描、页渲染、OCR、layout、视觉 embedding、LLM 推理、引用回放、派生产物存储和人工复核；一次视频理解可能消耗转码、抽帧、视觉 encoder、ASR、时间轴索引和长上下文总结。若账本只记录 input/output token，平台会把大量 CPU/GPU/存储成本隐藏在“免费预处理”里，定价、限流和毛利都会失真。
+
+```yaml
+multimodal_metering_event:
+  event_id: mmme-20260620-001
+  request_id: req-claims-20260620-001
+  tenant: enterprise-a
+  application: claims-document-review
+  linked_objects:
+    multimodal_workload_profile: mwp-claims-document-review-202606
+    media_artifact_manifest: mam-claims-doc-20260620-001
+    media_processing_pipeline_record: mppr-claims-20260620-001
+    multimodal_serving_contract: mmsc-claims-doc-20260620-r2
+  units:
+    text:
+      input_tokens: measured
+      output_tokens: measured
+      ocr_tokens: measured
+    media:
+      pages_rendered: measured
+      image_tiles_encoded: measured
+      audio_seconds_processed: measured_if_audio
+      video_frames_sampled: measured_if_video
+      layout_blocks_extracted: measured
+    compute:
+      preprocessing_cpu_seconds: measured
+      preprocessing_gpu_seconds: measured_if_used
+      model_gpu_seconds: measured
+    storage:
+      original_bytes: measured
+      derived_bytes: measured
+      artifact_storage_gb_days: accrued
+  billing_state:
+    billable: true_or_hold
+    hold_reason: quality_or_privacy_or_metering_dispute
+    customer_visible_units: product_policy_defined
+```
+
+这个事件把计量拆成内部成本单位和客户可见单位。客户产品页可以只展示“文档页数 + 输出 token”或“视频分钟数 + 输出 token”，但内部账本必须保留 OCR token、image tile、GPU seconds、派生产物存储和人工复核等细项。否则平台无法判断某个模型贵，还是 OCR 管线贵；无法判断同样 100 页 PDF 中，扫描件、电子 PDF 和带表格合同的成本差异；也无法在客户质疑账单时回放每一步。
+
+```yaml
+multimodal_cost_ledger:
+  window: 2026-06-20T00:00Z/2026-06-21T00:00Z
+  scope:
+    tenant: enterprise-a
+    application: claims-document-review
+    task_slice: scanned_pdf_claim_review
+  evidence:
+    multimodal_metering_events: sampled
+    media_artifact_manifests: sampled
+    media_processing_pipeline_records: sampled
+    multimodal_quality_gate_execution: mm-qge-claims-20260620
+    multimodal_evidence_bundle: mmeb-claims-20260620-001
+  cost_components:
+    upload_and_scan_cost: calculated
+    page_render_cost: calculated
+    ocr_or_asr_cost: calculated
+    layout_or_frame_extraction_cost: calculated
+    embedding_or_encoder_cost: calculated
+    llm_inference_cost: calculated
+    artifact_storage_and_retention_cost: calculated
+    failed_or_retried_stage_cost: calculated
+    human_review_cost: calculated_if_applicable
+    deletion_or_export_audit_cost: calculated_if_triggered
+  revenue_or_value:
+    customer_billable_units: product_policy_defined
+    value_metric: reviewed_claim_with_cited_evidence
+    revenue_per_reviewed_claim: calculated_or_internal_value
+  derived:
+    cost_per_media_page: calculated_if_document
+    cost_per_audio_minute: calculated_if_audio
+    cost_per_video_minute: calculated_if_video
+    cost_per_successful_review: calculated
+    quality_adjusted_margin: calculated
+```
+
+```mermaid
+flowchart LR
+  Upload["upload / scan"] --> Ledger["multimodal_cost_ledger"]
+  OCR["OCR / ASR / layout / frames"] --> Ledger
+  Encode["vision/audio encoder\nembedding"] --> Ledger
+  LLM["LLM inference\ntext tokens"] --> Ledger
+  Store["artifact retention\nderived objects"] --> Ledger
+  Review["human review\nif required"] --> Ledger
+  Ledger --> Unit["unit economics\nper page / minute / successful task"]
+  Ledger --> Pricing["pricing / quota / product limits"]
+  Ledger --> PRR["multimodal PRR gate"]
+```
+
+这个账本会改变产品和平台取舍。若 OCR 失败重试成本高，应优先优化文件准入和 OCR pipeline，而不是换更大模型；若派生产物存储成本持续上升，应调整 retention、压缩和删除策略；若人工复核成本占比高，应优化质量 gate 或把高风险任务产品化为人工增强服务；若某类视频任务毛利长期为负，产品应调整价格、帧采样策略或限制输入规格。多模态经济性不是文本 token 经济性的简单扩展，它需要媒体单位和成功任务单位并存。
+
 ## 常见故障
 
 第一类故障是只看 QPS，不看 token。QPS 上升可能是短请求增长，也可能是 Agent 内部调用放大；QPS 稳定也可能掩盖 input token 和 output token 激增。解决方向是把容量、账单和告警都改成请求数与 token 数并行观察，并按请求形态拆分。

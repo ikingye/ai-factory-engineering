@@ -97,6 +97,91 @@ flowchart TB
 
 多模态应用的基础设施应天然支持异步和分阶段处理。大文件上传、转码、抽帧、OCR、embedding 和推理可能耗时较长，用户需要任务状态而不是单次 HTTP 等待。失败也要定位到具体阶段：文件损坏、OCR 失败、帧提取失败、模型推理失败或权限拒绝。没有阶段化 trace，多模态故障会被笼统归为“模型没看懂”，实际根因可能在数据管线。
 
+多模态应用必须先建立 `multimodal_workload_profile`。纯文本 Chat 的 workload profile 主要描述 token、上下文、工具和 SLO；多模态 profile 还要描述媒体类型、文件大小、页数、音频时长、视频帧率、同步或异步边界、预处理链路、人工复核、保留策略和计量单位。没有这个对象，平台会把“上传一个 PDF 问问题”“上传一段会议录音生成纪要”“上传视频找违规片段”都看成普通 Chat 请求，最终在文件处理、成本、延迟和安全上全部失真。
+
+```yaml
+multimodal_workload_profile:
+  id: mwp-claims-document-review-202606
+  owner:
+    application: insurance-claims-ai
+    platform: ai-platform
+    data: document-ai-platform
+  interaction:
+    mode: async_then_streaming_answer
+    user_surface: claims_console
+    user_wait_boundary: upload_ack_and_task_status
+    final_answer: streaming_after_preprocess_ready
+  media_inputs:
+    - type: scanned_pdf
+      expected_pages: policy_defined
+      max_file_size: policy_defined
+      preprocessing:
+        - virus_scan
+        - page_render
+        - ocr
+        - layout_analysis
+        - table_extraction
+    - type: image
+      preprocessing:
+        - exif_strip
+        - resize_or_tile
+        - visual_embedding
+  derived_artifacts:
+    required:
+      - media_artifact_manifest
+      - ocr_text
+      - page_images
+      - layout_blocks
+      - citations_to_page_region
+    retention: policy_defined_by_data_classification
+  quality:
+    task_slices:
+      - ocr_fidelity
+      - table_extraction
+      - visual_grounding
+      - citation_to_source_region
+      - sensitive_information_redaction
+    human_review_required_for:
+      - claim_denial_recommendation
+      - low_ocr_confidence
+      - conflicting_document_evidence
+  economics:
+    value_metric: reviewed_claim_with_cited_evidence
+    metering_units:
+      - text_tokens
+      - document_pages
+      - image_tiles
+      - ocr_tokens
+      - preprocessing_cpu_seconds
+      - preprocessing_gpu_seconds
+      - artifact_storage_gb_days
+  platform_bindings:
+    gateway_policy: gwp-claims-doc-v2
+    media_pipeline: mpp-claims-doc-v3
+    quality_gate: mm-qge-claims-202606
+    cost_ledger: mm-cost-claims-202606
+```
+
+这个 profile 的关键不是字段多，而是把媒体链路从“前端上传文件”提升为生产契约。`media_inputs` 决定对象存储、上传网关、病毒扫描、解码服务和预处理队列；`derived_artifacts` 决定第 33 章的 `media_artifact_manifest`；`quality.task_slices` 决定第 13 章的多模态门禁；`metering_units` 决定第 41 章的多模态成本账本。若某个业务后续从扫描 PDF 扩展到视频，profile 必须失效并重审，而不是在原有 Chat endpoint 上直接加一个上传按钮。
+
+```mermaid
+flowchart TB
+  App["多模态应用\nPDF / image / audio / video"] --> Profile["multimodal_workload_profile"]
+  Profile --> Upload["upload policy\nsize / type / tenant / retention"]
+  Upload --> Pipeline["media_processing_pipeline_record\nscan / decode / OCR / ASR / frames"]
+  Pipeline --> Manifest["media_artifact_manifest\noriginal + derived artifacts"]
+  Manifest --> Serving["model serving\nvision / audio / text fusion"]
+  Serving --> Quality["multimodal_quality_gate_execution"]
+  Serving --> Metering["multimodal_metering_event"]
+  Metering --> Cost["multimodal_cost_ledger"]
+  Quality --> PRR["multimodal_prr_drill"]
+  Cost --> PRR
+```
+
+多模态应用最容易被低估的是失败语义。文本请求失败，通常可以返回错误或重试；媒体请求失败，可能已经上传了原始文件、生成了部分 OCR、写入了 embedding、产生了临时帧、触发了人工复核，还可能已经被下游模型消费。工程上应把每个阶段的幂等键、输出 manifest、清理策略和计量状态定义清楚。否则一次 OCR 失败重试可能重复扣费，视频抽帧失败可能留下孤儿对象，扫描合同的中间图像可能越过保留策略长期留存。
+
+多模态应用还要避免把模型能力和证据能力混淆。模型能够描述图片，不代表系统能证明答案来自哪一页、哪一块表格或哪一段音频；模型能总结视频，不代表平台能按帧回放、定位违规片段、脱敏人脸或删除派生产物。面向企业和行业场景，多模态输出最好默认带 source region、time range、page number、confidence 和 preprocessing lineage。没有这些证据，用户只能相信模型文字，无法把结果用于审计、理赔、医疗、质检或合规流程。
+
 ## 4.6 企业私有化部署
 
 企业私有化部署通常出于数据安全、合规、网络隔离、延迟、成本控制或供应链要求。它可能部署在企业数据中心、专属云、边缘集群或混合云。私有化不是把模型镜像搬进去，也不是交付一套离线 API 文档；它包括身份集成、权限、密钥、审计、日志、监控、升级、容量规划、模型更新、故障支持和验收基线。客户买的是可运行系统，而不是一组容器。

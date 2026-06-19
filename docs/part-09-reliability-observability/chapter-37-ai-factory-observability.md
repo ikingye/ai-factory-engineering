@@ -583,6 +583,55 @@ quality_evidence_validity:
 
 这个对象让质量观测从“事故现场”扩展到“证据可信度”。如果 feedback pipeline 关联失败率很高，线上负反馈不能可靠进入回归；如果 judge drift 未校准，自动评测分数不能作为放量依据；如果 contamination invalidation 仍 open，PRR 应阻断高价值客户。质量证据的有效性本身需要被观测，不能依赖人工记忆。
 
+多模态场景还应生成 `multimodal_evidence_bundle`。它和普通质量证据包不同，必须冻结媒体文件和派生产物的事实：原始对象 digest、`media_artifact_manifest`、`media_processing_pipeline_record`、OCR/ASR/layout/embedding 版本、模型服务契约、source region、人工复核和计量事件。没有这个 bundle，事故复盘会在应用、对象存储、预处理服务、模型服务和评测平台之间来回跳转，最后仍无法回答“模型看到的究竟是什么”。
+
+```yaml
+multimodal_evidence_bundle:
+  bundle_id: mmeb-claims-20260620-001
+  trigger:
+    source: quality_or_cost_or_privacy_alert
+    symptom: table_extraction_regression_or_region_citation_failure
+  scope:
+    tenant: enterprise-a
+    application: claims-document-review
+    task_slice: table_extraction
+    request_ids: sampled_or_linked
+  media_evidence:
+    media_artifact_manifests: [mam-claims-doc-20260620-001]
+    media_processing_pipeline_records: [mppr-claims-20260620-001]
+    original_object_digests: [sha256:original]
+    derived_artifact_digests: [sha256:ocr, sha256:layout]
+    permission_snapshots: [acl-snap-20260620-001]
+  serving_and_quality:
+    multimodal_serving_contract: mmsc-claims-doc-20260620-r2
+    multimodal_quality_gate_execution: mm-qge-claims-20260620
+    source_region_replay: pass_or_fail
+    human_feedback_evidence: sampled_if_reviewed
+  economics_and_retention:
+    multimodal_metering_events: [mmme-20260620-001]
+    multimodal_cost_ledger: mm-cost-claims-202606
+    retention_policy: claims_doc_retention_v3
+    delete_or_export_audit: linked_if_triggered
+  verdict:
+    suspected_failure_layer: preprocessing_or_model_or_client_rendering
+    evidence_completeness: sufficient_or_gap
+```
+
+```mermaid
+flowchart TB
+  Alert["quality / cost / privacy alert"] --> Bundle["multimodal_evidence_bundle"]
+  Manifest["media_artifact_manifest"] --> Bundle
+  Pipeline["media_processing_pipeline_record"] --> Bundle
+  Contract["multimodal_serving_contract"] --> Bundle
+  Gate["multimodal_quality_gate_execution"] --> Bundle
+  Meter["multimodal_metering_event"] --> Bundle
+  Bundle --> Fault["failure layer\npreprocess / model / render / policy"]
+  Bundle --> Cost["multimodal_cost_ledger"]
+  Bundle --> PRR["multimodal_prr_drill / gate update"]
+```
+
+这个 bundle 的作用是把多模态事故从“模型看错了”拆成可验证层级。若 source region replay 失败但 OCR 和 layout 正常，可能是模型或 prompt；若 layout digest 与 gate execution 不一致，可能是预处理版本漂移；若客户端展示的坐标和 manifest 坐标系不一致，可能是渲染层错误；若成本异常但请求质量正常，可能是重复 OCR、重复 embedding 或派生产物未清理。多模态观测必须包含媒体 lineage，否则质量、隐私和成本都无法可靠归因。
+
 RAG 和 Agent 还需要更细的证据包，因为它们的失败通常发生在模型之外。`rag_agent_evidence_bundle` 应冻结 RAG 权限决策、context 快照、Agent 工具执行、工具副作用策略、预算账本和安全审计。它不替代 `quality_evidence_bundle`，而是后者在 RAG/Agent task slice 下必须引用的子证据。没有这些引用，质量事故很容易被误判成“模型回答不好”，实际根因可能是检索越权、context 截断、工具 schema 漂移、外部系统超时或预算策略过早停止。
 
 ```yaml

@@ -610,6 +610,9 @@ production_readiness_review:
       tool_side_effect_policy: approved_if_agent
       agent_tool_execution_record_template: ready_if_agent
       agent_budget_ledger: initialized_if_agent
+      multimodal_quality_gate_execution: pass_if_multimodal
+      multimodal_serving_contract: pass_if_multimodal
+      multimodal_evidence_bundle_trigger: configured_if_multimodal
     data_and_artifact_supply_chain:
       dataset_lineage_record: required_for_training_or_rag
       checkpoint_restore_drill: required_for_model_release_from_training
@@ -619,11 +622,17 @@ production_readiness_review:
       supply_chain_incident_cost_record_pipeline: configured
       storage_security_boundary: valid_for_sensitive_data
       supply_chain_acceptance_matrix: pass_for_production_scope
+      media_artifact_manifest: required_if_multimodal
+      media_processing_pipeline_record: required_if_multimodal
+      derived_media_delete_replay: pass_if_multimodal_sensitive_data
     sre_and_economics:
       slo_budget_ledger: initialized
       reliability_cost_ledger: initialized
       energy_ledger: initialized_if_power_or_cooling_relevant
       quality_cost_ledger: initialized
+      multimodal_metering_event: configured_if_multimodal
+      multimodal_cost_ledger: initialized_if_multimodal
+      multimodal_prr_drill: pass_if_multimodal
       security_cost_ledger: initialized
       billing_dispute_replay: ready
       abuse_cost_ledger: initialized_if_public_or_untrusted_access
@@ -711,6 +720,13 @@ production_readiness_review:
       - rag_without_permission_or_context_replay
       - agent_without_tool_side_effect_policy
       - agent_without_budget_ledger
+      - multimodal_without_media_artifact_manifest
+      - multimodal_without_processing_pipeline_record
+      - multimodal_without_quality_gate_or_serving_contract
+      - multimodal_without_source_region_replay
+      - multimodal_sensitive_data_without_derived_delete_replay
+      - multimodal_without_metering_event_or_cost_ledger
+      - multimodal_without_prr_drill
       - no_dataset_lineage_for_training_or_rag
       - checkpoint_without_restore_drill
       - artifact_without_provenance_or_signature
@@ -1056,6 +1072,60 @@ flowchart TB
 ```
 
 这类演练会暴露质量治理的底层问题：golden set 访问审计只是记录但不会阻断，judge 升级改变分数却没有阈值重标定，反馈事件没有 prompt context snapshot 导致无法复现，实验 hard stop 后没有保留质量证据包。高水平的 AI Factory 不只是有评测报告，而是知道评测报告什么时候不能再被相信。
+
+多模态应用还需要单独的 PRR 演练。原因是它的风险横跨上传、对象存储、预处理、模型服务、质量、计量、隐私和删除：文件能上传不代表可处理，OCR 成功不代表表格正确，模型能回答不代表引用区域可回放，删除原文件不代表派生产物已删除，文本 token 计量正确也不代表媒体处理成本正确。PRR 必须证明这些链路在生产前已经演练过。
+
+```yaml
+multimodal_prr_drill:
+  drill_id: mm-prr-drill-20260620-001
+  production_readiness_review: prr-claims-mm-prod-2026-06
+  scope:
+    application: claims-document-review
+    multimodal_workload_profile: mwp-claims-document-review-202606
+    endpoint: claims-document-review-prod
+    media_types: [scanned_pdf, image]
+  simulated_or_controlled_events:
+    - corrupt_file_rejected_before_processing
+    - oversized_file_hits_admission_policy
+    - ocr_low_confidence_region_requires_human_review
+    - layout_table_column_regression_detected
+    - source_region_citation_replay_failure
+    - sensitive_media_redaction_check
+    - delete_request_removes_original_and_derived_artifacts
+    - metering_hold_for_partial_pipeline_failure
+  required_outputs:
+    media_artifact_manifest: generated
+    media_processing_pipeline_record: generated
+    multimodal_serving_contract: validated
+    multimodal_quality_gate_execution: generated
+    multimodal_evidence_bundle: generated_for_failure_path
+    multimodal_metering_event: generated
+    multimodal_cost_ledger: appended
+    production_readiness_review: updated_if_gap_found
+  pass_criteria:
+    no_model_serving_without_valid_media_manifest: true
+    source_region_replay_matches_answer_citations: true
+    partial_pipeline_failure_does_not_double_bill: true
+    derived_artifacts_follow_retention_and_delete_policy: true
+    human_review_triggered_for_low_confidence_or_high_risk: true
+    cost_ledger_append_verified: true
+```
+
+```mermaid
+flowchart TB
+  Drill["multimodal_prr_drill"] --> Profile["multimodal_workload_profile"]
+  Profile --> Manifest["media_artifact_manifest"]
+  Manifest --> Pipeline["media_processing_pipeline_record"]
+  Pipeline --> Serving["multimodal_serving_contract"]
+  Serving --> Gate["multimodal_quality_gate_execution"]
+  Gate --> Bundle["multimodal_evidence_bundle"]
+  Serving --> Meter["multimodal_metering_event"]
+  Meter --> Cost["multimodal_cost_ledger"]
+  Bundle --> PRR["PRR gate update"]
+  Cost --> PRR
+```
+
+这类演练能拦截很多真实事故。上传网关允许了平台不支持的 TIFF 或加密 PDF，后端反复重试并计费；OCR 低置信度区域没有触发人工复核，理赔结论依据了错误字段；source region 坐标系在页面旋转后错位，用户点击引用看到错误位置；删除请求只删了原始文件，OCR 文本和 embedding 仍在索引里；媒体预处理失败但模型已生成部分回答，账单系统不知道应该 hold、退款还是按成功任务计费。多模态 PRR 的目的，是让这些问题在受控演练中暴露，而不是在客户材料上暴露。
 
 最后，建设计划应落到时间节奏。下面的 30/60/90/180 天不是固定日历，而是用于提醒第一阶段应该产出什么证据。不同组织可以调整顺序，但不应跳过证据。
 

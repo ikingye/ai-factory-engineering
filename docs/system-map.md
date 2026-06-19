@@ -85,6 +85,16 @@ flowchart TB
 | 对象 | 解决的问题 | 主要章节 | 连接的后续对象 |
 | --- | --- | --- | --- |
 | `workload_profile` | 描述应用如何消耗 token、工具、数据和资源。 | 第 4、44 章 | `application_readiness_review`、`business_model_profile`、`production_readiness_review` |
+| `multimodal_workload_profile` | 描述图片、音频、视频、扫描文档等媒体 workload 的输入形态、预处理、派生产物、质量、保留和计量口径。 | 第 4、20、44 章 | `media_processing_workload`、`media_artifact_manifest`、`multimodal_prr_drill` |
+| `media_processing_workload` | 把 OCR、ASR、抽帧、layout、embedding 等媒体预处理阶段作为可调度、可重试、可计量 workload。 | 第 20 章 | `media_processing_pipeline_record`、`multimodal_metering_event` |
+| `media_artifact_manifest` | 记录原始媒体、OCR/ASR、页面/帧、layout、embedding、权限、保留和派生产物引用。 | 第 33、37、41、44 章 | `multimodal_serving_contract`、`multimodal_quality_gate_execution`、`multimodal_metering_event` |
+| `media_processing_pipeline_record` | 记录媒体上传、扫描、解码、渲染、OCR/ASR、layout、embedding 的阶段事实和资源消耗。 | 第 33、37、41、44 章 | `multimodal_evidence_bundle`、`multimodal_cost_ledger` |
+| `multimodal_serving_contract` | 把多模态模型的 processor、encoder、media manifest、source region、输出引用和 usage 口径绑定为 serving 契约。 | 第 14、37、44 章 | `multimodal_quality_gate_execution`、`multimodal_metering_event` |
+| `multimodal_quality_gate_execution` | 验证 OCR/ASR、表格、视觉 grounding、source region、隐私和人工复核等多模态质量门禁。 | 第 13、14、37、44 章 | `multimodal_evidence_bundle`、`production_readiness_review` |
+| `multimodal_evidence_bundle` | 冻结多模态事故中的 media manifest、pipeline、serving contract、quality gate、metering 和保留/删除证据。 | 第 37、44 章 | `multimodal_cost_ledger`、`multimodal_prr_drill` |
+| `multimodal_metering_event` | 计量 text token、媒体页/帧/秒/tile、OCR token、预处理 CPU/GPU 秒、模型 GPU 秒和存储天数。 | 第 41、44 章 | `multimodal_cost_ledger`、`billing_dispute_replay` |
+| `multimodal_cost_ledger` | 汇总多模态上传、预处理、模型、派生产物保留、失败重试、人工复核和删除审计成本。 | 第 41、44 章 | `commercial_pnl_ledger`、`production_readiness_review` |
+| `multimodal_prr_drill` | 演练多模态上线前的文件异常、OCR/layout 回归、引用回放、删除派生产物、计量 hold 和成本账本。 | 第 44 章 | `production_readiness_review`、`multimodal_cost_ledger` |
 | `application_readiness_review` | 判断行业应用是否具备生产接入条件。 | 第 4 章 | `quality_gate_record`、`data_boundary_policy`、`cost_ledger` |
 | `customer_onboarding_evidence` | 证明客户或关键租户的 tenant、项目、API Key、模型访问、预算、SLA、支持和数据边界已准备好。 | 第 4、5、44 章 | `tenant_boundary`、`sla_credit_model`、`production_readiness_review` |
 | `business_model_profile` | 描述价值单位、客户承诺、计量和退出责任。 | 第 42 章 | `commercial_readiness_matrix`、`Token Factory ledger` |
@@ -238,6 +248,9 @@ flowchart TB
 | A/B 结果争议 | 第 6、13、14、37、40 章 | online_experiment_record、online_experiment_guardrail、routing_quality_decision_record、quality_gate_execution、randomization unit | 检查随机化单元、会话粘性、排除范围、护栏指标、停止规则、统计窗口和是否混入 fallback 流量。 |
 | 便宜模型导致人工接管上升 | 第 6、7、13、37、41 章 | routing_quality_decision_record、routing_quality_scorecard、human_feedback_evidence、quality_cost_ledger | 按 task slice 计算 cost per successful answer，必要时调整路由权重、capability gate 或商业定价。 |
 | 回滚后仍未恢复质量 | 第 14、37、39、40、44 章 | serving_rollback_record、serving_rollback_drill、serving_quality_contract、quality_evidence_bundle、release diff、Gateway route | 检查是否只回滚权重但未回滚 tokenizer、template、engine config、RAG 索引、tool policy 或 Gateway route，并确认回滚演练是否覆盖目标组件。 |
+| 多模态回答引用页码或区域错误 | 第 4、13、14、33、37、41、44 章 | multimodal_workload_profile、media_artifact_manifest、media_processing_pipeline_record、multimodal_serving_contract、multimodal_quality_gate_execution、multimodal_evidence_bundle | 先回放 source region，确认坐标系、OCR/layout 版本、processor config、模型输出和客户端渲染是否一致；不要直接归因给模型。 |
+| PDF/OCR/视频预处理成本异常 | 第 20、33、37、41、44 章 | media_processing_workload、media_processing_pipeline_record、multimodal_metering_event、multimodal_cost_ledger | 按 stage 拆分 upload、scan、render、OCR/ASR、layout、embedding、model inference 和 storage，检查重复重试、派生产物保留和计量 hold。 |
+| 删除原始媒体后仍有派生产物 | 第 33、37、41、44 章 | media_artifact_manifest、storage_security_boundary、multimodal_evidence_bundle、multimodal_prr_drill | 从 manifest 找到 OCR、frame、embedding、layout、index 和 audit 引用，确认 delete-with-source 策略、retention、训练使用边界和导出审计。 |
 | RAG 答案引用错 | 第 2、4、13、37 章 | retrieval_permission_decision、rag_context_snapshot、rag_quality_regression_record、eval_dataset_lineage_record | 分解为文档权限、chunk、rerank、context 拼接、证据冲突和生成忠实性问题。 |
 | RAG 检索越权或证据泄露 | 第 2、5、6、37、40 章 | retrieval_permission_decision、data_boundary_policy、rag_agent_evidence_bundle、tool_security_incident_record | 先冻结证据并阻断相关索引/缓存，再回放 ACL、日志脱敏、rerank 输入和评测样本流向。 |
 | Agent 工具越权或重复副作用 | 第 3、5、6、37、40 章 | tool_side_effect_policy、agent_tool_execution_record、policy_decision_record、tool_security_incident_record | 冻结高风险工具、检查幂等键和审批链路，必要时回滚外部状态并更新工具策略。 |
@@ -285,6 +298,7 @@ flowchart TB
 | GPU 容器链路 | 第 19、21、22、29、38 章 | 能解释 device plugin、CRI、OCI runtime、NVIDIA Container Toolkit、driver/library 注入和容器 smoke test。 |
 | 网络通信链路 | 第 18、30、31、32、37、38、39、41 章 | 能从 NCCL 性能症状追到 GPU/NIC/rail/switch telemetry、fabric baseline、拥塞事件和成本影响。 |
 | 存储数据链路 | 第 10、14、20、33、37、38、39、41 章 | 能从 GPU idle、checkpoint 慢、冷启动慢追到 storage intent、dataset manifest、checkpoint commit、artifact distribution、cache residency、backend telemetry 和成本。 |
+| 多模态媒体链路 | 第 4、13、14、20、33、37、41、44 章 | 能从 PDF、图片、音频或视频请求追到 multimodal profile、media processing、artifact manifest、serving contract、quality gate、metering、cost ledger、delete/retention 和 PRR。 |
 | 数据/模型产物供应链链路 | 第 10、14、33、37、38、39、41、44 章 | 能从训练数据来源追到 dataset lineage、checkpoint restore、artifact provenance、cache residency、cache invalidation、storage security boundary、PRR 和供应链成本。 |
 | 可靠性链路 | 第 28、29、36、37、38、39、40、41、44 章 | 能把 health、maintenance、baseline invalidation、change、fault domain、evidence bundle、incident、error budget、capacity activation、PRR 和经济损失串起来。 |
 | 安全多租户链路 | 第 5、6、7、8、21、22、27、28、33、37、40、41、44 章 | 能从 API Key、策略决策和数据边界追到 tenant isolation evidence、provider 外联决策、trace 脱敏、secret 边界、安全证据包、denial-of-wallet、账单争议回放和 secure cost/token。 |
