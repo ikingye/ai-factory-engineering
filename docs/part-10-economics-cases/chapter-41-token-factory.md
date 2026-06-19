@@ -129,13 +129,21 @@ energy_ledger:
   constraints:
     power_limited: false
     cooling_limited: false
+    capacity_derating_records: []
+    cooling_degradation_records: []
     throttle_seconds: measured
   economics:
     energy_cost_per_token: calculated
     power_cooling_induced_waste: calculated
+    derating_opportunity_cost: calculated
+    thermal_recovery_retest_cost: calculated
 ```
 
 这个账本让 tokens/W 可审计。否则团队很容易只用 GPU board power 估算能效，忽略 rack power、制冷开销、降频、低利用率和失败 token。能效优化也应能回溯到具体模型、资源池、rack 和时间窗口，才可能指导调度、定价和扩容。
+
+`energy_ledger` 还应能解释“为什么能效变差”。如果 tokens/W 下降同时存在 `cooling_degradation_record`，根因可能是热退化导致 GPU 降频；如果存在 `capacity_derating_record`，成本不只是当前运行任务变慢，还包括被拒绝或迁移的 workload opportunity cost；如果 rack power 不变但 billable tokens 下降，问题可能在 workload 质量、调度、模型或推理 runtime。能效账本必须把能耗、产出和约束同时记录，否则 tokens/W 只能说明结果，不能指导动作。
+
+能效治理不应鼓励牺牲 SLO。降低 power cap 可能改善短期功耗，但如果 TTFT、TPOT、训练 step time 或质量回归，单位成功任务成本可能上升。更可靠的做法是把 power cap、降额、冷却恢复、batch 策略和模型路由放进同一张报表，比较 energy cost saving 与 reliability/quality loss。Token Factory 关注的是有效 token，而不是最低瓦数。
 
 ## 41.4 cost/token
 

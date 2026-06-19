@@ -253,6 +253,41 @@ power_thermal_envelope:
 
 Envelope 的关键不是给出一个静态功耗数字，而是说明某个物理范围能否长期承载目标 workload。训练任务可能连续满载数天，推理高峰可能短时拉高功耗，批量推理可以错峰。资源池如果能消费 envelope，就可以在 power_limited 或 cooling_limited 时降级资源，而不是继续按满配 GPU 调度。
 
+运行中还需要 `capacity_derating_record`。Envelope 描述“设计上能承载什么”，derating record 描述“此刻因为电力、冷却、PSU、液冷或温度风险，实际只能承载多少”。二者的区别很重要：一个 rack 验收时可以通过 sustained training，但在某次 CDU 维护、PDU 冗余丢失、外部高温或液冷流量异常期间，只能临时降低调度等级。若没有降额记录，调度器仍会按满血资源分配，成本系统也无法解释 tokens/W 下降。
+
+```yaml
+capacity_derating_record:
+  derating_id: derate-rack12-20260620-001
+  scope:
+    rack_capacity_unit: dc-a-rack-12
+    power_thermal_envelope: power-thermal-rack12-a
+    affected_servers: [gpu-srv-042]
+    affected_fault_domain: dc-a/rack-12/cdu-loop-2
+  trigger:
+    type: cooling_or_power_or_thermal
+    signal: coolant_flow_below_policy
+    detected_by: facility_telemetry_and_bmc
+  derating:
+    previous_schedulable_state: allocatable
+    new_schedulable_state: limited
+    deny_workload: [long_running_pretraining, large_distributed_training]
+    allow_workload: [short_debug, low_priority_batch, inference_with_power_cap]
+    gpu_power_cap_policy: optional
+  evidence:
+    rack_power: measured
+    gpu_throttle_events: measured
+    inlet_or_coolant_temperature: measured
+    bmc_power_thermal_events: attached
+  recovery:
+    required_retests:
+      - thermal_full_load_soak
+      - rack_power_under_load
+      - representative_workload_tokens_per_watt
+    return_to_allocatable_after: all_retests_pass
+```
+
+这条记录让电力和散热从设施告警变成资源状态。SRE 可以用它解释为什么某些 GPU 空闲但不能启动大训练，容量团队可以看到 planned capacity 与 workload-fit capacity 的差距，Token Factory 可以把 power/cooling-induced waste 归因到具体 rack。更重要的是，它给恢复设置了复测条件，避免告警消失后资源未经满载验证就回到高优池。
+
 ## 34.10 compute tray
 
 Compute tray 是高密度 GPU 系统中的计算托盘，通常承载 CPU、GPU、内存、互联组件和部分电源/冷却接口。它体现了 AI 服务器从“单台 8 卡机器”向“系统级计算单元”演进的趋势。在这类架构中，资源边界可能不再等同于一台传统服务器，而是一个 tray、一个 chassis、一个 rack 级 GPU island 或一个 NVLink domain。

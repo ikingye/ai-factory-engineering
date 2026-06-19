@@ -459,6 +459,11 @@ production_readiness_review:
       capacity_activation_record: dc-a-rack-12-2026-06
       workload_fit_capacity: sufficient_for_canary
       limiting_factors_acknowledged: true
+      rack_capacity_unit: workload_fit
+      physical_acceptance_matrix: pass
+      open_capacity_derating_records: none_for_required_scope
+      open_cooling_degradation_records: none_for_required_scope
+      gpu_generation_readiness_gate: pass_if_new_gpu_generation
     change_safety:
       recent_high_risk_changes: reviewed
       canary_stop_conditions: machine_enforced
@@ -525,6 +530,7 @@ production_readiness_review:
     sre_and_economics:
       slo_budget_ledger: initialized
       reliability_cost_ledger: initialized
+      energy_ledger: initialized_if_power_or_cooling_relevant
       quality_cost_ledger: initialized
       security_cost_ledger: initialized
       billing_dispute_replay: ready
@@ -534,6 +540,11 @@ production_readiness_review:
     block_if:
       - open_baseline_invalidation_for_required_scope
       - no_workload_fit_capacity
+      - rack_capacity_unit_not_workload_fit_for_required_scope
+      - physical_acceptance_matrix_not_passed_for_target_pool
+      - open_capacity_derating_record_for_required_capacity
+      - open_cooling_degradation_record_for_required_capacity
+      - new_gpu_generation_without_readiness_gate
       - no_rollback_path
       - no_metering_reconciliation
       - no_incident_owner_or_runbook

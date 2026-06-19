@@ -350,8 +350,14 @@ capacity_activation_review:
       allocatable_gpu: calculated
       limited_gpu:
         cooling_limited: calculated
+        power_limited: calculated
+        derated: calculated
         fabric_limited: calculated
         storage_limited: calculated
+      active_derating_records:
+        - derate-rack12-20260620-001
+      active_cooling_degradation_records:
+        - cool-deg-20260620-002
       business_commitment:
         can_sell_premium_inference: true
         can_schedule_large_training: true
@@ -359,6 +365,8 @@ capacity_activation_review:
 ```
 
 这个 review 的价值是让交付、SRE、平台和业务使用同一口径。若某批 GPU 已安装但因为液冷 failover 未通过只能 limited，上线计划就应调整；若 rack 可跑推理但不适合大训练，销售或内部资源承诺也要相应限制。容量运营不是月底看利用率，而是持续把物理交付转成可用资源产品。
+
+Capacity review 还要区分“未激活”和“已激活但降额”。前者通常是交付、验收或资源池流程问题；后者是运行态 power/cooling/fabric/storage 约束。`capacity_derating_record` 和 `cooling_degradation_record` 应在例会上被逐项关闭：是否仍然影响 workload-fit capacity，是否需要延后销售承诺，是否造成训练重排，是否已经完成 thermal soak 和基线复测。若降额持续存在，容量计划必须用 limited capacity 重新计算，而不是继续引用安装 GPU 数。
 
 ## 40.8 cost operation
 

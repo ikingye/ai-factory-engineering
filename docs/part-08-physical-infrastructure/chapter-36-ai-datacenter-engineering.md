@@ -126,6 +126,8 @@ rack_capacity_unit:
 
 这个对象让容量讨论从“买了多少 GPU”变成“激活了多少可用产能”。一个 rack 可能服务器都安装完成，但因为 cooling_limited 或 fabric_limited 只能进入低优池；另一个 rack 可能 GPU 数少一些，但 power、cooling、fabric、storage 全部通过，能承载高优训练。容量运营必须使用 `gpu_count_allocatable` 和 workload fit，而不是采购清单。
 
+Rack capacity 还需要表达运行中降额。`rack_capacity_unit` 是容量单元，`capacity_derating_record` 是容量单元在某个时间窗口的能力折扣。两者结合后，调度器可以知道一个 rack “平时适合大训练，但当前只能跑低优批处理”；容量运营也可以把降额 GPU 数、降额时长和业务影响纳入复盘。没有降额对象，资源池只能在 allocatable 和 maintenance 之间二选一，既不准确，也不利于利用剩余安全产能。
+
 ## 36.2 power
 
 Power 是 AI 数据中心最关键的约束之一。GPU 服务器功耗高，训练任务可能长期满载，推理服务也可能在高并发时产生明显峰值。电力路径从变电、UPS、配电、母线、PDU、power shelf、PSU 到服务器内部，每一层都有容量、冗余、故障域和维护边界。任何一层不足，都会让装机 GPU 变成不可满载产能。
@@ -151,6 +153,39 @@ Cooling 是制冷能力，决定高密度 GPU 能否长时间稳定运行。GPU 
 Cooling 设计还要考虑运维动作。更换风扇、调整挡板、清理过滤、维修 CDU 或改变 rack 布局，都可能影响热环境。每次变更后，应比较同一组 workload 的温度和降频基线。冷却系统不是一次设计完成后不再变化的背景设施，而是持续影响 GPU 产能的运行系统。
 
 冷却指标也要有季节和负载背景。同一温度在不同外部环境和不同 workload 下含义不同，基线需要随时间校准。
+
+冷却异常应落成 `cooling_degradation_record`。它比普通告警更结构化，记录退化发生在哪个 cooling domain、影响哪些 rack 和 workload、是否触发 GPU 降频、是否需要降额、恢复后需要哪些复测。这样 SRE 不必从设施告警、BMC 事件、GPU 温度和任务指标中手工拼现场。
+
+```yaml
+cooling_degradation_record:
+  degradation_id: cool-deg-20260620-002
+  scope:
+    cooling_domain: cdu-loop-2
+    affected_rack_capacity_units: [dc-a-rack-12]
+    affected_nodes: recorded
+  signals:
+    coolant_supply_temperature: measured
+    coolant_return_temperature: measured
+    coolant_flow: below_policy
+    leak_alarm: false
+    gpu_thermal_throttle_events: measured
+    fan_speed_or_pump_state: measured
+  workload_impact:
+    affected_jobs: [optional]
+    affected_endpoints: [optional]
+    tokens_per_watt_delta: calculated_if_inference
+    step_time_delta: calculated_if_training
+  action:
+    capacity_derating_record: derate-rack12-20260620-001
+    drain_policy: long_running_training
+    notification: capacity_and_sre
+  recovery:
+    facility_fix_record: required
+    thermal_full_load_soak: required
+    baseline_invalidation_record: created_if_threshold_crossed
+```
+
+这个记录能把冷却问题从“设施层异常”翻译成 AI Factory 语言。若 GPU 没有明显报错但 tokens/W 下降，`cooling_degradation_record` 可以证明能效退化与冷却域相关；若 step time 抖动集中在某个 rack，它可以把排查路径从 NCCL 或模型转向热退化；若告警恢复但未完成 full-load soak，资源池仍应保持 limited，而不是立即恢复大训练调度。
 
 ## 36.4 liquid cooling
 
@@ -357,6 +392,7 @@ capacity_activation_record:
   limiting_factors:
     power_limited_gpu: calculated
     cooling_limited_gpu: calculated
+    derated_gpu: calculated
     fabric_limited_gpu: calculated
     storage_limited_gpu: calculated
     baseline_invalid_gpu: calculated
@@ -365,6 +401,8 @@ capacity_activation_record:
     physical_acceptance_matrix: physical-rack12-20260619
     fabric_acceptance_matrix: train-fabric-a-20260619
     storage_acceptance_matrix: storage-training-prod-20260619
+    capacity_derating_records: [derate-rack12-20260620-001]
+    cooling_degradation_records: [cool-deg-20260620-002]
     baseline_invalidation_records: recorded_if_any
   economics:
     capital_committed: recorded

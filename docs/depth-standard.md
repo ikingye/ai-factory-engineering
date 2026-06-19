@@ -206,7 +206,10 @@
 | --- | --- | --- |
 | `gpu_server_profile` | 第 34 章、第 28 章 | 说明 CPU/GPU/HBM/PCIe/NVLink/NIC/NVMe/BMC/power/cooling 如何组成可调度服务器画像 |
 | `gpu_capability_scorecard` | 第 35 章、第 41 章 | 说明芯片能力、runtime 验证、模型适配、能效和生产成熟度的评分口径 |
+| `gpu_generation_readiness_gate` | 第 35 章、第 44 章 | 说明新 GPU 或新系统形态进入生产前需要硬件、runtime、质量、能效、回滚和热验证门禁 |
 | `power_thermal_envelope` | 第 34 章、第 36 章、第 38 章 | 说明功耗、温度、液冷、降额、满载验收和调度限制 |
+| `capacity_derating_record` | 第 34 章、第 36 章、第 38 章、第 40 章、第 41 章、第 44 章 | 说明 power/cooling/thermal 风险如何把 allocatable capacity 临时降为 limited，并触发复测和成本归因 |
+| `cooling_degradation_record` | 第 36 章、第 40 章、第 41 章、第 44 章 | 说明 cooling domain 退化、液冷/风冷信号、GPU 降频、workload 影响和恢复复测 |
 | `rack_capacity_unit` | 第 36 章、第 28 章、第 40 章 | 说明 rack/power/cooling/fabric/storage 如何构成可承诺产能单元 |
 | `physical_acceptance_matrix` | 第 38 章 | 说明 power、cooling、cabling、BMC、full-load、thermal soak 和 workload 的准入矩阵 |
 | `capacity_activation_record` | 第 36 章、第 40 章、第 41 章 | 说明 planned、installed、bootstrapped、accepted、allocatable、workload-fit、limited 到 retired 的交付状态流转和投产延迟成本 |

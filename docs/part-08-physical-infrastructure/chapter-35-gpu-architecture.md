@@ -244,6 +244,34 @@ gpu_capability_scorecard:
 
 Scorecard 能避免两类错误。第一，把厂商规格直接当成生产能力，忽略 runtime、模型质量和机房约束。第二，因为早期某个模型没有吃到收益，就否定整个新硬件。更合理的做法是按 workload、runtime、精度、质量和能效逐项记录，让 GPU 代际迁移成为可复盘的工程过程。
 
+新 GPU 或新系统形态进入生产前，还应有 `gpu_generation_readiness_gate`。它比 `gpu_capability_scorecard` 更偏发布门禁：scorecard 记录能力，gate 决定能否进入某个租户、模型或资源等级。新代际 GPU 往往同时改变低精度路径、HBM 行为、互联域、功耗、液冷、driver、NCCL、推理引擎和训练框架。如果只按“benchmark 更快”放量，质量、稳定性或机房约束会在生产中补课。
+
+```yaml
+gpu_generation_readiness_gate:
+  gate_id: ggr-nextgen-20260620
+  resource_pool: nextgen-gpu-canary
+  gpu_capability_scorecard: nextgen-scorecard-20260620
+  required_evidence:
+    power_thermal_envelope: passed
+    physical_acceptance_matrix: passed
+    framework_runtime_matrix: passed_if_training
+    inference_runtime_gate: passed_if_serving
+    quality_gate_execution: passed_for_target_models
+    energy_ledger_window: collected
+  rollout_policy:
+    allowed_initial_tiers: [internal_canary, low_risk_batch]
+    blocked_tiers_until_evidence:
+      premium_inference: [slo_canary_passed, rollback_drill_passed]
+      large_pretraining: [training_communication_acceptance_matrix, full_power_thermal_soak]
+  stop_conditions:
+    - tokens_per_watt_below_expected_band
+    - quality_regression_open
+    - thermal_throttle_above_policy
+    - runtime_error_rate_above_baseline
+```
+
+这类 gate 能把“硬件导入”变成跨团队发布。设施团队证明 power/cooling，Runtime 团队证明引擎和训练框架，模型团队证明质量，SRE 证明回滚和证据采集，经济系统证明 tokens/W 和 cost/token。任何一项不成熟，都可以允许低风险灰度，但不应直接进入高价值租户或长周期大训练。硬件代际迁移本质上是生产变更，不是采购完成后的自然结果。
+
 能力画像还应定期刷新。driver、engine、模型版本和 kernel 优化变化后，同一 GPU 的生产能力也会变化。画像如果不随软件演进更新，就会逐渐变成过期文档。
 
 刷新不一定全量重测，但关键 runtime 和关键模型必须保留基线。这样升级收益和回归风险才可比较。

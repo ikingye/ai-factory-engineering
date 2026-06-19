@@ -276,6 +276,7 @@ physical_acceptance_matrix:
     inference_burst: pass
     maintenance_recovery: pass
     cooling_failover: limited
+    derating_policy_replay: pass
   schedulable_for:
     premium_inference: true
     large_distributed_training: true
@@ -283,6 +284,10 @@ physical_acceptance_matrix:
 ```
 
 这个矩阵把设施验收从“电力和冷却看起来正常”变成 workload 级证据。它能说明某个 rack 是否能承载持续训练，是否能应对推理突发，是否在维护或 failover 后需要降级。准入系统应把结果写入 `rack_capacity_unit` 和资源池状态。
+
+物理准入还应验证降额链路本身。也就是说，系统不仅要证明满载能跑，还要证明 cooling_limited、power_limited、PDU 冗余丢失或 CDU 维护时，`capacity_derating_record` 能被生成，资源池能从 allocatable 降到 limited，调度器能阻止长周期训练，energy ledger 能记录 power/cooling-induced waste。没有这项回放，设施告警即使被发现，也可能无法及时改变调度行为。
+
+准入矩阵的通过标准应包含“恢复后复测”。降额解除不等于立即恢复高优生产，必须跑 thermal full-load soak、rack power under load 和代表性 workload tokens/W 或 step time 对比。否则某个 rack 会在告警消失后反复进入生产又反复退化，形成隐性容量抖动。
 
 ## 38.7 network benchmark
 
