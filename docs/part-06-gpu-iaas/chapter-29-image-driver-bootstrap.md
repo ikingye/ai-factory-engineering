@@ -279,6 +279,62 @@ lts_support_policy:
 
 这两个对象能把“升级要不要做”从口头争论变成工程决策。若 release train 没有覆盖 RDMA 容器 smoke，就不能把它用于分布式训练池；若 LTS 策略没有声明 backport 规则，就不能在客户现场随手修一个临时包；若 EOL 通知没有绑定可验证升级路径，销售合同和平台生命周期就会脱节。Golden image 的成熟度，最终体现在 release train、LTS、change safety 和 acceptance baseline 是否形成闭环。
 
+私有化或受限出网环境还需要 `offline_release_bundle_manifest`。它是 release train 的离线可交付形态，不是把镜像、Helm chart 和模型权重打成一个压缩包那么简单。Manifest 必须描述每个组件的 digest、签名、SBOM、兼容矩阵、导入顺序、依赖关系、迁移脚本、回滚包、验收脚本和诊断导出策略。客户现场通常不能临时访问公网 registry、对象存储、包源或模型仓库，因此所有依赖都要在发布前被封装、校验和演练；否则升级失败时，团队很难判断是包不完整、客户环境漂移、导入顺序错误、证书/KMS 失败，还是 GPU runtime baseline 不兼容。
+
+```yaml
+offline_release_bundle_manifest:
+  bundle_id: orb-ai-factory-2026-06-enterprise-a
+  source_release_train: gpu-baseline-2026-06
+  target_contract:
+    private_delivery_lifecycle_contract: pdlc-enterprise-a-202606
+    supported_baseline: gpu-node-2026-06-lts
+    allowed_upgrade_paths: [gpu-node-2026-04-lts]
+  artifacts:
+    os_or_node_image:
+      digest: sha256:example
+      signature: required
+      package_manifest: included
+    container_images:
+      registry_layout: oci_archive_or_private_registry_mirror
+      digests: required
+      sbom: included
+      vulnerability_exception_list: signed_if_any
+    helm_or_kustomize:
+      version: pinned
+      values_schema: included
+      customer_overlay_policy: config_only
+    model_artifacts:
+      weights: signed_and_digest_pinned
+      tokenizer: signed_and_digest_pinned
+      chat_template: signed_and_digest_pinned
+    validation_scripts:
+      bootstrap_validation: included
+      gpu_container_runtime_report: required
+      nccl_rdma_smoke: included_if_training_supported
+      representative_endpoint_smoke: included
+  import_contract:
+    import_order: [registry, charts, models, configs, migration, validation]
+    offline_registry_namespace: customer_defined
+    signature_verification: mandatory_before_import
+    rollback_bundle: included
+    diagnostic_bundle_export: supported_without_remote_access
+```
+
+这个 manifest 的关键价值是让现场交付可对账。供应方能证明“我交付了什么”，客户能证明“现场导入了什么”，SRE 能证明“运行中的版本来自哪个包”，商业团队能把支持边界和成本归因到具体交付物。若现场有人手工替换镜像、修改 chart、覆盖模型权重或跳过迁移脚本，下一次支持工单就不能只看版本号，而要比较 manifest、客户导入记录和运行时快照。对 AI Factory 来说，离线包是供应链、版本治理、客户支持和经济账本的共同对象。
+
+```mermaid
+flowchart LR
+  Train["release_train_record"] --> Bundle["offline_release_bundle_manifest"]
+  Bundle --> Verify["signature / digest / SBOM verification"]
+  Verify --> Import["offline import\nregistry / charts / models / configs"]
+  Import --> Migrate["schema / artifact / cache migration"]
+  Migrate --> Validate["bootstrap + GPU runtime + endpoint smoke"]
+  Validate --> Rehearsal["offline_upgrade_rehearsal"]
+  Rehearsal --> Acceptance["private_deployment_acceptance_record"]
+  Rehearsal --> Rollback["rollback bundle verified"]
+  Rehearsal --> Support["diagnostic_bundle_sla"]
+```
+
 ## 工程实现
 
 工程实现应从兼容矩阵开始。矩阵定义主机 baseline、kernel、driver、CUDA runtime、NCCL、OFED、container base image、训练框架和推理引擎之间的支持关系。示例：

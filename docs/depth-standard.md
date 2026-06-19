@@ -302,9 +302,15 @@
 | `lts_support_policy` | 第 29 章、第 42 章、第 44 章 | 说明长期支持 baseline、EOL、backport、升级路径和客户通知如何约束版本分叉 |
 | `support_ticket_taxonomy` | 第 40 章、第 42 章、第 44 章 | 说明 incident、request、problem、change、billing dispute 和 security case 如何决定 owner、时钟、证据和升级路径 |
 | `diagnostic_bundle_sla` | 第 37 章、第 40 章、第 42 章、第 44 章 | 说明客户支持场景下诊断包的采集时限、脱敏、导出边界、客户同意和留存审计 |
+| `offline_release_bundle_manifest` | 第 29 章、第 33 章、第 42 章、第 44 章 | 说明私有化或受限出网环境中 release train 如何被封装成可签名、可导入、可回滚、可验收的离线交付包 |
+| `offline_import_record` | 第 33 章、第 37 章、第 42 章、第 44 章 | 说明客户现场实际导入了哪些镜像、模型 artifact、RAG index、chart、配置和 migration，并如何与离线包 digest 对账 |
 | `offline_upgrade_rehearsal` | 第 33 章、第 42 章、第 44 章 | 说明私有化或离线环境升级前如何演练镜像导入、artifact/cache、数据迁移、runtime smoke、回滚和诊断导出 |
+| `private_delivery_diagnostic_export` | 第 37 章、第 42 章、第 44 章 | 说明不远程登录、不导出生产数据时，私有化事故如何导出脱敏的运行 digest、导入记录、runtime、cache 和 migration 证据 |
 | `field_patch_governance` | 第 40 章、第 42 章、第 44 章 | 说明现场紧急补丁的适用条件、签名 delta、客户审批、过期时间、合回 release train 和支持成本归因 |
+| `field_patch_execution_record` | 第 40 章、第 41 章、第 44 章 | 说明现场补丁实际应用到哪些镜像、chart、配置、cache 和服务，如何验证、回滚、过期并合回 release train |
 | `private_delivery_lifecycle_contract` | 第 42 章、第 44 章 | 说明私有化客户从验收、支持、升级、补丁、EOL 到退出的长期产品责任 |
+| `private_delivery_incident_cost_record` | 第 41 章、第 44 章 | 说明私有化升级失败、现场补丁回归或客户环境漂移如何产生支持、离线包重打、迁移回滚、cache 预热、credit 和 P&L 成本 |
+| `private_delivery_prr_upgrade_drill` | 第 44 章 | 说明私有化上线前如何演练离线包导入、digest 错配拒绝、artifact 回滚、RAG ACL 迁移、现场补丁和脱敏诊断导出 |
 | `commercial_pnl_ledger` | 第 41 章、第 42 章、第 44 章 | 说明 revenue、折扣、free quota、SLA credit、support cost、private delivery cost、reserved capacity 和各类成本账本如何形成商业 P&L |
 | `case_study_evidence_pack` | 第 43 章 | 说明公开事实、推断、假设、证据可信度、能力缺口、不可复用条件和可复用经验如何分层记录 |
 | `ai_factory_maturity_assessment` | 第 43 章、第 44 章 | 说明不同 AI Factory 类型如何按目标层、生产层、运营层和经济层做成熟度诊断 |

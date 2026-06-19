@@ -473,6 +473,10 @@ offline_upgrade_rehearsal:
     deployment: private_ai_factory
     network_mode: offline_or_restricted_egress
     registry: customer_offline_registry
+  release_bundle:
+    offline_release_bundle_manifest: orb-ai-factory-2026-06-enterprise-a
+    import_record: required
+    digest_reconciliation: pass
   package_integrity:
     image_manifest: signed_and_digest_pinned
     model_artifact_manifest: signed_and_digest_pinned
@@ -502,6 +506,58 @@ offline_upgrade_rehearsal:
 ```
 
 这个对象应归档到交付和 SRE 系统，而不是停留在项目群截图里。它回答三个关键问题：升级包是否完整可信，客户环境是否满足版本矩阵，失败时是否能回到可服务状态。对存储层来说，最重要的是 artifact 和 cache 的一致性：模型权重、tokenizer、chat template、RAG 索引和本地 NVMe cache 必须跟 release 指针一致；如果回滚只改控制面版本，却没有撤销旧 cache 或重新预热，就会出现“版本显示已回滚，实际仍加载旧权重或旧索引”的隐性故障。
+
+离线升级还要把“导入记录”作为一等证据。公有云发布时，平台可以查询中心 registry、对象存储和控制面；客户现场不一定允许远程访问，事后只能依赖现场导出的证据包。因此导入工具应在客户环境中生成 `offline_import_record`：记录离线包 manifest、目标 registry namespace、导入的镜像 digest、模型 artifact digest、chart 版本、配置 overlay、数据库 migration 版本、RAG index 版本、缓存预热结果和签名验证结果。它不是安装日志的替代品，而是用结构化字段证明现场状态可回放。
+
+```yaml
+offline_import_record:
+  import_id: oir-enterprise-a-20260620-001
+  offline_release_bundle_manifest: orb-ai-factory-2026-06-enterprise-a
+  target:
+    environment: customer_staging
+    registry_namespace: customer-registry/ai-factory
+    storage_namespace: customer-object/ai-factory
+  imported_artifacts:
+    container_images:
+      expected_digests: from_bundle_manifest
+      imported_digests: measured
+      missing_or_extra: none
+    model_artifacts:
+      weights_digest: verified
+      tokenizer_digest: verified
+      chat_template_digest: verified
+    rag_indices:
+      index_version: kb-index-202606
+      acl_snapshot_digest: verified_if_rag
+    database_migrations:
+      planned: [schema-202606-a]
+      executed: [schema-202606-a]
+      rollback_plan: recorded
+  validation:
+    signature_verification: pass
+    cache_rewarm: pass
+    representative_endpoint_smoke: pass
+    diagnostic_bundle_export: pass
+```
+
+这个记录能把离线交付从“现场师傅装好了”变成可审计事实。若升级后出现模型加载旧权重，先对比 bundle manifest、import record、model registry pointer 和节点 cache residency；若 RAG 答案越权，先对比 RAG index digest、ACL snapshot 和导入时的迁移脚本；若回滚失败，先看 rollback plan 是否覆盖 schema、artifact pointer 和 cache rewarm。离线环境排障的第一原则是少猜，多对账。
+
+```mermaid
+flowchart TB
+  Bundle["offline_release_bundle_manifest"] --> Import["offline_import_record"]
+  Import --> Registry["offline registry\nimage digests"]
+  Import --> Artifact["model artifact store\nweights / tokenizer / template"]
+  Import --> RAG["RAG index + ACL snapshot"]
+  Import --> DB["database migration state"]
+  Registry --> Smoke["runtime smoke"]
+  Artifact --> Smoke
+  RAG --> Smoke
+  DB --> Smoke
+  Smoke --> Rehearsal["offline_upgrade_rehearsal"]
+  Rehearsal --> Cache["cache_residency / invalidation"]
+  Rehearsal --> Rollback["rollback drill"]
+  Rehearsal --> Support["redacted diagnostic export"]
+```
 
 这个边界对象能防止很多“存储便利性”演变成安全事故。研究人员不应直接从生产 checkpoint 目录复制权重到个人路径；推理节点不应加载未签名 artifact；RAG 索引构建不应把受限文档写进共享缓存；事故排查不应把未脱敏 trace 导出到普通对象桶。存储安全边界不是阻碍效率，而是让高价值数据的访问、复制、删除和导出可审计、可撤销、可解释。
 

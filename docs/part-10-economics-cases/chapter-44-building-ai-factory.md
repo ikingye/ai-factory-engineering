@@ -629,7 +629,10 @@ production_readiness_review:
       customer_onboarding_evidence: pass_if_external_customer_or_key_internal_tenant
       private_deployment_acceptance_record: pass_if_private_delivery
       private_delivery_lifecycle_contract: pass_if_private_delivery
+      offline_release_bundle_manifest: pass_if_private_delivery_or_restricted_egress
+      offline_import_record: pass_if_private_delivery_upgrade_or_install
       offline_upgrade_rehearsal: pass_if_private_delivery_or_restricted_egress
+      private_delivery_incident_cost_record_pipeline: configured_if_private_delivery
       support_ticket_taxonomy: configured_if_external_customer
       launch_risk_register: reviewed_and_owned
       owner_for_error_budget_burn: assigned
@@ -647,6 +650,8 @@ production_readiness_review:
       - long_lived_customer_pool_without_lts_policy
       - out_of_band_patch_without_field_patch_governance
       - private_delivery_without_offline_upgrade_rehearsal
+      - private_delivery_without_offline_release_bundle_manifest
+      - private_delivery_import_without_digest_reconciliation
       - external_customer_without_support_ticket_taxonomy
       - external_customer_without_diagnostic_bundle_sla
       - no_metering_reconciliation
@@ -662,6 +667,7 @@ production_readiness_review:
       - customer_launch_without_onboarding_evidence
       - committed_sla_without_credit_model
       - private_delivery_without_acceptance_record
+      - private_delivery_without_incident_cost_pipeline
       - commercial_launch_without_pnl_ledger
       - open_launch_risk_without_owner_or_stop_condition
       - no_endpoint_admission_decision_replay
@@ -806,6 +812,57 @@ supply_chain_prr_invalidation_drill:
 ```
 
 这个演练的价值在于暴露“控制面成功、数据面失败”的风险。Registry 指针已经更新，但本地 NVMe 仍保留旧权重；RAG 索引权限已经修复，但 rack cache 仍可命中旧索引；tokenizer digest 已撤销，但某些 warmed replica 仍使用旧模板；调度器看到节点 cache ready，却不知道它是 invalid ready。AI Factory 的供应链安全不是只签名和登记来源，还要能撤销、阻断、预热替代版本并计算影响成本。
+
+私有化交付还需要单独的 PRR 演练。原因是客户现场的失败模式与公有云不同：出网受限、registry 私有、证书和 KMS 由客户控制、远程登录受审批、诊断导出需要脱敏、现场维护窗口有限，且客户可能在供应方不知情的情况下修改配置或替换镜像。PRR 不能只检查 `private_deployment_acceptance_record` 是否存在，还要证明离线发布包能被导入、digest 能对账、升级能回滚、现场补丁受治理、诊断包能导出、成本能入账。
+
+```yaml
+private_delivery_prr_upgrade_drill:
+  drill_id: pd-prr-upg-drill-20260620-001
+  production_readiness_review: prr-enterprise-a-private-2026-06
+  scope:
+    lifecycle_contract: pdlc-enterprise-a-202606
+    customer_rings: [customer_staging, customer_production]
+    restricted_egress: true
+    supported_workloads: [maas_chat, rag, finetuning_optional]
+  simulated_or_controlled_events:
+    - offline_bundle_import_to_empty_registry
+    - digest_mismatch_rejected
+    - model_artifact_upgrade_and_rollback
+    - rag_index_acl_migration_if_applicable
+    - emergency_field_patch_apply_and_expire
+    - redacted_diagnostic_export_without_remote_login
+  required_outputs:
+    offline_release_bundle_manifest: generated
+    offline_import_record: generated
+    offline_upgrade_rehearsal: pass
+    private_delivery_diagnostic_export: generated
+    field_patch_execution_record: generated_if_patch_path_tested
+    private_delivery_incident_cost_record: generated_for_failure_path
+    production_readiness_review: updated_if_gap_found
+  pass_criteria:
+    imported_digests_match_bundle_manifest: true
+    unsupported_manual_delta_detected: true
+    rollback_restores_service_and_artifact_pointer: true
+    cache_residency_matches_target_release: true
+    diagnostic_export_contains_no_prompt_or_secret: true
+    support_cost_and_credit_path_recorded: true
+```
+
+```mermaid
+flowchart TB
+  PRR["private delivery PRR"] --> Bundle["offline_release_bundle_manifest"]
+  Bundle --> Import["offline_import_record\nregistry / artifact / chart / config"]
+  Import --> Rehearsal["offline_upgrade_rehearsal\nsmoke / migration / rollback"]
+  Rehearsal --> Patch["field_patch_execution_record\nif emergency path"]
+  Rehearsal --> Export["private_delivery_diagnostic_export"]
+  Rehearsal --> Cost["private_delivery_incident_cost_record"]
+  Patch --> Cost
+  Export --> Support["support_ticket_taxonomy\ncustomer communication"]
+  Cost --> PNL["commercial_pnl_ledger"]
+  Cost --> Gate["PRR gate update\nblock / conditional / approve"]
+```
+
+这类演练尤其适合在第一批私有化客户上线前执行。它会暴露很多“云内看不见”的问题：导入工具依赖公网包源，chart overlay 不可验证，模型权重签名在客户 KMS 下无法校验，RAG index 迁移没有 ACL snapshot，回滚只回滚服务不回滚 cache，诊断包导出包含 prompt 或 secret，现场补丁没有到期和合回机制。把这些问题留到客户生产事故中解决，代价通常远高于在 PRR 阶段修掉。
 
 安全和滥用也需要 PRR 演练。公共 MaaS、外部客户、免费试用、第三方 provider 聚合、Agent 平台和高敏企业租户，都不能只检查认证和 TLS。PRR 必须证明：异常 key 能被发现和冻结，provider 外联能被策略证明或阻断，长上下文/长输出/Agent 循环能被预算和形态 guard 降级，异常 usage 能进入 billing hold，事故证据能进入 `security_evidence_bundle`，成本能进入 `abuse_cost_ledger`，并且策略缺口会回写 Gateway 和上线门禁。
 

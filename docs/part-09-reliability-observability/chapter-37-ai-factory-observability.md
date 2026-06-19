@@ -658,6 +658,8 @@ diagnostic_bundle_sla:
     private_delivery_support:
       trigger: customer_ticket_sev1_or_upgrade_failure
       required_refs:
+        - offline_release_bundle_manifest
+        - offline_import_record
         - private_deployment_acceptance_record
         - offline_upgrade_rehearsal
         - release_train_record
@@ -674,6 +676,36 @@ diagnostic_bundle_sla:
 ```
 
 诊断包 SLA 能把可观测性接入客户支持流程。Support ticket 创建后，系统应按 severity、产品线和部署形态选择 bundle class，自动冻结证据并生成脱敏版本；SRE 处理事故时使用完整内部证据，客户沟通使用经审批的摘要证据。若 bundle 缺少 `release_train_record`、`private_deployment_acceptance_record` 或 `offline_upgrade_rehearsal`，私有化事故就无法判断是产品缺陷、客户环境漂移还是升级包执行偏差。诊断包 SLA 因此既是排障能力，也是商业交付能力。
+
+私有化支持的诊断包还必须能在“不远程登录、不导出生产数据”的条件下工作。客户现场经常只允许导出脱敏证据，甚至要求在安全区内离线生成包再走审批流程。可观测性系统因此要把 `offline_release_bundle_manifest`、`offline_import_record`、运行中 digest、配置 overlay、cache residency、GPU runtime report、RAG index digest 和 migration state 做成可导出的结构化摘要。摘要要能回答“现场运行的内容是否来自受支持离线包”，而不是只给出日志片段。若这个能力缺失，每次私有化事故都会退化成远程会议和人工截图。
+
+```yaml
+private_delivery_diagnostic_export:
+  export_id: pdde-enterprise-a-20260620-001
+  support_ticket: inc-enterprise-a-upgrade-017
+  evidence_refs:
+    offline_release_bundle_manifest: orb-ai-factory-2026-06-enterprise-a
+    offline_import_record: oir-enterprise-a-20260620-001
+    private_deployment_acceptance_record: pdar-enterprise-a-ai-factory-202606
+    offline_upgrade_rehearsal: offline-upg-enterprise-a-202606
+  runtime_snapshot:
+    running_image_digests: summarized
+    model_artifact_digests: summarized
+    gpu_container_runtime_report: attached
+    cache_residency: summarized
+    migration_state: summarized_if_stateful
+  redaction:
+    prompts_and_responses: excluded_or_hashed
+    customer_document_content: excluded
+    topology_detail: summarized_by_policy
+    secrets: forbidden
+  export_controls:
+    customer_approval: recorded
+    supplier_access_scope: ticket_limited
+    retention: contract_defined
+```
+
+这类导出对象能把私有化支持从“能不能进现场”转成“证据是否足以判断”。如果运行 digest 与导入记录不一致，先处理现场漂移；如果导入记录缺少某个镜像或 artifact，先修交付包；如果 GPU runtime report 与验收记录不一致，进入容器运行时或节点基线故障树；如果所有包和运行时一致，再看应用、数据和客户环境变更。诊断包的结构化程度越高，现场沟通越少依赖个人经验。
 
 ```mermaid
 flowchart LR

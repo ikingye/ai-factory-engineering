@@ -432,6 +432,10 @@ field_patch_governance:
     customers_or_pools: [enterprise-a-private]
     components: [model_serving_runtime]
     expires_at: policy_defined
+    baseline_constraints:
+      source_release_train: gpu-baseline-2026-06
+      offline_release_bundle_manifest: orb-ai-factory-2026-06-enterprise-a
+      supported_import_records: [oir-enterprise-a-20260620-001]
   required_approvals:
     product_owner: required
     sre_owner: required
@@ -441,6 +445,8 @@ field_patch_governance:
     delta_manifest: signed
     rollback_bundle: included
     compatibility_matrix_delta: attached
+    install_precheck: included
+    post_install_validation: included
   validation:
     targeted_regression: pass
     diagnostic_bundle_export: pass
@@ -452,6 +458,40 @@ field_patch_governance:
 ```
 
 Field patch 的关键控制点是“临时性”。它可以用于止血，但不能成为新基线的隐式来源。每个 patch 都应自动创建后续任务：合回主干、进入下一列 release train、更新 LTS backport 决策、刷新客户现场验收记录，或在到期前迁移到受支持版本。如果补丁无法合回，SRE 和商业团队必须看到持续支持成本，并把它计入 `commercial_pnl_ledger`。这能防止私有化交付被无数一次性补丁拖垮。
+
+现场补丁还需要单独的执行记录。治理对象说明“能不能打补丁”，执行记录说明“补丁实际上怎么打、打到了哪里、验证结果是什么”。私有化环境尤其如此：客户可能先在 staging 导入，再在生产窗口导入；某些节点或服务可能因为维护窗口错过；补丁可能依赖某个离线包和导入状态。没有执行记录，后续排障只能看到“客户版本号包含 fp-xxx”，却不知道哪些 pod、镜像、chart、模型 artifact、数据库迁移和 cache 状态真实改变。
+
+```yaml
+field_patch_execution_record:
+  execution_id: fper-enterprise-a-runtime-20260620-001
+  field_patch_governance: fp-enterprise-a-runtime-20260620
+  target:
+    environment: customer_production
+    support_ticket: inc-enterprise-a-sev1-017
+    maintenance_window: mw-enterprise-a-20260620
+  precheck:
+    offline_import_record: oir-enterprise-a-20260620-001
+    running_digest_match: pass
+    backup_or_restore_point: verified_if_stateful
+    affected_services_drained: pass
+  applied_delta:
+    container_images: [model-serving-runtime@sha256:patched]
+    charts_or_configs: [serving-runtime-values@sha256:patched]
+    database_migration: none_or_recorded
+    cache_invalidation_record: generated_if_artifact_or_template_changed
+  validation:
+    representative_endpoint_smoke: pass
+    gpu_container_runtime_report: unchanged_or_pass
+    diagnostic_bundle_export: pass
+    rollback_test_in_staging: pass
+  closure:
+    customer_confirmation: recorded
+    expiry_timer_started: true
+    merge_back_issue: linked
+    commercial_pnl_ledger: support_cost_append
+```
+
+这个记录把补丁从“某人修了一下”变成可审计变更。若补丁只修改控制面配置，不应假装覆盖了镜像和缓存；若补丁修改 tokenizer、template 或 runtime，必须同步生成 cache invalidation 和计量风险评估；若补丁无法在下一列 release train 合回，必须在到期前触发产品、SRE 和商业复审。现场补丁越多，越要依赖机器可读记录，而不是依赖微信群或会议纪要。
 
 ## 40.7 capacity operation
 

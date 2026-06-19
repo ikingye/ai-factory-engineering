@@ -352,6 +352,8 @@ private_delivery_lifecycle_contract:
     remote_access: customer_approved_session_only
     redacted_export: required
   upgrade_policy:
+    offline_release_bundle_manifest: required_for_offline_or_restricted_egress
+    offline_import_record: required_after_customer_import
     offline_upgrade_rehearsal: required_before_major_or_lts_migration
     rollback_drill: required
     storage_and_artifact_migration: required_if_schema_or_model_change
@@ -366,6 +368,22 @@ private_delivery_lifecycle_contract:
 ```
 
 这份 lifecycle contract 让商业承诺能被工程系统验证。它也给毛利分析提供输入：客户支持工单、离线升级演练、现场补丁、远程诊断审批和定制差异都不是免费动作，而是私有化收入中的真实成本。若这些对象缺失，私有化看起来可能毛利很高，实际被支持成本和版本分叉吞掉。成熟的 AI Factory 商业化不是拒绝私有化，而是把私有化做成受控产品，而不是无限项目制交付。
+
+私有化合同还应明确离线交付包的支持边界。`offline_release_bundle_manifest` 定义供应方交付的受支持内容，`offline_import_record` 定义客户现场实际导入的内容，二者必须能对账。若客户自行替换镜像、跳过签名校验、修改 chart、覆盖模型 artifact、把 RAG index 迁移脚本改成手工 SQL，供应方不应承担无限责任；但若导入记录证明现场按受支持包执行，故障发生在已验收的 GPU runtime、model serving、cache invalidation 或诊断导出路径，供应方就必须按支持 SLA 响应。商业模式的边界要落到这些证据对象上，不能只写在合同附件里。
+
+```mermaid
+flowchart TB
+  Contract["private_delivery_lifecycle_contract"] --> Bundle["offline_release_bundle_manifest\nwhat supplier supports"]
+  Bundle --> Import["offline_import_record\nwhat customer imported"]
+  Import --> Acceptance["private_deployment_acceptance_record\nwhat passed"]
+  Acceptance --> Support["support_ticket_taxonomy + diagnostic_bundle_sla"]
+  Support --> Patch["field_patch_governance / execution"]
+  Patch --> LTS["merge back / LTS backport / EOL"]
+  Support --> PNL["commercial_pnl_ledger\nsupport + delivery cost"]
+  LTS --> Contract
+```
+
+这张图说明私有化不是一次性交付，而是生命周期业务。交付包、导入记录、验收、支持、补丁、LTS 和 P&L 要闭环。如果其中任一环缺失，商业风险会被延迟到第二次升级或第一次 Sev1 事故中爆发。产品化私有化的核心不是减少客户差异，而是让差异进入可计价、可支持、可退出的结构。
 
 商业能力也可以形成状态机。一个模式从 idea 到 scale，必须穿过 evidence、pilot、commercial 和 deprecation，而不是被一次发布会直接推入长期承诺。
 

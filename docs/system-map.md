@@ -94,9 +94,15 @@ flowchart TB
 | `lts_support_policy` | 定义长期支持 baseline、backport、EOL、升级路径和客户通知，防止现场版本无限分叉。 | 第 29、42、44 章 | `release_train_record`、`private_delivery_lifecycle_contract` |
 | `support_ticket_taxonomy` | 把客户问题分成 incident、request、problem、change、billing dispute 和 security case，并绑定 owner、时钟和证据。 | 第 40、42、44 章 | `diagnostic_bundle_sla`、`incident_record`、`billing_dispute_replay` |
 | `diagnostic_bundle_sla` | 定义不同事故和客户支持场景下诊断包的采集时限、脱敏、导出、客户同意和留存审计。 | 第 37、40、42、44 章 | `support_ticket_taxonomy`、`security_evidence_bundle` |
+| `offline_release_bundle_manifest` | 把 release train 封装成私有化或受限出网环境可导入、可签名、可回滚、可验收的离线发布包。 | 第 29、33、42、44 章 | `offline_import_record`、`offline_upgrade_rehearsal`、`private_delivery_lifecycle_contract` |
+| `offline_import_record` | 记录客户现场实际导入的镜像、模型 artifact、RAG index、chart、配置和 migration，并与离线包 digest 对账。 | 第 33、37、42、44 章 | `offline_upgrade_rehearsal`、`private_delivery_diagnostic_export` |
 | `offline_upgrade_rehearsal` | 在私有化或离线环境升级前演练镜像导入、artifact/cache、数据迁移、runtime smoke、回滚和诊断导出。 | 第 33、42、44 章 | `private_deployment_acceptance_record`、`release_train_record` |
+| `private_delivery_diagnostic_export` | 在不远程登录、不导出生产数据时，导出私有化事故所需的脱敏运行 digest、导入记录、runtime、cache 和 migration 证据。 | 第 37、42、44 章 | `support_ticket_taxonomy`、`private_delivery_incident_cost_record` |
 | `field_patch_governance` | 约束现场紧急补丁的适用条件、签名 delta、客户审批、过期时间、合回 release train 和成本归因。 | 第 40、42、44 章 | `release_train_record`、`commercial_pnl_ledger` |
+| `field_patch_execution_record` | 记录现场补丁实际应用到哪些镜像、chart、配置、cache 和服务，如何验证、回滚、过期并合回 release train。 | 第 40、41、44 章 | `private_delivery_incident_cost_record`、`commercial_pnl_ledger` |
 | `private_delivery_lifecycle_contract` | 把私有化客户的 release、LTS、支持、离线升级、补丁、EOL 和成本控制写成长期责任对象。 | 第 42、44 章 | `commercial_pnl_ledger`、`production_readiness_review` |
+| `private_delivery_incident_cost_record` | 把私有化升级失败、现场补丁回归或客户环境漂移造成的支持、重打包、迁移回滚、cache 预热和 credit 成本写入 P&L。 | 第 41、44 章 | `commercial_pnl_ledger`、`production_readiness_review` |
+| `private_delivery_prr_upgrade_drill` | 演练私有化上线前的离线包导入、digest 错配拒绝、artifact 回滚、RAG ACL 迁移、现场补丁和脱敏诊断导出。 | 第 44 章 | `production_readiness_review`、`private_delivery_incident_cost_record` |
 | `commercial_pnl_ledger` | 汇总收入、折扣、SLA credit、支持、私有化交付、预留容量和各类成本账本。 | 第 41、42、44 章 | `business_model_profile`、`launch_risk_register` |
 | `launch_risk_register` | 记录上线剩余风险、owner、证据缺口、缓解措施、停止条件和关闭条件。 | 第 44 章 | `production_readiness_review`、`incident_record` |
 | `ai_factory_build_plan` | 把建设阶段、证据、owner 和停止条件结构化。 | 第 44 章 | `architecture_decision_record`、`production_readiness_review` |
@@ -260,9 +266,10 @@ flowchart TB
 | 账单争议 | 第 5、6、7、41、42 章 | billing_dispute_replay、tenant_cost_isolation、policy_decision_record、metering event、business_model_profile | 区分失败是否计费、streaming 中断、免费额度、租户归属、provider 路由、security hold 和合约边界。 |
 | 客户上线后承诺无法兑现 | 第 4、5、40、42、44 章 | customer_onboarding_evidence、tenant_boundary、sla_credit_model、launch_risk_register、production_readiness_review | 检查客户、租户、模型访问、预算、支持、SLA 和数据边界是否真的完成接入；缺证据时应暂停放量。 |
 | SLA 赔付争议 | 第 5、7、37、40、41、44 章 | sla_credit_model、sla_operation_record、sla_credit_replay、reliability_evidence_bundle、billing_dispute_replay | 回放事故窗口、排除项、受影响 usage 和 invoice line，把赔付写入可靠性成本和商业 P&L。 |
-| 私有化交付无法升级 | 第 4、29、33、37、40、42、43、44 章 | private_deployment_acceptance_record、release_train_record、lts_support_policy、offline_upgrade_rehearsal、diagnostic_bundle_sla、field_patch_governance、PRR | 将客户差异收敛到配置和集成层，先复核 release train、LTS、离线升级演练、诊断导出和现场补丁是否受控，再决定升级、回滚或停止支持。 |
+| 私有化交付无法升级 | 第 4、29、33、37、40、41、42、43、44 章 | private_deployment_acceptance_record、release_train_record、lts_support_policy、offline_release_bundle_manifest、offline_import_record、offline_upgrade_rehearsal、private_delivery_diagnostic_export、private_delivery_incident_cost_record、PRR | 将客户差异收敛到配置和集成层，先复核 release train、离线包、导入记录、升级演练、诊断导出和成本归因，再决定升级、回滚、补丁或停止支持。 |
 | 客户 Sev1 工单证据收集过慢 | 第 37、40、42、44 章 | support_ticket_taxonomy、diagnostic_bundle_sla、reliability_evidence_bundle、security_evidence_bundle、customer_onboarding_evidence | 先按 taxonomy 确定时钟和 owner，自动冻结脱敏诊断包；缺少 bundle SLA 时，暂停扩大客户承诺并补齐支持流程。 |
-| 现场紧急补丁越积越多 | 第 29、40、42、44 章 | field_patch_governance、release_train_record、lts_support_policy、commercial_pnl_ledger、private_delivery_lifecycle_contract | 检查补丁是否有过期、合回、backport 决策和支持成本归因；不能合回的补丁应触发商业边界复审。 |
+| 现场紧急补丁越积越多 | 第 29、40、41、42、44 章 | field_patch_governance、field_patch_execution_record、release_train_record、lts_support_policy、private_delivery_incident_cost_record、commercial_pnl_ledger、private_delivery_lifecycle_contract | 检查补丁是否有执行记录、过期、合回、backport 决策和支持成本归因；不能合回的补丁应触发商业边界复审。 |
+| 私有化现场运行版本与交付包不一致 | 第 29、33、37、40、42、44 章 | offline_release_bundle_manifest、offline_import_record、private_delivery_diagnostic_export、private_deployment_acceptance_record、field_patch_execution_record | 对比离线包 digest、导入记录、运行中镜像和 artifact digest、配置 overlay 与现场补丁记录，先确认是客户环境漂移、未支持手工变更还是供应方交付缺陷。 |
 | 商业毛利与技术指标矛盾 | 第 7、40、41、42、43、44 章 | commercial_pnl_ledger、Token Factory ledger、quality/reliability/security cost ledger、sla_credit_replay、case_study_evidence_pack | 拆分收入、折扣、SLA credit、支持、私有化交付、预留容量和事故成本，避免只看 cost/token 或 GPU 利用率。 |
 
 ## 核心链路索引

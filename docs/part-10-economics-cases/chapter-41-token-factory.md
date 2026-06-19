@@ -633,6 +633,8 @@ commercial_pnl_ledger:
     abuse_cost_ledger: linked_if_any
     support_cost: calculated
     private_deployment_cost: linked_to_private_deployment_acceptance_record
+    offline_release_bundle_cost: linked_to_offline_release_bundle_manifest
+    field_patch_cost: linked_to_field_patch_execution_record
     reserved_capacity_and_inventory_cost: calculated
   outputs:
     gross_margin: calculated
@@ -648,6 +650,42 @@ commercial_pnl_ledger:
 这张账本的价值在于防止“局部盈利幻觉”。例如某个 MaaS 客户的 token revenue 很高，但它购买了高 SLA、专属容量、长审计保留和强支持，如果 SLA credit、reserved capacity 和支持成本不进入 P&L，就会高估毛利；某个私有化项目合同金额很大，但每次升级都需要现场专家、离线镜像重做和客户环境调试，如果 private deployment cost 不进入账本，项目会在长期维护期亏损；某个 Agent 平台任务单价很高，但失败重试、人工接管和工具外部 API 成本大，必须用 cost per successful task 重新评估。
 
 `commercial_pnl_ledger` 也能反向约束产品承诺。若高 SLA 产品的赔付率长期高于可靠性预防成本，应该增加冗余、收紧准入或提高价格；若私有化交付的定制成本持续上升，应该减少特殊分支、加强标准交付包或提高专业服务定价；若免费额度经常被高成本长上下文或 Agent 循环消耗，应该调整产品 guardrail。商业 P&L 不是财务季报，而是 AI Factory 的产品控制面。
+
+私有化升级失败应生成 `private_delivery_incident_cost_record`。这类事故经常没有大规模 5xx，也不一定产生大量 token 浪费，但会消耗现场专家、客户维护窗口、补丁制作、离线包重打、数据迁移回滚、诊断脱敏、客户沟通和潜在 credit。若只看平台稳定态 cost/token，这些成本会被完全隐藏；若只看项目收入，又会高估私有化毛利。成本记录要把工程事实和商业事实连起来。
+
+```yaml
+private_delivery_incident_cost_record:
+  record_id: pdicr-enterprise-a-20260620-001
+  trigger:
+    support_ticket: inc-enterprise-a-upgrade-017
+    failure_class: offline_upgrade_failure_or_field_patch_regression
+    private_delivery_lifecycle_contract: pdlc-enterprise-a-202606
+  evidence:
+    offline_release_bundle_manifest: orb-ai-factory-2026-06-enterprise-a
+    offline_import_record: oir-enterprise-a-20260620-001
+    offline_upgrade_rehearsal: offline-upg-enterprise-a-202606
+    private_delivery_diagnostic_export: pdde-enterprise-a-20260620-001
+    field_patch_execution_record: fper-enterprise-a-runtime-20260620-001_if_any
+  cost_breakdown:
+    support_engineer_hours: calculated
+    onsite_or_remote_session_cost: calculated_if_applicable
+    offline_bundle_rebuild_cost: calculated_if_repacked
+    migration_rollback_or_forward_fix_cost: calculated
+    cache_rewarm_and_validation_cost: calculated
+    customer_maintenance_window_extension_cost: calculated_if_contractual
+    sla_credit_or_service_credit_reserve: calculated_if_applicable
+  responsibility_split:
+    supplier_product_defect: true_false_or_partial
+    customer_environment_drift: true_false_or_partial
+    unsupported_manual_change: true_false_or_partial
+  ledger_updates:
+    commercial_pnl_ledger: append
+    reliability_cost_ledger: append_if_slo_or_support_sla_impacted
+    security_cost_ledger: append_if_export_or_secret_boundary_involved
+    production_readiness_review: update_if_preventable_gap
+```
+
+这个对象的重点不是追责，而是防止私有化成本失真。若多次事故都来自客户环境漂移，合同和验收边界需要收紧；若多次事故来自离线包缺少依赖或导入工具不稳定，产品需要投资打包和导入自动化；若现场补丁成本持续增长，LTS 和 release train 策略需要调整。私有化业务能否规模化，不取决于第一单合同金额，而取决于这些长期成本是否被看见并能下降。
 
 ## 41.6 GPU 利用率
 
