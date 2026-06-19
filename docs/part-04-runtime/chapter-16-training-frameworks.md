@@ -60,6 +60,55 @@ flowchart TB
   Framework --> Metrics["training metrics"]
 ```
 
+生产环境还需要一张训练运行时矩阵。它不是传统意义上的兼容表，而是把“这个框架组合是否可以进入某个资源池”写成可审计事实。矩阵至少包含框架版本、CUDA/NCCL/driver、launcher、并行能力、checkpoint 格式、已验证 GPU 拓扑、已知限制和回滚版本。没有这张矩阵，平台会把用户提交的训练任务直接扔给集群，用真实 GPU 时间替代本该在准入阶段完成的验证。
+
+```yaml
+framework_runtime_matrix:
+  matrix_id: frm-h100-train-20260620
+  scope:
+    resource_pool: training-prod-h100
+    supported_frameworks:
+      - framework: pytorch
+        framework_version: pinned
+        cuda_version: pinned
+        nccl_version: pinned
+        driver_baseline: driver-prod-h100-202606
+        launcher: torchrun-or-platform-launcher
+      - framework: deepspeed
+        framework_version: pinned
+        zero_stages: [1, 2, 3]
+        offload_modes: [none, cpu, nvme]
+      - framework: megatron_lm
+        framework_version: pinned
+        tensor_parallel_limits: verified_by_template
+        pipeline_parallel_limits: verified_by_template
+  validation:
+    single_gpu_smoke: passed
+    single_node_nccl: passed
+    multi_node_nccl: passed
+    short_training_run: passed
+    checkpoint_save_restore: passed
+    metrics_emission: passed
+  runtime_contract:
+    required_metadata:
+      - image_digest
+      - framework_config_digest
+      - parallelism_plan_record
+      - nccl_env_contract
+      - checkpoint_format
+    disallowed:
+      - floating_dependency_install
+      - unpinned_base_image
+      - user_mutated_nccl_env_without_record
+  rollback:
+    previous_matrix_id: frm-h100-train-20260518
+    rollback_test: passed
+```
+
+这张矩阵的价值在于它把“框架能用”拆成“在什么池、什么拓扑、什么版本和什么失败语义下能用”。例如 PyTorch + FSDP 在 8 卡节点内通过，不代表 DeepSpeed ZeRO-3 在 256 卡跨 rack 训练中也通过；Megatron-LM 的 tensor parallel 模板通过，不代表用户可以随意改变 pipeline stage 和 checkpoint 格式。矩阵要被调度、准入、观测和 PRR 同时消费：调度用它决定作业能否进入资源池，准入用它决定是否需要重跑回归，观测用它给指标打 template 标签，PRR 用它判断模型上线前的训练证据是否来自受控路径。
+
+矩阵也给升级提供边界。框架、NCCL、driver、OFED、CUDA、GPU Operator 或容器 runtime 任一变更，都可能让矩阵中的某些能力失效。平台不应让用户任务在失效矩阵上继续运行，除非明确标记为实验队列。一个成熟 AI Factory 会把训练 runtime 当作产品版本发布，而不是把它当作用户镜像里的自由组合。
+
 ## 16.1 PyTorch
 
 PyTorch 是最广泛使用的深度学习框架之一。它提供动态图、autograd、torch.distributed、FSDP、编译优化和丰富生态。大量模型库、训练脚本和研究代码都以 PyTorch 为基础。对 AI Factory 来说，PyTorch 的优势是生态成熟、开发效率高、人才广泛；挑战是版本组合多，生产一致性需要管理。
@@ -186,6 +235,31 @@ runtime:
   checkpoint:
     format: sharded
 ```
+
+更完整的作业提交应引用运行时矩阵，而不是重新声明全部事实：
+
+```yaml
+training_runtime_spec:
+  job_id: exp-20260620-031
+  framework_runtime_matrix: frm-h100-train-20260620
+  image_digest: sha256:recorded
+  framework_config_digest: sha256:recorded
+  precision: bf16
+  distributed_strategy: fsdp
+  activation_checkpointing:
+    enabled: true
+    policy: transformer_block
+  checkpoint:
+    training_format: sharded_state_dict
+    release_export_required: true
+    restore_drill_ref: ckrd-20260620-031
+  observability:
+    emit_step_breakdown: true
+    emit_rank_metrics: true
+    emit_nccl_metrics: true
+```
+
+这个 spec 的关键是把运行时选择从“命令行参数”提升为“平台事实”。它让后续的 `parallelism_plan_record`、`placement_commit_record`、`nccl_env_contract`、`checkpoint_restore_drill` 和 `training_roi_ledger` 可以共享同一坐标系。若一次训练失败，团队可以先判断它是否运行在受控矩阵内；若不在，事故归因应优先进入实验路径，而不是污染生产 runtime 的可靠性报表。
 
 平台应提供经过验证的镜像和模板。一个模板对应一组框架、CUDA、NCCL、driver、依赖和启动方式，并通过标准训练任务验证。用户可以扩展模型代码，但不应随意破坏底层兼容矩阵。模板化不是限制创新，而是让生产训练具备可复现基础。
 

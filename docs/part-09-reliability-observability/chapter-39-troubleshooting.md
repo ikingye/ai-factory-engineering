@@ -472,6 +472,12 @@ diagnosis:
     - job_events
     - pod_status
     - rank_to_node_mapping
+    - framework_runtime_matrix
+    - parallelism_plan_record
+    - rank_topology_contract
+    - nccl_env_contract
+    - collective_trace_record
+    - communication_critical_path_record
     - nccl_logs
     - gpu_xid_ecc
     - rdma_counters
@@ -516,6 +522,47 @@ network_diagnosis:
 ```
 
 这个对象把“网络可能有问题”拆成三种不同动作：隔离单节点、降级 fabric、修复 runtime。动作不同，责任团队和恢复路径也不同。没有这个拆分，事故中很容易把所有网络相关现象都交给同一个团队处理。
+
+训练故障建议统一生成 `training_debug_bundle`。它不是另一个日志压缩包，而是把训练运行时、并行、调度、通信、checkpoint、数据和成本影响组织成一份可执行证据。NCCL hang、step time 回归、loss spike、first effective step 超时、checkpoint 恢复失败，都可以从这个 bundle 进入不同分支。
+
+```yaml
+training_debug_bundle:
+  bundle_id: tdb-20260620-031
+  symptom: nccl_hang_or_step_time_regression
+  training_job: exp-20260620-031
+  runtime:
+    framework_runtime_matrix: frm-h100-train-20260620
+    training_runtime_spec: recorded
+    image_digest: sha256:recorded
+  parallelism:
+    parallelism_plan_record: ppr-llm-20260620-001
+    rank_topology_contract: rtc-llm-20260620-001
+    placement_commit_record: pcr-exp-20260620-031
+    rank_mapping: rank-mapping-exp-20260620-031
+  communication:
+    nccl_env_contract: nec-h100-rdma-20260620
+    collective_trace_record: ctr-exp-20260620-031-window-84200
+    communication_critical_path_record: ccpr-exp-20260620-031
+    communication_regression_record: crr-20260620-004_if_recent_change
+  infrastructure:
+    gpu_health: attached
+    gpu_nic_topology_evidence: attached_if_rdma
+    fabric_baseline: train-fabric-a-20260620
+    rail_balance_report: attached
+    storage_evidence: attached_if_checkpoint_or_data_wait
+  checkpoint:
+    checkpoint_commit_record: attached_if_checkpoint_window
+    checkpoint_overlap_evidence: attached_if_step_spike_periodic
+    checkpoint_restore_drill: attached_if_recovery_issue
+  impact:
+    allocated_gpu_hours: measured
+    effective_training_gpu_hours_lost: calculated
+    suspected_cost_ledger: training_roi_ledger
+```
+
+这个 bundle 给 oncall 一个明确的 stop rule：缺少 `rank_mapping`、`nccl_env_contract` 或 `collective_trace_record` 时，不应直接判断是网络问题；缺少 `communication_critical_path_record` 时，不应把某个慢 collective 直接换算成 GPU 浪费；缺少 `checkpoint_overlap_evidence` 时，不应把周期性 step spike 直接归因于 fabric；缺少 `parallelism_plan_record` 时，不应评价并行策略是否合理。止血可以先做，但根因结论必须等证据齐备。
+
+通信类事故的临时止血也要和证据分开。可以先暂停新大任务进入 suspect rack、隔离明显异常 NIC、回滚最近 NCCL env 模板、或恢复到上一个健康 checkpoint；但这些动作只是降低损失，不等于根因已定。最终复盘应指出哪一个 contract、baseline、regression 或 acceptance matrix 漏掉了风险，并把修复写回第 38 章的准入流程。
 
 对应地，存储诊断包应描述路径、manifest、缓存和影响：
 

@@ -492,6 +492,17 @@ production_readiness_review:
       gpu_nic_topology_evidence: pass_if_rdma_or_multigpu
       runtime_privilege_profile: enforced
       container_runtime_change_record: reviewed_if_recent
+    training_runtime_and_communication:
+      framework_runtime_matrix: pass_if_training_or_model_release_from_training
+      parallelism_plan_record: reviewed_if_distributed_training
+      rank_topology_contract: enforced_if_distributed_training
+      placement_commit_record: present_if_training_job_executed
+      nccl_env_contract: pass_if_nccl_or_rdma
+      training_communication_acceptance_matrix: pass_for_large_training_pool
+      collective_trace_record: configured_for_high_value_training
+      communication_regression_record: pass_if_recent_runtime_or_fabric_change
+      checkpoint_overlap_evidence: required_if_checkpoint_heavy_training
+      training_debug_bundle_template: ready
     quality:
       quality_gate_execution: qge-af-chat-20260620-001
       eval_dataset_lineage_record: edl-support-quality-20260620
@@ -545,6 +556,13 @@ production_readiness_review:
       - gpu_device_visibility_reconciliation_failed
       - rdma_or_multigpu_without_gpu_nic_topology_evidence
       - recent_container_runtime_change_without_retest
+      - distributed_training_without_framework_runtime_matrix
+      - distributed_training_without_parallelism_plan_record
+      - rank_topology_contract_not_enforced_for_large_training
+      - nccl_env_contract_missing_for_rdma_training
+      - recent_fabric_or_nccl_change_without_communication_regression_record
+      - large_training_pool_without_training_communication_acceptance_matrix
+      - checkpoint_heavy_training_without_checkpoint_overlap_evidence
       - no_valid_quality_gate_execution
       - no_eval_dataset_lineage_for_required_task_slices
       - no_quality_rollback_or_freeze_path

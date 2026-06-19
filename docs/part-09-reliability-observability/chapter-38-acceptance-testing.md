@@ -328,6 +328,53 @@ fabric_acceptance_matrix:
 
 这个矩阵让准入结果直接表达资源适用范围。某个 fabric 可以承载普通分布式训练，但不适合 checkpoint 高频任务；某个 rack 可以跑单节点或小规模任务，但不应进入 512 卡训练队列。准入状态越细，调度越可信。
 
+训练 Runtime 还需要单独的 `training_communication_acceptance_matrix`。它把框架矩阵、并行计划、rank 拓扑、NCCL 环境、fabric baseline、collective trace、checkpoint overlap 和回归门禁放在同一张表里。传统准入容易分散在多个团队：框架团队跑短训练，网络团队跑 NCCL test，存储团队跑 checkpoint，调度团队看 gang。矩阵的作用是证明这些能力能在同一个 workload 上同时成立。
+
+```yaml
+training_communication_acceptance_matrix:
+  matrix_id: tcam-h100-20260620
+  scope:
+    resource_pool: training-prod-h100
+    workload_template: pretrain-llm-h100-512
+  required_evidence:
+    framework_runtime_matrix: frm-h100-train-20260620
+    parallelism_plan_record: ppr-llm-20260620-001
+    rank_topology_contract: rtc-llm-20260620-001
+    nccl_env_contract: nec-h100-rdma-20260620
+    fabric_baseline: train-fabric-a-20260620
+  tests:
+    scheduler_dry_run:
+      verifies: [gang_capacity, topology_constraints, quota, baseline_validity]
+      result: pass
+    launch_and_rendezvous:
+      verifies: [rank_mapping, rdma_container_visibility, nccl_init]
+      result: pass
+    first_effective_step:
+      verifies: [loss_sanity, step_breakdown, rank_metrics]
+      result: pass
+    collective_trace:
+      verifies: [all_reduce, all_gather, reduce_scatter, p2p_if_used]
+      result: pass
+    checkpoint_overlap:
+      verifies: [checkpoint_write, collective_interference, storage_backpressure]
+      result: limited_or_pass
+    restore_and_resume:
+      verifies: [checkpoint_restore_drill, same_parallelism, reader_version]
+      result: pass
+  decision:
+    schedulable_for_large_training: true
+    limitations:
+      checkpoint_heavy_training: requires_throttling_if_limited
+    invalidated_by:
+      - framework_runtime_matrix_change
+      - rank_topology_contract_change
+      - nccl_env_contract_change
+      - fabric_change_record
+      - checkpoint_storage_change
+```
+
+这张矩阵能阻止一类昂贵事故：每个子系统单独验收都通过，组合起来却失败。NCCL baseline 通过但框架模板选择了错误接口，短训练通过但 checkpoint 与通信叠加后抖动，调度 dry-run 通过但实际 rank mapping 违反 tensor group 约束，都会在组合矩阵中暴露。大型训练资源池只有通过这类矩阵，才应标记为可承载长周期预训练。
+
 ## 38.8 acceptance baseline
 
 Acceptance baseline 是可交付基线，不是一次性测试记录。它包含硬件信息、软件版本、拓扑、测试工具版本、测试参数、通过阈值、实际结果、原始日志、异常说明、责任团队和资源状态。后续升级 driver、kernel、CUDA、NCCL、OFED、CNI、CSI、推理引擎或训练框架时，都应与基线对比。

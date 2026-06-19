@@ -112,9 +112,18 @@
 | `TrainingJob` 生产对象 | 第 10 章 | 说明数据、模型、运行时、并行、调度和恢复语义 |
 | 训练状态机 | 第 10 章 | 覆盖 submitted、admitted、preflight、rendezvous、running、checkpointing、recovering |
 | checkpoint manifest | 第 10 章 | 说明 sharded checkpoint、optimizer/scheduler/rng/data loader state 和恢复校验 |
+| `framework_runtime_matrix` | 第 16、23、38、44 章 | 说明框架、CUDA/NCCL/driver、launcher、checkpoint 和指标能力如何作为训练 runtime 准入矩阵 |
+| `training_runtime_spec` | 第 16、37、39 章 | 说明单个训练任务实际引用的 runtime 矩阵、镜像、精度、分布式策略、checkpoint 和观测配置 |
+| `parallelism_plan_record` | 第 17、23、37、39、41、44 章 | 说明并行维度为什么适合模型、batch、拓扑、checkpoint 和训练目标 |
+| `rank_topology_contract` | 第 17、23、37、39、44 章 | 说明哪些 rank 拓扑约束是 hard constraint，哪些可降级，以及违反后的调度动作 |
 | 并行策略与 rank mapping | 第 17 章 | 说明 rank 到 GPU/NIC/rack/rail/group 的映射和一致性校验 |
 | `placement_commit_record` | 第 17、23、37、39、41 章 | 说明并行放置意图、实际放置、降级原因、rank mapping 和性能影响 |
 | 并行模板 scorecard | 第 17 章 | 说明扩展效率、通信、显存、稳定性和可恢复性基线 |
+| `nccl_env_contract` | 第 18、23、37、39、44 章 | 说明 NCCL 版本、接口、RDMA 设备、拓扑文件、timeout 和 debug 策略如何被平台约束 |
+| `collective_trace_record` | 第 18、37、39、41、44 章 | 说明真实训练窗口中 collective op、rank group、耗时、等待关系和 critical path 暴露情况 |
+| `communication_critical_path_record` | 第 18、37、39、41 章 | 说明哪些通信等待真正暴露在训练 step 关键路径上，并如何折算 GPU idle |
+| `communication_regression_record` | 第 18、32、37、38、39、44 章 | 说明 NCCL、OFED、fabric、runtime 或调度标签变更后，代表性训练是否回归 |
+| `checkpoint_overlap_evidence` | 第 18、37、38、39、41、44 章 | 说明 checkpoint 写入是否与 collective、存储和数据路径叠加并造成周期性 step spike |
 | communication diagnostic bundle | 第 18 章 | 说明异常 op、rank、节点、NIC、端口、NCCL 环境和 telemetry 的证据包 |
 | 通信基线库 | 第 18 章、第 38 章 | 说明 NCCL baseline 与真实训练退化对比 |
 | job admission event / pending reason | 第 23 章 | 说明 quota、gang、topology、image、data、checkpoint 和 node baseline 检查 |
@@ -123,7 +132,9 @@
 | checkpoint-aware preemption / `preemption_record` | 第 23、41 章 | 说明训练抢占点、通知、保存状态、恢复结果和浪费 GPU 小时 |
 | Slurm 平台同步事件 / `training_accounting_reconciliation` | 第 24、41 章 | 说明 Slurm job/step/accounting 与 experiment、checkpoint、registry、平台成本的统一事件和对账 |
 | TrainingJob smoke test | 第 38 章 | 说明 gang、rank mapping、NCCL rendezvous、first effective step 和 checkpoint manifest 验收 |
+| `training_communication_acceptance_matrix` | 第 38、44 章 | 说明 framework/runtime、parallelism、rank topology、NCCL、fabric、collective trace 和 checkpoint overlap 的组合验收 |
 | `training_lifecycle_telemetry_event` | 第 37 章 | 说明训练生命周期、拓扑、checkpoint 和 GPU 小时口径如何进入观测事实层 |
+| `training_debug_bundle` | 第 39 章 | 说明训练事故如何冻结 runtime、并行、调度、通信、checkpoint、数据和成本影响证据 |
 | `training_incident_record` | 第 39、41 章 | 说明训练事故如何回指 admission、placement、rank mapping、checkpoint、资源健康和 ROI 损失 |
 | training ROI ledger | 第 41 章 | 说明 allocated/effective/wasted GPU hours、调度等待、放置降级、抢占、checkpoint、评测、上线收益和成本变化 |
 

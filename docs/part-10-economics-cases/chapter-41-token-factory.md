@@ -432,7 +432,15 @@ training_roi_ledger:
   model_candidate: af-base-v4-ckpt120000
   evidence:
     training_lifecycle_event: tle-20260620-001
+    framework_runtime_matrix: frm-h100-train-20260620
+    parallelism_plan_record: ppr-llm-20260620-001
     placement_commit_record: pcr-exp-20260619-001
+    rank_topology_contract: rtc-llm-20260620-001
+    nccl_env_contract: nec-h100-rdma-20260620
+    collective_trace_record: optional
+    communication_critical_path_record: optional
+    communication_regression_record: optional_if_recent_change
+    checkpoint_overlap_evidence: optional_if_checkpoint_spike
     queue_fairness_ledger: qfl-20260620-0000
     training_accounting_reconciliation: acct-20260620-001
     training_incident_record: optional
@@ -445,6 +453,10 @@ training_roi_ledger:
       failed_restarts: measured
       preemption_lost_progress: measured
       placement_degradation: measured
+      communication_critical_path_idle: measured
+      rank_topology_violation: measured_if_any
+      nccl_env_mismatch: measured_if_any
+      checkpoint_overlap_idle: measured_if_any
     storage_cost:
       checkpoints: measured
       dataset_reads: measured
@@ -464,6 +476,10 @@ training_roi_ledger:
 这个 ledger 让训练投资能被追踪到后续结果。若训练模型没有上线，ROI 不能按推理收入计算，但仍可记录为研究资产或失败学习；若模型上线后把 cost/token 降低，收益应回写到训练 ROI；若模型质量提升但推理成本上升，业务要判断 revenue/token 是否足以覆盖。训练 ROI 是跨时间窗口的事实链，不是单次作业报表。
 
 训练 ROI 还应吸收调度与生命周期事实。一个任务“成功完成”并不代表投资效率高：它可能长时间等待 gang，placement 降级导致训练吞吐下降，被抢占后丢失大量进度，或者 Slurm accounting 与平台成本口径没有对齐。`training_lifecycle_event` 说明 GPU 小时在哪个阶段消耗，`queue_fairness_ledger` 说明等待和借用是否符合资源承诺，`placement_commit_record` 说明性能是否受拓扑降级影响，`training_incident_record` 说明失败是否消耗了额外机会成本。把这些事实放入 ROI，训练队列才能和推理毛利在同一张经济表里比较。
+
+训练通信成本还需要单独拆出来。`communication_critical_path_record` 证明哪些 collective 真正暴露在 step 关键路径上，`rank_topology_contract` 说明是否有不可接受的拓扑违反，`nccl_env_contract` 说明环境是否偏离受控模板，`checkpoint_overlap_evidence` 说明周期性 spike 是否来自 checkpoint 与通信叠加。只有这些证据齐备，才能把“通信慢”换算成 `communication_critical_path_idle`，进而进入训练 ROI。否则团队容易把端口利用率、NCCL test 带宽或平均 op 时间误当作成本事实。
+
+这个拆分会改变投资判断。如果大部分浪费来自 rank topology violation，优先投入调度和资源碎片治理；如果来自 NCCL env mismatch，优先投入 runtime 模板和容器准入；如果来自 checkpoint overlap，优先投入存储、异步 checkpoint 或隔离网络；如果来自真实 fabric baseline 退化，才进入网络扩容或维修讨论。Token Factory 的经济模型应帮助团队找到最便宜的有效修复，而不是默认把问题归结为“需要更多 GPU 或更贵网络”。
 
 ## 工程实现
 

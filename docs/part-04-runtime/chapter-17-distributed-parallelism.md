@@ -61,6 +61,84 @@ flowchart TB
   Placement --> Metrics["rank / group / topology metrics"]
 ```
 
+进入生产前，并行策略应先落成 `parallelism_plan_record`。它回答的不是“用了几个并行维度”，而是“为什么这组维度适合这个模型、这个数据、这个 GPU 拓扑和这个训练目标”。一个合格计划要同时描述模型形态、batch 语义、显存预算、通信画像、checkpoint 约束、期望拓扑和回退策略。缺少这些信息，后续看到 tokens/s 不达预期时，很难判断是模型本身、并行策略、放置、网络还是框架配置的问题。
+
+```yaml
+parallelism_plan_record:
+  plan_id: ppr-llm-20260620-001
+  training_job_template: pretrain-llm-h100-512
+  framework_runtime_matrix: frm-h100-train-20260620
+  model_profile:
+    architecture: transformer_dense_or_moe
+    parameter_scale: recorded_bucket
+    context_length: recorded
+    sequence_length_distribution_ref: dataset-length-profile-001
+  batch_semantics:
+    micro_batch_size: recorded
+    gradient_accumulation_steps: recorded
+    global_batch_size: recorded
+    global_batch_change_policy: requires_training_review
+  parallel_dimensions:
+    tensor_parallel_size: 8
+    pipeline_parallel_size: 4
+    data_parallel_size: 16
+    sequence_parallel: true
+    expert_parallel_size: 1
+  resource_expectation:
+    total_gpus: 512
+    preferred_gpu_type: h100-class
+    tensor_group_topology: same_node_required
+    pipeline_adjacent_stage_topology: same_rack_preferred
+    data_parallel_fault_domain: spread_preferred
+  predicted_pressure:
+    hbm_peak_risk: medium
+    high_frequency_collectives: [all_gather, reduce_scatter]
+    checkpoint_format: sharded
+    checkpoint_restore_world_size_policy: fixed_or_converter_required
+  acceptance:
+    required_baselines:
+      - single_node_tp
+      - multi_node_dp
+      - checkpoint_save_restore
+      - short_training_loss_sanity
+    regression_gate: communication_regression_record_required
+```
+
+这个对象让并行策略可以被评审。评审时应关注三个问题：第一，维度乘积是否只是数学正确，还是符合真实拓扑；第二，显存节省是否以过高通信、重算或 checkpoint 复杂度为代价；第三，若资源不足导致放置降级，用户是否接受吞吐、稳定性和成本后果。`parallelism_plan_record` 不替代训练专家判断，但它强迫判断留下证据。
+
+计划通过后，还需要 `rank_topology_contract`。`parallelism_plan_record` 是意图，`rank_mapping` 是一次运行的事实，`rank_topology_contract` 则定义哪些事实必须满足。它把“应该同节点”“尽量同 rack”“必须 rail 均衡”这类口头要求变成可机器检查的约束和违反动作。
+
+```yaml
+rank_topology_contract:
+  contract_id: rtc-llm-20260620-001
+  parallelism_plan_record: ppr-llm-20260620-001
+  hard_constraints:
+    tensor_parallel_group:
+      gpu_distance: same_nvlink_or_nvswitch_domain
+      violation_action: reject_placement
+    rdma_device:
+      container_visible: required
+      gpu_nic_numa_affinity: required
+    world_size:
+      equals_product_of_parallel_dimensions: required
+  soft_constraints:
+    pipeline_adjacent_stage:
+      topology: same_rack
+      violation_action: warn_and_require_user_acceptance
+    data_parallel_group:
+      fault_domain_spread: preferred
+      violation_action: record_degradation
+    rail_balance:
+      max_skew_policy: compare_with_baseline
+      violation_action: mark_for_network_review
+  evidence_refs:
+    placement_commit_record: required_after_scheduling
+    gpu_nic_topology_evidence: required_if_rdma
+    rail_balance_report: required_for_multi_rail
+```
+
+这份 contract 可以被 Kubernetes 调度器、Slurm 插件、launcher 和验收系统共同使用。调度器用它选择资源，launcher 用它生成 rank 分组，验收系统用它判断 placement 是否合格，排障系统用它解释一次训练为什么偏离基线。它还能防止一种常见失误：作业申请的 GPU 数正确，但 Tensor Parallel group 被跨节点放置，训练仍能启动，却以不可接受的通信成本运行。生产系统应优先在启动前拒绝这类 placement，而不是让用户在几小时后发现吞吐异常。
+
 ## 17.1 Data Parallel
 
 Data Parallel 是最直观的并行方式：每个 GPU 或 GPU 组保存一份模型副本，处理不同数据 batch，反向传播后同步梯度或参数状态。它适合模型能够放入单个并行单元、但需要提高数据吞吐的场景。许多训练任务从单机多卡扩展到多节点时，首先采用 Data Parallel，因为它对模型代码侵入较小，也容易和现有数据加载流程结合。
@@ -221,6 +299,8 @@ Rank mapping 还应有一致性校验。Tensor Parallel group 是否真的在 sa
 placement_commit_record:
   job_id: exp-20260619-001
   parallelism_template: megatron-h100-512gpus-v3
+  parallelism_plan_record: ppr-llm-20260620-001
+  rank_topology_contract: rtc-llm-20260620-001
   requested_intent:
     tensor_group: same_node_required
     pipeline_adjacent_stage: same_rack_preferred
@@ -243,6 +323,8 @@ placement_commit_record:
 ```
 
 这个记录能把调度和 Runtime 指标连接起来。若训练 step time 比模板基线慢，SRE 可以先看 placement 是否降级；若 NCCL hang 只出现在跨 rack placement，平台可以把策略改成拒绝而不是降级；若用户接受了降级等待更短，就应在运行报告里看到它对 tokens/s 和通信占比的影响。放置不是一次内部决策，而是训练性能合同的一部分。
+
+`placement_commit_record` 还应区分“允许降级”和“禁止降级”。Tensor Parallel group 跨越错误拓扑通常应 reject，因为它会改变关键路径通信；Pipeline 相邻 stage 跨 rack 可能允许 conditional accept，但必须把影响进入报告；Data Parallel 故障域分散不足可能不影响短期吞吐，却会影响维护和故障恢复。不同约束的违反动作不同，不能用一个通用 warning 处理。
 
 实现流程可以分为四步。第一步，模板根据模型和硬件给出推荐并行配置。第二步，调度器根据 placement 约束选择节点和 GPU，并返回 rank 到设备的映射。第三步，launcher 把映射写入环境变量或配置文件，框架据此初始化通信组。第四步，监控系统收集 step、rank、group 和 topology 维度指标。缺少任何一步，并行策略都无法闭环。生产平台还应在任务启动前做一致性校验，例如总 GPU 数是否等于各并行维度乘积，Tensor Parallel size 是否超过节点内 GPU 数。
 

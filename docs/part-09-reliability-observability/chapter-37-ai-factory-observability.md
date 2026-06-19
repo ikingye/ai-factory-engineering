@@ -203,6 +203,9 @@ training_lifecycle_telemetry_event:
     rank_mapping: rank-mapping-exp-20260619-001
     rail_balance_report: optional
     fabric_baseline: baseline-id
+    parallelism_plan_record: ppr-llm-20260620-001
+    rank_topology_contract: rtc-llm-20260620-001
+    nccl_env_contract: nec-h100-rdma-20260620
   progress:
     global_step: measured
     effective_tokens: measured
@@ -210,6 +213,11 @@ training_lifecycle_telemetry_event:
   checkpoint:
     latest_valid: ckpt-step-120000
     checkpoint_commit_record: optional
+    checkpoint_overlap_evidence: optional
+  communication:
+    collective_trace_record: optional
+    communication_critical_path_record: optional
+    communication_regression_record: optional_if_recent_change
   accounting:
     allocated_gpu_seconds: measured
     effective_training_gpu_seconds: measured
@@ -217,6 +225,10 @@ training_lifecycle_telemetry_event:
 ```
 
 这个事件让训练可观测性从“曲线集合”变成“生命周期事实”。如果 allocated GPU seconds 增长但 effective training GPU seconds 不增长，问题在启动、rendezvous、数据、checkpoint 或恢复；如果 rank mapping 改变后 step time 变差，问题可能是放置降级；如果 checkpoint commit 变慢，问题可以追到存储证据。训练观测的核心不是多画几张图，而是让每个 GPU 小时的状态可解释。
+
+当 step time、rank skew、NCCL timeout 或 GPU idle 触发告警时，观测系统应自动冻结 `collective_trace_record` 和 `communication_critical_path_record`，而不是只保存一张 dashboard 截图。若最近存在 driver、NCCL、OFED、fabric、container runtime 或调度标签变更，还要附上对应 `communication_regression_record`。这样 oncall 能先回答“这次慢是否处在通信关键路径”“是否违反 rank topology contract”“是否与最近变更相关”，再决定进入网络、runtime、调度、checkpoint 或用户代码分支。
+
+训练观测还应避免把 checkpoint 抖动误归因给 NCCL。`checkpoint_overlap_evidence` 可以说明 checkpoint 窗口是否与 collective、数据加载和存储写入重叠。若通信慢只在 checkpoint 窗口出现，且 fabric baseline 正常，优先查 checkpoint 写入模式、metadata、对象存储限流或异步保存回压；若无 checkpoint 窗口也慢，再进入 fabric 和 runtime 分支。可观测性的成熟度，体现在能减少错误升级路径。
 
 ## 37.7 storage metrics
 

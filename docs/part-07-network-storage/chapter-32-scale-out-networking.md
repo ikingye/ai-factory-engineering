@@ -286,16 +286,22 @@ fabric_change_record:
     - nccl_cross_rack
     - rail_balance
     - checkpoint_plus_nccl_concurrency
+    - representative_training_collective_trace
   stop_conditions:
     - rdma_retransmit_above_baseline
     - rail_balance_ratio_below_policy
     - p99_step_time_regression
+    - communication_regression_record_failed
   rollback:
     method: restore_previous_qos_profile
     verification: rerun_same_topology_baseline
 ```
 
 这份记录的核心是把“网络参数改了”变成可审计的软件发布。它会告诉调度器哪些 baseline 失效，告诉 SRE 故障是否可能与近期变更相关，也告诉容量团队某个 fabric 在回归完成前是否只能 limited 使用。没有这类记录，网络事故常常只能靠人记忆“最近有没有动过交换机”。
+
+对训练 fabric 来说，`fabric_change_record` 的完成条件不应止于网络基线通过，还应产生第 18 章的 `communication_regression_record`。原因很简单：网络层看到的 RDMA、端口和 rail 结果，只能证明 fabric 自身没有明显退化；训练层的 collective trace 才能证明真实 workload 没有出现 step time、rank skew、checkpoint overlap 或 NCCL env 漂移。一次 RoCE QoS 调整可能让单流带宽正常，却让多任务并发下的尾部 rank 变慢；一次 OFED 升级可能让 host RDMA 正常，却让容器内接口选择改变。没有通信回归记录，变更门禁缺少最终使用者视角。
+
+因此，网络变更发布单应绑定两份事实：`fabric_baseline` 说明 fabric 在指定拓扑内具备什么能力，`communication_regression_record` 说明代表性训练在这次变更后是否仍满足 Runtime 合同。前者由网络和平台基础设施共同负责，后者由 Runtime、调度和训练平台共同负责。分工清楚后，事故中就不会把“网络连通”误认为“训练通信健康”。
 
 第二步是接入调度和资源池。任务提交系统可以根据 fabric 信息提示用户：当前等待是 GPU 不足、rail 不满足、同 rack 不满足，还是 quota 限制。资源池可以标记某个 fabric degraded，调度器避免新任务进入受影响区域。网络状态必须能驱动资源动作。
 

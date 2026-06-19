@@ -243,13 +243,21 @@ job_admission_event:
     dataset_permission: passed
     checkpoint_path: passed
     node_acceptance_baseline: passed
+    framework_runtime_matrix: passed
+    parallelism_plan_record: passed
+    rank_topology_contract: unsatisfied
+    nccl_env_contract: passed
   decision:
     admitted: false
-    reason: gang_capacity
+    reason: topology_unsatisfied
     next_recheck: scheduled
 ```
 
 Pending reason 应是枚举，而不是自由文本。建议至少区分 `quota_insufficient`、`gang_capacity`、`topology_unsatisfied`、`resource_flavor_unavailable`、`node_health_blocked`、`image_unavailable`、`data_permission_denied`、`checkpoint_path_invalid`、`preemption_in_progress`。这些原因应进入 UI、CLI、事件、指标和容量报表。否则用户看到 pending，只能找管理员问。
+
+对大规模训练，admission 不能只检查 GPU 数量。它还要检查第 16 章的 `framework_runtime_matrix` 是否覆盖当前镜像和框架，第 17 章的 `parallelism_plan_record` 是否能解释 GPU 数、batch 和 checkpoint 语义，`rank_topology_contract` 是否能在当前资源池满足，第 18 章的 `nccl_env_contract` 是否与资源池 RDMA/fabric baseline 匹配。若这些检查缺失，任务可能顺利进入 running，却在 rendezvous、first effective step 或 checkpoint 阶段浪费大量 GPU。
+
+更稳妥的 admission 结果应区分 `reject`、`wait`、`conditional_accept` 和 `accept`。例如 Tensor Parallel group 的 same-node hard constraint 不满足，应 `reject` 或继续 `wait`；Pipeline 相邻 stage 的 same-rack soft constraint 不满足，可以在用户接受降级后 `conditional_accept`；NCCL contract 与资源池 baseline 版本不一致，应先触发通信回归。调度系统的质量，体现在它能在 GPU 分配前暴露这些风险，而不是让训练任务替平台做验证。
 
 平台还应实现 pending reason 和调度审计。用户提交作业后，应看到当前状态是 queued、admitted、scheduling、running、preempted、failed 还是 completed；pending 原因应区分 quota 不足、gang 不满足、GPU 型号不匹配、拓扑不满足、镜像不可用、数据无权限或节点健康不足。调度审计记录每次准入、抢占、放置和失败原因，为容量规划和争议处理提供证据。
 
@@ -279,6 +287,9 @@ training_lifecycle_event:
     job_admission_event: jae-exp-20260619-001
     placement_commit_record: pcr-exp-20260619-001
     rank_mapping: rank-mapping-exp-20260619-001
+    parallelism_plan_record: ppr-llm-20260620-001
+    rank_topology_contract: rtc-llm-20260620-001
+    nccl_env_contract: nec-h100-rdma-20260620
     checkpoint_manifest: latest_valid_if_resumed
   accounting:
     allocated_gpu_seconds_so_far: measured

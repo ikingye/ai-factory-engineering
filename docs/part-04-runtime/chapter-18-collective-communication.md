@@ -65,6 +65,24 @@ flowchart LR
   NIC --> Telemetry["network telemetry"]
 ```
 
+生产诊断需要把通信证据拆成四类：配置契约、运行 trace、回归记录和关键路径影响。配置契约证明任务“应该怎样通信”，运行 trace 证明任务“实际怎样通信”，回归记录证明变更前后是否等价，关键路径影响证明慢通信是否真的浪费 GPU。四类证据缺一，排障就容易滑向猜测：只有配置不知道真实路径，只有 trace 不知道是否偏离预期，只有 benchmark 不知道是否影响训练，只有成本数字不知道根因在哪一层。
+
+```mermaid
+flowchart TB
+  Plan["parallelism_plan_record"] --> Contract["rank_topology_contract"]
+  Contract --> Env["nccl_env_contract"]
+  Env --> Run["collective_trace_record"]
+  Run --> Critical["communication_critical_path_record"]
+  Baseline["fabric_baseline / NCCL baseline"] --> Regression["communication_regression_record"]
+  Run --> Regression
+  Regression --> Bundle["communication_diagnostic_bundle"]
+  Critical --> Bundle
+  Bundle --> Incident["training_incident_record"]
+  Incident --> Cost["training_roi_ledger / reliability_cost_ledger"]
+```
+
+这张图强调，NCCL 不是孤立库。它承接并行计划和拓扑契约，依赖容器、RDMA、fabric 和调度事实，最终影响训练进度和经济账本。平台若只保存 NCCL 日志，会丢失上游意图；若只保存 topology，会丢失真实 op；若只看成本，会丢失技术根因。因此通信章节的核心，是把这些事实串成同一条证据链。
+
 ## 18.1 AllReduce
 
 AllReduce 对多个 rank 的张量进行规约，并把规约结果返回给所有 rank。Data Parallel 中最典型的用途是梯度同步：每个 rank 处理不同数据，得到本地梯度，然后通过 AllReduce 求和或平均，使所有模型副本保持一致。它的语义简单，但在大规模训练中往往是最重要的通信成本之一。
@@ -161,6 +179,43 @@ NCCL 是 GPU 集合通信的核心运行时之一，提供 AllReduce、AllGather
 
 生产平台要把 NCCL 配置作为运行时基线管理。NCCL 版本、关键环境变量、网络接口选择、拓扑文件、debug 级别、timeout 策略都应可追溯。容器内看不到 RDMA 设备、选择了错误网卡、节点间主机名解析异常、RoCE 配置不完整，都可能表现为 NCCL 初始化失败、性能下降或 hang。排障时不能只让用户贴一段错误日志，而要自动收集环境和拓扑上下文。
 
+更严格的做法是生成 `nccl_env_contract`。它定义一类训练模板允许哪些 NCCL 环境变量、接口选择、RDMA 设备、timeout、debug 和拓扑文件。用户可以覆盖部分参数，但覆盖必须进入审计，并触发对应回归。这个 contract 能防止“某个脚本临时加了 `NCCL_SOCKET_IFNAME`，后来所有任务都走错接口”这种隐性事故。
+
+```yaml
+nccl_env_contract:
+  contract_id: nec-h100-rdma-20260620
+  framework_runtime_matrix: frm-h100-train-20260620
+  rank_topology_contract: rtc-llm-20260620-001
+  allowed_backend: nccl
+  required:
+    nccl_version: pinned
+    rdma_devices_visible_in_container: true
+    gpu_nic_topology_evidence: required
+    interface_selection_source: platform_generated
+  env_policy:
+    NCCL_DEBUG:
+      default: WARN
+      escalation_on_failure: INFO_or_TRACE_windowed
+    NCCL_SOCKET_IFNAME:
+      source: platform_template
+      user_override: audited
+    NCCL_IB_DISABLE:
+      expected: "0"
+      violation_action: reject_if_rdma_required
+    topology_file:
+      source: generated_from_inventory_if_used
+      drift_action: invalidate_baseline
+  timeout_policy:
+    init_timeout: platform_default
+    collective_timeout: platform_default
+    hang_detection: step_progress_and_rank_heartbeat
+  evidence:
+    capture_on_start: [env_summary, interface_probe, rdma_device_probe]
+    capture_on_failure: [nccl_logs, rank_state, port_counters, recent_changes]
+```
+
+`nccl_env_contract` 的重要性在于把“环境变量经验”变成“运行时边界”。很多 NCCL 事故并非网络突然坏掉，而是接口命名、容器设备、OFED、debug 参数或拓扑文件发生了漂移。Contract 让这些漂移能被检测，并让变更评审知道哪些 baseline 需要失效重跑。它也能减少用户脚本中的神秘参数，把 NCCL 默认值收敛到平台模板中。
+
 NCCL tests 是准入和诊断的重要工具，但它不等于真实训练性能。Tests 可以验证某种消息大小和 rank 数下的带宽，真实训练会有不同 op 混合、计算通信重叠、慢 rank 和框架调度。平台应同时保存 NCCL baseline 和真实任务的 NCCL 观测。前者判断基础设施是否健康，后者判断训练策略是否合理。两者结合，才能避免把所有问题都归因于网络或框架。
 
 NCCL 版本治理也很关键。升级 NCCL 可能改善某些拓扑或算法，也可能改变默认接口选择、timeout 行为或性能特征。AI Factory 应把 NCCL 升级纳入 Runtime 基线，而不是让用户镜像随意漂移。灰度升级时，应同时跑 NCCL tests、代表性训练任务和失败恢复测试，并保留回滚路径。
@@ -231,6 +286,40 @@ communication:
     record_rank_to_nic_mapping: true
 ```
 
+运行中还应生成 `collective_trace_record`。它不是全量 profiler dump，而是对关键 step 窗口做结构化摘要：每类 collective 的耗时、消息大小、参与 rank、等待关系、是否处于 critical path、是否和计算重叠。这样排障系统可以在不依赖巨大 trace 文件的情况下做第一轮归因。
+
+```yaml
+collective_trace_record:
+  trace_id: ctr-exp-20260620-031-window-84200
+  training_job: exp-20260620-031
+  parallelism_plan_record: ppr-llm-20260620-001
+  placement_commit_record: pcr-exp-20260620-031
+  nccl_env_contract: nec-h100-rdma-20260620
+  window:
+    start_step: 84200
+    end_step: 84250
+    trigger: step_time_p99_regression
+  operations:
+    - op: all_reduce
+      group: data_parallel
+      message_size_bucket: large
+      duration_ms_p50: measured
+      duration_ms_p99: measured
+      exposed_on_critical_path: true
+      slow_ranks: [17, 49, 81]
+    - op: all_gather
+      group: fsdp_param_gather
+      message_size_bucket: medium
+      hbm_temporary_buffer_peak: measured
+      exposed_on_critical_path: false
+  correlation:
+    rank_mapping_ref: rank-mapping-exp-20260620-031
+    rail_balance_report: rail-balance-exp-20260620-031
+    fabric_baseline: fabric-h100-rail-20260619
+```
+
+这个记录能回答一个经常被忽略的问题：慢 op 是否真的导致慢 step。某些 AllGather 耗时很长，但被 backward 重叠，对端到端吞吐影响较小；某个 AllReduce 绝对耗时不算最大，却让大量 rank 等待，它才是关键路径。`collective_trace_record` 应和 `communication_critical_path_record` 配合使用，避免把全部优化资源投向最显眼但不是最关键的曲线。
+
 通信故障发生时，平台应自动生成 communication diagnostic bundle。这个包不是把所有日志打包，而是围绕一次异常 step 或异常 op 收集最小充分证据：op、rank、节点、NIC、端口、NCCL 环境、网络错误、GPU 状态和最近变更。这样网络、Runtime 和训练团队可以围绕同一份证据排查。
 
 ```yaml
@@ -255,6 +344,7 @@ communication_diagnostic_bundle:
     nccl_version: pinned
     cuda_driver: recorded
     env: NCCL_DEBUG_and_interface_summary
+    nccl_env_contract: nec-h100-rdma-20260620
   telemetry:
     rdma_errors: collected
     port_counters: collected
@@ -275,6 +365,67 @@ communication_diagnostic_bundle:
 这些结果还应可导出，便于事故复盘和供应商协同。
 
 平台还应建立通信基线库。基线库按 GPU 型号、节点内拓扑、rack、rail、NCCL 版本、消息大小和 rank 数记录测试结果。真实训练出现退化时，先与同条件基线比较，再判断是否进入网络、Runtime 或训练策略排查。基线库可以来自准入测试，也可以来自周期性巡检和代表性训练任务。
+
+任何通信相关变更都应产出 `communication_regression_record`。它覆盖 NCCL、CUDA、driver、OFED、NIC firmware、交换机配置、GPU Operator、container runtime、CNI、调度标签、rank topology contract 和训练模板。记录的目标不是证明“某个 nccl-test 通过”，而是证明变更前后的真实训练关键路径没有不可接受回归。
+
+```yaml
+communication_regression_record:
+  record_id: crr-20260620-004
+  change:
+    type: nccl_or_ofed_or_fabric_or_runtime
+    change_record: fabric-or-runtime-change-id
+    affected_resource_pools: [training-prod-h100]
+  baselines:
+    fabric_baseline_before: fabric-h100-rail-20260619
+    fabric_baseline_after: fabric-h100-rail-20260620
+    framework_runtime_matrix: frm-h100-train-20260620
+    nccl_env_contract: nec-h100-rdma-20260620
+  tests:
+    nccl_tests_same_node: passed
+    nccl_tests_cross_node: passed
+    multi_rail_balance: passed_or_degraded
+    representative_training_short_run: passed
+    checkpoint_overlap_run: passed
+  regression_budget:
+    collective_bandwidth_delta: within_policy
+    step_time_delta: within_policy
+    rank_skew_delta: within_policy
+    hang_or_timeout: none
+  decision:
+    promote: true_or_false
+    rollback_required: false
+    invalidated_baselines: []
+```
+
+这份记录能把第 32 章的 fabric 变更、第 38 章的验收、第 39 章的故障树和第 44 章的 PRR 接起来。若一次 NCCL 升级只跑了单节点测试，没有跑代表性训练和 checkpoint overlap，不能认为生产可用；若网络变更使 NCCL test 带宽略降但真实训练 step 不受影响，可以记录为可接受；若 NCCL test 通过但 rank skew 增大，应暂停放量。回归标准必须和 workload 绑定。
+
+训练通信还经常被 checkpoint 干扰。Checkpoint 写入会占用存储、网络、CPU、PCIe、内存和调度线程，可能与 NCCL 或数据读取叠加，表现为周期性 step time spike。平台应保留 `checkpoint_overlap_evidence`，说明 checkpoint 是否与通信、数据加载和评测同时争用关键路径。
+
+```yaml
+checkpoint_overlap_evidence:
+  evidence_id: coe-exp-20260620-031
+  training_job: exp-20260620-031
+  checkpoint_window:
+    checkpoint_id: ckpt-84200
+    start_step: 84190
+    end_step: 84220
+    mode: synchronous_or_async
+  overlap:
+    collective_ops_during_checkpoint: [all_reduce, reduce_scatter]
+    storage_backend: parallel_fs_or_object_storage
+    network_path_shared_with_training: true
+    gpu_idle_due_to_checkpoint_ms: calculated
+    communication_exposed_ms_delta: calculated
+  verdict:
+    checkpoint_interferes_with_collective: true_or_false
+    recommended_action:
+      - shift_checkpoint_window
+      - throttle_checkpoint_io
+      - separate_storage_network
+      - tune_async_checkpoint
+```
+
+这个对象能防止把周期性通信抖动误判为 fabric 问题。若每次 checkpoint 前后通信变慢，且端口错误没有增加，根因可能是 I/O 与训练通信共享路径、rank 写入长尾或异步 checkpoint 回压。反过来，如果无 checkpoint 窗口也出现同类退化，才更应该进入 fabric、runtime 或 collective mismatch 分支。通信诊断必须把 checkpoint 作为一等变量。
 
 ## 常见故障
 

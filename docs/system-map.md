@@ -116,8 +116,19 @@ flowchart TB
 | `inference_runtime_diagnostic_bundle` | 把 TTFT/TPOT/streaming 事故所需证据冻结成诊断包。 | 第 37、39 章 | `incident_record`、`engine_canary_record` |
 | `inference_runtime_cost_ledger` | 把 KV block、draft model、PD transfer、取消浪费和质量成本折算成成功回答成本。 | 第 41 章 | `Token Factory ledger`、`business_model_profile` |
 | `TrainingJob` | 描述一次训练任务的模型、数据、并行、调度和恢复语义。 | 第 10、23 章 | `checkpoint_manifest`、`rank_mapping`、`training_roi_ledger` |
+| `framework_runtime_matrix` | 记录训练框架、CUDA/NCCL/driver、launcher、checkpoint 和观测能力的受控组合。 | 第 16、23、38、44 章 | `training_runtime_spec`、`training_communication_acceptance_matrix` |
+| `training_runtime_spec` | 记录单个训练任务实际使用的 runtime 矩阵、镜像、精度、分布式策略和 checkpoint 配置。 | 第 16、37、39 章 | `framework_runtime_matrix`、`training_debug_bundle` |
+| `parallelism_plan_record` | 记录并行维度、batch、显存、通信、checkpoint 和拓扑意图的生产计划。 | 第 17、23、37、39、41、44 章 | `rank_topology_contract`、`placement_commit_record` |
+| `rank_topology_contract` | 定义 rank 放置、GPU/NIC/RDMA、rail 和故障域的 hard/soft 约束及违反动作。 | 第 17、23、37、39、44 章 | `placement_commit_record`、`gpu_nic_topology_evidence` |
 | `training_lifecycle_event` | 把训练作业从提交到 first effective step、checkpoint、恢复和完成串成阶段事实。 | 第 23、37、41 章 | `training_lifecycle_telemetry_event`、`training_roi_ledger` |
 | `placement_commit_record` | 记录并行拓扑意图、实际放置、降级原因和 rank mapping。 | 第 17、23、37、39、41 章 | `rank_mapping`、`training_incident_record` |
+| `nccl_env_contract` | 定义 NCCL 版本、接口选择、RDMA 设备、timeout、debug 和拓扑文件的受控策略。 | 第 18、23、37、39、44 章 | `collective_trace_record`、`communication_regression_record` |
+| `collective_trace_record` | 摘要真实训练窗口中的 collective op、rank group、耗时、等待关系和 critical path 状态。 | 第 18、37、39、41、44 章 | `communication_critical_path_record`、`training_debug_bundle` |
+| `communication_critical_path_record` | 证明通信等待是否暴露在训练 step 关键路径并造成 GPU idle。 | 第 18、37、39、41 章 | `training_roi_ledger`、`network_cost_ledger` |
+| `communication_regression_record` | 记录 NCCL/OFED/fabric/runtime/调度变更后的通信回归和代表性训练结果。 | 第 18、32、37、38、39、44 章 | `fabric_change_record`、`production_readiness_review` |
+| `checkpoint_overlap_evidence` | 记录 checkpoint 窗口与 collective、存储、数据读取的重叠和成本影响。 | 第 18、37、38、39、41、44 章 | `storage_evidence`、`training_roi_ledger` |
+| `training_communication_acceptance_matrix` | 组合验证训练 runtime、并行拓扑、NCCL、fabric、collective trace 和 checkpoint overlap。 | 第 38、44 章 | `acceptance_baseline`、`production_readiness_review` |
+| `training_debug_bundle` | 冻结训练 runtime、并行、调度、通信、checkpoint、数据和成本影响证据。 | 第 39 章 | `training_incident_record`、`reliability_evidence_bundle` |
 | `queue_fairness_ledger` | 把 guaranteed、borrowed、lent、preempted、starved 和 effective GPU hours 串成队列公平账本。 | 第 23、41 章 | `training_roi_ledger`、`capacity_activation_review` |
 | `preemption_record` | 记录一次抢占的 safe point、checkpoint、释放资源、恢复和浪费 GPU 小时。 | 第 23、41 章 | `queue_fairness_ledger`、`training_roi_ledger` |
 | `training_accounting_reconciliation` | 对齐 Slurm、Kubernetes、训练框架和成本系统的 GPU 小时口径。 | 第 24、41 章 | `training_roi_ledger`、`Token Factory ledger` |
@@ -177,7 +188,8 @@ flowchart TB
 | Agent 完成任务但轨迹不可接受 | 第 3、13、37、40、41 章 | agent_trajectory_record、agent_tool_execution_record、agent_budget_ledger、quality_gate_execution | 比较轨迹效率、安全边界和每成功任务成本，不只看最终成功率。 |
 | 训练任务长期 pending | 第 20、23、24、28 章 | pending reason、job_admission_event、queue_fairness_ledger、quota、gang、topology | 区分配额不足、拓扑不可满足、借用策略、镜像/数据预检失败和资源池状态问题。 |
 | GPU 空闲但任务启动不了 | 第 22、23、28、31、32 章 | gpu_assignment_record、NUMA/NIC topology、queue policy、fragmentation | 检查拓扑碎片、MIG/整卡边界、RDMA device 和 gang scheduling。 |
-| NCCL hang | 第 17、18、32、38、39 章 | rank mapping、placement_commit_record、NCCL env、RDMA counters、switch telemetry、fabric baseline、rail_balance_report | 先确定 rank 退出、collective mismatch、放置降级、GPU/NVLink、RDMA/fabric、rail 失衡或容器 runtime。 |
+| NCCL hang | 第 17、18、32、38、39 章 | framework_runtime_matrix、parallelism_plan_record、rank_topology_contract、placement_commit_record、nccl_env_contract、collective_trace_record、communication_critical_path_record、RDMA counters、fabric baseline、rail_balance_report | 先确定 rank 退出、collective mismatch、放置降级、NCCL 环境漂移、GPU/NVLink、RDMA/fabric、rail 失衡、checkpoint overlap 或容器 runtime。 |
+| 分布式训练 step time 周期性尖刺 | 第 18、33、37、39、41 章 | collective_trace_record、communication_critical_path_record、checkpoint_overlap_evidence、checkpoint_commit_record、storage_evidence | 先判断尖刺是否只发生在 checkpoint 窗口，再决定进入存储、通信、runtime 或并行策略分支。 |
 | 训练 loss spike 但数据不可追溯 | 第 10、13、33、39 章 | dataset_lineage_record、dataset_manifest、shard checksum、tokenizer、data loader telemetry | 先把异常 step/rank/shard 追到数据来源和处理版本，再判断是数据分布、tokenization、采样权重、模型变更还是 runtime 问题。 |
 | checkpoint 很慢 | 第 10、33、37、39 章 | checkpoint_manifest、checkpoint_commit_record、storage_evidence、backend telemetry、GPU idle | 区分 rank 写入长尾、manifest commit、metadata、并行文件系统、对象存储和网络重叠。 |
 | checkpoint 存在但恢复失败 | 第 10、33、38、39 章 | checkpoint_manifest、checkpoint_commit_record、checkpoint_restore_drill、image/runtime version、dataloader state | 检查 rank 分片、optimizer/scheduler/rng、reader 版本、world size、权限和 restore drill，失败前不要删除更早健康 checkpoint。 |

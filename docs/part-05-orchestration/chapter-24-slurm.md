@@ -220,6 +220,14 @@ slurm_platform_event:
   tenant: foundation-model-team
   nodes: [gpu-node-001, gpu-node-002]
   checkpoint_id: ckpt-step-120000
+  runtime:
+    framework_runtime_matrix: frm-h100-train-20260620
+    parallelism_plan_record: ppr-llm-20260620-001
+    rank_topology_contract: rtc-llm-20260620-001
+    nccl_env_contract: nec-h100-rdma-20260620
+  topology:
+    placement_commit_record: pcr-exp-20260619-001
+    rank_mapping: rank-mapping-exp-20260619-001
   resource_accounting:
     allocated_gpu_hours: measured
     effective_training_gpu_hours: measured
@@ -228,6 +236,8 @@ slurm_platform_event:
 ```
 
 Slurm account、partition 和 job id 还应映射到平台租户、资源池和实验。映射关系不能靠手工表格长期维护，应进入身份和资源管理系统。否则 Slurm accounting 与平台成本系统会长期漂移，同一训练成本在不同报表中出现不同归属。
+
+Slurm 集成尤其要避免“作业脚本自带宇宙”。用户可以继续用 `sbatch` 和 `srun`，但生产模板应在提交时生成或引用 `parallelism_plan_record`，在分配节点后生成 `placement_commit_record` 和 `rank_mapping`，在启动前校验 `nccl_env_contract`。如果这些对象只存在于 Kubernetes 路径，Slurm 训练会形成事实盲区：训练产物进入模型注册时，平台不知道它使用了什么并行拓扑、是否接受了放置降级、NCCL 环境是否经过准入。保留 Slurm 的前提，是把它接入同一证据模型。
 
 跨 Slurm 和 Kubernetes 的训练平台还需要 `training_accounting_reconciliation`。Slurm、Kubernetes、队列系统、GPU 资源池和成本仓库都会记录资源使用，但它们的时间边界和状态语义不同。Slurm 可能按 job allocation 计时，Kubernetes 可能按 Pod 生命周期计时，训练框架按 first effective step 计时，成本系统按资源池窗口分摊。对账对象的目标，是把这些口径差异显式化。
 
