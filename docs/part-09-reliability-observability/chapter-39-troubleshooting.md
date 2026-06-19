@@ -728,6 +728,76 @@ flowchart TB
 
 这个故障树的关键是先对齐三类事实：Kubernetes 分配事实、OCI 注入事实和容器内观察事实。Docker smoke test 通过，只证明主机和 Docker 路径可用；Kubernetes Pod 失败，仍可能是 kubelet CRI endpoint、RuntimeClass、containerd config、device plugin strategy、CDI spec 或 admission 策略问题。反过来，Kubernetes Pod `Running` 且 `nvidia-smi` 成功，也不证明隔离正确，必须检查是否看到未分配 GPU、MIG/整卡边界是否正确、RDMA device 是否匹配。故障树把这些检查固化下来，避免每次都从头猜。
 
+资源声明故障还需要比容器 runtime 更早的故障树。入口症状包括 ResourceClaim 长期 pending、DeviceClass 没有匹配资源、Pod 已绑定但 claim 与 GPU class 不符、MIG claim 暴露整卡、GPU 空闲但 claim 无法满足、queue quota 显示有余量但 admission 拒绝、以及容器和账单标签无法关联到 claim。这类问题发生在“用户表达资源意图”和“kubelet/device plugin 分配设备”之间，若只看 Pod event 或容器日志，很容易把它误判为普通调度失败。
+
+```yaml
+resource_claim_fault_tree_execution:
+  execution_id: rcfte-20260620-001
+  incident_id: inc-20260620-resource-claim-001
+  entry:
+    symptom: resource_claim_pending_or_bound_wrong_device_or_metering_label_missing
+    affected_workloads: [code-chat-prod, pretrain-exp-20260620]
+    affected_resource_pool: gpu-prod-mixed-202606
+  evidence:
+    gpu_resource_claim_contract: grcc-code-chat-20260620
+    resource_claim_admission_record: rcar-20260620-001
+    resource_claim_acceptance_matrix: rcam-gpu-prod-202606
+    heterogeneous_gpu_pool_profile: gpu-prod-mixed-202606
+    gpu_assignment_record: sampled
+    gpu_device_visibility_reconciliation: sampled
+    queue_fairness_ledger: sampled
+  branches:
+    claim_spec:
+      verdict: ruled_out_or_confirmed_or_unknown
+      evidence: [DeviceClass, ResourceClaimTemplate, ResourceClaim, extended_resource_name]
+      action_if_confirmed: fix_claim_template_or_admission_mapping
+    inventory_and_pool:
+      verdict: ruled_out_or_confirmed_or_unknown
+      evidence: [ResourceSlice_or_inventory_snapshot, heterogeneous_gpu_pool_profile, acceptance_baseline]
+      action_if_confirmed: refresh_inventory_or_block_device_class
+    policy:
+      verdict: ruled_out_or_confirmed_or_unknown
+      evidence: [resource_pool_entitlement, queue_quota, cost_budget, priority_class]
+      action_if_confirmed: update_entitlement_quota_or_pending_reason
+    topology:
+      verdict: ruled_out_or_confirmed_or_unknown
+      evidence: [rank_topology_contract, gpu_nic_topology_evidence, fabric_baseline]
+      action_if_confirmed: wait_for_topology_or_offer_conditional_degrade
+    runtime_handoff:
+      verdict: ruled_out_or_confirmed_or_unknown
+      evidence: [gpu_assignment_record, oci_runtime_injection_diff, cdi_spec_hash]
+      action_if_confirmed: enter_container_gpu_runtime_fault_tree
+    metering:
+      verdict: ruled_out_or_confirmed_or_unknown
+      evidence: [metering_resource_label_continuity, dcgm_pod_gpu_uuid_mapping]
+      action_if_confirmed: hold_billing_and_fix_label_pipeline
+  outputs:
+    pending_reason_update: generated
+    baseline_invalidation_record: generated_if_claim_mode_broken
+    reliability_cost_ledger: append_if_capacity_or_slo_impact
+    billing_hold: required_if_metering_label_missing
+```
+
+```mermaid
+flowchart TB
+  Symptom["ResourceClaim / GPU request symptom"] --> Contract["gpu_resource_claim_contract"]
+  Contract --> Admission["resource_claim_admission_record"]
+  Admission --> Spec["claim spec\nDeviceClass / ResourceClaim / resource name"]
+  Admission --> Policy["entitlement / quota / cost"]
+  Admission --> Pool["ResourceSlice / inventory / acceptance"]
+  Admission --> Topo["topology / RDMA / rank contract"]
+  Admission --> Runtime["assignment -> OCI/CDI"]
+  Runtime --> ContainerTree["container_gpu_runtime_fault_tree"]
+  Admission --> Meter["metering labels"]
+  Spec --> Verdict["fault domain + action"]
+  Policy --> Verdict
+  Pool --> Verdict
+  Topo --> Verdict
+  Meter --> Verdict
+```
+
+这个故障树能解释“GPU 空闲但 claim 不满足”的真实原因。空闲 GPU 可能不属于目标 DeviceClass，不满足 entitlement，不在同一拓扑域，基线被失效，MIG profile 不匹配，或者计量标签断链导致商业流量被阻断。它也能解释“claim bound 但容器错”的边界：claim 和 assignment 之后的问题，应进入容器 runtime 故障树；claim 之前的问题，应由调度、资源池、策略或 inventory 处理。分界清楚，owner 才清楚。
+
 ## 39.9 故障树分析
 
 故障树分析把故障从症状拆到可能原因、证据和动作。AI Factory 应为高频故障建立标准树：训练 pending、NCCL hang、GPU Xid、推理 TTFT 高、checkpoint 慢、节点 NotReady、存储慢、模型 loss spike 和资源池容量异常。故障树让排障从经验驱动变为流程驱动。

@@ -46,6 +46,12 @@
 | Docker、containerd、CRI-O 与 Kubernetes CRI | 第 21 章 | 说明 kubelet 到 CRI 到 OCI runtime 的链路 |
 | CDI / NRI 与 legacy hook 模式 | 第 19 章、第 21 章、第 22 章 | 说明 Container Device Interface、Node Resource Interface、RuntimeClass、device list strategy 和验收差异 |
 | Kubernetes device plugin 和 GPU 资源分配 | 第 22 章 | 区分“分配 GPU”和“容器内可访问 GPU” |
+| `gpu_resource_claim_contract` | 第 22、23、38、44 章 | 说明 extended resource 或 DRA 的 DeviceClass/ResourceClaim 如何与 GPU class、entitlement、runtime、可见性对账和计费口径绑定 |
+| `resource_claim_admission_record` | 第 23、38、39、44 章 | 说明 ResourceClaim 或 GPU request 在 queue、quota、DeviceClass、MIG、拓扑、runtime baseline 和成本预算上的准入判断 |
+| `resource_claim_acceptance_matrix` | 第 38、44 章 | 说明 extended resource 与 DRA 两种模式下 DeviceClass、ResourceClaim、ResourceSlice、device plugin、CDI、MIG、可见性和计量标签如何验收 |
+| `resource_claim_fault_tree_execution` | 第 39、44 章 | 说明 claim pending、错误 GPU class、MIG 越界、拓扑等待和计量标签断链如何执行故障树 |
+| `resource_claim_incident_cost_record` | 第 41、44 章 | 说明资源声明事故如何把 pending 容量缺口、错误 class、MIG 边界风险、拓扑等待、fallback 和 billing hold 写入经济账本 |
+| `resource_claim_prr_drill` | 第 44 章 | 说明 extended resource 迁移到 DRA、DeviceClass 调整、MIG profile 和 GPU class 映射变更上线前如何演练 claim、分配、可见性、计量和成本 |
 | GPU Operator 管理 driver、Toolkit、device plugin、DCGM | 第 19 章、第 22 章 | 说明管理边界、冲突和升级策略 |
 | driver、CUDA、NCCL、OFED、Toolkit 兼容矩阵 | 第 19 章、第 29 章 | 说明主机/容器边界、版本矩阵和漂移控制 |
 | GPU 容器准入与 smoke test | 第 29 章、第 38 章 | 说明节点入池前如何验证容器内 GPU、NCCL、RDMA |

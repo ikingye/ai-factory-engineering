@@ -259,6 +259,63 @@ Pending reason 应是枚举，而不是自由文本。建议至少区分 `quota_
 
 更稳妥的 admission 结果应区分 `reject`、`wait`、`conditional_accept` 和 `accept`。例如 Tensor Parallel group 的 same-node hard constraint 不满足，应 `reject` 或继续 `wait`；Pipeline 相邻 stage 的 same-rack soft constraint 不满足，可以在用户接受降级后 `conditional_accept`；NCCL contract 与资源池 baseline 版本不一致，应先触发通信回归。调度系统的质量，体现在它能在 GPU 分配前暴露这些风险，而不是让训练任务替平台做验证。
 
+当平台支持 DRA、MIG、CDI 或异构 GPU class 时，admission 还要为资源声明生成 `resource_claim_admission_record`。它回答的不是“Pod 能不能被调度到某个节点”，而是“这个 ResourceClaim 或 extended resource request 是否符合租户 entitlement、queue quota、DeviceClass、MIG profile、runtime baseline、拓扑和成本策略”。传统调度事件往往只显示节点不满足条件；资源声明准入记录必须把不满足条件拆成可行动原因。
+
+```yaml
+resource_claim_admission_record:
+  record_id: rcar-20260620-001
+  workload:
+    job_or_pod: training-job/pretrain-exp-20260620
+    tenant: foundation-model-team
+    queue: training-prod
+    workload_type: distributed_training
+  claim_contract:
+    gpu_resource_claim_contract: grcc-pretrain-h100-20260620
+    kubernetes_mode: dra
+    device_class: gpu.ai-factory/h100-rdma
+    resource_claim_template: rct-pretrain-worker
+    requested_claims: 512
+  policy_checks:
+    resource_pool_entitlement: passed
+    queue_quota: passed
+    gang_capacity: wait
+    device_class_available: passed
+    mig_profile_compatible: not_applicable
+    runtime_baseline: passed
+    fabric_baseline: passed
+    rank_topology_contract: blocked
+    heterogeneous_pool_acceptance_matrix: passed
+    cost_budget: passed
+  decision:
+    state: wait
+    reason: rank_topology_contract_unsatisfied
+    pending_reason: topology_unsatisfied
+    retry_when:
+      - contiguous_nodes_available
+      - lower_priority_borrowed_capacity_reclaimed
+  evidence:
+    resource_slices_or_inventory_snapshot: linked
+    acceptance_baseline: h100-rdma-prod-202606
+    queue_fairness_ledger_window: qfl-20260620-00
+```
+
+这个记录把资源声明从 Kubernetes 对象提升为平台可解释事件。若 `DeviceClass` 不存在或没有匹配 `ResourceSlice`，这是资源发现或 inventory 问题；若 entitlement 失败，是租户授权问题；若 quota 失败，是组织资源策略问题；若 rank topology 失败，是调度和资源碎片问题；若 runtime baseline 失败，是节点基线或准入问题。用户看到的 pending reason 应来自这个记录，而不是从多处事件里人工猜测。
+
+```mermaid
+flowchart TB
+  Contract["gpu_resource_claim_contract"] --> Admission["resource_claim_admission_record"]
+  Ent["entitlement"] --> Admission
+  Quota["queue quota / gang"] --> Admission
+  Device["DeviceClass / ResourceSlice\nor extended resource inventory"] --> Admission
+  Topo["rank topology / GPU-NIC / fabric"] --> Admission
+  Baseline["runtime + acceptance baseline"] --> Admission
+  Admission -->|accept| Placement["placement_commit_record"]
+  Admission -->|wait| Pending["pending reason\nquota / gang / topology / flavor"]
+  Admission -->|reject| User["actionable error"]
+```
+
+资源声明准入还应进入容量运营。若大量任务卡在 `device_class_available`，说明 GPU class 供应不足或标签过细；若卡在 `rank_topology_contract_unsatisfied`，说明碎片、抢占或预留策略有问题；若卡在 `runtime_baseline`，说明准入或变更流程阻断了资源；若卡在 `cost_budget`，说明任务预算和资源产品不匹配。调度系统的作用不是只把任务排队，而是把稀缺资源缺口转成可治理信号。
+
 平台还应实现 pending reason 和调度审计。用户提交作业后，应看到当前状态是 queued、admitted、scheduling、running、preempted、failed 还是 completed；pending 原因应区分 quota 不足、gang 不满足、GPU 型号不匹配、拓扑不满足、镜像不可用、数据无权限或节点健康不足。调度审计记录每次准入、抢占、放置和失败原因，为容量规划和争议处理提供证据。
 
 实现还要把调度策略版本化。队列规则、quota、priority class、preemption policy 和拓扑策略变化后，应能解释某个历史作业使用的是哪一版策略。否则调度结果无法复盘，用户也无法理解为什么同样任务在不同时间等待不同。策略版本化是调度系统走向生产治理的标志。

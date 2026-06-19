@@ -461,6 +461,76 @@ flowchart LR
 
 这张图强调矩阵不是报告，而是控制面输入。异构池真正可控，取决于矩阵能否把不同 GPU class 对不同 workload 的适配状态写回资源池、路由策略和 PRR。没有这一步，异构资源池会变成“更多可选项”，而不是“更精确的生产能力”。
 
+资源声明语义也需要验收。很多平台只验证 Pod 能申请 `nvidia.com/gpu: 1` 并运行 `nvidia-smi`，但没有验证 DeviceClass、ResourceClaim、MIG profile、CDI device name、RuntimeClass、entitlement、queue quota、可见性对账和计量标签是否一致。这样一来，DRA 或 device plugin 只是在控制面看起来工作，真正的租户边界、拓扑边界和账单边界仍可能断裂。
+
+`resource_claim_acceptance_matrix` 应覆盖 extended resource 和 DRA 两种路径。它不是要求所有集群立刻使用 DRA，而是要求平台明确当前资源声明模式，并证明该模式在目标资源池中可解释、可回放、可计量。对于使用 DRA 的集群，矩阵应验证 DeviceClass、ResourceClaimTemplate、ResourceClaim、ResourceSlice 和资源驱动状态；对于使用传统 extended resource 的集群，矩阵应验证 resource name、device plugin Allocate、CDI/envvar strategy 和 node label/affinity 策略。
+
+```yaml
+resource_claim_acceptance_matrix:
+  matrix_id: rcam-gpu-prod-202606
+  scope:
+    resource_pool: gpu-prod-mixed-202606
+    workload_slices:
+      - online_inference_full_card
+      - mig_inference
+      - distributed_training_rdma
+  modes:
+    extended_resource:
+      resource_names:
+        - nvidia.com/gpu
+        - nvidia.com/mig-1g.10gb
+      required_evidence:
+        - device_plugin_registration
+        - kubelet_allocate_event
+        - gpu_assignment_record
+        - oci_runtime_injection_diff
+        - gpu_device_visibility_reconciliation
+    dra:
+      api_group: resource.k8s.io
+      objects:
+        - DeviceClass
+        - ResourceClaimTemplate
+        - ResourceClaim
+        - ResourceSlice
+      required_evidence:
+        - device_class_selector_matches_pool_profile
+        - resource_claim_bound_to_expected_class
+        - resource_slice_inventory_matches_gpu_inventory
+        - resource_claim_admission_record
+        - gpu_assignment_record
+        - gpu_device_visibility_reconciliation
+  policy_checks:
+    resource_pool_entitlement: pass
+    queue_quota_mapping: pass
+    mig_whole_gpu_boundary: pass_if_mig
+    rdma_gpu_nic_topology: pass_if_rdma
+    metering_resource_label_continuity: pass
+  failure_classes:
+    - device_class_no_matching_resource_slice
+    - claim_bound_but_runtime_injection_failed
+    - claim_bound_to_wrong_gpu_class
+    - mig_claim_exposes_whole_gpu
+    - entitlement_or_quota_not_enforced
+    - metering_label_missing_after_claim
+```
+
+这份矩阵的关键是从“资源能申请”推进到“资源能证明”。`DeviceClass` 选择器匹配资源池画像，只说明候选范围正确；`ResourceClaim` 绑定，只说明调度和驱动完成声明分配；`gpu_assignment_record` 和 `gpu_device_visibility_reconciliation` 证明容器内事实与 claim 一致；计量标签连续性证明 Token Factory 能把这次分配归到租户和资源产品。只有这些证据连起来，资源声明才适合生产。
+
+```mermaid
+flowchart LR
+  Mode{"claim mode"} --> ER["extended resource\nnvidia.com/gpu"]
+  Mode --> DRA["DRA\nDeviceClass / ResourceClaim"]
+  ER --> Assign["gpu_assignment_record"]
+  DRA --> Admit["resource_claim_admission_record"]
+  Admit --> Assign
+  Assign --> Diff["oci_runtime_injection_diff"]
+  Diff --> Recon["gpu_device_visibility_reconciliation"]
+  Recon --> Meter["metering label continuity"]
+  Meter --> Baseline["acceptance_baseline"]
+```
+
+当这类矩阵失败时，准入系统应直接改变资源池状态。`claim_bound_to_wrong_gpu_class` 应阻断目标 DeviceClass 或标签发布；`mig_claim_exposes_whole_gpu` 应让节点进入 quarantine；`entitlement_or_quota_not_enforced` 应阻断相关租户或队列使用；`metering_label_missing_after_claim` 应阻止商业化流量。资源声明错误不是小问题，它可能同时影响隔离、SLO 和收入。
+
 ## 38.8 acceptance baseline
 
 Acceptance baseline 是可交付基线，不是一次性测试记录。它包含硬件信息、软件版本、拓扑、测试工具版本、测试参数、通过阈值、实际结果、原始日志、异常说明、责任团队和资源状态。后续升级 driver、kernel、CUDA、NCCL、OFED、CNI、CSI、推理引擎或训练框架时，都应与基线对比。

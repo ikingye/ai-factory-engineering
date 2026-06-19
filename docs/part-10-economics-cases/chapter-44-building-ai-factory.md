@@ -573,6 +573,9 @@ production_readiness_review:
       inference_runtime_fault_tree_execution_dry_run: pass
       inference_runtime_incident_cost_record_pipeline: configured
     container_gpu_runtime:
+      gpu_resource_claim_contract: pass_if_gpu_or_dra_resource_used
+      resource_claim_acceptance_matrix: pass_if_gpu_or_dra_resource_used
+      resource_claim_admission_record_replay: pass_if_gpu_or_dra_resource_used
       container_gpu_runtime_acceptance_matrix: pass
       oci_runtime_injection_diff: sampled_and_clean
       gpu_device_visibility_reconciliation: pass
@@ -634,6 +637,7 @@ production_readiness_review:
       reliability_cost_ledger: initialized
       energy_ledger: initialized_if_power_or_cooling_relevant
       heterogeneous_gpu_cost_scorecard: required_if_route_across_gpu_classes
+      resource_claim_incident_cost_record_pipeline: configured_if_gpu_or_dra_resource_used
       quality_cost_ledger: initialized
       multimodal_metering_event: configured_if_multimodal
       multimodal_cost_ledger: initialized_if_multimodal
@@ -702,6 +706,10 @@ production_readiness_review:
       - recent_engine_canary_guardrail_failure_unresolved
       - inference_runtime_fault_tree_dry_run_failed
       - inference_runtime_incident_cost_record_pipeline_missing
+      - gpu_resource_without_claim_contract
+      - resource_claim_acceptance_matrix_not_passed
+      - resource_claim_admission_replay_failed
+      - gpu_or_dra_claim_without_cost_record_pipeline
       - no_container_gpu_runtime_acceptance_for_target_pool
       - gpu_device_visibility_reconciliation_failed
       - rdma_or_multigpu_without_gpu_nic_topology_evidence
@@ -1003,6 +1011,58 @@ flowchart LR
 ```
 
 安全 PRR 的通过标准应避免两个极端。一个极端是把所有 provider 外联都禁止，牺牲多模型聚合和成本优化；另一个极端是把所有外联都交给业务配置，平台无法证明边界。更合理的做法是把 provider、区域、数据等级、日志策略、训练使用策略、价格、fallback 目标和客户披露写成 `egress_provider_decision`，让允许和拒绝都能回放。denial-of-wallet 也类似：不是所有成本突增都要封禁，而是要根据身份、历史、审批和风险分层采取降级、人工确认、冻结、hold 或放行。
+
+GPU 资源声明也需要 PRR 演练。任何从 extended resource 迁移到 DRA、调整 DeviceClass、修改 ResourceClaimTemplate、切换 MIG profile、改变 GPU class 映射、调整 queue quota 或 entitlement 的动作，都可能让用户意图、Kubernetes claim、device plugin 分配、CDI/runtime 注入、容器内可见性和计量标签之间断链。PRR 不能只看 Pod 是否能启动，而要证明资源声明能被正确准入、绑定、使用、计量和故障分类。
+
+```yaml
+resource_claim_prr_drill:
+  drill_id: rc-prr-drill-20260620-001
+  production_readiness_review: prr-maas-chat-prod-2026-06
+  scope:
+    node_pool: gpu-prod-mixed-202606
+    claim_modes:
+      - extended_resource
+      - dra_if_enabled
+    workload_slices:
+      - premium_long_context_inference
+      - mig_inference_if_applicable
+      - multigpu_rdma_training
+  injected_scenarios:
+    - device_class_has_no_matching_resource_slice
+    - resource_claim_bound_to_wrong_gpu_class
+    - mig_claim_exposes_whole_gpu
+    - entitlement_allows_quota_but_denies_resource_class
+    - metering_resource_label_missing_after_claim
+  required_outputs:
+    gpu_resource_claim_contract: generated
+    resource_claim_acceptance_matrix: pass
+    resource_claim_admission_record: generated_for_each_scenario
+    resource_claim_fault_tree_execution: generated_by_controlled_failure
+    gpu_assignment_record: generated_if_claim_bound
+    gpu_device_visibility_reconciliation: pass_if_pod_started
+    resource_claim_incident_cost_record: generated_if_failure_injected
+  pass_criteria:
+    pending_reason_is_actionable: true
+    wrong_class_claim_is_blocked_or_reconciled: true
+    mig_boundary_violation_blocks_node_or_pool: true
+    entitlement_and_quota_decisions_are_replayable: true
+    billing_hold_applied_when_metering_label_missing: true
+    fallback_to_container_runtime_fault_tree_when_assignment_exists: true
+```
+
+```mermaid
+flowchart LR
+  Drill["resource_claim_prr_drill"] --> Contract["gpu_resource_claim_contract"]
+  Contract --> Accept["resource_claim_acceptance_matrix"]
+  Accept --> Admission["resource_claim_admission_record"]
+  Admission --> Fault["resource_claim_fault_tree_execution"]
+  Fault --> Cost["resource_claim_incident_cost_record"]
+  Admission --> Assign["gpu_assignment_record"]
+  Assign --> Runtime["container runtime PRR\nif claim bound"]
+  Cost --> PRR["PRR resource claim gate"]
+```
+
+这类演练能避免 DRA 或 GPU class 上线时的“控制面成功幻觉”：DeviceClass 创建成功，但没有匹配的生产资源；ResourceClaim 绑定成功，但绑定到了不符合模型硬件匹配的 GPU class；MIG claim 看似细粒度，容器内却暴露整卡；queue quota 有余额，但 entitlement 不允许使用该隔离等级；Pod 能启动，但 DCGM、metering 和账单无法从 claim 追到 GPU UUID。资源声明语义一旦错，后续 runtime、SLO 和账单都会被污染。
 
 容器 GPU runtime 也应有 PRR 演练。任何涉及 containerd/CRI-O、runc、NVIDIA Container Toolkit、GPU Operator、device plugin strategy、RuntimeClass、CDI spec 生成、NRI 插件或 MIG 暴露策略的变更，都可能同时影响调度、启动、隔离、观测和成本。PRR 不能只检查 DaemonSet Ready，也不能只跑 `nvidia-smi`。它必须演练从变更记录、准入矩阵、OCI diff、可见性对账、故障树到成本账本的完整路径。
 

@@ -1162,6 +1162,50 @@ reliability_cost_ledger:
 
 容器 runtime 和拓扑证据也要进入经济口径。一次 `visible_device_mismatch` 可能让租户用到未授权 GPU、造成账单争议或安全事故；一次 GPU/NIC 拓扑错配可能让训练 step time 增加，消耗大量无效 GPU 小时；一次 CDI spec 失效可能让扩容副本全部卡在 `CreateContainerError`，推理峰值流量下 TTFT 违约。把这些事件记入 `reliability_cost_ledger`，可以证明为什么要投入 runtime 准入、设备可见性对账和拓扑证据采集。它们不是额外文书，而是在保护 token 生产线不被底层漂移吞噬。
 
+资源声明事故应单独计入 `resource_claim_incident_cost_record`。它位于调度和 runtime 之间：ResourceClaim 或 extended resource request 没有被正确准入、绑定到错误 GPU class、MIG claim 暴露整卡、拓扑约束长期等待、计量标签没有继承到 Pod/GPU UUID，都会造成真实成本。它们不一定表现为容器启动失败，很多时候只是任务 pending、扩容不足、低优任务占住高价资源、账单 hold 或训练等待时间增加。
+
+```yaml
+resource_claim_incident_cost_record:
+  incident_id: inc-20260620-claim-001
+  linked_evidence:
+    gpu_resource_claim_contract: grcc-code-chat-20260620
+    resource_claim_admission_record: rcar-20260620-001
+    resource_claim_fault_tree_execution: rcfte-20260620-001
+    resource_claim_acceptance_matrix: rcam-gpu-prod-202606
+    queue_fairness_ledger: qfl-20260620-00
+  affected_scope:
+    tenants: [enterprise-a]
+    queues: [inference-premium, training-prod]
+    affected_claims: measured
+    affected_gpu_classes: [h200-long-context-prod]
+    affected_requests_or_jobs: measured
+  cost_components:
+    claim_pending_capacity_gap_cost: calculated
+    wrong_gpu_class_slo_or_quality_cost: calculated_if_any
+    mig_boundary_billing_or_security_risk: calculated_if_any
+    topology_wait_opportunity_cost: calculated_if_training
+    fallback_or_overflow_provider_cost: calculated_if_inference
+    billing_hold_and_reconciliation_cost: calculated_if_metering_label_missing
+    operator_debug_and_retest_cost: measured
+  prevention_signal:
+    missing_gate: resource_claim_acceptance_or_admission_dry_run
+    recommended_prr_gate_update: required_if_gap_found
+```
+
+```mermaid
+flowchart LR
+  Contract["gpu_resource_claim_contract"] --> Admission["resource_claim_admission_record"]
+  Admission --> Fault["resource_claim_fault_tree_execution"]
+  Fault --> Cost["resource_claim_incident_cost_record"]
+  Queue["queue_fairness_ledger"] --> Cost
+  Accept["resource_claim_acceptance_matrix"] --> Cost
+  Cost --> Reliability["reliability_cost_ledger"]
+  Cost --> Billing["billing hold / dispute replay"]
+  Cost --> PRR["resource claim PRR gate update"]
+```
+
+这个对象能防止一个常见误判：把所有 pending 都当作“没有 GPU”。如果 claim pending 的根因是 DeviceClass 过窄，应该修资源画像或 claim 模板；如果是 entitlement 阻断，应该修租户策略或申请流程；如果是 topology wait，应该治理碎片和抢占；如果是计量标签断链，应该先 hold 商业流量而不是继续放量。不同根因对应不同成本和 owner。Token Factory 需要看到这些差异，才能判断该投资调度、准入、资源池、计量还是采购。
+
 当容器 runtime 变更本身造成影响时，应生成 `container_runtime_incident_cost_record`。它专门计算 Toolkit/CDI/NRI/RuntimeClass/device plugin strategy 变更带来的无效成本：Pod 创建失败导致的扩容缺口，GPU Pod 看错设备导致的租户隔离或账单争议，多卡训练因为 RDMA/GPU 拓扑错配产生的 GPU idle，Operator 升级后 DCGM 标签变化导致的计量断链，以及回滚、复测和客户沟通成本。没有这个对象，runtime 事故会被平均摊进可靠性成本，团队很难判断是否值得投入更严格的准入和 canary。
 
 ```yaml
