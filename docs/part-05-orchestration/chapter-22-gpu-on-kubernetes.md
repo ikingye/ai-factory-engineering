@@ -68,6 +68,31 @@ flowchart TB
   Sched --> Kubelet
 ```
 
+GPU 分配和 GPU 注入是两条相邻但不同的路径。分配路径回答“这个 Pod 允许使用哪张 GPU”，由 Scheduler、kubelet 和 device plugin 共同完成；注入路径回答“容器进程如何看到这张 GPU”，由 CRI、container runtime、OCI spec、NVIDIA runtime hook、`nvidia-container-cli` 和 `libnvidia-container` 完成。排障时必须先判断失败发生在哪条路径。
+
+```mermaid
+sequenceDiagram
+  participant User as 用户 / 平台
+  participant API as API Server
+  participant S as Scheduler
+  participant K as kubelet
+  participant DP as GPU Device Plugin
+  participant CRI as containerd / CRI-O
+  participant NR as NVIDIA Runtime / Hook
+  participant C as Container
+
+  User->>API: 提交 Pod, limits nvidia.com/gpu: 1
+  API->>S: 待调度 Pod
+  S->>API: 绑定到 GPU 节点
+  K->>DP: Allocate 请求
+  DP-->>K: 返回 GPU device / env / annotations
+  K->>CRI: CreateContainer
+  CRI->>NR: 处理 OCI spec / prestart hook
+  NR->>NR: 注入 /dev/nvidia* 与 driver libraries
+  CRI->>C: 启动容器进程
+  C-->>User: CUDA / nvidia-smi / AI workload 可用
+```
+
 ## 22.1 GPU device plugin
 
 Kubernetes 原生只理解 CPU、memory、ephemeral storage 等通用资源。GPU 这类硬件需要通过 Device Plugin 机制暴露给 kubelet。NVIDIA GPU device plugin 会发现节点上的 GPU 或 MIG 实例，并注册为 `nvidia.com/gpu` 或更细粒度资源。Scheduler 看到的是 allocatable 扩展资源，kubelet 在容器启动时调用 plugin 完成设备分配。

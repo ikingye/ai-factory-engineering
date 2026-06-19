@@ -185,6 +185,39 @@ margin_rate = (revenue - cost) / revenue
 }
 ```
 
+原始事件可以进一步固化为 schema，用于网关、模型服务和离线账单系统对齐字段。下面是一个简化示例，重点是区分事实字段、归因字段和定价版本：
+
+```yaml
+metering_event:
+  identity:
+    event_id: string
+    trace_id: string
+    request_id: string
+    run_id: string
+  attribution:
+    tenant: string
+    project: string
+    api_key_id: string
+    cost_center: string
+  model:
+    requested: string
+    served: string
+    version: string
+    price_version: string
+  usage:
+    input_tokens: integer
+    output_tokens: integer
+    reasoning_tokens: integer
+    cached_tokens: integer
+  status:
+    result: success | failed | cancelled
+    error_stage: gateway | queue | prefill | decode | stream | tool
+    finish_reason: string
+  time:
+    started_at: timestamp
+    ended_at: timestamp
+```
+
 实现时要做对账。网关事件、模型服务事件、账单聚合和可观测指标应能按 trace id 对齐；若 token 数、模型版本或状态不一致，应进入异常表。账单可以允许人工修正，但修正必须保留原因和审批。计量系统的可信度来自可对账，而不是来自某个数据库字段看起来完整。
 
 工程实现还应支持重算。价格规则变化、折扣补录、事件迟到或标签修复后，平台可能需要重算某个时间窗口的账单。重算必须基于不可变原始事件和版本化价格规则，而不是覆盖历史聚合结果。这样才能在争议处理和审计时说明“为什么账单发生变化”。可重算能力是计费系统成熟度的重要标志。

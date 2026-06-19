@@ -60,6 +60,19 @@ flowchart TB
   Matrix --> Validate
 ```
 
+对 GPU IaaS 来说，container runtime 不是 Kubernetes 团队的“上层细节”，而是节点交付基线的一部分。节点如果只安装 driver，但没有正确配置 NVIDIA Container Toolkit、containerd runtime handler、device plugin 依赖和容器内 GPU smoke test，就不能算完成交付。因为大多数 AI workload 最终都在容器里运行，主机 `nvidia-smi` 通过只证明硬件和 driver 基础可用，不证明生产 workload 可用。
+
+```mermaid
+flowchart LR
+  OS["OS / kernel baseline"] --> Driver["NVIDIA Driver"]
+  Driver --> Toolkit["NVIDIA Container Toolkit"]
+  Toolkit --> Runtime["containerd / Docker runtime config"]
+  Runtime --> Smoke["GPU container smoke test"]
+  Smoke --> K8s["Kubernetes device plugin test"]
+  K8s --> NCCL["containerized NCCL / RDMA test"]
+  NCCL --> Pool["GPU resource pool"]
+```
+
 ## 29.1 OS baseline
 
 OS baseline 定义系统版本、内核策略、包源、安全配置、用户和密钥、SSH、日志、审计、时间同步、基础 agent、磁盘布局、容器 runtime 依赖和系统参数。GPU 节点 baseline 还要考虑 IOMMU、PCIe、NUMA、hugepage、文件句柄、网络参数、本地 NVMe 和监控采集。它是节点行为一致性的起点。
@@ -202,6 +215,31 @@ compatibility_matrix:
 第二步是把矩阵接入 CI 和准入。基础镜像构建时检查依赖和安全扫描；节点初始化时检查 kernel、driver、OFED 和 runtime；容器镜像发布时声明兼容范围；任务提交时检查目标资源池是否满足要求。这样版本治理从文档变成系统规则。
 
 第三步是建立 bootstrap validation。节点初始化后，自动运行 driver、CUDA、容器 GPU、DCGM、RDMA、NCCL、存储和监控测试。测试结果写入资源池。失败节点不能进入生产池，而应进入维修或复测流程。Validation 应保留日志和版本，便于比较不同 baseline 的结果。
+
+Bootstrap validation 应显式覆盖 NVIDIA Container Toolkit 和 container runtime。最小检查包括 `nvidia-smi`、`nvidia-container-cli info`、runtime 配置文件 hash、Docker 或 containerd GPU smoke test、Kubernetes GPU Pod smoke test，以及容器内 CUDA/NCCL 检查。若平台使用 GPU Operator 管理 Toolkit 或 device plugin，还要记录 Operator 版本、组件 DaemonSet 状态和实际落到节点的二进制版本。这样才能把“主机 GPU 可用”和“容器 GPU 可用”区分开。
+
+```bash
+nvidia-smi
+nvidia-container-cli info
+containerd config dump | grep -i nvidia
+ctr --namespace k8s.io images ls | grep nvidia || true
+```
+
+对 Docker 运行时，可以使用：
+
+```bash
+nvidia-ctk runtime configure --runtime=docker
+systemctl restart docker
+docker run --rm --gpus all nvidia/cuda:12.2.0-base-ubuntu22.04 nvidia-smi
+```
+
+对 Kubernetes 节点，最终准入必须以 Pod 方式验证：
+
+```bash
+kubectl apply -f gpu-smoke.yaml
+kubectl wait --for=condition=Ready pod/gpu-smoke --timeout=120s
+kubectl logs gpu-smoke
+```
 
 第四步是设计升级流水线。新 baseline 先进入实验池，跑基础测试和典型 workload；通过后进入小规模灰度；灰度期间观察训练、推理、NCCL、RDMA 和故障指标；最后批量推广。每一步都要有回滚条件。环境升级不应靠人工记忆，而应由流水线推动。
 
