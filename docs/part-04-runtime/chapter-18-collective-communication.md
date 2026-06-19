@@ -231,6 +231,39 @@ communication:
     record_rank_to_nic_mapping: true
 ```
 
+通信故障发生时，平台应自动生成 communication diagnostic bundle。这个包不是把所有日志打包，而是围绕一次异常 step 或异常 op 收集最小充分证据：op、rank、节点、NIC、端口、NCCL 环境、网络错误、GPU 状态和最近变更。这样网络、Runtime 和训练团队可以围绕同一份证据排查。
+
+```yaml
+communication_diagnostic_bundle:
+  incident_id: comm-20260619-001
+  training_job: exp-20260619-001
+  window:
+    start: anomaly_start_time
+    end: anomaly_end_time
+  slow_ops:
+    - op: all_reduce
+      step: 84520
+      ranks: [0, 17, 42]
+      expected_ms: baseline
+      observed_ms: measured
+  topology:
+    rank_mapping_ref: rank-mapping.json
+    affected_nodes: [gpu-node-001, gpu-node-018]
+    affected_nics: [mlx5_0]
+    switch_ports: [leaf12/1, leaf12/18]
+  runtime:
+    nccl_version: pinned
+    cuda_driver: recorded
+    env: NCCL_DEBUG_and_interface_summary
+  telemetry:
+    rdma_errors: collected
+    port_counters: collected
+    dcgm_events: collected
+    recent_changes: driver_or_network_changes
+```
+
+诊断包应在异常发生后尽快生成。很多网络计数器、容器日志和 profiler trace 保留时间有限，等事故复盘时再补采集，证据往往已经丢失。自动采集不意味着全量高噪声日志长期打开，而是在触发条件满足时提升采样并冻结窗口。
+
 任务启动前应执行通信自检：确认容器能看到 GPU 和 RDMA 设备，NCCL 能选择正确接口，节点间主机名和端口可达，rank 数与调度结果一致。任务运行中应采集 op 级耗时、带宽、错误和超时。失败时自动打包 NCCL 日志、环境变量、拓扑、网络端口状态和最近的 step trace。工程目标是让通信问题从“玄学”变成可复现的诊断流程。
 
 平台还应提供分级诊断。普通用户看到的是“通信初始化失败”“跨节点带宽低”“某个 rank 超时”等可行动结论；SRE 可以进入详细视图查看 NCCL 环境变量、接口选择、端口错误和 rank 映射。这样既避免把底层复杂度暴露给所有人，也保证事故时有足够证据深入排查。
@@ -240,6 +273,8 @@ communication:
 此外，通信自检结果应进入节点准入和作业详情。节点刚加入集群、驱动或 RDMA 栈升级、交换机配置变更后，都应重新生成通信基线。作业运行时如果低于基线，平台应能区分是节点退化、拓扑不佳，还是训练策略本身造成的通信放大。
 
 这些结果还应可导出，便于事故复盘和供应商协同。
+
+平台还应建立通信基线库。基线库按 GPU 型号、节点内拓扑、rack、rail、NCCL 版本、消息大小和 rank 数记录测试结果。真实训练出现退化时，先与同条件基线比较，再判断是否进入网络、Runtime 或训练策略排查。基线库可以来自准入测试，也可以来自周期性巡检和代表性训练任务。
 
 ## 常见故障
 
@@ -259,6 +294,8 @@ communication:
 
 复盘结论要回写到模板和准入规则。
 
+第七类故障是诊断窗口丢失。训练任务 hang 后被用户直接 kill，容器日志、NCCL debug、端口计数增量和 rank 状态全部消失，只剩一个失败退出码。平台应提供“保留现场”动作：暂停任务、冻结节点事件、采集诊断包、再决定重启或释放资源。昂贵训练任务不能把证据管理交给临时人工命令。
+
 ## 性能指标
 
 通信指标要覆盖 op、rank、拓扑和业务四个层面。Op 层面包括 AllReduce、AllGather、ReduceScatter、Broadcast、P2P 的耗时、传输量和有效带宽；rank 层面包括慢 rank、等待时间、超时和错误；拓扑层面包括节点内带宽、跨节点带宽、端口错误、拥塞、重传和链路状态；业务层面包括通信占 step time 的比例、tokens/s、扩展效率和失败率。
@@ -274,6 +311,8 @@ communication:
 这个问题直接连接性能优化和成本治理。
 
 GPU 空转时间是最直观的成本信号。
+
+通信指标还应有训练有效性口径。`comm_time_ms` 本身不说明问题，只有当它暴露在 critical path 上并造成 rank 等待时，才直接浪费 GPU。建议记录 `communication_exposed_ms`、`rank_wait_ms` 和 `gpu_idle_due_to_comm_hours`。这样网络优化可以和 GPU 成本直接关联，便于判断是否值得升级 fabric、调整拓扑或修改并行策略。
 
 ## 设计取舍
 

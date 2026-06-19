@@ -180,6 +180,41 @@ observability:
   record_collective_metrics: true
 ```
 
+并行配置最终必须落成 rank mapping。Rank mapping 是训练故障诊断的坐标系，记录每个 rank 属于哪些并行组，运行在哪个节点、哪张 GPU、哪个 NUMA 域、哪个 NIC 和哪个拓扑域。没有 rank mapping，NCCL 慢、stage imbalance、expert hotspot 和慢节点都无法可靠定位。
+
+```yaml
+rank_mapping:
+  job_id: exp-20260619-001
+  world_size: 512
+  ranks:
+    - rank: 0
+      node: gpu-node-001
+      gpu_uuid: GPU-aaaa
+      local_rank: 0
+      numa: 0
+      nic: mlx5_0
+      rack: rack-12
+      rail: rail-a
+      groups:
+        data_parallel: dp-0
+        tensor_parallel: tp-0
+        pipeline_stage: pp-0
+    - rank: 1
+      node: gpu-node-001
+      gpu_uuid: GPU-bbbb
+      local_rank: 1
+      numa: 0
+      nic: mlx5_0
+      rack: rack-12
+      rail: rail-a
+      groups:
+        data_parallel: dp-0
+        tensor_parallel: tp-0
+        pipeline_stage: pp-0
+```
+
+Rank mapping 还应有一致性校验。Tensor Parallel group 是否真的在 same_node，Pipeline 相邻 stage 是否跨越过多网络跳数，Data Parallel group 是否覆盖预期故障域，MoE expert group 是否集中在某个 rack，这些都可以在启动前或启动后自动检查。检查失败时，平台应明确提示“策略未满足”或“降级放置”，而不是让用户从性能下降中猜测。
+
 实现流程可以分为四步。第一步，模板根据模型和硬件给出推荐并行配置。第二步，调度器根据 placement 约束选择节点和 GPU，并返回 rank 到设备的映射。第三步，launcher 把映射写入环境变量或配置文件，框架据此初始化通信组。第四步，监控系统收集 step、rank、group 和 topology 维度指标。缺少任何一步，并行策略都无法闭环。生产平台还应在任务启动前做一致性校验，例如总 GPU 数是否等于各并行维度乘积，Tensor Parallel size 是否超过节点内 GPU 数。
 
 落地时还应提供 dry-run 能力。用户提交配置后，平台先返回预计 GPU 数、节点数、通信组、放置约束和可能的排队原因，而不是直接进入长时间 pending。dry-run 能提前发现维度乘积错误、拓扑约束过严或资源池不匹配。对大规模训练而言，提交前发现错误比运行一小时后失败更有价值。
@@ -189,6 +224,8 @@ observability:
 同时，平台应把这些信息暴露给用户和 SRE，而不是只保存在调度器内部。可见性是协作排障的前提。
 
 暴露方式可以是作业详情页、事件日志或导出的运行报告。
+
+训练完成或失败后，应把并行配置和 rank mapping 写入运行报告。这样不同策略之间可以比较，也能沉淀模板经验。报告至少应包含：并行维度、实际拓扑、是否满足放置意图、rank skew、最慢 group、通信占比、HBM 峰值、checkpoint 格式和恢复限制。并行优化如果不留下报告，就很难从一次经验变成平台能力。
 
 ## 常见故障
 
@@ -203,6 +240,8 @@ observability:
 故障复盘应产出可执行动作：调整模板、隔离节点、修复网络、修改切分或补充指标。只记录“训练慢”没有运维价值。
 
 如果复盘无法关联到并行维度，就说明观测模型还不完整。
+
+第七类故障是模板参数乘积正确但语义错误。例如总 GPU 数满足 `dp * tp * pp`，但 micro-batch 太小导致 pipeline bubble 极高；Tensor Parallel group 虽在同节点但没有对齐 NVLink 域；Data Parallel group 分布在同一故障域，节点维护时影响面过大。解决方向是把“数学有效”与“拓扑有效”“性能有效”“可靠性有效”分开验收。
 
 ## 性能指标
 
@@ -221,6 +260,16 @@ observability:
 指标保留周期应覆盖一次完整训练和关键复盘窗口。
 
 否则长周期任务的性能退化无法追溯。
+
+建议为每种并行模板建立 template scorecard。Scorecard 用同一组模型和硬件记录基线，避免每次训练都从经验出发重新判断。
+
+| 维度 | 指标 | 用途 |
+| --- | --- | --- |
+| 扩展效率 | tokens/s、GPU MFU、step time | 判断模板是否值得扩大规模 |
+| 通信 | collective time、rank skew、跨 rack 流量 | 判断拓扑和并行组是否合理 |
+| 显存 | HBM peak、activation、communication buffer | 判断是否有 OOM 风险 |
+| 稳定性 | NCCL hang、失败率、恢复成功率 | 判断模板是否能用于生产长训 |
+| 可恢复性 | checkpoint 保存/恢复、world size 限制 | 判断故障后能否恢复和发布 |
 
 ## 设计取舍
 

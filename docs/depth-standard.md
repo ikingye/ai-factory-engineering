@@ -68,6 +68,25 @@
 | benchmark matrix | 第 15 章 | 覆盖短输入短输出、长输入短输出、短输入长输出和生产混合负载 |
 | Token Factory ledger | 第 41 章 | 说明 token ledger、resource ledger、阶段成本和毛利约束指标 |
 
+## 训练任务链路覆盖矩阵
+
+训练任务链路的目标是让读者能从一次训练提交一路追到队列、quota、gang、拓扑放置、NCCL、checkpoint、评测、模型注册和训练 ROI。当前覆盖如下：
+
+| 知识点 | 主要章节 | 覆盖要求 |
+| --- | --- | --- |
+| `TrainingJob` 生产对象 | 第 10 章 | 说明数据、模型、运行时、并行、调度和恢复语义 |
+| 训练状态机 | 第 10 章 | 覆盖 submitted、admitted、preflight、rendezvous、running、checkpointing、recovering |
+| checkpoint manifest | 第 10 章 | 说明 sharded checkpoint、optimizer/scheduler/rng/data loader state 和恢复校验 |
+| 并行策略与 rank mapping | 第 17 章 | 说明 rank 到 GPU/NIC/rack/rail/group 的映射和一致性校验 |
+| 并行模板 scorecard | 第 17 章 | 说明扩展效率、通信、显存、稳定性和可恢复性基线 |
+| communication diagnostic bundle | 第 18 章 | 说明异常 op、rank、节点、NIC、端口、NCCL 环境和 telemetry 的证据包 |
+| 通信基线库 | 第 18 章、第 38 章 | 说明 NCCL baseline 与真实训练退化对比 |
+| job admission event / pending reason | 第 23 章 | 说明 quota、gang、topology、image、data、checkpoint 和 node baseline 检查 |
+| checkpoint-aware preemption | 第 23 章 | 说明训练抢占点、通知、保存状态和浪费 GPU 小时 |
+| Slurm 平台同步事件 | 第 24 章 | 说明 Slurm job/step/accounting 与 experiment、checkpoint、registry 的统一事件 |
+| TrainingJob smoke test | 第 38 章 | 说明 gang、rank mapping、NCCL rendezvous、first effective step 和 checkpoint manifest 验收 |
+| training ROI ledger | 第 41 章 | 说明 allocated/effective/wasted GPU hours、checkpoint、评测、上线收益和成本变化 |
+
 ## 全书循环更新策略
 
 全书更新按“主题链路”推进，而不是按章节孤立推进。每轮选择一条关键链路，补齐机制、图、配置、故障、指标和验收。

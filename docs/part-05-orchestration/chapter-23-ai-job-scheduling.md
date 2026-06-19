@@ -224,6 +224,33 @@ queue:
     priority_class: production
 ```
 
+训练作业的 admission 事件应结构化。一次作业能否进入运行，不只是资源数量问题，还包括 quota、gang、拓扑、镜像、数据权限、checkpoint、节点健康和准入基线。把这些检查写成事件，用户才能理解 pending，平台才能做容量分析。
+
+```yaml
+job_admission_event:
+  job_id: exp-20260619-001
+  workload_type: distributed-training
+  queue: training-prod
+  requested:
+    gpu_count: 512
+    gpu_flavor: h100
+    topology: same_fabric_required
+  checks:
+    quota: passed
+    gang_capacity: blocked
+    topology: waiting_for_contiguous_nodes
+    image: passed
+    dataset_permission: passed
+    checkpoint_path: passed
+    node_acceptance_baseline: passed
+  decision:
+    admitted: false
+    reason: gang_capacity
+    next_recheck: scheduled
+```
+
+Pending reason 应是枚举，而不是自由文本。建议至少区分 `quota_insufficient`、`gang_capacity`、`topology_unsatisfied`、`resource_flavor_unavailable`、`node_health_blocked`、`image_unavailable`、`data_permission_denied`、`checkpoint_path_invalid`、`preemption_in_progress`。这些原因应进入 UI、CLI、事件、指标和容量报表。否则用户看到 pending，只能找管理员问。
+
 平台还应实现 pending reason 和调度审计。用户提交作业后，应看到当前状态是 queued、admitted、scheduling、running、preempted、failed 还是 completed；pending 原因应区分 quota 不足、gang 不满足、GPU 型号不匹配、拓扑不满足、镜像不可用、数据无权限或节点健康不足。调度审计记录每次准入、抢占、放置和失败原因，为容量规划和争议处理提供证据。
 
 实现还要把调度策略版本化。队列规则、quota、priority class、preemption policy 和拓扑策略变化后，应能解释某个历史作业使用的是哪一版策略。否则调度结果无法复盘，用户也无法理解为什么同样任务在不同时间等待不同。策略版本化是调度系统走向生产治理的标志。
@@ -233,6 +260,23 @@ queue:
 实现还应有事件模型。准入、借用、抢占、恢复、失败和完成都要产生结构化事件，事件进入 UI、审计、告警和成本系统。没有事件模型，调度系统只能靠日志排障。
 
 事件模型还应支持订阅。用户订阅作业事件，SRE 订阅异常事件，平台运营订阅 quota 和抢占事件。不同角色看到不同视图，但底层事件源一致。这样调度系统既能服务人机交互，也能服务自动化。
+
+抢占也需要 checkpoint-aware policy。调度器不应只知道某个任务优先级低，还要知道它能否安全释放资源。对于训练任务，抢占点通常是 checkpoint 完成后；对于 batch inference，抢占点是 shard 完成后；对于 online inference，抢占通常应通过 drain 而不是 kill。
+
+```yaml
+preemption_policy:
+  workload_type: distributed-training
+  allowed: true
+  safe_points:
+    - checkpoint_committed
+  max_notice_seconds: 600
+  on_preempt:
+    emit_event: true
+    preserve_checkpoint: true
+    requeue: true
+  accounting:
+    record_wasted_gpu_hours: true
+```
 
 ## 常见故障
 
@@ -250,6 +294,8 @@ queue:
 
 最终只能回到人工仲裁。
 
+第八类故障是 pending reason 与真实阻塞不一致。用户看到 quota 不足，实际是节点健康被准入系统阻断；调度器看到有 GPU，实际这些 GPU 属于不同 topology domain，无法组成 gang。解决方向是把库存、健康、拓扑和队列准入合成同一 admission decision，而不是让各系统分别给出局部解释。
+
 ## 性能指标
 
 作业队列指标包括队列等待时间、准入时间、pending 原因分布、各队列 GPU 使用率、quota 使用率、borrowed quota、资源碎片率和饥饿任务数量。它们回答平台是否公平、是否高效、是否可解释。只看整体 GPU 利用率无法判断某个团队是否长期排不到资源，也无法判断某个队列是否配置过大。
@@ -261,6 +307,8 @@ queue:
 指标还应按租户和业务等级聚合。平台负责人需要知道生产任务是否被保障，研究任务是否有可预期窗口，低优先级任务是否充分利用空闲资源。GPU 调度不是纯技术指标，它直接反映资源分配是否符合组织承诺。
 
 指标必须进入运营节奏。每周或每月回看队列等待、抢占浪费、quota 闲置、失败原因和 GPU 有效产出，才能持续改进策略。调度系统不是部署后自动变好，它需要数据驱动的治理。
+
+调度指标还应区分“已分配”和“有效运行”。一个 512 卡训练作业 allocated 不代表产生有效训练 token；它可能卡在 rendezvous、数据预检或 checkpoint 恢复。队列报表应展示 allocated GPU hours、effective GPU hours、preflight waste、rendezvous waste 和 preemption waste。这样调度平台才能知道资源浪费发生在调度前、启动中还是运行中。
 
 ## 设计取舍
 
@@ -286,4 +334,5 @@ queue:
 
 - [Volcano documentation](https://volcano.sh/en/docs/)
 - [Kueue documentation](https://kueue.sigs.k8s.io/docs/)
+- [Kubernetes Scheduling Framework documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/scheduling-framework/)
 - [Ray documentation](https://docs.ray.io/)；[Kubeflow documentation](https://www.kubeflow.org/docs/)；[Argo Workflows documentation](https://argo-workflows.readthedocs.io/)

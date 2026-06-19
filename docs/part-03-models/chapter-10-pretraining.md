@@ -158,6 +158,8 @@ Checkpoint 策略还要考虑成本。保存太多版本会占用大量存储，
 
 训练任务提交应包含数据、模型、并行和恢复配置，并进入实验追踪系统。配置至少包括 dataset version、tokenizer version、code commit、container image、model config、optimizer、learning rate schedule、global batch tokens、parallelism、checkpoint policy 和 resume policy。这些字段不是文档装饰，而是复现和排障的最低条件。平台应拒绝关键字段缺失的长周期训练任务。
 
+生产级预训练应把 `TrainingJob` 作为一等对象，而不是把 `torchrun`、`sbatch` 或 `kubectl apply` 当成唯一事实源。`TrainingJob` 要同时表达模型语义、数据语义、资源语义和恢复语义。调度器用它做 gang 和拓扑准入，训练框架用它初始化 runtime，checkpoint 系统用它记录状态，成本系统用它归集 GPU 小时。缺少统一对象，训练链路就会散落在脚本、队列、日志和文件系统里。
+
 示例任务配置如下：
 
 ```yaml
@@ -177,6 +179,70 @@ training_job:
     resume_from: latest_valid
 ```
 
+更完整的 spec 应包含不可变版本和运行时门禁。下面示例不追求覆盖所有框架参数，而是展示哪些字段必须被平台理解。
+
+```yaml
+training_job:
+  identity:
+    tenant: foundation-model-team
+    project: base-model-v4
+    experiment_id: exp-20260619-001
+  source:
+    code_commit: git-sha
+    container_image: registry/train-runtime@sha256:example
+    runtime_template: pytorch-megatron-h100-v7
+  data:
+    dataset_version: corpus-v3.2
+    tokenizer_version: tokenizer-v3
+    shard_manifest: s3://datasets/corpus-v3.2/manifest.json
+  model:
+    architecture: transformer
+    parameter_scale: documented_by_team
+    sequence_length: 8192
+  optimization:
+    global_batch_tokens: configured
+    optimizer: adamw
+    lr_schedule: cosine_with_warmup
+    precision: bf16
+  parallelism:
+    data_parallel: 16
+    tensor_parallel: 8
+    pipeline_parallel: 4
+  scheduling:
+    queue: training-prod
+    gang: true
+    topology: same_fabric_required
+  checkpoint:
+    interval_steps: 1000
+    format: sharded
+    retention: last_5_best_and_milestones
+    verify_on_write: true
+  recovery:
+    resume_policy: latest_valid_checkpoint
+    max_auto_restarts: 2
+```
+
+训练任务还应有明确状态机。作业 pending、Pod running 或 Slurm running 都不是训练有效进展。真正的状态应覆盖数据就绪、资源准入、runtime 自检、NCCL rendezvous、有效 step、checkpoint、异常暂停、恢复和完成。
+
+```mermaid
+stateDiagram-v2
+  [*] --> Submitted
+  Submitted --> Admitted: quota / gang / topology ok
+  Admitted --> Starting: nodes allocated
+  Starting --> Preflight: image / data / env checks
+  Preflight --> Rendezvous: ranks start + NCCL init
+  Rendezvous --> Running: first effective step
+  Running --> Checkpointing: checkpoint interval
+  Checkpointing --> Running: manifest verified
+  Running --> Paused: anomaly or operator pause
+  Paused --> Recovering: choose checkpoint
+  Recovering --> Rendezvous
+  Running --> Completed: target tokens / stop condition
+  Running --> Failed: unrecoverable error
+  Failed --> [*]
+  Completed --> [*]
+```
+
 工程实现还要拆分控制面和运行面。控制面负责队列、配额、配置校验、实验记录和 checkpoint 索引；运行面负责启动容器、初始化通信、读取数据、执行训练和上报指标。控制面应能在任务失败后回答：使用了什么数据，跑到哪一步，最后有效 checkpoint 是哪个，哪些节点参与，失败前哪些指标异常。没有这些问题的答案，平台就没有真正管理训练。
 
 上线一个预训练平台时，可以先建立最小闭环：任务提交校验、节点准入、训练 telemetry、checkpoint 校验、失败事件归档和恢复演练。随后再逐步加入自动异常检测、数据 shard 追踪、拓扑感知调度和成本分析。一次性追求全自动训练平台容易延期；但如果最小闭环缺失，规模一上来就会用人工成本补系统缺口。
@@ -184,6 +250,37 @@ training_job:
 还应提供任务结束后的标准报告。报告至少包含训练配置、数据版本、总 token、有效 step、失败和恢复记录、checkpoint 列表、阶段评测、资源消耗和未解决异常。这个报告既服务模型发布，也服务成本复盘。没有结项报告，预训练经验很难沉淀为下一次训练的改进。
 
 实现上还要把权限纳入流程。谁能提交大规模训练、谁能删除 checkpoint、谁能恢复任务、谁能修改数据版本，都应有审计记录。预训练消耗资源巨大，权限和审计是成本治理的一部分。
+
+Checkpoint manifest 应被平台标准化。每次写入 checkpoint 后，训练进程或 sidecar 不应只留下一个目录，而应写入 manifest，说明包含哪些 rank 分片、优化器和 scheduler 状态、数据读取位置、随机状态、校验和、评测状态和可恢复性。
+
+```yaml
+checkpoint_manifest:
+  checkpoint_id: ckpt-step-120000
+  training_job: exp-20260619-001
+  step: 120000
+  global_tokens_seen: measured
+  format: sharded
+  world_size: 512
+  parallelism:
+    data: 16
+    tensor: 8
+    pipeline: 4
+  contents:
+    model_state: complete
+    optimizer_state: complete
+    scheduler_state: complete
+    rng_state: complete
+    dataloader_state: complete
+  validation:
+    manifest_checksum: sha256:example
+    shard_checksums: verified
+    restore_smoke_test: passed
+  lineage:
+    parent_checkpoint: ckpt-step-119000
+    dataset_shards_consumed: manifest-range
+```
+
+Manifest 的价值在恢复时体现。恢复逻辑应先查询 latest valid checkpoint，而不是简单读取最新目录；恢复后应校验 world size、parallelism、tokenizer、数据位置和 scheduler state 是否匹配。若不匹配，应显式拒绝并给出原因。这样可以避免“恢复成功但训练轨迹已经变了”的隐性事故。
 
 ## 常见故障
 
@@ -196,6 +293,10 @@ training_job:
 第四类故障是配置不可复现。有人手工修改 learning rate，镜像 tag 被覆盖，数据集版本指向 latest，或者恢复时 batch 配置变化。任务可能继续运行，但实验已经不可解释。预训练平台应禁止关键配置使用漂移引用，要求使用不可变版本，并把变更写入实验记录。可复现性是训练质量的一部分。
 
 第五类故障是健康准入不足。节点在短压测中正常，但长时间训练中出现 ECC、Xid、RDMA retry 或存储超时，导致任务反复抖动。大规模训练应在进入队列前确认节点、GPU、NIC、驱动和文件系统健康，并在运行中根据错误自动隔离高风险节点。坏节点不应由训练任务来发现。
+
+第六类故障是恢复后状态漂移。任务从 checkpoint 恢复后，global step、learning rate、数据 shard 位置或随机状态与保存时不一致，短期看训练继续运行，长期看 loss 曲线和评测结果不可解释。解决方向是 checkpoint manifest、恢复前校验和恢复后短窗口对比。恢复不是进程重启，而是训练状态一致性验证。
+
+第七类故障是有效 step 与资源计费脱节。任务已经分配 512 张 GPU，但卡在镜像拉取、数据预检、NCCL 初始化或 checkpoint 恢复阶段，成本系统仍按正常训练归集。平台应区分 allocated GPU hours、effective training GPU hours 和 wasted GPU hours，否则无法评估队列、镜像、存储和网络问题造成的真实损失。
 
 ## 性能指标
 
@@ -210,6 +311,17 @@ training_job:
 指标应支持按任务、阶段和故障类型聚合。单个任务的指标用于排障，多任务汇总指标用于平台优化。若长期发现 checkpoint 写入占比高，就应优化存储；若通信等待占比高，就应检查拓扑和 NCCL；若失败浪费 GPU 小时高，就应加强准入和恢复。指标必须指向改进动作。
 
 这些指标还应形成训练基线。新框架版本、新网络拓扑或新存储系统上线前，应与历史基线比较 tokens/s、step time、checkpoint 时间和失败率。没有基线，平台只能凭感觉判断改造是否有效。
+
+训练链路还应建立阶段耗时指标。提交到准入、准入到启动、启动到 rendezvous、rendezvous 到 first effective step、checkpoint 写入、checkpoint 校验、故障到恢复，这些阶段分别对应不同 owner。只看训练总时长，无法发现资源浪费发生在哪个阶段。
+
+| 阶段指标 | 口径 | 主要 owner | 典型用途 |
+| --- | --- | --- | --- |
+| `training.queue_wait_ms` | 提交到准入 | 调度平台 | quota、gang、拓扑容量分析 |
+| `training.startup_ms` | 准入到所有 rank 进程启动 | 调度 / 镜像 / 节点 | 镜像拉取、节点状态、launcher 排障 |
+| `training.rendezvous_ms` | rank 启动到 NCCL 初始化完成 | Runtime / 网络 | 通信和环境自检 |
+| `training.first_step_ms` | NCCL 完成到第一有效 step | 框架 / 数据 | 数据读取和编译问题 |
+| `training.effective_tokens_s` | 有效训练 token 吞吐 | 训练框架 | 性能基线和成本核算 |
+| `training.wasted_gpu_hours` | 分配但未产生有效 step 的 GPU 小时 | 平台运营 | 浪费归因和 ROI |
 
 ## 设计取舍
 
@@ -233,5 +345,6 @@ training_job:
 ## 延伸阅读
 
 - [Megatron-LM repository](https://github.com/NVIDIA/Megatron-LM)；[DeepSpeed documentation](https://www.deepspeed.ai/)
+- [PyTorch Distributed documentation](https://pytorch.org/docs/stable/distributed.html)
 - [Language Models are Few-Shot Learners](https://arxiv.org/abs/2005.14165)
 - [OPT: Open Pre-trained Transformer Language Models](https://arxiv.org/abs/2205.01068)
