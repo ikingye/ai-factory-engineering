@@ -412,6 +412,70 @@ capacity_activation_record:
 
 这个漏斗能让扩容评审更具体。若 installed 到 accepted 损耗大，问题在交付或准入；若 accepted 到 allocatable 损耗大，问题可能在资源池、维护、健康或变更失效；若 allocatable 到 workload-fit 损耗大，问题多半是拓扑、power/cooling、fabric、storage 或租户 entitlement。不同损耗对应不同 owner，不能都归结为“GPU 没上线”。当 delayed_capacity_cost 进入第 41 章的账本，提前做准入、布线校验和液冷演练就不再是额外开销，而是降低投产延迟成本的工程手段。
 
+容量激活还需要一个最终门禁：`workload_fit_capacity_gate`。`capacity_activation_record` 说明投产漏斗发生了什么，gate 则决定某类业务能不能使用这批产能。它的输入不是 GPU 数，而是 workload slice：例如 premium inference、long-context inference、256 GPU training、checkpoint-heavy training、distributed evaluation。每个 slice 需要的 power、cooling、fabric、storage、runtime、SRE 和成本证据不同，不能用同一条“rack ready”结论覆盖。
+
+```yaml
+workload_fit_capacity_gate:
+  gate_id: wfcg-dc-a-rack12-20260620
+  capacity_activation_record: dc-a-rack-12-2026-06
+  rack_capacity_unit: dc-a-rack-12
+  workload_slices:
+    premium_inference:
+      required_capacity:
+        gpu_count: 64
+        redundancy: n_plus_one_or_policy_defined
+        cold_start_budget: within_slo
+      required_evidence:
+        physical_acceptance_matrix: pass
+        power_thermal_envelope: pass_for_inference_burst
+        energy_ledger_window: collected
+        model_artifact_distribution: pass
+        serving_rollback_drill: pass_if_high_sla
+      decision: approve_canary_or_production_or_block
+    large_distributed_training:
+      required_capacity:
+        gpu_count: 256
+        topology: same_fabric_with_complete_rails
+        duration: sustained_multi_day
+      required_evidence:
+        physical_acceptance_matrix: pass_for_sustained_training
+        thermal_full_load_soak: pass
+        fabric_change_acceptance_matrix: pass
+        training_communication_acceptance_matrix: pass
+        checkpoint_plus_nccl_concurrency: pass
+      block_if:
+        - open_capacity_derating_record
+        - open_cooling_degradation_record
+        - pdu_redundancy_lost
+        - liquid_loop_not_retested_after_maintenance
+        - fabric_or_storage_baseline_invalid
+      decision: approve_if_all_required_evidence_valid
+  output:
+    resource_pool_labels:
+      workload_fit/premium_inference: true_or_false
+      workload_fit/large_distributed_training: true_or_false
+    capacity_commitment:
+      sellable_gpu: calculated
+      schedulable_gpu: calculated
+      reservation_allowed: policy_decision
+    expires_at: 2026-06-27T00:00:00Z
+```
+
+这个 gate 让“可用产能”变成按 workload 证明的事实。一个 rack 可以通过 premium inference，但因为 thermal soak 未完成而不能通过 large distributed training；也可以通过单节点推理，却因为 fabric baseline 失效不能承载跨 rack 训练。容量系统如果只输出一个 allocatable GPU 数，会把这些差异抹平，最终让业务承诺超过真实能力。
+
+```mermaid
+flowchart LR
+  Planned["planned GPU"] --> Installed["installed"]
+  Installed --> Accepted["accepted baseline"]
+  Accepted --> Allocatable["allocatable"]
+  Allocatable --> Gate["workload_fit_capacity_gate"]
+  Gate -->|premium inference pass| Inference["resource label\nworkload_fit/premium_inference"]
+  Gate -->|large training pass| Training["resource label\nworkload_fit/large_distributed_training"]
+  Gate -->|blocked| Limited["limited / no reservation"]
+  Limited --> Evidence["close evidence gap\npower / cooling / fabric / storage"]
+  Evidence --> Gate
+```
+
 实现还需要变更闭环。设施变更、线缆变更、交换机升级、液冷维护、PDU 维修、批量换卡和驱动升级，都应触发相应范围的复测。复测范围不必每次全量，但必须与变更影响面匹配。没有变更闭环，初次验收再严格，也会随着运行时间失效。
 
 工程实现还要给异常资源留出处理路径。验收失败的节点进入 quarantine，部分能力不足的 rack 进入 limited，等待供应商处理的批次进入 blocked。明确状态比隐藏问题更重要，因为平台可以基于状态做调度，而不能基于口头说明做自动化。

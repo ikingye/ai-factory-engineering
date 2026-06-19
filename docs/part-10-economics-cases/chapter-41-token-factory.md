@@ -165,6 +165,63 @@ energy_ledger:
 
 能效治理不应鼓励牺牲 SLO。降低 power cap 可能改善短期功耗，但如果 TTFT、TPOT、训练 step time 或质量回归，单位成功任务成本可能上升。更可靠的做法是把 power cap、降额、冷却恢复、batch 策略和模型路由放进同一张报表，比较 energy cost saving 与 reliability/quality loss。Token Factory 关注的是有效 token，而不是最低瓦数。
 
+容量投产和降额也需要单独成本记录：`capacity_activation_cost_record`。`energy_ledger` 解释某个时间窗口里的能耗和 token 产出，`reliability_cost_ledger` 汇总事故和预防成本；但当 GPU 已采购、已上架、却因为 power、cooling、fabric、storage 或验收缺口不能进入 workload-fit 状态时，需要一个对象专门解释“资本已经投入但产能没有兑现”的损失。
+
+```yaml
+capacity_activation_cost_record:
+  record_id: cacr-dc-a-rack12-20260620
+  linked_evidence:
+    capacity_activation_record: dc-a-rack-12-2026-06
+    workload_fit_capacity_gate: wfcg-dc-a-rack12-20260620
+    physical_capacity_activation_matrix: pcam-dc-a-rack12-20260620
+    facility_capacity_evidence_bundle: fceb-dc-a-rack12-20260620_if_incident
+    energy_ledger: energy-rack12-20260620-1000
+    capacity_derating_records: [derate-rack12-20260620-001]
+    cooling_degradation_records: [cool-deg-20260620-002]
+  capacity_delta:
+    planned_gpu: 128
+    installed_gpu: 128
+    accepted_gpu: calculated
+    allocatable_gpu: calculated
+    workload_fit_gpu:
+      premium_inference: calculated
+      large_distributed_training: calculated
+    unavailable_gpu_by_reason:
+      power_limited: calculated
+      cooling_limited: calculated
+      fabric_limited: calculated
+      storage_limited: calculated
+      baseline_invalid: calculated
+  cost_components:
+    capital_idle_cost: calculated
+    depreciation_before_activation_cost: calculated
+    delayed_revenue_or_internal_value: calculated
+    reservation_deferral_cost: calculated
+    training_schedule_slip_cost: calculated_if_training_committed
+    remediation_and_retest_cost: measured
+    power_cooling_recovery_cost: calculated
+    opportunity_cost_of_limited_mode: calculated
+  derived:
+    activated_capacity_ratio: calculated
+    cost_per_workload_fit_gpu_day: calculated
+    tokens_w_delta_due_to_power_cooling: calculated_if_serving
+    roi_delay_days: calculated
+```
+
+这个记录会改变扩容复盘。若 delayed cost 主要来自 cooling commissioning，下一批采购前就应把液冷验收和 spare capacity 纳入计划；若主要来自 fabric/storage baseline，问题在基础设施联调；若主要来自 baseline invalidation 和资源池同步，问题在平台控制面。把这些成本分开，团队才能判断是继续买 GPU、投资机房、补自动化、还是调整销售承诺。Token Factory 视角下，没有激活的 GPU 不是中性库存，而是正在消耗折旧、机房、电力准备和机会成本的未兑现产能。
+
+```mermaid
+flowchart LR
+  Activation["capacity_activation_record"] --> Cost["capacity_activation_cost_record"]
+  Gate["workload_fit_capacity_gate"] --> Cost
+  Facility["facility_capacity_evidence_bundle"] --> Cost
+  Energy["energy_ledger"] --> Cost
+  Cost --> Reliability["reliability_cost_ledger"]
+  Cost --> PNL["commercial_pnl_ledger"]
+  Cost --> Capacity["capacity_commitment_guard"]
+  Cost --> PRR["production_readiness_review"]
+```
+
 异构 GPU 资源池需要更进一步的 `heterogeneous_gpu_cost_scorecard`。单个 `energy_ledger` 解释某个资源池或 rack 在某个窗口的能效，但模型路由和扩容决策需要比较不同 GPU class 在同一 workload slice 上的有效产出。比较口径必须包含 tokens/s、tokens/W、cost/token、TTFT/TPOT、质量门禁、可用容量、失败率和回滚成本，否则“新 GPU 更快”或“旧 GPU 更便宜”都会变成片面结论。
 
 ```yaml

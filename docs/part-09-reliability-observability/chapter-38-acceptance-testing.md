@@ -289,6 +289,53 @@ physical_acceptance_matrix:
 
 准入矩阵的通过标准应包含“恢复后复测”。降额解除不等于立即恢复高优生产，必须跑 thermal full-load soak、rack power under load 和代表性 workload tokens/W 或 step time 对比。否则某个 rack 会在告警消失后反复进入生产又反复退化，形成隐性容量抖动。
 
+因此，物理准入还应增加 `physical_capacity_activation_matrix`。`physical_acceptance_matrix` 证明 rack、BMC、power、cooling 和 cabling 达到基线；`physical_capacity_activation_matrix` 则证明这批资源能从 installed 走到 workload-fit，并且在降额、恢复和复测路径上能正确改变调度状态。前者偏验收，后者偏投产。
+
+```yaml
+physical_capacity_activation_matrix:
+  activation_matrix_id: pcam-dc-a-rack12-20260620
+  capacity_activation_record: dc-a-rack-12-2026-06
+  rack_capacity_unit: dc-a-rack-12
+  required_stages:
+    installed:
+      evidence: [asset_inventory, rack_power_connected, bmc_reachable]
+      result: pass
+    bootstrapped:
+      evidence: [os_image, driver, firmware, dcgm, node_agent]
+      result: pass
+    accepted:
+      evidence: [physical_acceptance_matrix, fabric_acceptance_matrix, storage_acceptance_matrix]
+      result: pass
+    allocatable:
+      evidence: [resource_pool_state, scheduler_labels, monitoring_labels]
+      result: pass
+    workload_fit:
+      evidence: [workload_fit_capacity_gate, energy_ledger_window, thermal_full_load_soak]
+      result:
+        premium_inference: pass
+        large_distributed_training: pass_or_limited
+  derating_replay:
+    inject_or_simulate:
+      - pdu_redundancy_lost
+      - cooling_limited
+      - gpu_thermal_throttle_above_policy
+    expected_actions:
+      capacity_derating_record: generated
+      scheduler_label_removed: workload_fit/large_distributed_training
+      queue_admission_blocks_long_training: true
+      energy_ledger_marks_power_cooling_induced_waste: true
+      facility_capacity_evidence_bundle: generated
+  recovery_retest:
+    required:
+      - rack_power_under_load
+      - thermal_full_load_soak
+      - representative_training_step_time
+      - representative_inference_tokens_w
+    restore_only_if_all_pass: true
+```
+
+这个矩阵能提前暴露“物理告警有了，但控制面没动”的问题。若 PDU 冗余丢失时调度标签没有降级，生产训练会继续进入风险 rack；若 cooling_limited 时 energy ledger 没有标记浪费，Token Factory 会把能效下降误归因到模型或 runtime；若恢复后没有 thermal soak，资源可能在下一轮满载时再次降额。物理准入必须验证这些动作，而不是只验证硬件能否开机和满载一次。
+
 ## 38.7 network benchmark
 
 Network benchmark 需要覆盖管理网、BMC 网、业务网、存储网和训练通信网。对 RDMA 网络，应检查链路状态、MTU、PFC/ECN、拥塞控制、丢包、错误包、带宽、延迟、RDMA error、重传和多 rail 负载均衡。对普通以太网络，也要检查 Service、DNS、镜像拉取、对象存储访问、控制面连通性和推理入口路径。

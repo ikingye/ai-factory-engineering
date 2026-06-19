@@ -777,6 +777,57 @@ production_readiness_review:
 
 这份门禁会迫使上线讨论从“服务能不能访问”转为“证据是否足以承受生产风险”。例如资源池有 GPU，但 `baseline_invalidation_record` 仍然 open，就只能批准单节点低风险 canary，不能批准 premium inference；模型质量门禁通过，但评测集没有 lineage、没有 `eval_slice_contract` 或没有覆盖目标 task slice，就不能进入高价值租户；golden set 被污染或过期，门禁分数就不能作为生产证据；线上实验没有 guardrail，就不能把真实客户当作无边界试验场；高 SLA endpoint 没有近期 `serving_rollback_drill`，就不能承诺快速回滚；训练产物没有 `dataset_lineage_record`、`checkpoint_restore_drill` 和 `model_artifact_provenance`，就不能证明模型来自被批准的数据、可恢复 checkpoint 和合格转换链路；缓存撤销不能回放，就不能保证旧 tokenizer、旧权重或旧 RAG 索引已离开生产路径；RAG 没有权限决策回放和 context 快照，就不能接入敏感知识库；Agent 没有工具副作用策略和预算账本，就不能自动执行有副作用动作；token 计量未对账，就不能进入商业化计费；容量激活记录显示 cooling_limited，就不能承诺持续满载训练。PRR 的价值在于把这些限制提前暴露，而不是等事故后再解释。
 
+容量投产也应有专门的 PRR 演练：`capacity_activation_prr_drill`。它验证的不是某台服务器能不能跑 benchmark，而是一批资源从 planned 到 workload-fit 的整条链路是否可证明、可降级、可恢复、可入账。演练应覆盖三类失败：物理资源已安装但 thermal soak 或 PDU 冗余未通过；运行中 cooling degradation 导致 rack 降额；容量系统仍把 limited rack 计入销售或训练排期。
+
+```yaml
+capacity_activation_prr_drill:
+  drill_id: cap-prr-drill-20260620-001
+  production_readiness_review: prr-training-prod-2026-06
+  scope:
+    capacity_activation_record: dc-a-rack-12-2026-06
+    rack_capacity_unit: dc-a-rack-12
+    workload_slices:
+      - premium_inference
+      - large_distributed_training
+      - checkpoint_heavy_training
+  injected_or_simulated_failures:
+    - pdu_redundancy_lost_before_launch
+    - cooling_limited_during_soak
+    - thermal_throttle_above_policy
+    - workload_fit_capacity_below_commitment
+    - scheduler_label_not_removed_after_derating
+    - reservation_system_uses_installed_gpu_not_workload_fit_gpu
+  required_outputs:
+    physical_capacity_activation_matrix: generated
+    facility_capacity_evidence_bundle: generated
+    workload_fit_capacity_gate: pass_or_block_recorded
+    capacity_derating_record: generated_if_derating_injected
+    energy_ledger: updated
+    capacity_activation_cost_record: generated
+    capacity_commitment_guard: blocks_or_conditions_recorded
+  pass_criteria:
+    installed_capacity_not_treated_as_sellable_capacity: true
+    large_training_blocked_when_thermal_soak_missing: true
+    scheduler_labels_follow_derating_state: true
+    reservation_commitment_uses_workload_fit_capacity: true
+    recovery_requires_full_load_retest: true
+    delayed_capacity_cost_recorded: true
+```
+
+```mermaid
+flowchart LR
+  Drill["capacity_activation_prr_drill"] --> Matrix["physical_capacity_activation_matrix"]
+  Matrix --> Gate["workload_fit_capacity_gate"]
+  Gate --> Guard["capacity_commitment_guard"]
+  Matrix --> Bundle["facility_capacity_evidence_bundle"]
+  Bundle --> Energy["energy_ledger"]
+  Energy --> Cost["capacity_activation_cost_record"]
+  Guard --> PRR["PRR capacity gate"]
+  Cost --> PRR
+```
+
+这类演练能拦截“纸面产能”事故。GPU 已经在资产系统里，采购和设施都认为交付完成，但对业务真正重要的是可承载目标 workload 的产能：能不能持续满载、能不能跨 rack 通信、能不能 checkpoint、能不能在 SLO 下生产 token、能不能在故障或降额时自动限制承诺。PRR 不应接受 installed GPU 作为产能证据；它应要求 workload-fit gate、降额回放、能效账本和投产成本记录共同通过。
+
 异构 GPU 或新代际资源池上线前，应增加 `heterogeneous_gpu_prr_drill`。它的目标不是证明新 GPU benchmark 漂亮，而是证明模型硬件匹配、资源池 entitlement、异构验收矩阵、路由决策、fallback、质量门禁和经济账本能在一个受控窗口内闭环。演练应至少覆盖三类失败：新 GPU canary 触发 runtime 或质量护栏；长上下文请求从成熟池迁移到高 HBM 池后成本或 TPOT 偏离；某类 GPU 因 thermal derating 或 baseline invalidation 被降级后，Gateway 和调度器是否停止把目标 workload 路由过去。
 
 ```yaml

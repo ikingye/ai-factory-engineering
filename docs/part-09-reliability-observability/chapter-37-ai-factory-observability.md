@@ -965,6 +965,65 @@ reliability_evidence_bundle:
 
 这个 bundle 能改变事故前几分钟的工作方式。值班人员先看 bundle，而不是分别打开网关、GPU、网络、资源池、变更系统和成本报表；自动化系统可以根据 bundle 决定是否先摘流量、冻结变更、限制大训练或隔离节点；事后 `incident_record` 引用 bundle，复盘能还原当时看到的证据，而不是依赖事后查询。对 AI Factory 来说，证据冻结是可靠性能力的一部分，因为许多关键状态只在故障窗口存在。
 
+物理设施和容量事故还需要专门的 `facility_capacity_evidence_bundle`。普通 `reliability_evidence_bundle` 能冻结 SLO、资源健康和变更证据，但当症状是 GPU 降频、tokens/W 下降、capacity activation 延迟、rack 降额或液冷告警时，还需要把设施证据、产能漏斗和调度动作放在一起。否则 SRE 只能看到“资源池少了 GPU”或“GPU 变慢”，却无法解释是 power、cooling、PDU 冗余、liquid loop、thermal soak、fabric/storage 基线，还是资源池状态同步出了问题。
+
+```yaml
+facility_capacity_evidence_bundle:
+  bundle_id: fceb-dc-a-rack12-20260620
+  trigger:
+    source: capacity_or_tokens_w_alert
+    symptom: tokens_per_watt_regression_or_workload_fit_capacity_drop
+    detected_at: recorded
+  scope:
+    rack_capacity_units: [dc-a-rack-12]
+    power_domains: [pdu-a-12]
+    cooling_domains: [cdu-loop-2]
+    resource_pools: [training-prod-h100, inference-premium-a]
+    workload_slices: [large_distributed_training, premium_inference]
+  facility_evidence:
+    rack_power: attached
+    pdu_redundancy_state: attached
+    psu_or_power_shelf_events: attached
+    inlet_outlet_or_coolant_temperature: attached
+    coolant_flow_pressure_or_fan_state: attached
+    leak_or_cdu_alarm: attached_if_any
+    gpu_clock_throttle_reason: attached
+    bmc_events: attached
+  capacity_evidence:
+    capacity_activation_record: dc-a-rack-12-2026-06
+    workload_fit_capacity_gate: wfcg-dc-a-rack12-20260620
+    physical_acceptance_matrix: physical-rack12-20260619
+    capacity_derating_records: [derate-rack12-20260620-001]
+    cooling_degradation_records: [cool-deg-20260620-002]
+    energy_ledger_window: energy-rack12-20260620-1000
+  scheduler_and_business_impact:
+    labels_changed: [workload_fit/large_distributed_training=false]
+    new_large_training_blocked: true
+    reservations_at_risk: measured
+    affected_tokens_or_gpu_hours: calculated
+  recommended_actions:
+    immediate: [degrade_rack_capacity, block_long_training, reroute_premium_inference_if_needed]
+    recovery: [thermal_full_load_soak, rack_power_under_load, workload_tokens_w_compare]
+    cost_update: capacity_activation_cost_record
+```
+
+这个 bundle 的关键是同时面向 SRE、设施、容量和业务。设施团队能看到具体 PDU/CDU/温度证据，平台团队能看到资源标签和调度动作，容量团队能看到 workload-fit capacity 损失，商业团队能看到 reservation 和 token 影响。没有这类证据包，物理问题很容易被低估为“某个 rack 暂时不稳定”，而不是会影响承诺产能、毛利和上线节奏的生产事件。
+
+```mermaid
+flowchart TB
+  Alert["tokens/W drop or capacity drop"] --> Bundle["facility_capacity_evidence_bundle"]
+  Bundle --> Power["rack power / PDU / PSU"]
+  Bundle --> Cooling["cooling / liquid loop / thermal"]
+  Bundle --> Capacity["capacity_activation_record"]
+  Bundle --> Gate["workload_fit_capacity_gate"]
+  Bundle --> Energy["energy_ledger"]
+  Power --> Action["degrade / reroute / block reservation"]
+  Cooling --> Action
+  Gate --> Action
+  Energy --> Cost["capacity_activation_cost_record"]
+  Action --> PRR["PRR capacity gate update"]
+```
+
 第四步是建立数据质量检查。指标缺失、标签为空、时间戳漂移、重复采集和单位不一致，都会让看板和告警失真。可观测性平台本身也要有 SLO，例如关键指标采集延迟、丢失率和查询可用性。否则事故中最先失效的可能就是观测系统。
 
 第五步是把观测接入动作系统。节点隔离、模型回滚、限流、扩容、cache 预热、工单创建和 incident 升级，都应能由观测信号触发或辅助。观测与动作分离太远，会让自动化恢复停留在口号。

@@ -538,6 +538,37 @@ capacity_activation_review:
 
 Capacity review 还要区分“未激活”和“已激活但降额”。前者通常是交付、验收或资源池流程问题；后者是运行态 power/cooling/fabric/storage 约束。`capacity_derating_record` 和 `cooling_degradation_record` 应在例会上被逐项关闭：是否仍然影响 workload-fit capacity，是否需要延后销售承诺，是否造成训练重排，是否已经完成 thermal soak 和基线复测。若降额持续存在，容量计划必须用 limited capacity 重新计算，而不是继续引用安装 GPU 数。
 
+容量运营还应维护 `capacity_commitment_guard`。它把资源池事实转成能否对业务、销售或内部训练计划承诺的机器规则。很多组织的问题不是完全不知道容量受限，而是承诺流程没有消费这些限制：销售仍按 installed GPU 售卖，训练排期仍按 allocatable GPU 规划，SRE 却知道 open derating 和 cooling degradation 没关。Guard 的作用是让容量承诺必须引用 workload-fit 证据。
+
+```yaml
+capacity_commitment_guard:
+  guard_id: ccg-20260620-training-prod
+  scope:
+    resource_pool: training-prod-h100
+    workload_slices: [large_distributed_training, checkpoint_heavy_training]
+  required_inputs:
+    capacity_activation_review: current
+    workload_fit_capacity_gate: pass_for_required_slice
+    open_capacity_derating_records: none_for_required_capacity
+    open_cooling_degradation_records: none_for_required_capacity
+    physical_capacity_activation_matrix: pass
+    fabric_change_acceptance_matrix: pass_if_recent_fabric_change
+    storage_composite_regression_gate: pass_if_checkpoint_heavy
+    energy_ledger_window: recent
+  decisions:
+    accept_new_reservation: true_or_false
+    allow_large_training_queue_admission: true_or_false
+    sell_premium_inference_capacity: true_or_false
+    require_capacity_risk_register: true_if_conditional
+  stop_conditions:
+    - workload_fit_capacity_below_commitment
+    - thermal_full_load_soak_expired
+    - open_derating_record_for_target_rack
+    - energy_ledger_tokens_w_regression_unexplained
+```
+
+这个 guard 能把容量会议从人肉协调变成可审计决策。若 guard 拒绝新 reservation，原因必须是具体证据缺口，例如 large training 的 workload-fit GPU 不足、thermal soak 过期、fabric baseline 失效或 cooling degradation 未关闭。业务可以选择降低承诺、接受 limited canary 或等待修复，但不能把“看起来还有 GPU”当作产能事实。
+
 ## 40.8 cost operation
 
 Cost operation 是成本运营。AI Factory 的成本包括 GPU 折旧或租赁、电力、制冷、网络、存储、软件、运维、机房、失败重跑和机会成本。推理服务最终关注 cost per token、revenue per token、tokens/W 和毛利；训练关注 GPU 小时、实验效率、失败率、checkpoint 成本和模型 ROI。

@@ -272,6 +272,12 @@
 | `rack_capacity_unit` | 第 36 章、第 28 章、第 40 章 | 说明 rack/power/cooling/fabric/storage 如何构成可承诺产能单元 |
 | `physical_acceptance_matrix` | 第 38 章 | 说明 power、cooling、cabling、BMC、full-load、thermal soak 和 workload 的准入矩阵 |
 | `capacity_activation_record` | 第 36 章、第 40 章、第 41 章 | 说明 planned、installed、bootstrapped、accepted、allocatable、workload-fit、limited 到 retired 的交付状态流转和投产延迟成本 |
+| `workload_fit_capacity_gate` | 第 36、40、44 章 | 说明不同 workload slice 如何基于 power、cooling、fabric、storage、runtime、SRE 和成本证据决定是否可承诺 |
+| `facility_capacity_evidence_bundle` | 第 37、41、44 章 | 说明 tokens/W 下降、rack 降额、液冷告警或产能下降时如何冻结设施、容量、调度和业务影响证据 |
+| `physical_capacity_activation_matrix` | 第 38、44 章 | 说明资源从 installed 到 workload-fit 的投产验收、降额回放、恢复复测和调度状态同步 |
+| `capacity_commitment_guard` | 第 40、44 章 | 说明容量承诺、训练排期和销售承诺必须消费 workload-fit capacity、降额、冷却退化和能效证据 |
+| `capacity_activation_cost_record` | 第 41、44 章 | 说明已采购/上架但未形成 workload-fit capacity 的资本闲置、折旧、延迟收入、排期滑移和复测成本 |
+| `capacity_activation_prr_drill` | 第 44 章 | 说明投产前如何演练 PDU/冷却/降额/调度标签/销售承诺/成本账本闭环 |
 | `energy_ledger` | 第 36 章、第 41 章 | 说明 GPU power、rack power、PUE、tokens/W、joules/token 和 power/cooling-induced waste 的经济归因 |
 
 ## 安全与多租户链路覆盖矩阵

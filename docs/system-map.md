@@ -251,6 +251,12 @@ flowchart TB
 | `capacity_derating_record` | 记录 power/cooling/thermal 约束导致的临时产能降额、调度限制和复测条件。 | 第 34、36、38、40、41、44 章 | `rack_capacity_unit`、`energy_ledger` |
 | `cooling_degradation_record` | 记录 cooling domain 退化、液冷/风冷信号、GPU 降频、workload 影响和恢复复测。 | 第 36、40、41、44 章 | `capacity_derating_record`、`reliability_cost_ledger` |
 | `capacity_activation_record` | 把 planned、installed、accepted、allocatable 和 workload-fit 产能及受限原因写成投产事实。 | 第 36、40、41 章 | `capacity_activation_review`、`reliability_cost_ledger` |
+| `workload_fit_capacity_gate` | 按 workload slice 验证 power、cooling、fabric、storage、runtime、SRE 和成本证据，决定产能是否可承诺。 | 第 36、40、44 章 | `capacity_commitment_guard`、`production_readiness_review` |
+| `facility_capacity_evidence_bundle` | 在 tokens/W 下降、rack 降额、冷却退化或投产延迟时冻结设施、容量、调度和业务影响证据。 | 第 37、41、44 章 | `capacity_activation_cost_record`、`reliability_evidence_bundle` |
+| `physical_capacity_activation_matrix` | 验证 installed、bootstrapped、accepted、allocatable、workload-fit、降额回放和恢复复测。 | 第 38、44 章 | `workload_fit_capacity_gate`、`capacity_activation_record` |
+| `capacity_commitment_guard` | 阻止把 installed 或 allocatable GPU 误当成可销售/可排期的 workload-fit capacity。 | 第 40、44 章 | `capacity_activation_review`、`production_readiness_review` |
+| `capacity_activation_cost_record` | 把未激活产能、降额、延迟收入、训练排期滑移、复测和机会成本写入经济账本。 | 第 41、44 章 | `commercial_pnl_ledger`、`reliability_cost_ledger` |
+| `capacity_activation_prr_drill` | 演练 PDU/冷却/降额/调度标签/容量承诺/成本账本，证明投产链路可控。 | 第 44 章 | `production_readiness_review`、`capacity_activation_cost_record` |
 | `reliability_cost_ledger` | 把事故、SLO 预算、基线失效、容量延迟和预防成本折算进成功 token 成本。 | 第 41 章 | `Token Factory ledger`、`production_readiness_review` |
 | `rag_agent_cost_attribution` | 把 RAG 检索/重排/context 和 Agent 工具/沙箱/外部 API 成本归到成功任务。 | 第 41 章 | `Token Factory ledger`、`business_model_profile` |
 | `Token Factory ledger` | 把 token、GPU、能耗、质量、安全、可靠性和收入放到同一账本。 | 第 41 章 | `business_model_profile`、`capacity_activation_review` |
