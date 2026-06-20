@@ -449,6 +449,105 @@ quality_gate_execution:
 
 这份 execution 让质量门禁可以审计和复用。Gateway 的 `routing_quality_scorecard` 可以引用最近一次通过的 execution；第 14 章的 `serving_quality_contract` 可以证明上线组合与评测组合一致；第 40 章的 quality incident 可以检查当初是否有豁免或未关闭回归；第 41 章可以把评测成本和低质量损失放进质量账本。门禁不是静态清单，而是一条可追溯的发布证据链。
 
+质量门禁还需要 `quality_gate_freshness_contract`。很多平台的 gate 在执行当天是可信的，但几天后依赖已经变化：评测数据集新增了高风险反馈样本，judge 模型升级，rubric 变更，serving runtime 改了输出协议，Gateway route 增加了 fallback，RAG index 的 ACL 策略更新，或者 feedback pipeline 暂时丢失 trace。若 gate 仍被当作“最近一次通过”使用，就会出现评测证据过期但发布继续放量。Freshness contract 的作用是定义一次 gate 结果在什么依赖不变的条件下可用，哪些变化会让它自动降级或失效。
+
+```yaml
+quality_gate_freshness_contract:
+  contract_id: qgfc-support-20260620
+  gate_execution: qge-af-chat-20260620-001
+  valid_for:
+    serving_quality_contract: sqc-af-chat-20260619-r3
+    task_slices: [support_chat, rag_citation, tool_call_json]
+    release_train: maas-chat-2026-06
+    max_age: policy_defined_by_risk
+  dependency_versions:
+    eval_dataset_lineage_record: edl-support-quality-20260620
+    golden_set_governance_record: gsg-support-202606
+    judge_drift_calibration_record: jdcr-support-20260620-001
+    rubric_version: support-rubric-v5
+    eval_runner_image: eval-runner@sha256:example
+    prompt_template: support-v18
+    runtime_profile: vllm-prod-h100-v7
+    serving_route_release_contract: srrc-af-chat-large-20260620
+    quality_feedback_intake_pipeline: qfip-support-202606
+  invalidation_triggers:
+    eval_dataset_lineage_changed: rerun_affected_slices
+    contamination_record_opened: block_high_value_release
+    judge_or_rubric_changed_without_calibration: block_gate_reuse
+    serving_contract_changed: rerun_protocol_and_quality_gate
+    route_or_fallback_changed: require_route_quality_replay
+    feedback_replay_rate_below_threshold: degrade_to_observation_only
+  decision:
+    reusable_for_canary: true
+    reusable_for_full_ramp: true_or_false
+    next_required_rerun: before_major_ramp_or_dependency_change
+```
+
+这个契约让质量门禁从“时间最近”变成“依赖仍然一致”。它也避免两个极端：一端是每次小变更都全量重跑，导致发布效率过低；另一端是只要 gate 曾经通过就无限复用，导致证据失真。工程上应把 invalidation trigger 做成控制面事件：dataset lineage 更新、judge 校准失败、serving contract 变化、fallback 变化或 feedback pipeline 失效时，自动更新 gate 状态，并让 PRR、Gateway 和 release pipeline 消费这个状态。
+
+还应建立 `quality_evidence_dependency_graph`。Freshness contract 定义规则，dependency graph 记录实际依赖关系和影响面。它能回答：某个 judge 校准失败会影响哪些 gate execution、哪些 serving release、哪些 online experiment、哪些 task slice 和哪些客户 ramp；某个 golden set 污染是否只影响 RAG citation，还是也影响 tool_call_json；某条 feedback pipeline 关联失败会不会让线上实验结论不可用。没有这张图，质量证据失效只能靠人工开会传播。
+
+```yaml
+quality_evidence_dependency_graph:
+  graph_id: qedg-support-20260620
+  nodes:
+    gate_execution:
+      - qge-af-chat-20260620-001
+    eval_dataset_lineage:
+      - edl-support-quality-20260620
+    golden_set_governance:
+      - gsg-support-202606
+    judge_calibration:
+      - jdcr-support-20260620-001
+    serving_quality_contract:
+      - sqc-af-chat-20260619-r3
+    online_experiment_guardrail:
+      - oeg-support-20260620
+    quality_feedback_pipeline:
+      - qfip-support-202606
+  edges:
+    - from: edl-support-quality-20260620
+      to: qge-af-chat-20260620-001
+      relation: provides_eval_cases
+      invalidation_action: rerun_affected_slices
+    - from: jdcr-support-20260620-001
+      to: qge-af-chat-20260620-001
+      relation: defines_judge_score_semantics
+      invalidation_action: rebaseline_threshold_or_block
+    - from: qge-af-chat-20260620-001
+      to: sqc-af-chat-20260619-r3
+      relation: approves_serving_combination
+      invalidation_action: freeze_release_or_rerun_gate
+    - from: qfip-support-202606
+      to: oeg-support-20260620
+      relation: supplies_feedback_guardrail
+      invalidation_action: freeze_experiment_if_correlation_broken
+  impact_query:
+    input_event: judge_calibration_failed
+    affected_gate_executions: [qge-af-chat-20260620-001]
+    affected_serving_contracts: [sqc-af-chat-20260619-r3]
+    affected_experiments: [oeg-support-20260620]
+```
+
+```mermaid
+flowchart TB
+  Dataset["eval_dataset_lineage_record"] --> Gate["quality_gate_execution"]
+  Golden["golden_set_governance_record"] --> Gate
+  Judge["judge_drift_calibration_record"] --> Gate
+  Rubric["rubric / parser version"] --> Gate
+  Gate --> Fresh["quality_gate_freshness_contract"]
+  Fresh --> SQC["serving_quality_contract"]
+  SQC --> Route["serving_route_release_contract"]
+  Route --> Experiment["online_experiment_guardrail"]
+  Feedback["quality_feedback_intake_pipeline"] --> Experiment
+  Fresh --> PRR["production readiness review"]
+  Judge --> Dep["quality_evidence_dependency_graph"]
+  Dataset --> Dep
+  Dep --> Impact["affected gates / releases / experiments"]
+```
+
+这张图说明质量证据不是线性的。评测数据、judge、rubric、serving contract、route 和反馈管线共同决定一次 gate 是否仍可信。`quality_evidence_dependency_graph` 应进入 release pipeline：当依赖事件发生时，系统不需要猜哪些 release 受影响，而是直接查询图并更新状态。对资深工程师来说，这比“质量团队确认过”更可靠，因为它把人的确认变成可回放、可审计、可自动传播的控制面状态。
+
 `quality_regression_record` 是失败样本从发现到关闭的状态机。它要记录发现来源、复现条件、影响范围、归因层级、owner、修复方案、复测结果和是否加入门禁。没有 regression record，线上反馈很容易被临时修掉，却不能防止复发；有了它，质量事故会沉淀成长期资产。
 
 ```mermaid

@@ -322,6 +322,9 @@
 | `judge_drift_calibration_record` | 第 13 章、第 37 章、第 40 章、第 41 章、第 44 章 | 说明 judge model、rubric 或 parser 升级后如何用人工 anchor 和历史输出校准漂移、重标阈值并决定 gate 是否重跑 |
 | `quality_gate_record` | 第 13 章、第 14 章、第 40 章 | 说明模型、prompt、RAG、工具、runtime、成本和安全指标如何组成上线门禁 |
 | `quality_gate_execution` | 第 13 章、第 6 章、第 14 章、第 40 章、第 44 章 | 说明某次门禁执行的输入、环境、数据 lineage、judge/rubric、结果、豁免和发布动作，避免只保存静态 pass/fail |
+| `quality_gate_freshness_contract` | 第 13、37、39、41、44 章 | 说明一次 gate execution 在 dataset、judge、rubric、serving contract、route 和 feedback pipeline 依赖不变时才可复用，哪些变化会降级或失效 |
+| `quality_evidence_dependency_graph` | 第 13、37、39、44 章 | 说明数据、judge、gate、serving contract、experiment、routing scorecard 和 PRR 的依赖关系如何查询影响面并传播失效 |
+| `quality_evidence_invalidation_event` | 第 37、39、41、44 章 | 说明质量证据失效如何作为控制面事件冻结实验、阻断放量、重跑 gate、降级路由证据并打开成本记录 |
 | `online_experiment_record` | 第 6 章、第 13 章、第 14 章 | 说明 A/B、canary、流量切分、护栏指标、统计窗口、回滚和影响范围 |
 | `online_experiment_guardrail` | 第 13 章、第 37 章、第 40 章、第 44 章 | 说明线上实验的随机化单元、会话粘性、排除范围、停止规则、自动冻结、证据包和回滚要求 |
 | `quality_feedback_event` | 第 1 章、第 2 章、第 3 章、第 37 章 | 说明用户反馈、人工接管、引用错误、工具失败和投诉如何进入质量事实层 |
@@ -344,7 +347,11 @@
 | `routing_quality_scorecard` | 第 6 章、第 13 章 | 说明 Gateway 如何把质量、安全、成本、延迟和能力用于模型路由，而不是只看健康 |
 | `routing_quality_decision_record` | 第 6 章、第 37 章、第 41 章 | 说明某个请求或流量切片为什么选择、拒绝或 fallback 到某个模型，并能回放质量、SLO、成本、能力和数据边界依据 |
 | `quality_evidence_bundle` | 第 37 章、第 40 章、第 41 章 | 说明质量事故时如何冻结反馈、人工评审、路由、serving contract、gate execution、slice contract、golden governance、实验护栏、回滚和成本证据 |
+| `quality_evidence_validity` | 第 37、41、44 章 | 说明 quality evidence bundle 引用的 gate、污染记录、judge 校准和反馈 pipeline 是否仍可作为 PRR 与放量证据 |
+| `quality_fault_tree_execution` | 第 39、44 章 | 说明质量事故如何按证据有效性、serving 组合、路由/实验、RAG/Agent、模型行为和经济影响执行故障树 |
+| `quality_incident_cost_record` | 第 41、44 章 | 说明一次质量事故或质量证据失效如何把低质量 token、人工接管、重试、信用、gate rerun、judge calibration、阻断和避免损失写入经济账本 |
 | `quality_cost_ledger` | 第 41 章 | 说明低质量 token、人工接管、退款、重试、投诉、评测成本、切片维护、golden set 治理、人工反馈、实验伤害、路由决策和回滚演练如何影响毛利 |
+| `quality_gate_freshness_prr_drill` | 第 44 章 | 说明上线前如何演练 gate 依赖变更、证据失效传播、实验冻结、路由降级、故障树和成本账本 |
 | `rag_agent_cost_attribution` | 第 41 章 | 说明 RAG embedding/search/rerank/context 与 Agent model/tool/sandbox/external API 成本如何归因到每成功答案或任务 |
 
 ## 行业案例与建设方法链路覆盖矩阵

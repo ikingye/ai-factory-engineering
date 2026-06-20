@@ -782,6 +782,94 @@ flowchart TB
 
 这棵故障树的 stop rule 是：没有 `serving_release_bundle`，不能声称线上组合一致；没有 `serving_route_release_contract` 和 `endpoint_admission_decision`，不能声称 Gateway 路由正确；没有 `cache_residency` 和 invalidation 证据，不能声称节点没有加载旧产物；没有 `usage_schema` 和 metering replay，不能声称账单正确；没有 `serving_rollback_drill`，不能把回滚能力当作既定事实。发布事故的关键不是更快猜根因，而是防止“半回滚”“半兼容”“半计量”进入生产。
 
+质量事故还需要 `quality_fault_tree_execution`。它的入口不是 5xx 或资源错误，而是用户可见价值下降：投诉、点踩、人工接管、引用错误、工具轨迹失败、A/B 护栏触发、低价 fallback 成功率下降，或者同一任务切片的 cost per successful answer 上升。质量故障树的第一步不是问“模型是不是变差”，而是问“证据是否足以归因”。如果评测 gate 已失效、feedback pipeline 关联失败、serving contract 不一致，直接讨论模型参数没有意义。
+
+```yaml
+quality_fault_tree_execution:
+  execution_id: qfte-20260620-001
+  incident_id: inc-20260620-quality-001
+  trigger:
+    symptom: feedback_spike_or_handoff_delta_or_citation_failure_or_experiment_guardrail_breach
+    affected_task_slices: [rag_citation, tool_call_json]
+    affected_tenants: [enterprise-a]
+  entry_evidence:
+    quality_evidence_bundle: qeb-20260620-support-001
+    quality_evidence_validity: qev-support-20260620-001
+    quality_evidence_dependency_graph: qedg-support-20260620
+    serving_release_evidence_bundle: sreb-af-chat-large-20260620-001
+  branches:
+    evidence_validity:
+      checks:
+        - quality_gate_freshness_contract_usable
+        - eval_contamination_invalidation_record_none_open
+        - judge_drift_calibration_record_passed
+        - feedback_pipeline_replayable_rate_within_policy
+      verdict: pass_or_invalid_evidence
+      action_if_confirmed: block_ramp_and_rerun_gate
+    serving_combination:
+      checks:
+        - serving_quality_contract_matches_gate_execution
+        - weights_tokenizer_template_runtime_match_bundle
+        - usage_schema_and_protocol_contract_match
+      verdict: pass_or_serving_mismatch
+      action_if_confirmed: full_bundle_rollback_or_patch_release
+    route_and_experiment:
+      checks:
+        - routing_quality_decision_record_matches_scorecard
+        - online_experiment_guardrail_stop_rule_evaluated
+        - fallback_capability_equivalent_for_slice
+      verdict: pass_or_bad_route_or_experiment
+      action_if_confirmed: freeze_experiment_or_disable_fallback
+    rag_agent_context:
+      checks:
+        - retrieval_permission_decision_replay
+        - rag_context_snapshot_matches_prompt
+        - agent_tool_execution_record_policy_replay
+        - agent_budget_ledger_within_policy
+      verdict: pass_or_rag_agent_failure
+      action_if_confirmed: fix_index_context_tool_or_budget
+    model_behavior:
+      checks:
+        - regression_reproduced_on_frozen_inputs
+        - baseline_model_comparison
+        - prompt_template_comparison
+      verdict: pass_or_model_or_prompt_regression
+      action_if_confirmed: open_quality_regression_record
+    economics:
+      checks:
+        - quality_cost_ledger_updated
+        - affected_low_quality_tokens_estimated
+        - prevention_or_credit_required
+      verdict: pass_or_cost_gap
+      action_if_confirmed: append_quality_incident_cost_record
+  outputs:
+    quality_incident_cost_record: generated_if_user_visible_or_prevention_action
+    quality_gate_freshness_contract: updated_if_dependency_gap_found
+    quality_evidence_invalidation_event: emitted_if_gate_invalid
+    prr_gate_update: generated_if_preventable_gap
+```
+
+```mermaid
+flowchart TB
+  Symptom["quality symptom"] --> QFT["quality_fault_tree_execution"]
+  QFT --> Valid["evidence validity"]
+  QFT --> Serving["serving combination"]
+  QFT --> Route["route / experiment / fallback"]
+  QFT --> RAG["RAG / Agent context"]
+  QFT --> Model["model / prompt behavior"]
+  QFT --> Econ["quality economics"]
+  Valid --> Action["block / rerun / recalibrate"]
+  Serving --> Rollback["full bundle rollback"]
+  Route --> Freeze["freeze experiment / route patch"]
+  RAG --> Fix["fix retrieval / tool / budget"]
+  Model --> Regression["quality_regression_record"]
+  Econ --> Cost["quality_incident_cost_record"]
+  Action --> PRR["PRR gate update"]
+  Cost --> PRR
+```
+
+这棵故障树的 stop rule 是：没有 `quality_evidence_validity`，不能把 gate 当作可信证据；没有 `serving_quality_contract` 与 gate execution 的一致性，不能断言线上组合等同于评测组合；没有 `routing_quality_decision_record`，不能判断是不是路由或 fallback 造成；没有 RAG/Agent 子证据，不能把上下文或工具问题归因给模型；没有 `quality_cost_ledger`，不能判断事故优先级和治理投入。质量事故最容易变成主观争论，故障树的价值就是把争论压回可验证证据。
+
 安全和成本型事故也需要故障树。典型症状包括：某个租户预算在短时间内被打满，同一 API Key 出现多地域来源，第三方 provider 成本突增，长上下文请求比例异常，Agent run 步数失控，或者高敏请求被错误 fallback 到外部 provider。它们与传统服务故障不同：HTTP 可能都是 2xx，模型质量也可能正常，但平台的身份边界、数据边界或经济边界已经失控。若仍用“服务是否可用”作为入口，事故会等到账单或客户投诉时才暴露。
 
 `security_policy_fault_tree_execution` 用来把这类事故拆成可验证分支。第一分支是 credential：key 是否泄露、是否新建、来源是否异常、是否绕过 rotation 或禁用策略。第二分支是 policy：Gateway 是否按正确版本执行 `policy_decision_record`，是否有 dry-run 漏放或实例配置漂移。第三分支是 egress：`egress_provider_decision` 是否存在、provider 合同和区域是否允许、fallback 是否越过数据边界。第四分支是 spend：请求形态和成本速度是否符合租户历史和审批。第五分支是 observability：trace、prompt、RAG context、tool 参数是否被正确脱敏。每个分支都要能指向证据和止血动作。

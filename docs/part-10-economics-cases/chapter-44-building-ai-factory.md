@@ -1425,6 +1425,54 @@ flowchart TB
 
 这类演练会暴露质量治理的底层问题：golden set 访问审计只是记录但不会阻断，judge 升级改变分数却没有阈值重标定，反馈事件没有 prompt context snapshot 导致无法复现，实验 hard stop 后没有保留质量证据包。高水平的 AI Factory 不只是有评测报告，而是知道评测报告什么时候不能再被相信。
 
+更完整的质量 PRR 还应演练 `quality_gate_freshness_contract` 和 `quality_evidence_dependency_graph`。PRR 不能只问“最近一次 gate 是否通过”，还要问“这个 gate 依赖的 dataset、judge、rubric、serving contract、route、experiment 和 feedback pipeline 是否仍然符合当时条件”。演练应故意改变其中一个依赖，确认控制面能自动找到受影响 gate、serving release、线上实验和路由 scorecard，并产生阻断、重跑、冻结或降级动作。
+
+```yaml
+quality_gate_freshness_prr_drill:
+  drill_id: qgf-prr-drill-20260620-001
+  production_readiness_review: prr-maas-chat-prod-2026-06
+  scope:
+    serving_release: af-chat-large-20260619-r3
+    task_slices: [support_chat, rag_citation, tool_call_json]
+    protected_tenants: [enterprise-a]
+  preconditions:
+    quality_gate_freshness_contract: qgfc-support-20260620
+    quality_evidence_dependency_graph: qedg-support-20260620
+    quality_evidence_validity: qev-support-20260620-001
+  injected_dependency_changes:
+    - eval_dataset_lineage_changed_for_rag_citation
+    - judge_calibration_failed_for_tool_call_json
+    - serving_route_release_contract_fallback_changed
+    - feedback_pipeline_replay_rate_below_policy
+  required_outputs:
+    quality_evidence_invalidation_event: generated
+    affected_gate_query: complete
+    affected_release_and_experiment_query: complete
+    quality_fault_tree_execution: generated_by_controlled_failure
+    quality_incident_cost_record: generated_if_freeze_or_rerun_cost
+    quality_cost_ledger: prevention_cost_appended
+  pass_criteria:
+    invalid_gate_not_reused_for_full_ramp: true
+    affected_experiment_frozen_or_degraded: true
+    fallback_route_requires_quality_replay: true
+    gate_rerun_or_threshold_rebaseline_required: true
+    PRR_status_changes_to_block_or_conditional: true
+```
+
+```mermaid
+flowchart TB
+  Drill["quality_gate_freshness_prr_drill"] --> Contract["quality_gate_freshness_contract"]
+  Contract --> Graph["quality_evidence_dependency_graph"]
+  Drill --> Change["inject dependency change"]
+  Change --> Event["quality_evidence_invalidation_event"]
+  Event --> Affected["affected gates / releases / experiments / routes"]
+  Affected --> Fault["quality_fault_tree_execution"]
+  Fault --> Cost["quality_incident_cost_record"]
+  Cost --> Gate["PRR quality gate\napprove / conditional / block"]
+```
+
+这个演练能拦截一种高级但常见的失效模式：评测体系本身没有报错，模型服务也没有报错，但 PRR 使用的是过期证据。比如 fallback route 改了，旧 gate 没测 fallback；judge 升级了，旧阈值含义变了；feedback pipeline 最近两小时丢失 prompt context，线上实验的负反馈不可复现；RAG citation 的评测数据新增高风险样本，但 full ramp 仍引用旧执行结果。PRR 如果不演练依赖失效传播，就无法证明“证据先于规模”这句话是真的。
+
 多模态应用还需要单独的 PRR 演练。原因是它的风险横跨上传、对象存储、预处理、模型服务、质量、计量、隐私和删除：文件能上传不代表可处理，OCR 成功不代表表格正确，模型能回答不代表引用区域可回放，删除原文件不代表派生产物已删除，文本 token 计量正确也不代表媒体处理成本正确。PRR 必须证明这些链路在生产前已经演练过。
 
 ```yaml

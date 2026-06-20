@@ -642,6 +642,57 @@ quality_evidence_validity:
 
 这个对象让质量观测从“事故现场”扩展到“证据可信度”。如果 feedback pipeline 关联失败率很高，线上负反馈不能可靠进入回归；如果 judge drift 未校准，自动评测分数不能作为放量依据；如果 contamination invalidation 仍 open，PRR 应阻断高价值客户。质量证据的有效性本身需要被观测，不能依赖人工记忆。
 
+观测层还应把质量证据失效写成 `quality_evidence_invalidation_event`。`quality_evidence_validity` 更像快照，说明某个证据包当前是否可用；invalidation event 则记录状态变化从哪里来、影响哪些 gate、release、experiment 和 routing decision、采取了什么自动动作。没有事件，控制面只能定期轮询状态；有了事件，Gateway、release pipeline、PRR 和实验平台可以在分钟级阻断不可信证据继续放量。
+
+```yaml
+quality_evidence_invalidation_event:
+  event_id: qeie-20260620-001
+  source:
+    type: contamination_opened_or_judge_drift_or_feedback_pipeline_gap_or_contract_change
+    record: ecir-support-20260620-001
+  affected_evidence:
+    quality_evidence_dependency_graph: qedg-support-20260620
+    quality_gate_executions: [qge-af-chat-20260620-001]
+    quality_gate_freshness_contracts: [qgfc-support-20260620]
+    serving_quality_contracts: [sqc-af-chat-20260619-r3]
+    online_experiment_guardrails: [oeg-support-20260620]
+    routing_quality_scorecards: [rqs-support-202606]
+  state_transition:
+    from: usable
+    to: degraded_or_invalidated
+    reason: judge_calibration_failed_or_contamination_detected
+  automatic_actions:
+    freeze_experiment_ramp: true
+    block_high_value_release: true
+    require_gate_rerun: true
+    downgrade_routing_scorecard_to_observation_only: true
+    open_quality_cost_prevention_record: true
+  evidence:
+    emitted_by: quality-control-plane
+    immutable_audit_log: required
+    notification_targets: [release-sre, model-quality, gateway-owner]
+```
+
+这个事件的关键不是告警，而是状态传播。一次 judge 漂移校准失败，如果只发到质量团队频道，Gateway 仍可能继续使用旧 scorecard，PRR 仍可能引用旧 gate，线上实验仍可能扩大流量。事件应直接进入控制面：把相关 gate 标为 invalidated，把实验 ramp 变成 frozen，把高价值发布变成 blocked 或 conditional，把成本账本打开 prevention cost 记录。这样质量证据失效才是工程状态，而不是会议结论。
+
+```mermaid
+flowchart TB
+  Source["contamination / judge drift / feedback gap / contract change"] --> Event["quality_evidence_invalidation_event"]
+  Event --> Graph["quality_evidence_dependency_graph"]
+  Graph --> Gates["affected quality_gate_execution"]
+  Graph --> Release["affected serving_quality_contract"]
+  Graph --> Exp["affected online_experiment_guardrail"]
+  Graph --> Route["affected routing_quality_scorecard"]
+  Gates --> Action["rerun / degrade / block"]
+  Release --> Action
+  Exp --> Action
+  Route --> Action
+  Action --> Cost["quality_evidence_validity_cost"]
+  Action --> PRR["PRR gate update"]
+```
+
+观测系统应给这类事件设置单独的 SLO：失效事件从产生到控制面生效的传播延迟、受影响 gate 查询完整率、误阻断率、漏阻断率和手工豁免关闭时长。质量证据失效不是低优后台任务；如果 gate 已经不可信，高价值流量仍继续放量，平台就在用过期证据承担生产风险。成熟团队会像对待证书吊销、镜像召回和 cache invalidation 一样对待 quality evidence invalidation。
+
 模型服务发布事故还需要专门的 `serving_release_evidence_bundle`。它介于质量证据包和 runtime 诊断包之间，冻结的是“线上到底运行并路由到了哪一组发布组合”。许多事故同时有质量、延迟和计费症状：新 release 输出格式漂移，Gateway fallback 到旧 release，cache 中仍有旧 tokenizer，usage schema 没被计费系统识别，回滚时旧容量没有预热。若只看质量证据，容易忽略 route/fallback；若只看 runtime 诊断包，容易忽略 artifact/template/usage 组合漂移。
 
 ```yaml

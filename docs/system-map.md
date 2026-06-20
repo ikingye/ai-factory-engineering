@@ -146,12 +146,18 @@ flowchart TB
 | `eval_contamination_invalidation_record` | 评测集、golden set 或 holdout 被污染、过期或与训练数据重叠时，失效门禁证据并触发重跑或替换样本。 | 第 13、37、40、41、44 章 | `quality_evidence_validity`、`production_readiness_review` |
 | `judge_drift_calibration_record` | 用人工 anchor 和历史输出校准 judge model、rubric 或 parser 变化，判断阈值是否需要重标定。 | 第 13、37、40、41、44 章 | `quality_gate_execution`、`quality_evidence_validity` |
 | `quality_gate_execution` | 记录一次质量门禁执行的输入、环境、结果、豁免和发布动作。 | 第 13、44 章 | `routing_quality_decision_record`、`serving_rollback_record` |
+| `quality_gate_freshness_contract` | 定义 gate execution 在哪些 dataset、judge、rubric、serving contract、route 和 feedback pipeline 依赖不变时可复用。 | 第 13、37、39、41、44 章 | `quality_evidence_dependency_graph`、`production_readiness_review` |
+| `quality_evidence_dependency_graph` | 记录质量证据依赖关系，支持从数据、judge、route 或 feedback 变化查询受影响 gate、release、experiment 和 scorecard。 | 第 13、37、39、44 章 | `quality_evidence_invalidation_event`、`quality_gate_freshness_prr_drill` |
+| `quality_evidence_invalidation_event` | 把质量证据失效作为控制面事件传播到 PRR、实验、路由、release 和质量成本账本。 | 第 37、39、41、44 章 | `quality_fault_tree_execution`、`quality_incident_cost_record` |
 | `online_experiment_guardrail` | 记录线上实验随机化单元、会话粘性、排除范围、护栏指标、停止规则和证据保留动作。 | 第 13、37、40、44 章 | `quality_evidence_bundle`、`quality_cost_ledger` |
 | `quality_feedback_intake_pipeline` | 把线上反馈经过关联、脱敏、triage、replay、人工评审和回归样本治理，防止不可复现或敏感样本污染门禁。 | 第 13、37、40、41、44 章 | `human_feedback_evidence`、`quality_regression_record` |
 | `human_feedback_evidence` | 把用户反馈、CRM、人工接管、专家评审和标注绑定到 trace、task slice、rubric、regression 和成本。 | 第 13、37、41 章 | `quality_regression_record`、`quality_cost_ledger` |
 | `serving_quality_contract` | 把 weights、tokenizer、template、engine 和质量门禁绑定。 | 第 14 章 | `runtime_quality_gate`、`quality_regression_record` |
 | `serving_rollback_record` | 记录一次回滚触发、范围、组件、证据保留、恢复结果和后续门禁。 | 第 14、40 章 | `quality_regression_record`、`production_readiness_review` |
 | `serving_rollback_drill` | 证明高 SLA endpoint 已演练 artifact、runtime、Gateway、cache、drain、计量和质量探针回滚。 | 第 14、40、44 章 | `serving_rollback_record`、`production_readiness_review` |
+| `quality_fault_tree_execution` | 按证据有效性、serving 组合、路由/实验、RAG/Agent、模型行为和经济影响拆解质量事故。 | 第 39、44 章 | `quality_incident_cost_record`、`production_readiness_review` |
+| `quality_incident_cost_record` | 记录一次质量事故的低质量 token、人工接管、重试、信用、gate rerun、judge calibration、冻结和避免损失。 | 第 41、44 章 | `quality_cost_ledger`、`commercial_pnl_ledger` |
+| `quality_gate_freshness_prr_drill` | 演练质量 gate 依赖变更、证据失效传播、实验冻结、路由降级、故障树和成本账本。 | 第 44 章 | `production_readiness_review`、`quality_incident_cost_record` |
 | `runtime_quality_gate` | 防止推理引擎优化破坏质量、协议或成本。 | 第 15 章 | `serving_quality_contract`、`benchmark_matrix` |
 | `endpoint_admission_decision` | 记录 Gateway 对单个请求为什么 admit、shed、fallback、route 或 reject，并绑定 request shape、SLO、budget 和 engine health。 | 第 6、37、39、44 章 | `engine_admission_health`、`inference_runtime_diagnostic_bundle` |
 | `engine_admission_health` | 让 Gateway 知道 endpoint 是否还能按 SLO 接收请求。 | 第 6、14、15、37、39 章 | `engine_canary_record`、`incident_record` |
@@ -282,6 +288,8 @@ flowchart TB
 | output token 便宜但用户不满意 | 第 1、13、14、41 章 | quality_feedback_event、quality_regression_record、quality_cost_ledger | 用 cost per successful answer 替代原始 cost/token 做决策。 |
 | 模型上线后质量退化 | 第 6、13、14、37、40、41 章 | quality_gate_execution、eval_slice_contract、golden_set_governance_record、serving_quality_contract、quality_evidence_bundle、quality_cost_ledger | 先冻结质量证据，再判断是评测覆盖不足、golden set 失效、serving 组合漂移、路由策略变化、RAG/Agent 依赖变化还是模型本身退化。 |
 | 质量门禁证据失效 | 第 13、37、40、41、44 章 | eval_contamination_invalidation_record、judge_drift_calibration_record、quality_feedback_intake_pipeline、quality_evidence_validity、quality_evidence_prr_invalidation_drill | 先停止使用失效 gate 作为放量依据，重跑或替换评测集，校准 judge，修复反馈关联和 replay，再更新 PRR 与质量成本账本。 |
+| gate 过期仍被发布或路由复用 | 第 13、37、39、41、44 章 | quality_gate_freshness_contract、quality_evidence_dependency_graph、quality_evidence_invalidation_event、quality_gate_freshness_prr_drill | 查询 gate 依赖是否变化，找出受影响 release、experiment、route 和 scorecard，阻断高价值放量并重跑受影响切片。 |
+| 质量事故归因争议 | 第 13、14、37、39、41 章 | quality_fault_tree_execution、quality_evidence_bundle、serving_release_evidence_bundle、routing_quality_decision_record、rag_agent_evidence_bundle、quality_incident_cost_record | 先验证证据有效性，再按 serving 组合、路由/实验、RAG/Agent、模型行为和经济影响分支排查，避免把上下文或路由问题误判成模型退化。 |
 | A/B 结果争议 | 第 6、13、14、37、40 章 | online_experiment_record、online_experiment_guardrail、routing_quality_decision_record、quality_gate_execution、randomization unit | 检查随机化单元、会话粘性、排除范围、护栏指标、停止规则、统计窗口和是否混入 fallback 流量。 |
 | 便宜模型导致人工接管上升 | 第 6、7、13、37、41 章 | routing_quality_decision_record、routing_quality_scorecard、human_feedback_evidence、quality_cost_ledger | 按 task slice 计算 cost per successful answer，必要时调整路由权重、capability gate 或商业定价。 |
 | 回滚后仍未恢复质量 | 第 14、37、39、40、44 章 | serving_release_bundle、serving_release_evidence_bundle、serving_rollback_record、serving_rollback_drill、serving_quality_contract、Gateway route、cache_residency | 检查是否只回滚权重但未回滚 tokenizer、template、engine config、RAG 索引、tool policy、cache、usage schema 或 Gateway route，并确认演练是否覆盖完整 bundle。 |

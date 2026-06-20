@@ -1565,6 +1565,50 @@ quality_evidence_validity_cost:
 
 这个成本对象能帮助团队解释为什么维护评测集和校准 judge 不是研究洁癖。它们是质量保险机制的一部分。成熟的 AI Factory 应把质量证据有效性成本和事故损失放在同一张账本里：如果 gate 失效率高，说明评测治理需要投资；如果治理成本高但很少拦截风险，说明门禁可能过重。经济模型应该帮助找到合适强度，而不是简单削减质量治理。
 
+质量事故本身还应生成 `quality_incident_cost_record`。`quality_cost_ledger` 适合做窗口级汇总，`quality_evidence_validity_cost` 适合记录证据治理成本；事故成本记录则解释一次具体质量退化或证据失效造成了什么损失、哪些动作是止血、哪些成本是预防、哪些损失本可以通过门禁避免。它把第 39 章的 `quality_fault_tree_execution` 和第 44 章的 PRR 行动项连接到经济账本。
+
+```yaml
+quality_incident_cost_record:
+  record_id: qicr-20260620-001
+  incident_id: inc-20260620-quality-001
+  linked_evidence:
+    quality_fault_tree_execution: qfte-20260620-001
+    quality_evidence_bundle: qeb-20260620-support-001
+    quality_evidence_validity: qev-support-20260620-001
+    quality_evidence_invalidation_event: qeie-20260620-001_if_any
+    quality_gate_freshness_contract: qgfc-support-20260620
+    serving_release_evidence_bundle: sreb-af-chat-large-20260620-001
+  affected_scope:
+    tenants: [enterprise-a]
+    task_slices: [rag_citation, tool_call_json]
+    release_window: measured
+    affected_requests: measured_or_sampled
+    low_quality_tokens: estimated
+  direct_losses:
+    human_handoff_cost: calculated
+    regeneration_and_retry_token_cost: calculated
+    customer_credit_or_refund: calculated_if_applicable
+    support_ticket_cost: calculated
+    churn_or_contract_risk: estimated_policy
+    experiment_harm_cost: calculated_if_guardrail_breached
+  response_and_prevention_cost:
+    gate_rerun_cost: calculated_if_evidence_invalidated
+    judge_recalibration_cost: calculated_if_judge_drift
+    dataset_relabel_or_replacement_cost: calculated_if_contamination
+    rollback_or_route_freeze_cost: calculated
+    evidence_bundle_collection_cost: measured
+  avoided_loss:
+    prevented_ramp_to_high_value_tenants: true_or_false
+    estimated_loss_avoided_by_freeze: estimated_policy
+    estimated_loss_avoided_by_rollback_drill: estimated_policy
+  ledger_updates:
+    quality_cost_ledger: append
+    commercial_pnl_ledger: append_if_customer_visible
+    production_readiness_review: update_if_preventable
+```
+
+这个对象能避免两种常见经济误判。第一种是把质量事故成本只算成“退款和支持”，忽略反复追问、重新生成、人工接管、低质量实验伤害和客户续约风险；第二种是把证据失效后的 gate rerun、judge calibration、样本重标和实验冻结都算作浪费。若这些动作阻止了高价值租户继续放量，它们应被记为 prevention cost，并与 avoided loss 对比。质量治理的目标不是便宜，而是让高价值 token 可承诺。
+
 ```yaml
 quality_prevention_value_record:
   window: 2026-06-20T00:00Z/2026-06-21T00:00Z
