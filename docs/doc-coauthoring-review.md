@@ -107,13 +107,14 @@
 ```bash
 python3 tools/audit_doc_coauthoring.py
 python3 tools/audit_heading_numbering.py
+python3 tools/audit_consistency.py
 python3 tools/audit_depth.py --limit 160
 git diff --check
 python3 tools/audit_placeholders.py
 mkdocs build --strict
 ```
 
-其中 `audit_doc_coauthoring.py` 负责检查章节是否具备 `读者测试` 模块，以及该模块是否覆盖机制、边界、路径和排障问题。它不能替代人工审稿，但能防止全书退回“有正文、无读者测试”的状态。
+其中 `audit_doc_coauthoring.py` 负责检查章节是否具备 `读者测试` 模块，以及该模块是否覆盖机制、边界、路径和排障问题。`audit_consistency.py` 负责检查全书高风险口径漂移、旧结构规则残留、公开站点 URL 和精确重复长段落。它们不能替代人工审稿，但能防止全书退回“有正文、无读者测试”或“局部正确、全书矛盾”的状态。
 
 ## 9. 完成定义
 

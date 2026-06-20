@@ -105,6 +105,7 @@
 ```bash
 python3 tools/audit_doc_coauthoring.py
 python3 tools/audit_heading_numbering.py
+python3 tools/audit_consistency.py
 ```
 
 `tools/audit_heading_numbering.py` 会检查章节页 H2 大组和 H3 小节是否都带有当前章号前缀，也会检查非章节页 H2/H3 是否使用页内连续编号。编号的意图不是制造形式负担，而是让全站目录像经典技术书一样分层清晰、可引用、可审校、可长期维护。
@@ -144,4 +145,4 @@ Mermaid 图应服务于论证，不做装饰。推荐使用三类图：
 
 后续更新应参考 `docs/depth-standard.md`。一个主题不要求全部放进单章，但全书合起来应覆盖它的核心知识点。例如 GPU 容器主题应在 GPU 软件栈、容器与 Kubernetes、GPU on Kubernetes、镜像驱动初始化、准入测试等章节形成闭环。
 
-发布前必须同时运行 `python3 tools/audit_doc_coauthoring.py`、`python3 tools/audit_heading_numbering.py`、`python3 tools/audit_depth.py --limit 160`、`python3 tools/audit_placeholders.py` 和 `mkdocs build --strict`。
+发布前必须同时运行 `python3 tools/audit_doc_coauthoring.py`、`python3 tools/audit_heading_numbering.py`、`python3 tools/audit_consistency.py`、`python3 tools/audit_depth.py --limit 160`、`python3 tools/audit_placeholders.py` 和 `mkdocs build --strict`。

@@ -19,7 +19,7 @@
 
 ### 0.1.3 读者测试
 
-- 机制题：读者能否解释 云计算时代的数据中心、大模型时代的根本变化、AI Factory 的定义、Token Factory 视角 的核心机制，以及它们如何共同支撑《从 Data Center 到 AI Factory》？
+- 机制题：读者能否解释 云计算时代的数据中心、大模型时代的根本变化、AI Factory 的定义、Token Factory 视角和分层模型 的核心机制，以及它们如何共同支撑《从 Data Center 到 AI Factory》？
 - 边界题：读者能否区分 传统 Data Center、GPU 集群、MaaS、AI Factory 与 Token Factory 的责任边界，并说明哪些问题不能简单归因到本章组件？
 - 路径题：读者能否从业务问题追到 AI Factory 分层、推理请求链路、训练任务链路和 Token Factory 经济视角，并指出本章对象在路径中的位置？
 - 排障题：当《从 Data Center 到 AI Factory》相关生产症状出现时，读者能否列出第一层证据、下一跳证据、可能 owner 和止血动作？
@@ -125,9 +125,9 @@ Token Factory 是观察 AI Factory 在线推理产出的经济性视角。对 Ma
 一个健康的 Token Factory 指标体系至少要有边界条件。首先，token 必须是合格产出：通过质量、安全和合规约束的 token 才有商业意义。其次，token 指标必须按模型、租户、场景和上下文长度分组，否则不同 workload 混在一起会误导决策。最后，成本必须包含 GPU、能耗、网络、存储、平台运维、失败重试和保留容量。只有这样，tokens/s 才不是虚高吞吐，tokens/W 才不是孤立能效，cost per token 才不是低估成本，revenue per token 才能真正支撑扩容、优化和定价。
 
 
-### 0.3.5 AI Factory 的七层模型
+### 0.3.5 AI Factory 的分层模型
 
-本书采用从上到下的分层模型：Application、Platform、Model、AI Runtime、资源编排与作业调度、GPU IaaS、网络与存储、物理基础设施。严格说这是八个层次；标题中的“七层”延续很多工程团队对平台分层的习惯表达，其中网络与存储常作为跨 GPU IaaS 和物理层的基础支撑层处理。重要的不是层数本身，而是每一层的责任边界和上下游依赖。
+本书采用从上到下的分层模型：Application、Platform、Model、AI Runtime、资源编排与作业调度、GPU IaaS、网络与存储、物理基础设施。这是八个主体层次，外加可靠性、可观测性、准入验收、故障诊断、安全、成本和 Token Factory 经济性等横切能力。这里不把层数当作教条，真正重要的是每一层的责任边界、上下游依赖和可验证产物。
 
 Application 层定义用户交互方式，例如 Chat、RAG、Agent、办公、编程和行业应用。Platform 层提供 MaaS、API Gateway、租户、配额、观测和计费。Model 层管理预训练、后训练、微调、评测和服务化。Runtime 层把模型执行映射到 CUDA、NCCL、RDMA、推理引擎和训练框架。资源编排层处理容器、Kubernetes、Slurm、Volcano、Kueue、Ray、GPU 调度和拓扑。GPU IaaS 交付裸金属、虚拟化、驱动、镜像和资源池。网络存储与物理层提供通信、数据、电力、制冷和硬件基础。
 

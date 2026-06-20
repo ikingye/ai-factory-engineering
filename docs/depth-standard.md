@@ -435,6 +435,7 @@
 - 更新对应章节正文。
 - 补充或修正 Mermaid 图。
 - 补齐延伸阅读来源。
+- 运行 `python3 tools/audit_consistency.py`，检查核心术语、分层口径、公开 URL、旧结构规则和重复长段落。
 - 运行 `mkdocs build --strict`。
 - 检查是否产生死链、占位、乱码或语义重复。
 - 更新 `docs/codex-handoff.md`。
