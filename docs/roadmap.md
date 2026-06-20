@@ -8,31 +8,31 @@
 
 扩写 Chat、RAG、Agent、行业应用、MaaS、AI Gateway、计量计费和平台可观测性。重点补充 token 消耗模式、请求治理、路由、限流、账单和 dashboard 的工程设计。
 
-当前状态：已完成第 1-8 章的系统化初稿，下一轮需要按深度标准补充请求路径图、错误码体系、生产配置和跨章节索引。
+当前状态：第 1-8 章已进入主题链路循环更新阶段。后续继续按深度标准补充请求路径图、错误码体系、生产配置和跨章节索引，并把应用层对象接入系统地图、验收和成本账本。
 
 ## 3. Phase 3：Model 与 Runtime 层
 
 扩写大模型基础、预训练、后训练、微调、评测、模型服务、推理引擎、训练框架、分布式并行、通信原语和 GPU 软件栈。重点讲清模型机制如何影响显存、通信、吞吐和稳定性。
 
-当前状态：已完成第 9-19 章的系统化初稿，下一轮需要补充 CUDA/NCCL/Container Toolkit/推理引擎的机制图、版本矩阵和故障树。
+当前状态：第 9-19 章已进入主题链路循环更新阶段。后续继续深化 CUDA、NCCL、Container Toolkit、推理引擎、训练框架和质量门禁之间的版本矩阵、机制图和故障树。
 
 ## 4. Phase 4：调度、GPU IaaS、网络存储
 
 扩写 AI workload、Kubernetes、Slurm、Volcano、Kueue、Ray、裸金属 GPU 云、虚拟化隔离、GPU 资源池、镜像驱动、AI 网络和存储系统。重点补充拓扑、配额、gang scheduling、RDMA、checkpoint 和数据读取路径。
 
-当前状态：已完成第 20-33 章的系统化初稿，正在以 GPU 容器链路为第一条深度化链路，补强容器、Kubernetes、GPU on Kubernetes、镜像驱动、网络和存储的跨章节闭环。
+当前状态：第 20-33 章已进入主题链路循环更新阶段。GPU 容器运行时、GPU on Kubernetes、资源声明、GPU 资源池、网络通信和存储数据链路已经开始形成跨章节闭环，后续继续按故障树、验收矩阵和成本账本补强。
 
 ## 5. Phase 5：物理基础设施、可靠性、验收
 
 扩写 GPU 服务器、GPU 芯片与系统架构、AI 数据中心工程、AI Factory 可观测性、准入测试、故障诊断和 SRE 运维体系。重点沉淀验收基线、故障树和运行手册。
 
-当前状态：已完成第 34-40 章的系统化初稿，下一轮需要把准入基线、故障诊断、DCGM、NCCL、RDMA、SRE runbook 连接成可执行运维体系。
+当前状态：第 34-40 章已进入主题链路循环更新阶段。GPU 硬件、互联、物理设施、准入基线、故障诊断、DCGM、NCCL、RDMA 和 SRE runbook 正在被连接成可执行运维体系。
 
 ## 6. Phase 6：经济性与案例
 
 扩写 Token Factory 经济模型、AI Factory 商业模式、产业案例和从 0 到 1 建设路径。重点把 tokens/s、tokens/W、cost per token、revenue per token 与业务模型连接起来。
 
-当前状态：已完成第 41-44 章的系统化初稿，下一轮需要把 tokens/s、tokens/W、cost per token、GPU 利用率和商业模型做成更可计算的经济性框架。
+当前状态：第 41-44 章已进入主题链路循环更新阶段。后续继续把 tokens/s、tokens/W、cost per token、GPU 利用率、可靠性成本和商业模型做成更可计算的经济性框架。
 
 ## 7. Phase 7：审校、图表、索引和发布
 
