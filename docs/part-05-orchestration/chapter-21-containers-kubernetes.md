@@ -182,7 +182,7 @@ CSI 对训练和推理同样关键。模型权重加载、RAG 索引、数据集
 
 三条接口的 owner 往往不同：平台团队维护 runtime 基线，网络团队维护 CNI，存储团队维护 CSI，GPU 团队维护 device plugin 和 driver。但用户只看到一个 Pod 失败。因此 AI Factory 需要统一事件翻译和关联视图：从一个 Pod 能看到 CRI、CNI、CSI、device、node、image、volume 和 Gateway 状态；从一个训练任务能看到所有 worker 的接口层差异。接口插件越多，越需要清晰边界和统一证据链。
 
-## NVIDIA GPU Container 原理
+## 21.10 NVIDIA GPU Container 原理
 
 手动让 Docker 容器使用 GPU 的最小方式，是把 GPU 设备和驱动相关文件挂进去。例如显式传入 `/dev/nvidia0`、`/dev/nvidiactl`、`/dev/nvidia-uvm`，并挂载宿主机上的 NVIDIA driver library 路径。这个方式说明了 GPU 容器的本质：容器需要访问设备节点和 driver 用户态库，GPU 内核驱动仍在宿主机。它也说明了手工方式不可维护：不同驱动版本、不同 GPU、MIG、UVM、NVML、CUDA compatibility library、容器 runtime 和发行版路径都会让挂载清单变化。
 
