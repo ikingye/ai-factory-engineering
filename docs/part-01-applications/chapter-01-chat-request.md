@@ -6,6 +6,21 @@
 - TTFT、TPOT、TPOP、prefill、decode 和 KV Cache 分别影响什么？
 - 为什么应用体验会反向决定 GPU、推理引擎和平台设计？
 
+## 本章上下文
+
+- 层级定位：本章属于 `Application 层`，重点讨论应用如何形成 token、工具调用、RAG context 和业务 workload。
+- 前置依赖：建议先理解 第 0 章：从 Data Center 到 AI Factory 中的核心对象和路径。
+- 后续关联：本章内容会继续连接到 第 2 章：RAG 应用，并在系统地图、深度标准和读者测试中被交叉引用。
+- 读完能力：读完本章后，读者应能把《从一个 Chat 请求开始》中的概念映射到 AI Factory 的生产路径、工程对象、观测证据和设计取舍。
+
+## 读者测试
+
+- 机制题：读者能否解释 Chat Completion API、message、prompt 与 context、input token 与 output token、streaming 的核心机制，以及它们如何共同支撑《从一个 Chat 请求开始》？
+- 边界题：读者能否区分 应用层、Platform 层、Model 层和 Runtime 层 的责任边界，并说明哪些问题不能简单归因到本章组件？
+- 路径题：读者能否从一次应用交互追到 prompt/context、模型调用、token 放大、质量反馈和平台治理，并指出本章对象在路径中的位置？
+- 排障题：当《从一个 Chat 请求开始》相关生产症状出现时，读者能否列出第一层证据、下一跳证据、可能 owner 和止血动作？
+
+
 ## 一个真实场景
 
 一个客服 Chatbot 上线后，用户反馈“页面一直转，第一句话出来很慢”。应用日志显示 HTTP 请求已经进入后端，网关没有明显错误，GPU dashboard 上的 compute utilization 也没有长时间打满。团队最初怀疑模型太大，于是增加副本，但问题只缓解了一小部分。继续拆解 trace 后发现，高峰期很多请求都携带长历史对话、RAG 片段和格式化指令，input token 分布出现长尾；这些长上下文请求进入同一个推理队列，占用了 prefill 计算和 KV Cache 分配，短问题也被排在后面等待。

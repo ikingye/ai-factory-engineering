@@ -6,6 +6,21 @@
 - GPU device plugin、GPU Operator、MIG、time-slicing、Topology Manager、NUMA 和 RDMA device 如何协同？
 - 容器访问 GPU 和 NIC 时，哪些地方最容易出问题？
 
+## 本章上下文
+
+- 层级定位：本章属于 `资源编排与作业调度层`，重点讨论容器、Kubernetes、GPU 调度、队列、Slurm 和多集群资源治理。
+- 前置依赖：建议先理解 第 21 章：容器与 Kubernetes 中的核心对象和路径。
+- 后续关联：本章内容会继续连接到 第 23 章：AI 作业队列与调度，并在系统地图、深度标准和读者测试中被交叉引用。
+- 读完能力：读完本章后，读者应能把《GPU on Kubernetes》中的概念映射到 AI Factory 的生产路径、工程对象、观测证据和设计取舍。
+
+## 读者测试
+
+- 机制题：读者能否解释 GPU device plugin、GPU Operator、GPU resource request、MIG 的核心机制，以及它们如何共同支撑《GPU on Kubernetes》？
+- 边界题：读者能否区分 资源编排与作业调度、GPU IaaS、Platform 层和 AI Runtime 层 的责任边界，并说明哪些问题不能简单归因到本章组件？
+- 路径题：读者能否从 workload 提交追到队列、配额、调度、容器启动、GPU 分配和拓扑证据，并指出本章对象在路径中的位置？
+- 排障题：当《GPU on Kubernetes》相关生产症状出现时，读者能否列出第一层证据、下一跳证据、可能 owner 和止血动作？
+
+
 ## 一个真实场景
 
 一个 8 卡训练 Pod 成功调度到 GPU 节点，容器内 `nvidia-smi` 正常，Pod 也显示 Running。但训练启动后 NCCL 带宽远低于基线，偶尔还在初始化阶段超时。平台最初认为 Kubernetes 已经正确分配了 8 张 GPU，问题应该在模型或 NCCL。继续排查后发现，Pod 没有拿到对应 RDMA device，GPU 与 NIC 跨 NUMA，调度器也没有保证这 8 张 GPU 位于同一 NVLink/NVSwitch 域。

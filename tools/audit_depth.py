@@ -11,6 +11,8 @@ from pathlib import Path
 
 REQUIRED_HEADINGS = {
     "一个真实场景",
+    "本章上下文",
+    "读者测试",
     "核心概念",
     "系统架构",
     "工程实现",

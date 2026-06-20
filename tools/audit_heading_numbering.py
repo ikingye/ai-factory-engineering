@@ -17,6 +17,8 @@ from pathlib import Path
 
 TEMPLATE_HEADINGS = {
     "本章回答的问题",
+    "本章上下文",
+    "读者测试",
     "一个真实场景",
     "核心概念",
     "系统架构",

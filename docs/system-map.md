@@ -2,6 +2,8 @@
 
 本页不是新的正文层级，而是全书的索引页。它帮助读者按三种方式进入本书：按角色阅读、按工程对象检索、按故障症状定位。AI Factory 的难点不在于名词数量，而在于把应用、平台、模型、运行时、调度、GPU、网络、存储、物理设施、SRE 和经济性连成可验证的生产系统。
 
+全书的写作和审稿遵循 [Doc Coauthoring 审稿标准](doc-coauthoring-review.md)：每章必须说明上下文、给出读者测试，并能在主题链路中通过新读者问题验证。
+
 ## 一张图串起全书
 
 ```mermaid
@@ -353,7 +355,7 @@ flowchart TB
 | --- | --- | --- |
 | 推理请求链路 | 第 1、6、8、14、15、37、39、41 章 | 能从用户请求追到 token 计量、runtime admission、KV block、engine canary、PD 分离、GPU/HBM、streaming、诊断包和毛利。 |
 | 训练任务链路 | 第 10、17、18、23、24、33、37、38、39、41 章 | 能从任务提交追到 admission、queue fairness、placement commit、rank mapping、NCCL、checkpoint、抢占恢复、incident、评测和训练 ROI。 |
-| GPU 容器链路 | 第 19、21、22、29、38 章 | 能解释 device plugin、CRI、OCI runtime、NVIDIA Container Toolkit、driver/library 注入和容器 smoke test。 |
+| GPU 容器链路 | 第 19、21、22、29、38、39、44 章 | 能解释 device plugin、CRI、OCI runtime、NVIDIA Container Toolkit、CDI/NRI、driver/library 注入、容器 smoke test、可见性对账、故障树和 PRR 变更演练。 |
 | 网络通信链路 | 第 18、30、31、32、37、38、39、41 章 | 能从 NCCL 性能症状追到 GPU/NIC/rail/switch telemetry、fabric baseline、拥塞事件和成本影响。 |
 | 存储数据链路 | 第 10、14、20、33、37、38、39、41 章 | 能从 GPU idle、checkpoint 慢、冷启动慢追到 storage intent、dataset manifest、checkpoint commit、artifact distribution、cache residency、backend telemetry 和成本。 |
 | 多模态媒体链路 | 第 4、13、14、20、33、37、41、44 章 | 能从 PDF、图片、音频或视频请求追到 multimodal profile、media processing、artifact manifest、serving contract、quality gate、metering、cost ledger、delete/retention 和 PRR。 |

@@ -9,6 +9,21 @@
 - NVIDIA GPU Container 的真实链路是什么：Docker/containerd、OCI spec、runc hook、nvidia-container-runtime、nvidia-container-runtime-hook、nvidia-container-cli 和 libnvidia-container 如何协同？
 - 为什么 Kubernetes 属于“资源编排与作业调度层”，而不是 MaaS 或 GPU IaaS？
 
+## 本章上下文
+
+- 层级定位：本章属于 `资源编排与作业调度层`，重点讨论容器、Kubernetes、GPU 调度、队列、Slurm 和多集群资源治理。
+- 前置依赖：建议先理解 第 20 章：AI Workload 的形态 中的核心对象和路径。
+- 后续关联：本章内容会继续连接到 第 22 章：GPU on Kubernetes，并在系统地图、深度标准和读者测试中被交叉引用。
+- 读完能力：读完本章后，读者应能把《容器与 Kubernetes》中的概念映射到 AI Factory 的生产路径、工程对象、观测证据和设计取舍。
+
+## 读者测试
+
+- 机制题：读者能否解释 container runtime、image、pod、deployment 的核心机制，以及它们如何共同支撑《容器与 Kubernetes》？
+- 边界题：读者能否区分 资源编排与作业调度、GPU IaaS、Platform 层和 AI Runtime 层 的责任边界，并说明哪些问题不能简单归因到本章组件？
+- 路径题：读者能否从 workload 提交追到队列、配额、调度、容器启动、GPU 分配和拓扑证据，并指出本章对象在路径中的位置？
+- 排障题：当《容器与 Kubernetes》相关生产症状出现时，读者能否列出第一层证据、下一跳证据、可能 owner 和止血动作？
+
+
 ## 一个真实场景
 
 一个模型服务在开发机上用 `docker run` 可以正常看到 GPU，迁入生产 Kubernetes 后却出现三类问题。第一类是 Pod 已经 `Running`，业务日志却显示 `libcuda.so.1` 加载失败；第二类是 `nvidia-smi` 在容器内可用，但推理引擎启动后 NCCL 初始化失败；第三类是滚动升级时新副本很快 `Ready`，流量进入后 TTFT 飙升，因为模型权重仍在下载，KV Cache 还未 warmup。运维同学从 Kubernetes 事件看，只能看到 Pod、容器和探针状态；模型平台同学从服务指标看，只能看到延迟和错误；GPU 平台同学从节点看，driver 又似乎正常。

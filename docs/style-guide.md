@@ -55,6 +55,10 @@
 
 ## 本章回答的问题
 
+## 本章上下文
+
+## 读者测试
+
 ## 一个真实场景
 
 ## 核心概念
@@ -80,13 +84,14 @@
 
 章节标题使用 `# 第 X 章：章节标题`。二级标题分为两类：模板标题和正文技术标题。
 
-模板标题不编号，用于导读、架构、工程化收束和阅读指引，包括：`本章回答的问题`、`一个真实场景`、`核心概念`、`系统架构`、`关键技术`、`工程实现`、`常见故障`、`性能指标`、`设计取舍`、`小结`、`延伸阅读`。
+模板标题不编号，用于导读、架构、工程化收束和阅读指引，包括：`本章回答的问题`、`本章上下文`、`读者测试`、`一个真实场景`、`核心概念`、`系统架构`、`关键技术`、`工程实现`、`常见故障`、`性能指标`、`设计取舍`、`小结`、`延伸阅读`。
 
 正文技术标题必须编号，格式为 `## X.N 标题`，其中 `X` 是章号，`N` 是本章内顺序号。例如第 21 章新增 GPU 容器原理时，应写作 `## 21.10 NVIDIA GPU Container 原理`，而不是单独写作 `## NVIDIA GPU Container 原理`。这样目录既保留教材式导读结构，又让正文知识点可以被引用、审校和持续扩写。
 
 扩写章节后运行：
 
 ```bash
+python3 tools/audit_doc_coauthoring.py
 python3 tools/audit_heading_numbering.py
 ```
 
@@ -126,3 +131,5 @@ Mermaid 图应服务于论证，不做装饰。推荐使用三类图：
 ## 深度化要求
 
 后续更新应参考 `docs/depth-standard.md`。一个主题不要求全部放进单章，但全书合起来应覆盖它的核心知识点。例如 GPU 容器主题应在 GPU 软件栈、容器与 Kubernetes、GPU on Kubernetes、镜像驱动初始化、准入测试等章节形成闭环。
+
+发布前必须同时运行 `python3 tools/audit_doc_coauthoring.py`、`python3 tools/audit_heading_numbering.py`、`python3 tools/audit_depth.py --limit 160`、`python3 tools/audit_placeholders.py` 和 `mkdocs build --strict`。

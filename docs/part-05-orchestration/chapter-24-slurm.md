@@ -6,6 +6,21 @@
 - partition、node、job、step、sbatch、srun 和 GPU 资源如何组织训练任务？
 - Slurm 与 Kubernetes 在 AI Factory 中如何分工？
 
+## 本章上下文
+
+- 层级定位：本章属于 `资源编排与作业调度层`，重点讨论容器、Kubernetes、GPU 调度、队列、Slurm 和多集群资源治理。
+- 前置依赖：建议先理解 第 23 章：AI 作业队列与调度 中的核心对象和路径。
+- 后续关联：本章内容会继续连接到 第 25 章：多集群与混部，并在系统地图、深度标准和读者测试中被交叉引用。
+- 读完能力：读完本章后，读者应能把《Slurm 与 HPC 调度》中的概念映射到 AI Factory 的生产路径、工程对象、观测证据和设计取舍。
+
+## 读者测试
+
+- 机制题：读者能否解释 Slurm 架构、partition、node、job 的核心机制，以及它们如何共同支撑《Slurm 与 HPC 调度》？
+- 边界题：读者能否区分 资源编排与作业调度、GPU IaaS、Platform 层和 AI Runtime 层 的责任边界，并说明哪些问题不能简单归因到本章组件？
+- 路径题：读者能否从 workload 提交追到队列、配额、调度、容器启动、GPU 分配和拓扑证据，并指出本章对象在路径中的位置？
+- 排障题：当《Slurm 与 HPC 调度》相关生产症状出现时，读者能否列出第一层证据、下一跳证据、可能 owner 和止血动作？
+
+
 ## 一个真实场景
 
 一个研究团队长期使用 Slurm 提交多节点训练，熟悉 `sbatch`、`srun`、partition、节点独占和交互式调试。平台团队希望统一到 Kubernetes，迁移后发现研究人员依赖的节点约束、MPI/NCCL 启动方式、作业日志、拓扑控制和账户 fairshare 很难直接复制。与此同时，在线推理、MaaS 控制面和 API Gateway 又明显更适合 Kubernetes 的服务化模型。

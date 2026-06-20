@@ -34,6 +34,8 @@
 
 如果一章无法回答这些问题，不能因为字数多就视为完成。应继续补机制图、状态机、配置样例、故障树、指标口径、验收矩阵或跨章节索引。
 
+全书统一审稿流程见 [Doc Coauthoring 审稿标准](doc-coauthoring-review.md)。后续每章必须包含 `读者测试` 模块，并通过 `python3 tools/audit_doc_coauthoring.py`。
+
 ## 图表标准
 
 图表应优先覆盖以下类型：

@@ -6,6 +6,21 @@
 - tokens/s、tokens/W、cost/token、revenue/token 分别回答什么问题？
 - 如何把 GPU 利用率、推理毛利和训练 ROI 放到同一个经济模型中？
 
+## 本章上下文
+
+- 层级定位：本章属于 `经济性与产业案例`，重点讨论Token Factory、商业模式、案例研究和从 0 到 1 建设路径。
+- 前置依赖：建议先理解 第 40 章：SRE 与运维体系 中的核心对象和路径。
+- 后续关联：本章内容会继续连接到 第 42 章：AI Factory 商业模式，并在系统地图、深度标准和读者测试中被交叉引用。
+- 读完能力：读完本章后，读者应能把《Token Factory 视角》中的概念映射到 AI Factory 的生产路径、工程对象、观测证据和设计取舍。
+
+## 读者测试
+
+- 机制题：读者能否解释 token 是 AI Factory 的产出、tokens/s、tokens/W、cost/token 的核心机制，以及它们如何共同支撑《Token Factory 视角》？
+- 边界题：读者能否区分 技术产能、商业收入、成本账本、SLA 责任和建设路线 的责任边界，并说明哪些问题不能简单归因到本章组件？
+- 路径题：读者能否从业务目标追到 token 产出、成本账本、商业模式、案例取舍和建设 PRR，并指出本章对象在路径中的位置？
+- 排障题：当《Token Factory 视角》相关生产症状出现时，读者能否列出第一层证据、下一跳证据、可能 owner 和止血动作？
+
+
 ## 一个真实场景
 
 一个 MaaS 平台请求量持续增长，业务报表看起来很好：API 调用数上升，活跃客户增加，模型目录也在扩展。财务团队却发现 GPU 租赁、电力和运维成本增长更快，单月毛利被明显压缩。平台团队最初用 QPS 和 GPU utilization 解释产能，认为系统并不浪费；SRE 团队看到可用性达标，也认为可靠性没有问题。问题在于，这些指标没有解释“每个 token 的成本和收入”。
@@ -552,6 +567,72 @@ flowchart LR
   Cost --> Quality["quality_cost_ledger if affected"]
   Cost --> Gate["runtime gate / PRR update"]
 ```
+
+容器 GPU runtime 事故也应进入经济账本。它和推理引擎事故不同：推理引擎事故发生在 model server 已启动之后，关注 KV、prefill、decode、streaming 和 metering；容器 runtime 事故发生在 workload 从调度结果变成容器进程的边界上，关注 device plugin 分配、CRI/runtime handler、OCI hook、CDI/NRI、`libnvidia-container`、GPU UUID/MIG 可见性、RDMA device 注入和 DCGM 标签是否一致。若这类事故只在 SRE 里关闭，Token Factory 会低估三类成本：GPU 已分配但容器无法启动的空转成本、可见设备错配导致的错误生产成本、观测/计量标签断链导致的账单和成本归因成本。
+
+```yaml
+container_runtime_incident_cost_record:
+  record_id: cricr-20260620-gpu-runtime-001
+  incident_id: inc-20260620-gpu-runtime-001
+  linked_evidence:
+    container_gpu_runtime_fault_tree_execution: cgrfte-20260620-001
+    container_runtime_change_record: crc-gpu-runtime-20260620-001_if_recent
+    container_gpu_runtime_acceptance_matrix: container-gpu-runtime-20260620
+    oci_runtime_injection_diff: sampled
+    gpu_assignment_record: sampled
+    gpu_device_visibility_reconciliation: sampled
+    gpu_operator_upgrade_evidence: optional
+    rdma_device_in_container_probe: optional
+  affected_scope:
+    resource_pool: h100-inference-canary
+    nodes: measured
+    affected_workloads: [gpu-smoke-runtimeclass, af-chat-large-canary]
+    affected_gpu_count: measured
+    affected_tenants: sampled_or_measured
+    incident_window: 2026-06-20T10:12Z/2026-06-20T10:35Z
+  cost_breakdown:
+    gpu_allocated_but_container_not_ready_hours: calculated
+    failed_pod_retry_gpu_reservation_cost: calculated
+    rollout_pause_or_capacity_derating_cost: calculated
+    wrong_device_visibility_risk_cost: estimated_if_isolation_breach_possible
+    mig_or_full_card_mismatch_retest_cost: measured
+    rdma_missing_device_training_or_serving_waste: calculated_if_affected
+    dcgm_or_metering_label_reconciliation_cost: calculated_if_labels_changed
+    fallback_to_other_pool_or_provider_cost: calculated_if_customer_traffic_moved
+    rollback_and_reacceptance_cost: measured
+    support_and_engineering_response_cost: measured_or_allocated
+  revenue_treatment:
+    billable_tokens_during_window: reconciled
+    tokens_held_for_visibility_or_metering_uncertainty: reconciled
+    billing_hold_required: true_or_false
+    customer_credit_policy: applied_if_needed
+  ledger_updates:
+    reliability_cost_ledger: append
+    inference_runtime_cost_ledger: append_if_serving_capacity_affected
+    network_cost_ledger: append_if_rdma_path_affected
+    security_cost_ledger: append_if_device_isolation_breach
+    token_ledger: correction_if_metering_label_changed
+    production_readiness_review: update_container_runtime_gate
+```
+
+这个对象的 stop rule 必须严格。`docker run --gpus all` 成功不能把 Kubernetes 事故成本归零，因为 kubelet 可能走的是另一条 CRI/runtime handler；容器内 `nvidia-smi` 成功也不能把成本归零，因为 Pod 可能看到未分配 GPU、MIG profile 可能错误、RDMA device 可能缺失、DCGM 标签可能已经断链。只有 Kubernetes 分配事实、OCI/CDI 注入事实、容器内可见性事实和计量标签事实全部对齐，才可以关闭经济影响。否则要么继续 billing hold，要么把不确定成本计入可靠性或安全账本。
+
+```mermaid
+flowchart LR
+  Fault["container_gpu_runtime_fault_tree_execution"] --> Cost["container_runtime_incident_cost_record"]
+  Change["container_runtime_change_record"] --> Cost
+  Accept["container runtime acceptance matrix"] --> Cost
+  OCI["OCI / CDI injection diff"] --> Cost
+  Visible["GPU visibility reconciliation"] --> Cost
+  Meter["DCGM / metering label reconciliation"] --> Cost
+  Cost --> Reliability["reliability_cost_ledger"]
+  Cost --> Runtime["inference_runtime_cost_ledger if serving affected"]
+  Cost --> Security["security_cost_ledger if isolation risk"]
+  Cost --> Token["token ledger correction / billing hold"]
+  Cost --> PRR["container runtime PRR gate update"]
+```
+
+容器 runtime 成本记录还能指导投资优先级。若主要成本来自 RuntimeClass 配置漂移，应加强变更门禁和节点配置采样；若主要成本来自 CDI spec 生成或 hook 行为差异，应把 OCI diff 纳入准入矩阵；若主要成本来自 device plugin 策略和 MIG 暴露不一致，应重做资源声明、可见性对账和租户隔离测试；若主要成本来自 DCGM 或 metering 标签断链，应把观测 schema 作为 runtime 变更的一等验收项。Token Factory 视角下，这些都不是“平台小故障”，而是会直接污染产能、账单、SLA 和毛利的生产事故。
 
 推理 runtime 成本还要计算“预防成本”。Canary 预留的 5% 容量、自动冻结后回滚到旧 profile 的低效率、为了保留诊断证据而增加的 trace 采样、为了修复 KV 泄漏而临时关闭长上下文 admission，都会让短期 cost/token 变差。但这些成本如果阻止了大范围低质量输出、账单争议或 SLA 违约，应该被记为 prevention cost，而不是简单归入浪费。Token Factory 的经济学不是把所有开销压低，而是把能降低风险暴露的开销和无效浪费区分开。
 

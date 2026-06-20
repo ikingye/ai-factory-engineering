@@ -6,6 +6,21 @@
 - gang scheduling、queue、quota、priority、preemption 如何解决训练和批处理作业问题？
 - Volcano、Kueue、Ray、Kubeflow 和 Argo Workflows 在 AI Factory 中分别适合什么位置？
 
+## 本章上下文
+
+- 层级定位：本章属于 `资源编排与作业调度层`，重点讨论容器、Kubernetes、GPU 调度、队列、Slurm 和多集群资源治理。
+- 前置依赖：建议先理解 第 22 章：GPU on Kubernetes 中的核心对象和路径。
+- 后续关联：本章内容会继续连接到 第 24 章：Slurm 与 HPC 调度，并在系统地图、深度标准和读者测试中被交叉引用。
+- 读完能力：读完本章后，读者应能把《AI 作业队列与调度》中的概念映射到 AI Factory 的生产路径、工程对象、观测证据和设计取舍。
+
+## 读者测试
+
+- 机制题：读者能否解释 为什么默认 Kubernetes Scheduler 不够、gang scheduling、queue、quota 的核心机制，以及它们如何共同支撑《AI 作业队列与调度》？
+- 边界题：读者能否区分 资源编排与作业调度、GPU IaaS、Platform 层和 AI Runtime 层 的责任边界，并说明哪些问题不能简单归因到本章组件？
+- 路径题：读者能否从 workload 提交追到队列、配额、调度、容器启动、GPU 分配和拓扑证据，并指出本章对象在路径中的位置？
+- 排障题：当《AI 作业队列与调度》相关生产症状出现时，读者能否列出第一层证据、下一跳证据、可能 owner 和止血动作？
+
+
 ## 一个真实场景
 
 一个 64 卡训练任务提交后，先启动了 40 个 worker Pod，剩下 24 个因为资源不足一直 pending。已经启动的 worker 占住 GPU 等待其它 rank，训练无法进入第一步，集群可用 GPU 反而更少。与此同时，一个在线推理服务遇到流量高峰需要扩容，却被低优先级训练任务占住资源。平台看到的是大量 Pod 状态变化，用户看到的是任务 pending，业务看到的是推理延迟升高。
