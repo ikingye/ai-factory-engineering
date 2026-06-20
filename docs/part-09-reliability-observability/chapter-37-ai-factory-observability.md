@@ -339,6 +339,65 @@ storage_evidence:
 
 `storage_evidence` 的关键是关联键，而不是指标数量。`storage_intent_id` 说明 workload 原本声明需要什么路径，manifest 说明实际访问对象，client 说明哪个 rank、replica 或节点发起访问，cache state 说明热路径是否命中，impact 说明用户或 GPU 受到什么影响。只要这几个键稳定，时序库、日志、对象存储、模型 registry 和成本仓库就可以协同。
 
+供应链撤销还需要独立的 `supply_chain_invalidation_evidence_bundle`。第 33 章的 `supply_chain_invalidation_evidence` 证明某次 cache、artifact、tokenizer、RAG index 或数据撤销是否到达关键消费点；观测层的 bundle 则冻结这次撤销事件在多个系统中的时间线和证据完整性。它必须同时看 control plane、data plane、runtime plane 和 accounting plane，否则很容易出现“发布系统显示撤销成功，但运行副本仍在用旧对象”。
+
+```yaml
+supply_chain_invalidation_evidence_bundle:
+  bundle_id: scieb-af-chat-large-20260620-001
+  trigger:
+    source: artifact_recall_or_tokenizer_bug_or_data_deletion_or_rag_acl_fix
+    opened_at: 2026-06-20T10:00:00Z
+    owner: model-release-sre
+  linked_objects:
+    supply_chain_release_contract: scrc-af-chat-large-20260620-r3
+    cache_invalidation_record: cir-af-chat-large-20260620-001
+    supply_chain_invalidation_evidence: scie-20260620-af-chat-large-r3
+    storage_security_boundary: ssb-model-and-training-prod
+  control_plane_evidence:
+    model_registry_pointer_history: attached
+    serving_release_bundle_history: attached
+    scheduler_cache_eligibility_decisions: sampled
+    autoscaler_warmup_queue_decisions: sampled
+  data_plane_evidence:
+    sampled_local_nvme_cache_scan: attached
+    rack_cache_digest_scan: attached
+    rag_index_digest_and_acl_snapshot: attached_if_rag
+    object_store_access_denial_for_revoked_artifact: sampled
+  runtime_evidence:
+    running_replica_loaded_digests: sampled
+    drain_or_verify_decisions: attached
+    request_trace_replay_after_invalidation: sampled
+    endpoint_admission_decisions: sampled
+  accounting_evidence:
+    usage_schema_version: recorded
+    billing_hold_or_replay_window: recorded_if_tokenizer_or_template_changed
+    affected_metering_events: sampled
+    supply_chain_incident_cost_record: linked_if_generated
+  verdict:
+    old_object_reachable_from_production_path: false
+    evidence_completeness: sufficient_or_gap
+    remaining_exemptions: []
+```
+
+这个 bundle 的价值是给事故和 PRR 一个共同事实源。若 artifact 召回后仍出现旧权重回答，oncall 不需要在 registry、节点、cache、trace 和计费系统之间手工拼图；bundle 应能直接说明旧对象是否还可被调度、是否还在副本内存、是否还在本地 NVMe、是否仍被计量系统当成有效版本。若证据不完整，结论也应是“撤销证据不足”，而不是“没有发现问题”。对于高敏租户，证据不足本身就应阻断放量或触发人工复核。
+
+```mermaid
+flowchart TB
+  Trigger["artifact / tokenizer / RAG / data revoke"] --> Bundle["supply_chain_invalidation_evidence_bundle"]
+  Contract["supply_chain_release_contract"] --> Bundle
+  Registry["registry pointer history"] --> Bundle
+  Scheduler["scheduler / autoscaler decisions"] --> Bundle
+  Cache["local NVMe / rack cache scans"] --> Bundle
+  Runtime["loaded digest / trace replay"] --> Bundle
+  Meter["usage schema / billing hold"] --> Bundle
+  Bundle --> Verdict{"old object reachable?"}
+  Verdict -->|yes| Incident["supply_chain_fault_tree_execution"]
+  Verdict -->|no| Gate["PRR / release gate evidence"]
+  Incident --> Cost["supply_chain_incident_cost_record"]
+```
+
+观测系统还应把撤销时间线做成查询入口。一次撤销从 record 创建、registry 指针切换、调度阻断、旧副本 drain、cache scan、替代 cache 预热到 billing hold，可能持续数分钟到数小时。每个阶段都有不同 owner。若时间线缺失，团队只能看到最后状态，无法判断事故窗口内哪些请求可能受影响。成熟做法是把撤销事件作为 span 或 event graph 写入观测系统，让 request trace、model registry event、node cache event 和 billing event 能按同一个 `bundle_id` 聚合。
+
 ## 37.8 network telemetry
 
 Network telemetry 包括端口吞吐、丢包、错误包、ECN mark、PFC pause、RDMA error、重传、链路状态、光模块状态、队列、buffer、水位、flow 信息和路由事件。AI 网络承载训练通信、推理入口、模型权重加载、checkpoint、对象存储访问和控制面，任何一类流量异常都可能影响 token 或训练 step。

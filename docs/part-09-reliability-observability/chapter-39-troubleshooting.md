@@ -1190,6 +1190,95 @@ flowchart TB
 
 一个实用规则是：没有 provenance，不能把行为漂移直接归因给模型；没有 restore drill，不能把 checkpoint 当作可恢复点；没有 cache invalidation record，不能断言旧版本已从生产路径移除；没有 dataset lineage，不能解释数据分布变化。供应链排障的目标不是收集更多文件，而是证明每个产物在正确时间、正确版本、正确权限下被使用。
 
+当事故已经涉及模型产物、tokenizer、RAG index、数据删除、checkpoint 恢复或缓存撤销，应进入 `supply_chain_fault_tree_execution`。它和普通存储故障树的区别是：存储故障树关注性能和可用性，供应链故障树关注“是否使用了正确且被允许的对象”。一次请求可以没有 5xx、没有 GPU 错误、没有明显延迟，却因为加载了旧 tokenizer、旧 RAG index 或未授权 artifact 而产生质量、合规和账单事故。
+
+```yaml
+supply_chain_fault_tree_execution:
+  execution_id: scfte-20260620-001
+  trigger:
+    incident_id: inc-20260620-old-tokenizer
+    symptom: behavior_drift_or_old_weight_or_token_count_mismatch_or_acl_leak
+  entry_evidence:
+    supply_chain_invalidation_evidence_bundle: scieb-af-chat-large-20260620-001
+    supply_chain_release_contract: scrc-af-chat-large-20260620-r3
+    serving_release_evidence_bundle: sreb-af-chat-large-20260620-001
+    storage_evidence: attached_if_cache_or_artifact_load_issue
+  branches:
+    dataset_lineage:
+      checks:
+        - dataset_lineage_record_present
+        - deletion_request_closed_or_exempted
+        - dataset_manifest_digest_matches_training
+      verdict: pass_or_gap
+    checkpoint_restore:
+      checks:
+        - checkpoint_manifest_complete
+        - checkpoint_restore_acceptance_matrix_passed
+        - first_effective_step_after_restore_present
+        - loss_continuity_probe_passed
+      verdict: pass_or_restore_drift
+    artifact_provenance:
+      checks:
+        - source_checkpoint_allowed
+        - conversion_tool_digest_allowed
+        - tokenizer_and_template_digest_match_contract
+        - signature_valid_and_not_revoked
+        - quality_gate_eligible_for_tenant
+      verdict: pass_or_wrong_artifact
+    cache_and_distribution:
+      checks:
+        - model_artifact_distribution_reached_target_nodes
+        - cache_residency_digest_matches_contract
+        - running_replica_loaded_digest_sampled
+        - local_nvme_and_rack_cache_invalidated_if_needed
+      verdict: pass_or_stale_cache
+    rag_index:
+      checks:
+        - index_digest_matches_release
+        - acl_snapshot_matches_current_policy
+        - retrieval_permission_decision_replay
+        - old_index_unreachable_from_production_path
+      verdict: pass_or_acl_or_index_drift
+    accounting:
+      checks:
+        - usage_schema_matches_tokenizer_template
+        - affected_metering_window_identified
+        - billing_hold_or_replay_opened_if_needed
+      verdict: pass_or_billing_risk
+  actions:
+    containment:
+      - block_new_replica_on_invalid_cache_nodes
+      - drain_or_verify_running_replicas
+      - force_cache_rewarm_from_replacement_artifact
+      - open_billing_hold_if_tokenizer_or_template_changed
+    follow_up:
+      - append_supply_chain_incident_cost_record
+      - update_supply_chain_acceptance_matrix
+      - update_supply_chain_prr_invalidation_drill
+```
+
+```mermaid
+flowchart TB
+  Incident["supply chain symptom"] --> Tree["supply_chain_fault_tree_execution"]
+  Tree --> Data["dataset lineage branch"]
+  Tree --> Restore["checkpoint restore branch"]
+  Tree --> Artifact["artifact provenance branch"]
+  Tree --> Cache["cache / distribution branch"]
+  Tree --> RAG["RAG index / ACL branch"]
+  Tree --> Bill["accounting branch"]
+  Cache --> Contain["block / drain / rewarm"]
+  Artifact --> Contain
+  RAG --> Contain
+  Bill --> Hold["billing hold / replay"]
+  Contain --> Cost["supply_chain_incident_cost_record"]
+  Hold --> Cost
+  Cost --> PRR["supply chain PRR gate update"]
+```
+
+这棵故障树的 stop rule 应非常严格。没有 `supply_chain_release_contract`，不能证明线上组合是否被允许；没有 `supply_chain_invalidation_evidence_bundle`，不能证明撤销是否到达 runtime 和 cache；没有 running replica loaded digest 采样，不能证明副本内存中没有旧对象；没有 usage schema replay，不能证明 tokenizer/template 事故不会继续污染账单；没有 RAG ACL snapshot replay，不能证明旧索引不会越权。供应链事故的难点不是找到一个坏文件，而是证明所有旧路径都被阻断。
+
+实际排障中还要区分性能事故和正确性事故。Cache miss 导致 cold start 慢，是性能事故；stale cache 命中旧权重，是正确性事故；RAG index 重建慢，是性能事故；旧 ACL snapshot 继续允许检索，是边界事故；checkpoint 恢复耗时超标，是恢复性能事故；恢复后 dataloader 或 scheduler state 漂移，是训练正确性事故。两者都可能浪费 GPU 或影响用户，但处置优先级不同：正确性和边界事故通常需要先阻断，再优化性能。
+
 第四步，是把诊断结果回写系统。坏节点进入维修，坏 rail 降级，缺失指标进入可观测性 backlog，准入漏测项进入 acceptance pipeline，重复事故进入 SRE 复盘。诊断闭环不完成，故障知识就无法转化为系统能力。
 
 第五步，是把诊断工具放到值班路径里。告警页面应直接提供诊断包入口、相关 runbook、最近变更、影响面和建议止血动作，而不是只给一条 Prometheus 表达式。事故中最稀缺的是注意力，工具应减少人工跳转和重复查询。

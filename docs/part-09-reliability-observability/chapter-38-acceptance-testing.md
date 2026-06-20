@@ -251,6 +251,78 @@ supply_chain_acceptance_matrix:
 
 这个矩阵避免两种高成本错误。第一种是“训练能跑，但产物不能证明”：数据 lineage 不完整、checkpoint 没演练、模型 artifact 没签名，最终无法进入受监管或商业化上线。第二种是“服务能启动，但缓存不可信”：旧权重或旧 tokenizer 仍在本地 NVMe，被错误 release 复用。供应链准入把数据治理、存储安全、模型发布和调度状态连接起来，保证生产资源不只是快，而且可追溯、可撤销。
 
+更严格的准入应增加 `checkpoint_restore_acceptance_matrix`。`checkpoint_restore_drill` 证明某个 checkpoint 在某次演练中可恢复，但准入矩阵要证明恢复能力在目标资源池、目标镜像、目标并行配置和目标 reader 版本下仍然成立。它不是简单启动一个小任务，而是验证 manifest、rank shard、optimizer、scheduler、rng、dataloader state、world size、parallelism、权限和 first effective step。对长周期训练，不能接受“checkpoint 文件存在”作为恢复能力证据。
+
+```yaml
+checkpoint_restore_acceptance_matrix:
+  baseline_id: ckpt-restore-training-prod-20260620
+  scope:
+    resource_pool: training-prod-h100
+    framework_runtime_matrix: frm-h100-train-20260620
+    representative_jobs: [pretrain-512gpu, finetune-64gpu]
+  dimensions:
+    checkpoint_kind: [full_state, sharded_state, optimizer_partitioned]
+    restore_world_size: [same_world_size, policy_allowed_changed_world_size]
+    storage_backend: [parallel_file_system, object_storage_with_cache]
+  required_evidence:
+    checkpoint_manifest_digest_verify: required
+    rank_shard_completeness: required
+    optimizer_scheduler_rng_state: required
+    dataloader_position_restore: required
+    reader_version_match: required
+    permission_and_kms_access: required
+    first_effective_step_after_restore: required
+    loss_continuity_probe: required
+  pass_criteria:
+    latest_valid_pointer_never_targets_partial_checkpoint: true
+    restore_rejects_incompatible_parallelism: true
+    restore_duration_within_policy: true
+    restored_job_emits_training_lifecycle_event: true
+  scheduling_until_pass:
+    allow_new_long_training: false
+    allow_short_experiment: true
+```
+
+这个矩阵能发现非常隐蔽的故障：checkpoint manifest 完整，但 reader 版本变了；rank 文件齐全，但 world size 变化后恢复脚本错误地复用旧 partition；optimizer state 缺失，训练能继续但学习率轨迹错误；KMS 权限在训练任务中有效，在恢复任务中失效；恢复后第一步执行成功，但 loss continuity probe 异常。恢复验收的本质是训练状态一致性，不是进程能否启动。
+
+```mermaid
+flowchart LR
+  Manifest["checkpoint_manifest"] --> Matrix["checkpoint_restore_acceptance_matrix"]
+  Runtime["framework_runtime_matrix"] --> Matrix
+  Reader["reader / image / KMS"] --> Matrix
+  Matrix --> Restore["restore run"]
+  Restore --> First["first effective step"]
+  First --> Probe["loss / state continuity probe"]
+  Probe --> Result{"accept?"}
+  Result -->|pass| Pool["long training schedulable"]
+  Result -->|fail| Block["block long training\nkeep older valid checkpoint"]
+```
+
+供应链准入还应验证 `supply_chain_release_contract`。契约中声明的 dataset lineage、checkpoint restore、artifact provenance、cache residency、storage boundary、route contract 和 usage schema 必须能在当前环境中被解析和执行。验收时应故意注入一次 tokenizer digest recall、artifact signature revoke 或 RAG ACL rebuild，确认 registry、scheduler、running replica、local NVMe、rack cache、Gateway route 和 billing hold 都会按契约动作。只检查契约字段完整，不能证明系统真的执行契约。
+
+```yaml
+supply_chain_release_contract_acceptance:
+  acceptance_id: scrc-accept-20260620-001
+  contract: scrc-af-chat-large-20260620-r3
+  required_replays:
+    lineage_replay: pass
+    checkpoint_restore_acceptance_matrix: pass
+    artifact_signature_and_provenance_verify: pass
+    route_eligibility_verify: pass
+    cache_invalidation_record_replay: pass
+    supply_chain_invalidation_evidence_bundle: generated
+    storage_security_boundary_denial_test: pass
+    usage_schema_billing_replay: pass_if_tokenizer_or_template_changed
+  failure_actions:
+    provenance_missing: block_release
+    restore_unverified: block_training_derived_release
+    invalidation_replay_failed: block_scaleout_and_keep_canary_only
+    boundary_denial_failed: block_regulated_tenants
+    billing_replay_failed: billing_hold_required
+```
+
+这类准入把“供应链安全”从静态扫描变成生产行为验证。模型供应链真正危险的地方，往往不是 digest 错了，而是 digest 正确但 eligibility 错了：一个产物来自合法 checkpoint，但没有通过目标租户的质量门禁；一个 tokenizer 合法，但与 usage schema 不兼容；一个 RAG index 合法，但 ACL snapshot 过期；一个 cache 命中合法 artifact，但 release contract 已经撤销该版本。验收矩阵必须覆盖这些组合条件。
+
 物理设施也需要独立准入矩阵。GPU burn-in、NCCL 和存储都通过，并不代表 rack 可以长期满载运行；BMC 不可达、PDU 冗余异常、液冷流量不足或线缆映射缺失，都会让资源不适合进入生产池。
 
 ```yaml

@@ -223,16 +223,23 @@
 | `workload_storage_intent` | 第 20、33、37 章 | 说明训练、推理、评测和数据处理如何声明 dataset、checkpoint、artifact、cache 和观测需求 |
 | `checkpoint_commit_record` | 第 10 章、第 33 章、第 41 章 | 说明分片写入、校验、manifest commit、latest valid、恢复候选和 GPU idle 成本 |
 | `checkpoint_restore_drill` | 第 10 章、第 38 章、第 39 章、第 41 章、第 44 章 | 说明 checkpoint 不是存在即可用，必须用真实镜像、并行配置、reader 版本和短窗口训练验证可恢复性 |
+| `checkpoint_restore_acceptance_matrix` | 第 38 章、第 44 章 | 说明 restore drill 如何在目标资源池、真实镜像、reader、world size、并行配置、KMS 权限和 first effective step 下作为准入门禁 |
 | `model_artifact_provenance` | 第 14 章、第 33 章、第 38 章、第 39 章、第 41 章、第 44 章 | 说明模型产物从 checkpoint、adapter、tokenizer、template、转换工具、评测门禁到签名发布的来源证明 |
 | `model_artifact_distribution` | 第 14 章、第 33 章 | 说明权重、tokenizer、template、digest、缓存预热和 readiness 的关系 |
 | `cache_residency` | 第 14 章、第 33 章、第 41 章 | 说明本地 NVMe、rack cache、权重 cache 与调度、冷启动和成本归因的关系 |
 | `cache_invalidation_record` | 第 14 章、第 33 章、第 38 章、第 39 章、第 41 章、第 44 章 | 说明权重、tokenizer、template、RAG 索引和数据缓存撤销后如何阻止调度复用旧缓存，并如何重新预热 |
+| `supply_chain_release_contract` | 第 33、38、44 章 | 说明 dataset lineage、checkpoint restore、artifact provenance、cache、storage boundary、route contract 和 usage schema 如何绑定为模型上线资格契约 |
 | `supply_chain_invalidation_evidence` | 第 33、41、44 章 | 说明 artifact、tokenizer、RAG index 或数据撤销后，registry、调度、autoscaler、running replica、local NVMe 和 rack cache 是否真正失效 |
+| `supply_chain_invalidation_evidence_bundle` | 第 37、39、41、44 章 | 说明撤销事件在 control plane、data plane、runtime plane 和 accounting plane 的证据如何冻结并计算完整性 |
 | `storage_security_boundary` | 第 33 章、第 37 章、第 38 章、第 41 章、第 44 章 | 说明训练数据、checkpoint、模型权重、adapter、prompt log、trace 和导出路径的命名空间、权限、加密、审计和删除边界 |
 | `data_path_evidence` / `storage_evidence` | 第 33 章、第 37 章、第 39 章、第 41 章 | 说明 workload 到 path、manifest、client、cache、backend、telemetry 和 impact 的证据链 |
 | `storage_acceptance_matrix` / `storage_composite_regression_gate` | 第 38 章 | 说明 dataset read、checkpoint write/restore、model load、cache miss 以及 NCCL+checkpoint+artifact 并发门禁 |
 | `supply_chain_acceptance_matrix` | 第 38 章、第 44 章 | 说明 dataset lineage、checkpoint restore、artifact provenance、cache invalidation 和 storage security boundary 如何成为生产资源和模型上线门禁 |
+| `supply_chain_release_contract_acceptance` | 第 38 章、第 44 章 | 说明 release contract 是否能被解析、重放、撤销、拒绝越界访问并触发 billing replay |
+| `supply_chain_fault_tree_execution` | 第 39、44 章 | 说明供应链事故如何按 lineage、restore、provenance、cache/distribution、RAG index 和 accounting 分支执行故障树 |
 | `supply_chain_incident_cost_record` | 第 41、44 章 | 说明供应链撤销、旧缓存误用、tokenizer 口径修正、RAG index 重建、cache rewarm、账单冻结和客户 credit 如何进入经济账本 |
+| `supply_chain_revoke_economics` | 第 41、44 章 | 说明撤销执行成本和旧对象继续服务成本如何拆分，并如何形成 cache、billing、runtime digest 采样和 PRR 投资信号 |
+| `supply_chain_contract_prr_drill` | 第 44 章 | 说明高价值模型上线前如何以 release contract 为入口演练 artifact 召回、tokenizer mismatch、stale cache、RAG ACL drift、故障树和经济账本 |
 | 存储故障树 | 第 39 章 | 说明 GPU idle、checkpoint slow、model load slow 如何定位到 dataset/checkpoint/artifact/cache，并要求 workload impact 证据 |
 | `storage_cost_ledger` | 第 41 章 | 说明 dataset read、checkpoint、artifact retention、cache miss、local NVMe 保留和 storage-induced GPU idle 的成本归因 |
 

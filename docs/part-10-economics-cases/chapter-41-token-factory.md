@@ -660,6 +660,42 @@ supply_chain_incident_cost_record:
 
 这个记录能防止把供应链事故误算成“存储成本上升”。强制重建 cache 会增加冷启动和对象存储请求，延长旧 checkpoint 保留会增加容量成本，RAG 索引重建会消耗 embedding 和向量库写入，tokenizer 修复会触发 usage replay 和账单冻结，模型 artifact 召回会导致 canary 暂停或回滚。这些成本都来自同一个供应链事件，应该进入同一张经济表，而不是分散在存储、推理、客服和财务报表里。
 
+供应链成本还要区分“撤销成本”和“旧对象继续服务成本”。前者包括 cache rewarm、registry replay、RAG index rebuild、checkpoint 保留延长和工程响应；后者包括错误 token 计量、低质量回答、合规风险、客户信用、账单争议和高价值流量降级。很多团队只记录前者，因为它能在基础设施账单中看到；真正影响商业结果的往往是后者。Token Factory 的账本必须把撤销窗口内的对象可达性作为成本维度。
+
+```yaml
+supply_chain_revoke_economics:
+  window: 2026-06-20T10:00Z/2026-06-20T12:00Z
+  linked_records:
+    supply_chain_fault_tree_execution: scfte-20260620-001
+    supply_chain_invalidation_evidence_bundle: scieb-af-chat-large-20260620-001
+    supply_chain_incident_cost_record: scicr-20260620-artifact-recall-001
+  object_reachability:
+    old_artifact_reachable_until: measured_or_none
+    old_tokenizer_reachable_until: measured_or_none
+    old_rag_index_reachable_until: measured_or_none
+    running_replica_verification_lag_ms: measured
+    cache_scan_coverage: measured
+  revoke_execution_cost:
+    registry_pointer_replay_cost: calculated
+    scheduler_block_and_relabel_cost: calculated
+    forced_cache_evict_and_rewarm_cost: calculated
+    replacement_capacity_cost: calculated
+    engineering_response_cost: measured
+  old_object_service_cost:
+    low_quality_or_wrong_template_token_cost: calculated_if_served
+    token_count_reconciliation_cost: calculated_if_tokenizer_changed
+    unauthorized_context_exposure_cost: estimated_if_rag_acl_failed
+    billing_hold_and_invoice_replay_cost: calculated
+    customer_credit_or_support_cost: calculated_if_customer_visible
+  investment_signal:
+    add_contract_acceptance_gate: true
+    add_running_digest_sampling: true
+    increase_hot_rollback_capacity: review
+    improve_cache_scan_parallelism: review
+```
+
+这个模型把一次撤销事故转化为工程投资信号。若主要成本来自 cache rewarm，可以优化分层缓存和预热策略；若主要成本来自 running replica 验证滞后，应增加 loaded digest 采样和 drain 协议；若主要成本来自 billing replay，说明 tokenizer/template 与 usage schema 的发布耦合不够；若主要成本来自 RAG ACL，说明索引权限快照和检索决策需要更强门禁。经济模型不只是给事故“算账”，还要指出哪项工程投资能降低下一次损失。
+
 ```mermaid
 flowchart LR
   Invalidation["cache_invalidation_record"] --> Evidence["supply_chain_invalidation_evidence"]

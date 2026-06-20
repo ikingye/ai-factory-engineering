@@ -195,14 +195,21 @@ flowchart TB
 | `checkpoint_manifest` | 证明 checkpoint 分片、状态和恢复候选有效。 | 第 10、33 章 | `checkpoint_commit_record`、`storage_evidence` |
 | `checkpoint_commit_record` | 记录 checkpoint 写入、校验、latest 指针和恢复门禁。 | 第 10、33、41 章 | `training_roi_ledger`、`storage_cost_ledger` |
 | `checkpoint_restore_drill` | 用真实镜像、并行配置、reader 版本和短窗口训练证明 checkpoint 能恢复，而不是只证明目录存在。 | 第 10、38、39 章 | `model_artifact_provenance`、`production_readiness_review` |
+| `checkpoint_restore_acceptance_matrix` | 验证 checkpoint restore 在目标资源池、真实镜像、reader、world size、并行策略、权限和 first effective step 下可作为准入门禁。 | 第 38、44 章 | `supply_chain_release_contract_acceptance`、`production_readiness_review` |
 | `model_artifact_provenance` | 证明线上产物来自哪个 checkpoint、adapter、tokenizer、template、转换工具、评测门禁和签名流程。 | 第 14、33、38 章 | `serving_quality_contract`、`cache_invalidation_record` |
 | `model_artifact_distribution` | 绑定权重、tokenizer、template、digest、预热和回滚对象。 | 第 14、33 章 | `cache_residency`、`serving_quality_contract` |
 | `cache_residency` | 描述模型或数据在 node/rack/pool 的缓存状态。 | 第 14、33、41 章 | `storage_evidence`、`storage_cost_ledger` |
 | `cache_invalidation_record` | 记录模型、tokenizer、template、RAG 索引或数据缓存为何失效、影响哪些节点、如何阻断复用和重新预热。 | 第 14、33、38、39 章 | `storage_evidence`、`production_readiness_review` |
+| `supply_chain_release_contract` | 把 dataset lineage、checkpoint restore、artifact provenance、cache、storage boundary、route contract 和 usage schema 绑定成模型上线资格契约。 | 第 33、38、44 章 | `supply_chain_release_contract_acceptance`、`supply_chain_contract_prr_drill` |
 | `supply_chain_invalidation_evidence` | 证明 artifact、tokenizer、RAG index 或数据撤销后，旧 registry/cache/running replica/调度状态是否真正被阻断。 | 第 33、41、44 章 | `cache_invalidation_record`、`supply_chain_incident_cost_record`、`production_readiness_review` |
+| `supply_chain_invalidation_evidence_bundle` | 冻结撤销事件在 registry、scheduler、cache、running replica、trace 和 billing 中的证据与完整性。 | 第 37、39、41、44 章 | `supply_chain_fault_tree_execution`、`supply_chain_revoke_economics` |
 | `storage_security_boundary` | 定义训练数据、checkpoint、模型权重、adapter、日志和 trace 的命名空间、权限、加密、审计、导出和删除边界。 | 第 33、37、38、41 章 | `security_audit_event`、`supply_chain_acceptance_matrix` |
 | `supply_chain_acceptance_matrix` | 验证数据 lineage、checkpoint restore、模型 provenance、缓存撤销和存储安全边界是否满足生产门禁。 | 第 38、44 章 | `production_readiness_review`、`storage_cost_ledger` |
+| `supply_chain_release_contract_acceptance` | 验证 release contract 能被解析、重放、撤销、拒绝越界访问并触发 usage schema/billing replay。 | 第 38、44 章 | `production_readiness_review`、`supply_chain_fault_tree_execution` |
+| `supply_chain_fault_tree_execution` | 记录供应链事故在 lineage、restore、provenance、cache/distribution、RAG index 和 accounting 分支上的证据、判断和动作。 | 第 39、44 章 | `supply_chain_incident_cost_record`、`supply_chain_contract_prr_drill` |
 | `supply_chain_incident_cost_record` | 把供应链撤销、旧缓存误用、tokenizer 修正、RAG index 重建、cache rewarm、账单冻结和客户 credit 写入经济账本。 | 第 41、44 章 | `storage_cost_ledger`、`inference_runtime_cost_ledger`、`production_readiness_review` |
+| `supply_chain_revoke_economics` | 拆分撤销执行成本和旧对象继续服务成本，并把结果转化为 cache、billing、digest sampling 和 PRR 投资信号。 | 第 41、44 章 | `commercial_pnl_ledger`、`production_readiness_review` |
+| `supply_chain_contract_prr_drill` | 以上线契约为入口演练 artifact 召回、tokenizer mismatch、stale cache、RAG ACL drift、故障树和经济账本。 | 第 44 章 | `production_readiness_review`、`supply_chain_revoke_economics` |
 | `network_path_evidence` | 把 job/request 映射到 GPU、NIC、rail、switch port 和 baseline。 | 第 30、32、37 章 | `network_diagnostic_bundle`、`fabric_baseline` |
 | `rail_balance_report` | 证明多 rail 设计在真实 rank 和端口流量中被正确使用。 | 第 32、37、38 章 | `fabric_change_record`、`network_cost_ledger` |
 | `congestion_event_record` | 把 ECN/PFC、队列、水位、流量类别和 workload 影响串成拥塞证据。 | 第 30、37、39 章 | `network_diagnostic_bundle`、`incident_record` |
@@ -295,6 +302,8 @@ flowchart TB
 | checkpoint 存在但恢复失败 | 第 10、33、38、39 章 | checkpoint_manifest、checkpoint_commit_record、checkpoint_restore_drill、image/runtime version、dataloader state | 检查 rank 分片、optimizer/scheduler/rng、reader 版本、world size、权限和 restore drill，失败前不要删除更早健康 checkpoint。 |
 | 模型产物来源无法证明 | 第 13、14、33、38、44 章 | model_artifact_provenance、quality_gate_execution、dataset_lineage_record、checkpoint_restore_drill、signature | 阻止进入高价值租户或商业化发布，补齐 checkpoint、转换、评测、签名和发布证据。 |
 | 模型服务加载旧权重 | 第 14、33、37、39 章 | model_artifact_distribution、cache_residency、cache_invalidation_record、serving_rollback_record、node cache state | 区分 registry 指针、节点缓存、RuntimeClass、启动脚本和 Gateway 路由，必要时阻断调度到 invalid cache 节点。 |
+| artifact/tokenizer/RAG 撤销后旧对象仍可达 | 第 33、37、38、39、41、44 章 | supply_chain_release_contract、supply_chain_invalidation_evidence_bundle、running replica loaded digest、cache scan、supply_chain_fault_tree_execution | 先判断旧对象是否仍可从生产路径到达，再执行 block、drain、rewarm、billing hold 和 PRR gate 更新。 |
+| tokenizer/template 变更后 token 计量漂移 | 第 7、14、37、39、41、44 章 | supply_chain_release_contract、usage schema、metering event、billing replay、supply_chain_revoke_economics | 先冻结 affected invoice window，回放 usage schema 和 tokenizer/template digest，再决定 hold、rebill、credit 或发布阻断。 |
 | 模型冷启动慢 | 第 14、15、33、41 章 | model_artifact_distribution、cache_residency、storage_evidence、load time、storage_cost_ledger | 优化权重分发、预热、缓存驻留、调度放置和多模型路由。 |
 | 缓存撤销后仍被调度使用 | 第 14、33、38、39、44 章 | cache_invalidation_record、cache_residency、scheduler placement、serving release、storage_security_boundary | 检查失效事件是否进入调度和 autoscaler，确认旧 cache 从 ready 变成 invalid 并完成替代版本预热。 |
 | ResourceClaim 长期 pending 或绑定到错误 GPU | 第 22、23、38、39、41、44 章 | gpu_resource_claim_contract、resource_claim_admission_record、resource_claim_acceptance_matrix、resource_claim_fault_tree_execution、resource_claim_incident_cost_record | 先区分 DeviceClass/ResourceSlice 不匹配、entitlement/quota 阻断、MIG profile、拓扑等待、runtime handoff 或计量标签断链，再决定等待、拒绝、降级或修复资源画像。 |

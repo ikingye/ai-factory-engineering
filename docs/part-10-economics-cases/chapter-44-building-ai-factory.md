@@ -1026,6 +1026,57 @@ supply_chain_prr_invalidation_drill:
 
 这个演练的价值在于暴露“控制面成功、数据面失败”的风险。Registry 指针已经更新，但本地 NVMe 仍保留旧权重；RAG 索引权限已经修复，但 rack cache 仍可命中旧索引；tokenizer digest 已撤销，但某些 warmed replica 仍使用旧模板；调度器看到节点 cache ready，却不知道它是 invalid ready。AI Factory 的供应链安全不是只签名和登记来源，还要能撤销、阻断、预热替代版本并计算影响成本。
 
+更完整的供应链 PRR 应把 `supply_chain_release_contract` 当作入口，而不是把 dataset、checkpoint、artifact、cache 和 billing 分别检查。演练流程应先验证契约闭合，再注入撤销事件，随后检查 registry、scheduler、running replica、cache、Gateway route、RAG index 和 billing replay 是否全部按契约动作。最后要生成故障树和成本记录，证明如果演练失败，团队知道应阻断什么、修哪里、成本归哪里。
+
+```yaml
+supply_chain_contract_prr_drill:
+  drill_id: scc-prr-drill-20260620-001
+  production_readiness_review: prr-maas-chat-prod-2026-06
+  contract: scrc-af-chat-large-20260620-r3
+  preconditions:
+    supply_chain_release_contract_acceptance: pass
+    checkpoint_restore_acceptance_matrix: pass
+    storage_security_boundary: pass
+    serving_release_evidence_bundle: available
+  injected_failures:
+    artifact_signature_revoke:
+      expected: block_new_replicas_and_rewarm_replacement
+    tokenizer_digest_mismatch:
+      expected: billing_hold_and_usage_schema_replay
+    stale_local_nvme_cache:
+      expected: scheduler_block_invalid_cache_node
+    rag_acl_snapshot_drift:
+      expected: retrieval_permission_replay_blocks_old_index
+  required_evidence:
+    supply_chain_invalidation_evidence_bundle: generated
+    running_replica_loaded_digest_sampling: pass
+    cache_scan_coverage: within_policy
+    request_trace_replay_uses_replacement_artifact: pass
+    billing_replay_window_identified: pass_if_tokenizer_or_template_changed
+    supply_chain_fault_tree_execution: generated_by_injected_failure
+    supply_chain_revoke_economics: generated
+  pass_criteria:
+    old_object_unreachable_from_production_path: true
+    regulated_tenant_never_served_with_invalid_object: true
+    replacement_capacity_ready_or_admission_limited: true
+    prr_gate_update_generated_for_any_gap: true
+```
+
+```mermaid
+flowchart TB
+  Contract["supply_chain_release_contract"] --> Drill["supply_chain_contract_prr_drill"]
+  Accept["contract acceptance\nrestore / provenance / boundary"] --> Drill
+  Drill --> Inject["inject revoke / mismatch / stale cache / ACL drift"]
+  Inject --> Evidence["supply_chain_invalidation_evidence_bundle"]
+  Evidence --> Tree["supply_chain_fault_tree_execution"]
+  Evidence --> Replay["trace + billing replay"]
+  Tree --> Cost["supply_chain_revoke_economics"]
+  Replay --> Cost
+  Cost --> Gate["PRR supply chain gate\napprove / conditional / block"]
+```
+
+这个演练应成为高价值模型、受监管租户、私有化交付和大规模 tokenizer/template 变更的硬门槛。它会暴露几类平时很难发现的问题：契约中写了需要 billing hold，但计费系统没有 replay 入口；调度器能阻断新 replica，却不能验证运行中副本已加载对象；cache scan 能扫本地 NVMe，却漏掉 rack cache；RAG index digest 正确，但 ACL snapshot 是旧策略；PRR 收到了 pass/fail，却没有把失败路径转换成成本和投资信号。上线前暴露这些问题，比在线上解释“为什么旧对象还在生产路径上”便宜得多。
+
 私有化交付还需要单独的 PRR 演练。原因是客户现场的失败模式与公有云不同：出网受限、registry 私有、证书和 KMS 由客户控制、远程登录受审批、诊断导出需要脱敏、现场维护窗口有限，且客户可能在供应方不知情的情况下修改配置或替换镜像。PRR 不能只检查 `private_deployment_acceptance_record` 是否存在，还要证明离线发布包能被导入、digest 能对账、升级能回滚、现场补丁受治理、诊断包能导出、成本能入账。
 
 ```yaml

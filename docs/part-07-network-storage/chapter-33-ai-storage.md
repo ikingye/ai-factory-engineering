@@ -399,6 +399,73 @@ storage_evidence:
 
 这个对象是第 37 章观测、第 38 章准入、第 39 章故障树和第 41 章成本账本的交叉点。它不要求所有存储后端使用同一种实现，但要求它们用相同关联键表达事实。否则训练、推理、存储和财务团队会各自拥有一部分证据，却无法形成共同结论。
 
+在模型进入生产之前，存储层还应提供 `supply_chain_release_contract`。它不是发布单，也不是模型 registry 的一行记录，而是把 dataset lineage、checkpoint restore、artifact provenance、artifact distribution、cache residency、cache invalidation、storage security boundary 和 serving release gate 绑定在一起的机器可读契约。它回答的是：这个模型产物是否可以被这个租户、这个 endpoint、这个资源池和这个 cache 层消费；如果某个依赖被撤销，哪些 release、缓存和账单窗口必须同步失效。
+
+```yaml
+supply_chain_release_contract:
+  contract_id: scrc-af-chat-large-20260620-r3
+  scope:
+    model_family: af-chat-large
+    serving_release: af-chat-large-20260619-r3
+    allowed_endpoints: [af-chat-large-prod, af-chat-large-canary]
+    allowed_tenants: [enterprise-a, enterprise-b]
+    resource_pools: [inference-premium-a]
+  training_inputs:
+    dataset_lineage_record: dlr-pretrain-202606
+    dataset_manifest: dataset-manifest@sha256:example
+    deletion_requests_closed_before_training: true
+    tokenizer_training_version: tok-train-202606
+  checkpoint:
+    checkpoint_manifest: ckpt-step-120000
+    checkpoint_commit_record: ccr-ckpt-step-120000
+    checkpoint_restore_drill: crd-20260620-ckpt-120000
+    first_effective_step_after_restore: pass
+  artifact:
+    model_artifact_provenance: map-af-chat-large-20260619-r3
+    model_artifact_distribution: mad-af-chat-large-20260619-r3
+    weights_digest: sha256:weights
+    tokenizer_digest: sha256:tokenizer
+    chat_template_digest: sha256:template
+    signature_verification: pass
+  cache_and_runtime:
+    cache_residency_policy: premium_hot_capacity_required
+    cache_invalidation_record_required_on_change: true
+    serving_runtime_profiles: [vllm-h100-longctx-r2]
+    incompatible_runtime_profiles: [legacy-template-parser-r1]
+  boundaries:
+    storage_security_boundary: ssb-model-and-training-prod
+    export_policy: denied_without_release_approval
+    prompt_trace_redaction_record: required_for_debug_export
+  release_gates:
+    supply_chain_acceptance_matrix: pass
+    serving_quality_contract: pass
+    serving_route_release_contract: pass
+    billing_usage_schema: usage-openai-compatible-v6
+  invalidation_policy:
+    revoke_if_any_digest_changes: true
+    block_new_replica_until_replacement_cache_ready: true
+    billing_hold_if_tokenizer_or_template_changes: true
+```
+
+这个契约把“能加载”提升为“能生产”。模型服务只要能读到权重就能启动，但这不证明权重来自批准的 checkpoint，也不证明 tokenizer 和 template 与计量一致，更不证明 cache 可以被撤销。`supply_chain_release_contract` 应由 release control plane 生成，并被 Gateway、scheduler、model registry、cache prewarmer、billing replay 和 PRR 消费。若某个数据删除请求影响了训练 lineage，契约能列出受影响 checkpoint、artifact 和 release；若某个 tokenizer digest 需要撤销，契约能告诉调度器哪些热 cache 不能再作为 ready 条件。
+
+```mermaid
+flowchart LR
+  Lineage["dataset_lineage_record"] --> Contract["supply_chain_release_contract"]
+  Manifest["dataset_manifest"] --> Contract
+  Restore["checkpoint_restore_drill"] --> Contract
+  Prov["model_artifact_provenance"] --> Contract
+  Dist["model_artifact_distribution"] --> Contract
+  Boundary["storage_security_boundary"] --> Contract
+  Contract --> Gateway["Gateway route eligibility"]
+  Contract --> Scheduler["scheduler cache eligibility"]
+  Contract --> Cache["cache prewarm / invalidation"]
+  Contract --> Billing["usage schema / billing hold"]
+  Contract --> PRR["production readiness review"]
+```
+
+实现上，契约应尽量小而硬。它不需要复制完整训练日志，也不需要包含每个对象的全部元数据；它需要保存不可变引用、摘要、状态、适用范围和失效策略。这样做的好处是发布时可以快速验证契约是否闭合，事故时可以快速计算影响面，审计时可以证明“线上 release 为什么被允许”。如果契约只存在于人工发布说明中，后续 cache、billing、rollback 和安全撤销都会重新依赖人工记忆。
+
 数据和模型供应链事故还需要 `supply_chain_invalidation_evidence`。`cache_invalidation_record` 说明“应当失效什么”，但生产系统还要证明“失效动作是否已经到达所有会使用旧内容的地方”。这些地方包括 model registry 指针、节点本地 NVMe、rack cache、RAG index cache、训练 dataset cache、推理 replica 的已加载权重、autoscaler 的预热队列和调度器的节点可用状态。只改 registry 指针，不能证明旧权重、旧 tokenizer 或旧索引已经离开生产路径。
 
 ```yaml
