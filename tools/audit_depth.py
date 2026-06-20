@@ -24,8 +24,8 @@ REQUIRED_HEADINGS = {
     "延伸阅读",
 }
 
-H2_RE = re.compile(r"^##\s+(.+?)\s*$", re.MULTILINE)
-HEADING_NUMBER_RE = re.compile(r"^(?:\d+\.\d+|\d+\.)\s+")
+HEADING_RE = re.compile(r"^#{2,3}\s+(.+?)\s*$", re.MULTILINE)
+HEADING_NUMBER_RE = re.compile(r"^(?:\d+\.\d+\.\d+|\d+\.\d+|\d+\.)\s+")
 
 
 @dataclass
@@ -39,7 +39,7 @@ def audit_file(path: Path) -> list[Finding]:
     findings: list[Finding] = []
     headings = {
         HEADING_NUMBER_RE.sub("", match.group(1).strip())
-        for match in H2_RE.finditer(text)
+        for match in HEADING_RE.finditer(text)
     }
 
     for heading in REQUIRED_HEADINGS:

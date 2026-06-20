@@ -14,8 +14,8 @@ CONTEXT_SECTION = "本章上下文"
 READER_SECTION = "读者测试"
 CONTEXT_MARKERS = ("层级定位", "前置依赖", "后续关联", "读完能力")
 READER_MARKERS = ("机制题", "边界题", "路径题", "排障题")
-H2_RE = re.compile(r"^##\s+(.+?)\s*$", re.MULTILINE)
-HEADING_NUMBER_RE = re.compile(r"^(?:\d+\.\d+|\d+\.)\s+")
+HEADING_RE = re.compile(r"^(#{2,3})\s+(.+?)\s*$", re.MULTILINE)
+HEADING_NUMBER_RE = re.compile(r"^(?:\d+\.\d+\.\d+|\d+\.\d+|\d+\.)\s+")
 
 
 @dataclass
@@ -25,13 +25,18 @@ class Finding:
 
 
 def section_body(text: str, heading: str) -> str | None:
-    matches = list(H2_RE.finditer(text))
+    matches = list(HEADING_RE.finditer(text))
     for index, match in enumerate(matches):
-        current = HEADING_NUMBER_RE.sub("", match.group(1).strip())
+        level = len(match.group(1))
+        current = HEADING_NUMBER_RE.sub("", match.group(2).strip())
         if current != heading:
             continue
         start = match.end()
-        end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
+        end = len(text)
+        for next_match in matches[index + 1 :]:
+            if len(next_match.group(1)) <= level:
+                end = next_match.start()
+                break
         return text[start:end].strip()
     return None
 

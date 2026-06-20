@@ -8,6 +8,9 @@ project, "word count" is treated as a Chinese-friendly content length:
 - each contiguous ASCII word/number counts as one unit;
 - code fences, Mermaid blocks, chapter orientation sections, summaries and
   reading placeholders are excluded from the hard 500-800 section target.
+
+Chapter pages use H2 groups and H3 concrete sections.  This audit measures
+the H3 sections, not the larger H2 groups.
 """
 
 from __future__ import annotations
@@ -37,9 +40,10 @@ DEFAULT_INCLUDED_HEADINGS = {
     "设计取舍",
 }
 
-NUMBERED_HEADING_RE = re.compile(r"^\d+(?:\.\d+)+\s+")
-HEADING_NUMBER_RE = re.compile(r"^(?:\d+\.\d+|\d+\.)\s+")
-H2_RE = re.compile(r"^##\s+(.+?)\s*$")
+NUMBERED_HEADING_RE = re.compile(r"^\d+(?:\.\d+){2,}\s+")
+HEADING_NUMBER_RE = re.compile(r"^(?:\d+\.\d+\.\d+|\d+\.\d+|\d+\.)\s+")
+GROUP_HEADING_RE = re.compile(r"^##\s+(.+?)\s*$")
+SECTION_HEADING_RE = re.compile(r"^###\s+(.+?)\s*$")
 CJK_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]")
 ASCII_WORD_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_./:+-]*")
 
@@ -88,9 +92,28 @@ def iter_sections(path: Path) -> list[Section]:
     sections: list[Section] = []
     current_heading: str | None = None
     current_lines: list[str] = []
+    in_fence = False
 
     for line in path.read_text(encoding="utf-8").splitlines():
-        match = H2_RE.match(line)
+        if line.strip().startswith("```"):
+            in_fence = not in_fence
+        if in_fence:
+            if current_heading is not None:
+                current_lines.append(line)
+            continue
+
+        group_match = GROUP_HEADING_RE.match(line)
+        section_match = SECTION_HEADING_RE.match(line)
+        if group_match and current_heading:
+            if should_audit_heading(current_heading):
+                sections.append(
+                    Section(path, current_heading, content_units("\n".join(current_lines)))
+                )
+            current_heading = None
+            current_lines = []
+            continue
+
+        match = section_match
         if match:
             if current_heading and should_audit_heading(current_heading):
                 sections.append(
