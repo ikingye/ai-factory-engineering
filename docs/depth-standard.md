@@ -2,7 +2,7 @@
 
 本书的目标是让读者系统掌握 AI Factory 的工程技术，而不是只获得术语概览。读者读完本书后，应该能理解一个 AI Factory 从应用入口到 GPU、网络、存储、机房和经济性之间的关键链路，并能在真实生产问题中定位责任边界、设计排障路径、制定验收标准。
 
-## 深度标准
+## 1. 深度标准
 
 一章达到生产级深度，至少应满足以下标准：
 
@@ -19,7 +19,7 @@
 - 跨章闭环：一个复杂主题可以分布在多个章节，但必须能在全书范围内覆盖核心知识点。
 - 结构说清：每章所有二级标题都必须使用 `章号.序号` 连续编号，包括导读、上下文、读者测试、场景、概念、架构、工程实现、故障、指标、取舍、小结和延伸阅读。这样目录引用、交叉审校和长期扩写都使用同一套稳定坐标。
 
-## 读者测试问题集
+## 2. 读者测试问题集
 
 每次深度化一章或一条主题链路后，至少用以下问题类型做自测：
 
@@ -36,7 +36,7 @@
 
 全书统一审稿流程见 [Doc Coauthoring 审稿标准](doc-coauthoring-review.md)。后续每章必须包含 `读者测试` 模块，并通过 `python3 tools/audit_doc_coauthoring.py`。
 
-## 图表标准
+## 3. 图表标准
 
 图表应优先覆盖以下类型：
 
@@ -47,7 +47,7 @@
 - 故障树图：说明一个症状如何分解到可能根因。
 - 验收流水线图：说明准入、基线、异常检测和资源池状态如何闭环。
 
-## NVIDIA GPU Container 知识覆盖矩阵
+## 4. NVIDIA GPU Container 知识覆盖矩阵
 
 用户提供的《Nvidia GPU Container 原理》不是要求整篇进入某一章，而是要求全书读完后覆盖并深化其核心知识点。当前规划如下：
 
@@ -83,7 +83,7 @@
 | `container_runtime_incident_cost_record` | 第 41、44 章 | 说明容器 runtime 事故如何把失败扩容、可见性错配、拓扑错配、回滚复测和观测断链写入可靠性成本 |
 | `container_runtime_prr_change_drill` | 第 44 章 | 说明 Toolkit/CDI/NRI/RuntimeClass/device plugin 变更上线前如何演练非 GPU Pod、单 GPU、MIG、多卡 RDMA、故障树、回滚和成本账本 |
 
-## 推理请求链路覆盖矩阵
+## 5. 推理请求链路覆盖矩阵
 
 推理请求链路的目标是让读者能从一个用户 Chat 请求一路追到 Gateway、模型服务、推理引擎、GPU/HBM、streaming、计量和经济模型。当前覆盖如下：
 
@@ -124,7 +124,7 @@
 | `serving_release_prr_drill` | 第 44 章 | 说明高 SLA endpoint 上线前如何演练 release bundle、Gateway route/fallback、cache、rollback、usage schema、故障树和成本账本 |
 | Token Factory ledger | 第 41 章 | 说明 token ledger、resource ledger、阶段成本和毛利约束指标 |
 
-## 多模态与媒体链路覆盖矩阵
+## 6. 多模态与媒体链路覆盖矩阵
 
 多模态链路的目标是让读者能从一次文件、图片、音频或视频请求，一路追到应用画像、媒体上传、对象存储、预处理、派生产物、模型服务、质量门禁、计量、成本、删除和 PRR 演练。当前覆盖如下：
 
@@ -141,7 +141,7 @@
 | `multimodal_cost_ledger` | 第 41、44 章 | 说明上传扫描、OCR/ASR、layout/抽帧、encoder、LLM 推理、派生产物存储、失败重试和人工复核如何进入单位经济 |
 | `multimodal_prr_drill` | 第 44 章 | 说明文件损坏、超限、OCR 低置信、表格回归、引用坐标错配、删除派生产物和部分失败计量如何在上线前演练 |
 
-## 安全、身份与租户边界覆盖矩阵
+## 7. 安全、身份与租户边界覆盖矩阵
 
 安全多租户链路的目标是让读者能从一次请求或一次事故追到身份、租户边界、数据边界、策略决策、provider 外联、trace 脱敏、secret、审计、账单争议和安全成本。当前覆盖如下：
 
@@ -163,7 +163,7 @@
 | `security_cost_ledger` / `abuse_cost_ledger` | 第 41 章 | 说明隔离、密钥、脱敏、审计、security incident、denial-of-wallet 和争议处理如何进入 secure cost/token |
 | `security_prr_abuse_drill` | 第 44 章 | 说明公共入口、外部 provider、免费试用和 Agent 平台上线前如何演练 key 泄露、provider 外联阻断、billing hold 和滥用成本闭环 |
 
-## 训练任务链路覆盖矩阵
+## 8. 训练任务链路覆盖矩阵
 
 训练任务链路的目标是让读者能从一次训练提交一路追到队列、quota、gang、拓扑放置、NCCL、checkpoint、评测、模型注册和训练 ROI。当前覆盖如下：
 
@@ -203,7 +203,7 @@
 | `training_incident_cost_record` | 第 41、44 章 | 说明训练事故如何把 GPU 小时、checkpoint 回退、队列机会成本、工程响应和模型发布延迟写入 ROI 与 PRR |
 | training ROI ledger | 第 41 章 | 说明 allocated/effective/wasted GPU hours、调度等待、放置降级、抢占、checkpoint、评测、上线收益和成本变化 |
 
-## 网络通信链路覆盖矩阵
+## 9. 网络通信链路覆盖矩阵
 
 网络通信链路的目标是让读者能从训练或推理的性能症状一路追到 GPU 拓扑、NIC、rail、leaf/spine、RDMA/NCCL、telemetry、准入基线和调度动作。当前覆盖如下：
 
@@ -231,7 +231,7 @@
 | `network_incident_cost_record` | 第 41、44 章 | 说明一次 fabric 事故或变更回归如何把通信等待、重启、降级容量、checkpoint 回退、fallback 和复测成本写入经济账本 |
 | `fabric_change_prr_drill` | 第 44 章 | 说明 fabric 变更上线前如何演练 baseline 失效、调度降级、拥塞故障树、回滚复测和成本账本 |
 
-## 存储数据链路覆盖矩阵
+## 10. 存储数据链路覆盖矩阵
 
 存储数据链路的目标是让读者能从 GPU idle、checkpoint 慢、模型冷启动或成本异常一路追到 dataset、checkpoint、model artifact、cache、manifest、storage backend、telemetry、准入基线和经济影响。当前覆盖如下：
 
@@ -262,7 +262,7 @@
 | 存储故障树 | 第 39 章 | 说明 GPU idle、checkpoint slow、model load slow 如何定位到 dataset/checkpoint/artifact/cache，并要求 workload impact 证据 |
 | `storage_cost_ledger` | 第 41 章 | 说明 dataset read、checkpoint、artifact retention、cache miss、local NVMe 保留和 storage-induced GPU idle 的成本归因 |
 
-## 可靠性与运维链路覆盖矩阵
+## 11. 可靠性与运维链路覆盖矩阵
 
 可靠性链路的目标是让读者能从 SLO 违约、训练失败、GPU degraded、变更回归或机房故障一路追到 health state、maintenance window、acceptance baseline、fault domain、incident、error budget、change safety 和经济损失。当前覆盖如下：
 
@@ -277,7 +277,7 @@
 | `incident_record` | 第 39 章、第 40 章 | 说明事故时间线、影响面、止血动作、根因证据、成本影响和行动项 |
 | `slo_budget_ledger` / `reliability_cost_ledger` | 第 40 章、第 41 章 | 说明 error budget、reliability cost、wasted GPU hours、赔付、容量延迟和毛利之间的关系 |
 
-## 物理设施与能源链路覆盖矩阵
+## 12. 物理设施与能源链路覆盖矩阵
 
 物理设施链路的目标是让读者能从 tokens/W、GPU 降频、机柜降额、液冷告警或扩容不达预期一路追到 GPU server、compute tray、power shelf、rack、cooling domain、capacity unit、acceptance baseline、调度能力和经济影响。当前覆盖如下：
 
@@ -306,7 +306,7 @@
 | `capacity_activation_prr_drill` | 第 44 章 | 说明投产前如何演练 PDU/冷却/降额/调度标签/销售承诺/成本账本闭环 |
 | `energy_ledger` | 第 36 章、第 41 章 | 说明 GPU power、rack power、PUE、tokens/W、joules/token 和 power/cooling-induced waste 的经济归因 |
 
-## 安全与多租户链路覆盖矩阵
+## 13. 安全与多租户链路覆盖矩阵
 
 安全与多租户链路的目标是让读者能从一次 API Key 泄露、越权模型调用、跨租户数据风险、GPU 共享隔离争议、runtime privilege 误配或账单归属异常，一路追到 tenant boundary、credential lifecycle、policy decision、runtime privilege、GPU isolation、resource pool、audit event 和成本隔离。当前覆盖如下：
 
@@ -332,7 +332,7 @@
 | `bmc_driver_access_policy` | 第 27 章、第 28 章 | 说明 BMC、driver、kernel、MIG 配置、节点维护和资源池状态变更的特权边界 |
 | `security_audit_event` | 第 28 章、第 37 章、第 40 章 | 说明租户、操作者、策略、资源、时间线、证据和影响面如何进入不可变审计事件 |
 
-## 模型评测与质量闭环覆盖矩阵
+## 14. 模型评测与质量闭环覆盖矩阵
 
 模型评测与质量闭环的目标是让读者能从一次模型上线、RAG 答案退化、Agent 工具失败、用户投诉、质量回归或灰度争议，一路追到 eval dataset、quality gate、online experiment、feedback event、regression case、serving release、routing policy、SRE decision 和 Token Factory 质量经济账本。当前覆盖如下：
 
@@ -381,7 +381,7 @@
 | `quality_gate_freshness_prr_drill` | 第 44 章 | 说明上线前如何演练 gate 依赖变更、证据失效传播、实验冻结、路由降级、故障树和成本账本 |
 | `rag_agent_cost_attribution` | 第 41 章 | 说明 RAG embedding/search/rerank/context 与 Agent model/tool/sandbox/external API 成本如何归因到每成功答案或任务 |
 
-## 行业案例与建设方法链路覆盖矩阵
+## 15. 行业案例与建设方法链路覆盖矩阵
 
 行业案例与建设方法链路的目标是让读者能从一个行业应用想法、商业模式、客户交付承诺或“买 GPU 建平台”的项目，一路追到 workload profile、business model profile、案例证据包、建设计划、架构决策记录、生产就绪评审、验收到上线流水线和 Token Factory/SRE 后果。当前覆盖如下：
 
@@ -416,7 +416,7 @@
 | `production_readiness_review` | 第 44 章、第 38 章、第 40 章、第 41 章 | 说明从资源准入、基线有效性、模型质量、SLO、计量、安全、runbook、成本到发布回滚的上线门禁 |
 | `acceptance_to_launch_record` | 第 38 章、第 44 章 | 说明资源、模型、服务和应用如何从 accepted、staging、canary、production 到 rollback/scale 的证据流 |
 
-## 全书循环更新策略
+## 16. 全书循环更新策略
 
 全书更新按“主题链路”推进，而不是按章节孤立推进。每轮选择一条关键链路，补齐机制、图、配置、故障、指标和验收。
 

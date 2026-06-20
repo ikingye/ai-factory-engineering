@@ -4,7 +4,7 @@
 
 全书的写作和审稿遵循 [Doc Coauthoring 审稿标准](doc-coauthoring-review.md)：每章必须说明上下文、给出读者测试，并能在主题链路中通过新读者问题验证。
 
-## 一张图串起全书
+## 1. 一张图串起全书
 
 ```mermaid
 flowchart TB
@@ -67,7 +67,7 @@ flowchart TB
 
 这张图的读法是：需求对象先定义系统要生产什么，生产路径把请求和任务落到运行时与资源池，资源层用准入和观测证明自己可用，SRE 与经济账本再把运行结果反哺到建设计划和商业模式。若某个项目只有中间的 GPU 和 Runtime，而缺少两端的 profile、baseline、telemetry 和 ledger，它还不是完整 AI Factory。
 
-## 按角色阅读
+## 2. 按角色阅读
 
 | 读者角色 | 首选入口 | 需要补齐的章节 | 阅读目标 |
 | --- | --- | --- | --- |
@@ -80,7 +80,7 @@ flowchart TB
 | SRE / 运维工程师 | [第 37 章：AI Factory 可观测性](part-09-reliability-observability/chapter-37-ai-factory-observability.md) | 第 38、39、40、28、29、41 章 | 理解观测事实、验收基线、故障树、变更和 error budget 如何闭环。 |
 | 商业与技术负责人 | [第 41 章：Token Factory 视角](part-10-economics-cases/chapter-41-token-factory.md) | 第 42、43、44、4、7、40 章 | 理解 token、GPU hour、业务结果、SLA、成本、毛利和建设路线如何对齐。 |
 
-## 核心工程对象索引
+## 3. 核心工程对象索引
 
 这些对象是全书逐步沉淀的“事实单元”。它们不是数据库表设计，而是读者做架构评审、故障复盘、上线门禁和成本分析时应该能拿出来的证据。
 
@@ -284,7 +284,7 @@ flowchart TB
 | `rag_agent_cost_attribution` | 把 RAG 检索/重排/context 和 Agent 工具/沙箱/外部 API 成本归到成功任务。 | 第 41 章 | `Token Factory ledger`、`business_model_profile` |
 | `Token Factory ledger` | 把 token、GPU、能耗、质量、安全、可靠性和收入放到同一账本。 | 第 41 章 | `business_model_profile`、`capacity_activation_review` |
 
-## 按故障症状进入
+## 4. 按故障症状进入
 
 | 症状 | 先看章节 | 要找的证据 | 常见下一步 |
 | --- | --- | --- | --- |
@@ -349,7 +349,7 @@ flowchart TB
 | 私有化现场运行版本与交付包不一致 | 第 29、33、37、40、42、44 章 | offline_release_bundle_manifest、offline_import_record、private_delivery_diagnostic_export、private_deployment_acceptance_record、field_patch_execution_record | 对比离线包 digest、导入记录、运行中镜像和 artifact digest、配置 overlay 与现场补丁记录，先确认是客户环境漂移、未支持手工变更还是供应方交付缺陷。 |
 | 商业毛利与技术指标矛盾 | 第 7、40、41、42、43、44 章 | commercial_pnl_ledger、Token Factory ledger、quality/reliability/security cost ledger、sla_credit_replay、case_study_evidence_pack | 拆分收入、折扣、SLA credit、支持、私有化交付、预留容量和事故成本，避免只看 cost/token 或 GPU 利用率。 |
 
-## 核心链路索引
+## 5. 核心链路索引
 
 | 链路 | 覆盖页面 | 判断是否读懂的标准 |
 | --- | --- | --- |
@@ -366,13 +366,13 @@ flowchart TB
 | RAG/Agent 生产控制链路 | 第 2、3、5、6、13、37、40、41、44 章 | 能从用户任务追到 admission context、检索权限、context 快照、工具副作用策略、工具执行记录、预算账本、证据包、安全事故、成本归因和 PRR。 |
 | 行业建设链路 | 第 4、42、43、44 章 | 能把应用想法转成 profile、商业模式、案例诊断、建设计划、ADR、质量门禁和 PRR。 |
 
-## 使用方法
+## 6. 使用方法
 
 遇到一个问题时，先不要直接跳到最熟悉的层。先判断它是用户体验问题、任务调度问题、资源健康问题、质量问题、安全问题还是经济问题，再用上面的故障索引找到证据对象。AI Factory 的很多问题会跨层传播：一次 TTFT 异常可能来自 Gateway、prefill、KV Cache、GPU 降频或资源池排队；一次成本异常可能来自低质量重试、Agent 工具循环、cache miss 或商业定价错误。
 
 做架构评审时，可以从 `workload_profile` 和 `business_model_profile` 开始。若这两个对象不清楚，后面的 GPU、网络、存储、调度和 runtime 选择都缺少目标函数。做上线评审时，从 `production_readiness_review` 开始，检查它是否引用了真实 baseline、quality gate、security boundary、runbook 和 cost ledger。做事故复盘时，从 `incident_record` 开始，检查它是否能回指 request/job、resource health、change、baseline 和经济影响。
 
-## 小结
+## 7. 小结
 
 - 本书的核心不是章节顺序，而是跨层证据链。
 - 工程对象让应用、平台、基础设施、SRE 和经济性使用同一套事实。

@@ -38,7 +38,7 @@ DEFAULT_INCLUDED_HEADINGS = {
 }
 
 NUMBERED_HEADING_RE = re.compile(r"^\d+(?:\.\d+)+\s+")
-HEADING_NUMBER_RE = re.compile(r"^\d+\.\d+\s+")
+HEADING_NUMBER_RE = re.compile(r"^(?:\d+\.\d+|\d+\.)\s+")
 H2_RE = re.compile(r"^##\s+(.+?)\s*$")
 CJK_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]")
 ASCII_WORD_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_./:+-]*")

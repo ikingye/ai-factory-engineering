@@ -25,7 +25,7 @@ REQUIRED_HEADINGS = {
 }
 
 H2_RE = re.compile(r"^##\s+(.+?)\s*$", re.MULTILINE)
-HEADING_NUMBER_RE = re.compile(r"^\d+\.\d+\s+")
+HEADING_NUMBER_RE = re.compile(r"^(?:\d+\.\d+|\d+\.)\s+")
 
 
 @dataclass
