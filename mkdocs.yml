@@ -42,13 +42,13 @@ markdown_extensions:
 plugins:
   - search
 nav:
-  - 入门:
+  - 导论:
       - 首页: index.md
       - 前言: preface.md
       - 写作路线图: roadmap.md
       - Part 0：导论:
           - 第 0 章：从 Data Center 到 AI Factory: part-00-introduction/chapter-00-from-datacenter-to-ai-factory.md
-  - 应用平台:
+  - 应用与平台:
       - Part 1：Application 层:
           - 第 1 章：从一个 Chat 请求开始: part-01-applications/chapter-01-chat-request.md
           - 第 2 章：RAG 应用: part-01-applications/chapter-02-rag.md
@@ -59,7 +59,7 @@ nav:
           - 第 6 章：AI Gateway: part-02-platform/chapter-06-ai-gateway.md
           - 第 7 章：计量与计费: part-02-platform/chapter-07-metering-billing.md
           - 第 8 章：AI 平台可观测性: part-02-platform/chapter-08-platform-observability.md
-  - 模型运行时:
+  - 模型与运行时:
       - Part 3：Model 层:
           - 第 9 章：大模型基础: part-03-models/chapter-09-llm-basics.md
           - 第 10 章：预训练: part-03-models/chapter-10-pretraining.md
@@ -73,7 +73,7 @@ nav:
           - 第 17 章：分布式并行: part-04-runtime/chapter-17-distributed-parallelism.md
           - 第 18 章：通信原语: part-04-runtime/chapter-18-collective-communication.md
           - 第 19 章：CUDA、驱动与 GPU 软件栈: part-04-runtime/chapter-19-gpu-software-stack.md
-  - 调度基础设施:
+  - 调度与基础设施:
       - Part 5：资源编排与作业调度层:
           - 第 20 章：AI Workload 的形态: part-05-orchestration/chapter-20-ai-workloads.md
           - 第 21 章：容器与 Kubernetes: part-05-orchestration/chapter-21-containers-kubernetes.md
@@ -95,7 +95,7 @@ nav:
           - 第 34 章：GPU 服务器: part-08-physical-infrastructure/chapter-34-gpu-server.md
           - 第 35 章：GPU 芯片与系统架构: part-08-physical-infrastructure/chapter-35-gpu-architecture.md
           - 第 36 章：AI 数据中心工程: part-08-physical-infrastructure/chapter-36-ai-datacenter-engineering.md
-  - 可靠性经济:
+  - 运行与经济性:
       - Part 9：可靠性、观测与验收:
           - 第 37 章：AI Factory 可观测性: part-09-reliability-observability/chapter-37-ai-factory-observability.md
           - 第 38 章：准入测试与验收: part-09-reliability-observability/chapter-38-acceptance-testing.md
@@ -106,7 +106,7 @@ nav:
           - 第 42 章：AI Factory 商业模式: part-10-economics-cases/chapter-42-business-models.md
           - 第 43 章：案例研究: part-10-economics-cases/chapter-43-case-studies.md
           - 第 44 章：从 0 到 1 建设 AI Factory: part-10-economics-cases/chapter-44-building-ai-factory.md
-  - 参考资料:
+  - 参考:
       - 系统地图与工程索引: system-map.md
       - 术语表: glossary.md
       - 写作规范: style-guide.md

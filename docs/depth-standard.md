@@ -47,9 +47,9 @@
 - 故障树图：说明一个症状如何分解到可能根因。
 - 验收流水线图：说明准入、基线、异常检测和资源池状态如何闭环。
 
-## 4. NVIDIA GPU Container 知识覆盖矩阵
+## 4. GPU 容器运行时知识覆盖矩阵
 
-用户提供的《Nvidia GPU Container 原理》不是要求整篇进入某一章，而是要求全书读完后覆盖并深化其核心知识点。当前规划如下：
+GPU 容器运行时不是单章孤立知识点，而是一条跨越主机驱动、容器运行时、Kubernetes 设备分配、准入验收、故障诊断和成本归因的生产链路。本书将这条链路拆分到相关章节中，读者读完后应能独立解释 GPU 如何从宿主机能力变成容器内可用设备，以及这条路径如何被调度、审计、验收和排障。
 
 | 知识点 | 主要章节 | 覆盖要求 |
 | --- | --- | --- |
@@ -211,10 +211,13 @@
 | --- | --- | --- |
 | `network_path_evidence` | 第 30 章 | 说明 job/request 到 placement、GPU、NIC、rail、switch port、baseline 和动作的证据链 |
 | east-west / north-south 分流 | 第 30 章 | 说明训练通信、推理入口、存储路径和管理流量的边界 |
+| `ai_network_traffic_model` | 第 30、32、38 章 | 说明 collective、incast、OBS、小消息、存储突发、推理入口和 streaming 流量应使用不同验收指标 |
 | scale-up topology contract | 第 31 章 | 说明 NVLink/NVSwitch 域、GPU-to-GPU bandwidth、拓扑碎片和资源等级 |
 | GPU-to-NIC / NUMA 亲和 | 第 31 章、第 32 章 | 说明节点内拓扑如何影响 RDMA、NCCL 和调度 |
 | `gpu_nic_affinity_report` | 第 31 章 | 说明 GPU、NUMA、NIC、rail、container device 和 NCCL interface 选择如何对齐 |
 | `fabric_baseline` | 第 32 章、第 38 章 | 说明 fabric、rail、版本、测试项、失效条件和可调度能力 |
+| `rdma_transport_profile` | 第 32、38、44 章 | 说明 IB、RoCEv1/v2、iWARP、UEC/UET 类新型传输在封装、拥塞控制、重传、乱序和生产成熟度上的差异 |
+| `nic_dpu_architecture_decision` | 第 32、34、44 章 | 说明 RNIC、SuperNIC、DPU、on-path/off-path 和可编程性的选择不能只看带宽，还要看隔离、遥测、成本和运维复杂度 |
 | 多 rail 放置与诊断 | 第 32 章 | 说明 rank、NIC、rail、leaf group 和 rail balance 的一致性 |
 | `rail_balance_report` | 第 32 章、第 37 章 | 说明设计 rail、实际接口、端口利用、rank 流量和失衡动作 |
 | `fabric_change_record` | 第 32 章、第 38 章 | 说明交换机、NIC、OFED、CNI、NCCL、PFC/ECN 和调度标签变更如何触发回归 |
@@ -231,7 +234,24 @@
 | `network_incident_cost_record` | 第 41、44 章 | 说明一次 fabric 事故或变更回归如何把通信等待、重启、降级容量、checkpoint 回退、fallback 和复测成本写入经济账本 |
 | `fabric_change_prr_drill` | 第 44 章 | 说明 fabric 变更上线前如何演练 baseline 失效、调度降级、拥塞故障树、回滚复测和成本账本 |
 
-## 10. 存储数据链路覆盖矩阵
+## 10. GPU 虚拟化与资源管理链路覆盖矩阵
+
+GPU 虚拟化与资源管理链路的目标是让读者能从“提高利用率”“多租户隔离”“资源切分”“远程 GPU”“显存超分”这类需求，一路追到资源等级、隔离边界、调度策略、准入验收、计费和事故成本。当前覆盖如下：
+
+| 知识点 | 主要章节 | 覆盖要求 |
+| --- | --- | --- |
+| 虚拟化与切分的区别 | 第 27 章 | 说明虚拟化是抽象和隔离技术，切分是 SM、显存、带宽、时间片和 profile 的资源策略 |
+| 硬件级 GPU 虚拟化 | 第 27、35 章 | 说明 MIG、PCIe passthrough、SR-IOV、硬件隔离和固定 profile 的能力与限制 |
+| 内核态 GPU 虚拟化 | 第 27 章 | 说明 driver/ioctl/mmap、vGPU manager、scheduler、context manager、memory manager 的控制力和升级风险 |
+| 用户态 GPU 虚拟化 | 第 22、27 章 | 说明 CUDA API 拦截、`LD_PRELOAD`、HAMi-core 类配额和容器共享的便利性与弱安全边界 |
+| MPS / CUDA Streams | 第 22、27 章 | 说明它们是并发优化，不是强多租户隔离 |
+| `gpu_slicing_policy` | 第 22、27、28、44 章 | 说明 MIG、time-slicing、MPS、vGPU、用户态配额和整卡之间的允许场景、profile、drain、共置和计费规则 |
+| `gpu_memory_overcommit_policy` | 第 27、28、38、44 章 | 说明显存超分、按需分页、CPU tiering、压缩、OOM 降级、QoS 禁止场景和所需观测指标 |
+| `remote_gpu_access_contract` | 第 27、28、41、44 章 | 说明远程 GPU API proxy、虚拟设备或远端加速服务的网络、认证、失败语义和计费边界 |
+| `gpu_resource_roi_record` | 第 28、41、44 章 | 说明虚拟化、切分、远程调用和显存超分的收益必须扣除研发、运维、事故、SLA、质量和安全成本 |
+| `gpu_isolation_matrix` | 第 22、27 章 | 说明整卡、MIG、time-slicing、vGPU、passthrough、容器共享和裸金属独占的隔离边界不能混用 |
+
+## 11. 存储数据链路覆盖矩阵
 
 存储数据链路的目标是让读者能从 GPU idle、checkpoint 慢、模型冷启动或成本异常一路追到 dataset、checkpoint、model artifact、cache、manifest、storage backend、telemetry、准入基线和经济影响。当前覆盖如下：
 
@@ -262,7 +282,7 @@
 | 存储故障树 | 第 39 章 | 说明 GPU idle、checkpoint slow、model load slow 如何定位到 dataset/checkpoint/artifact/cache，并要求 workload impact 证据 |
 | `storage_cost_ledger` | 第 41 章 | 说明 dataset read、checkpoint、artifact retention、cache miss、local NVMe 保留和 storage-induced GPU idle 的成本归因 |
 
-## 11. 可靠性与运维链路覆盖矩阵
+## 12. 可靠性与运维链路覆盖矩阵
 
 可靠性链路的目标是让读者能从 SLO 违约、训练失败、GPU degraded、变更回归或机房故障一路追到 health state、maintenance window、acceptance baseline、fault domain、incident、error budget、change safety 和经济损失。当前覆盖如下：
 
@@ -277,7 +297,7 @@
 | `incident_record` | 第 39 章、第 40 章 | 说明事故时间线、影响面、止血动作、根因证据、成本影响和行动项 |
 | `slo_budget_ledger` / `reliability_cost_ledger` | 第 40 章、第 41 章 | 说明 error budget、reliability cost、wasted GPU hours、赔付、容量延迟和毛利之间的关系 |
 
-## 12. 物理设施与能源链路覆盖矩阵
+## 13. 物理设施与能源链路覆盖矩阵
 
 物理设施链路的目标是让读者能从 tokens/W、GPU 降频、机柜降额、液冷告警或扩容不达预期一路追到 GPU server、compute tray、power shelf、rack、cooling domain、capacity unit、acceptance baseline、调度能力和经济影响。当前覆盖如下：
 
@@ -286,6 +306,9 @@
 | `gpu_server_profile` | 第 34 章、第 28 章 | 说明 CPU/GPU/HBM/PCIe/NVLink/NIC/NVMe/BMC/power/cooling 如何组成可调度服务器画像 |
 | `heterogeneous_gpu_pool_profile` | 第 28 章、第 35 章、第 44 章 | 说明多代 GPU、HBM、互联、runtime baseline、准入状态、entitlement 和 workload tier 如何形成可调度异构资源池画像 |
 | `gpu_capability_scorecard` | 第 35 章、第 41 章 | 说明芯片能力、runtime 验证、模型适配、能效和生产成熟度的评分口径 |
+| `gpu_generation_spec_record` | 第 35、38、44 章 | 说明 NVIDIA GPU 代际、官方规格来源、SKU/形态、HBM、互联、功耗、精度能力和本地验收口径如何记录 |
+| `gpu_interconnect_profile` | 第 34、35、38 章 | 说明 PCIe、NVLink/NVSwitch、NVLink-C2C、HGX/DGX/NVL72 等互联层级和可调度 GPU 域 |
+| `numa_topology_evidence` | 第 22、34、38、39 章 | 说明 CPU socket、内存通道、PCIe root、GPU、NIC、NVMe、中断绑定和容器 CPU 绑定如何作为运行证据 |
 | `gpu_generation_readiness_gate` | 第 35 章、第 44 章 | 说明新 GPU 或新系统形态进入生产前需要硬件、runtime、质量、能效、回滚和热验证门禁 |
 | `model_hardware_fit_record` | 第 35 章、第 38 章、第 44 章 | 说明模型 artifact、精度、context、engine、SLO、HBM、互联和 runtime 如何匹配或拒绝某个 GPU class |
 | `gpu_generation_route_decision` | 第 35 章、第 41 章、第 44 章 | 说明 Gateway/Serving 如何按模型硬件匹配、entitlement、健康、质量、SLO、成本和 fallback 选择 GPU class，并保留可回放决策 |
@@ -306,7 +329,7 @@
 | `capacity_activation_prr_drill` | 第 44 章 | 说明投产前如何演练 PDU/冷却/降额/调度标签/销售承诺/成本账本闭环 |
 | `energy_ledger` | 第 36 章、第 41 章 | 说明 GPU power、rack power、PUE、tokens/W、joules/token 和 power/cooling-induced waste 的经济归因 |
 
-## 13. 安全与多租户链路覆盖矩阵
+## 14. 安全与多租户链路覆盖矩阵
 
 安全与多租户链路的目标是让读者能从一次 API Key 泄露、越权模型调用、跨租户数据风险、GPU 共享隔离争议、runtime privilege 误配或账单归属异常，一路追到 tenant boundary、credential lifecycle、policy decision、runtime privilege、GPU isolation、resource pool、audit event 和成本隔离。当前覆盖如下：
 
@@ -332,7 +355,7 @@
 | `bmc_driver_access_policy` | 第 27 章、第 28 章 | 说明 BMC、driver、kernel、MIG 配置、节点维护和资源池状态变更的特权边界 |
 | `security_audit_event` | 第 28 章、第 37 章、第 40 章 | 说明租户、操作者、策略、资源、时间线、证据和影响面如何进入不可变审计事件 |
 
-## 14. 模型评测与质量闭环覆盖矩阵
+## 15. 模型评测与质量闭环覆盖矩阵
 
 模型评测与质量闭环的目标是让读者能从一次模型上线、RAG 答案退化、Agent 工具失败、用户投诉、质量回归或灰度争议，一路追到 eval dataset、quality gate、online experiment、feedback event、regression case、serving release、routing policy、SRE decision 和 Token Factory 质量经济账本。当前覆盖如下：
 
@@ -381,7 +404,7 @@
 | `quality_gate_freshness_prr_drill` | 第 44 章 | 说明上线前如何演练 gate 依赖变更、证据失效传播、实验冻结、路由降级、故障树和成本账本 |
 | `rag_agent_cost_attribution` | 第 41 章 | 说明 RAG embedding/search/rerank/context 与 Agent model/tool/sandbox/external API 成本如何归因到每成功答案或任务 |
 
-## 15. 行业案例与建设方法链路覆盖矩阵
+## 16. 行业案例与建设方法链路覆盖矩阵
 
 行业案例与建设方法链路的目标是让读者能从一个行业应用想法、商业模式、客户交付承诺或“买 GPU 建平台”的项目，一路追到 workload profile、business model profile、案例证据包、建设计划、架构决策记录、生产就绪评审、验收到上线流水线和 Token Factory/SRE 后果。当前覆盖如下：
 
@@ -416,7 +439,7 @@
 | `production_readiness_review` | 第 44 章、第 38 章、第 40 章、第 41 章 | 说明从资源准入、基线有效性、模型质量、SLO、计量、安全、runbook、成本到发布回滚的上线门禁 |
 | `acceptance_to_launch_record` | 第 38 章、第 44 章 | 说明资源、模型、服务和应用如何从 accepted、staging、canary、production 到 rollback/scale 的证据流 |
 
-## 16. 全书循环更新策略
+## 17. 全书循环更新策略
 
 全书更新按“主题链路”推进，而不是按章节孤立推进。每轮选择一条关键链路，补齐机制、图、配置、故障、指标和验收。
 

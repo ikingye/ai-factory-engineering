@@ -85,11 +85,11 @@
 
 每轮大规模重构至少选择一条主题链路执行 Reader Test。若矩阵中的通过标准无法在章节中找到明确答案，应优先修正文档，而不是降低测试标准。
 
-## 7. GPU 容器链路 Reader Test 记录
+## 7. GPU 容器运行时链路读者测试
 
-本轮以 GPU 容器链路作为第一条完整读者测试链路。测试假设读者没有当前对话上下文，只能阅读本书页面。
+GPU 容器运行时链路用于验证本书是否能把底层机制拆散到合适章节，同时又能让读者在需要时重新拼成完整排障路径。测试假设读者没有作者背景信息，只能阅读本书页面。
 
-| Reader Question | 应阅读章节 | 期望读者能给出的答案 | 当前状态 |
+| Reader Question | 应阅读章节 | 期望读者能给出的答案 | 覆盖状态 |
 | --- | --- | --- | --- |
 | Pod 申请 1 张 GPU，但容器内看到 8 张 GPU，应该先查哪里？ | 第 21、22、38、39 章 | 先比较 Kubernetes 分配事实、device plugin Allocate 输出、OCI/CDI/runtime 注入差异和容器内 `nvidia-smi -L`；若可见设备多于分配设备，应隔离节点并触发 `gpu_device_visibility_reconciliation`。 | 已覆盖 |
 | Docker `--gpus all` 正常，Kubernetes Pod 看不到 GPU，说明什么？ | 第 21、22、29、38 章 | Docker 路径正常不代表 kubelet 使用的 CRI/runtime 路径正常；应查 kubelet CRI endpoint、containerd/CRI-O runtime handler、RuntimeClass、device plugin、CDI spec 和 Toolkit 配置。 | 已覆盖 |
@@ -98,7 +98,7 @@
 | 为什么 GPU Operator DaemonSet Ready 不等于 GPU runtime 变更成功？ | 第 19、22、29、38、44 章 | Operator Ready 只说明控制器和 DaemonSet 状态，仍需验证 driver/Toolkit/device plugin/DCGM/MIG/Runtime 策略、container runtime baseline、容器内事实和观测标签。 | 已覆盖 |
 | GPU 容器链路事故如何进入成本账本？ | 第 39、41、44 章 | 扩容失败、设备错配、拓扑错配、回滚复测、观测断链和业务 fallback 会进入 `container_runtime_incident_cost_record`、可靠性成本、计量修正和 PRR gate 更新。 | 已覆盖 |
 
-本轮结论：GPU 容器链路已经具备 doc-coauthoring 需要的读者问题、上下文、跨章节答案和审计入口。下一轮可继续选择推理请求链路或训练任务链路做同等强度 Reader Test。
+通过标准：读者不需要知道作者曾参考过哪些外部材料，也不需要把 GPU 容器知识集中到单一章节中记忆；只要沿第 19、21、22、29、38、39、44 章阅读，就应能从 driver、runtime、CRI、device plugin、CDI/NRI、RDMA、验收矩阵、故障树和成本账本拼出完整链路。
 
 ## 8. 审计命令
 

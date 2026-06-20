@@ -5,7 +5,7 @@ Chapter pages use a book-style hierarchy:
 
 - H2 headings are the five stable chapter groups, for example "21.1 导读".
 - H3 headings are the concrete sections, for example
-  "21.3.10 NVIDIA GPU Container 原理".
+  "21.3.10 GPU 容器运行时与 NVIDIA Container Toolkit".
 
 Non-chapter pages keep page-local H2 numbering, for example
 "1. 这本书解决什么问题". If they use H3 headings, H3 headings are numbered

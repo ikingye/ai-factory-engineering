@@ -227,6 +227,9 @@ flowchart TB
 | `supply_chain_revoke_economics` | 拆分撤销执行成本和旧对象继续服务成本，并把结果转化为 cache、billing、digest sampling 和 PRR 投资信号。 | 第 41、44 章 | `commercial_pnl_ledger`、`production_readiness_review` |
 | `supply_chain_contract_prr_drill` | 以上线契约为入口演练 artifact 召回、tokenizer mismatch、stale cache、RAG ACL drift、故障树和经济账本。 | 第 44 章 | `production_readiness_review`、`supply_chain_revoke_economics` |
 | `network_path_evidence` | 把 job/request 映射到 GPU、NIC、rail、switch port 和 baseline。 | 第 30、32、37 章 | `network_diagnostic_bundle`、`fabric_baseline` |
+| `ai_network_traffic_model` | 描述 collective、incast、OBS、小消息、存储和推理入口等流量模型及其验收指标。 | 第 30、32、38 章 | `fabric_baseline`、`congestion_event_record`、`network_cost_ledger` |
+| `rdma_transport_profile` | 记录 IB、RoCEv1/v2、iWARP 或新型 AI transport 的封装、拥塞控制、重传、乱序和容器可见性口径。 | 第 32、38、44 章 | `fabric_change_record`、`network_diagnostic_bundle` |
+| `nic_dpu_architecture_decision` | 记录 RNIC、SuperNIC、DPU、on-path/off-path 卸载和可编程性的选型理由与运维边界。 | 第 32、34、44 章 | `architecture_decision_record`、`fabric_change_prr_drill` |
 | `rail_balance_report` | 证明多 rail 设计在真实 rank 和端口流量中被正确使用。 | 第 32、37、38 章 | `fabric_change_record`、`network_cost_ledger` |
 | `congestion_event_record` | 把 ECN/PFC、队列、水位、流量类别和 workload 影响串成拥塞证据。 | 第 30、37、39 章 | `network_diagnostic_bundle`、`incident_record` |
 | `fabric_change_regression_gate` | 把 fabric 变更后的配置、路径、workload、调度状态和回滚复测证据固化为恢复调度能力的门禁。 | 第 32、38、44 章 | `fabric_change_record`、`fabric_change_acceptance_matrix`、`production_readiness_review` |
@@ -237,6 +240,9 @@ flowchart TB
 | `storage_evidence` | 把 dataset、checkpoint、artifact、cache、backend 和 workload impact 证据串起来。 | 第 33、37、39、41 章 | `storage_acceptance_matrix`、`storage_cost_ledger` |
 | `resource_health_record` | 把 GPU、node、fabric、storage 健康信号转成资源池状态。 | 第 28、37 章 | `maintenance_window`、`security_audit_event` |
 | `gpu_container_runtime_report` | 证明 driver、Toolkit、RuntimeClass/CDI、device plugin 和容器内设备可见性一致。 | 第 21、22、29、38 章 | `gpu_assignment_record`、`acceptance_baseline` |
+| `gpu_slicing_policy` | 规定 MIG、time-slicing、MPS、vGPU、用户态配额和整卡之间的允许场景、profile、drain、共置和计费规则。 | 第 22、27、28、44 章 | `gpu_isolation_matrix`、`resource_claim_admission_record`、`production_readiness_review` |
+| `gpu_memory_overcommit_policy` | 规定显存超分、按需分页、CPU tiering、压缩、OOM 降级和 QoS 禁止场景。 | 第 27、28、38、44 章 | `resource_health_record`、`heterogeneous_pool_acceptance_matrix` |
+| `remote_gpu_access_contract` | 规定远程 GPU API proxy、虚拟设备或远端加速服务的网络、认证、失败语义和计费边界。 | 第 27、28、41、44 章 | `architecture_decision_record`、`production_readiness_review` |
 | `gpu_resource_claim_contract` | 把 workload 意图、DeviceClass/ResourceClaim 或 extended resource、GPU class、entitlement、runtime、可见性和计量口径绑定。 | 第 22、23、38、44 章 | `resource_claim_admission_record`、`gpu_assignment_record`、`production_readiness_review` |
 | `resource_claim_admission_record` | 记录 ResourceClaim 或 GPU request 在 queue、quota、DeviceClass、MIG、拓扑、runtime baseline 和成本预算上的准入判断。 | 第 23、38、39、44 章 | `placement_commit_record`、`resource_claim_fault_tree_execution`、`queue_fairness_ledger` |
 | `resource_claim_acceptance_matrix` | 验证 extended resource 与 DRA 路径中的 DeviceClass、ResourceClaim、ResourceSlice、device plugin、CDI、MIG、可见性和计量标签。 | 第 38、44 章 | `acceptance_baseline`、`gpu_resource_claim_contract`、`production_readiness_review` |
@@ -265,6 +271,9 @@ flowchart TB
 | `tool_security_incident_record` | 记录 RAG/Agent 高风险工具、越权、敏感数据或 denial-of-wallet 安全事件。 | 第 40 章 | `security_audit_event`、`production_readiness_review` |
 | `incident_record` | 记录事故时间线、影响面、根因证据、止血动作和行动项。 | 第 39、40 章 | `slo_budget_ledger`、`reliability_cost` |
 | `heterogeneous_gpu_pool_profile` | 描述多代 GPU、HBM、互联、runtime baseline、准入状态、entitlement 和 workload tier 组成的异构资源池。 | 第 28、35、44 章 | `model_hardware_fit_record`、`heterogeneous_pool_acceptance_matrix`、`production_readiness_review` |
+| `gpu_generation_spec_record` | 记录 GPU 代际、官方规格来源、SKU/形态、HBM、互联、功耗、精度能力和本地验收口径。 | 第 35、38、44 章 | `gpu_capability_scorecard`、`model_hardware_fit_record` |
+| `gpu_interconnect_profile` | 描述 PCIe、NVLink/NVSwitch、NVLink-C2C、HGX/DGX/NVL72 等互联层级和可调度 GPU 域。 | 第 34、35、38 章 | `gpu_server_profile`、`rank_topology_contract` |
+| `numa_topology_evidence` | 记录 CPU socket、内存通道、PCIe root、GPU、NIC、NVMe、中断绑定和容器 CPU 绑定的运行证据。 | 第 22、34、38、39 章 | `gpu_nic_topology_evidence`、`network_diagnostic_bundle` |
 | `gpu_generation_readiness_gate` | 判断新 GPU 或新系统形态是否能进入指定生产等级。 | 第 35、44 章 | `gpu_capability_scorecard`、`production_readiness_review` |
 | `model_hardware_fit_record` | 证明某个模型或 endpoint 的精度、context、engine、HBM、互联、SLO 和质量门禁是否适合某个 GPU class。 | 第 35、38、44 章 | `gpu_generation_route_decision`、`production_readiness_review` |
 | `gpu_generation_route_decision` | 记录 Gateway/Serving 为什么选择、拒绝或 fallback 到某个 GPU class，并绑定 entitlement、健康、质量、成本和策略版本。 | 第 35、41、44 章 | `heterogeneous_gpu_cost_scorecard`、`billing_dispute_replay`、`production_readiness_review` |
