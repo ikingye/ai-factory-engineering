@@ -15,6 +15,7 @@ READER_SECTION = "读者测试"
 CONTEXT_MARKERS = ("层级定位", "前置依赖", "后续关联", "读完能力")
 READER_MARKERS = ("机制题", "边界题", "路径题", "排障题")
 H2_RE = re.compile(r"^##\s+(.+?)\s*$", re.MULTILINE)
+HEADING_NUMBER_RE = re.compile(r"^\d+\.\d+\s+")
 
 
 @dataclass
@@ -26,7 +27,8 @@ class Finding:
 def section_body(text: str, heading: str) -> str | None:
     matches = list(H2_RE.finditer(text))
     for index, match in enumerate(matches):
-        if match.group(1).strip() != heading:
+        current = HEADING_NUMBER_RE.sub("", match.group(1).strip())
+        if current != heading:
             continue
         start = match.end()
         end = matches[index + 1].start() if index + 1 < len(matches) else len(text)

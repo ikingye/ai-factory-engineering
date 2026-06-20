@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -23,6 +24,9 @@ REQUIRED_HEADINGS = {
     "延伸阅读",
 }
 
+H2_RE = re.compile(r"^##\s+(.+?)\s*$", re.MULTILINE)
+HEADING_NUMBER_RE = re.compile(r"^\d+\.\d+\s+")
+
 
 @dataclass
 class Finding:
@@ -33,9 +37,13 @@ class Finding:
 def audit_file(path: Path) -> list[Finding]:
     text = path.read_text(encoding="utf-8")
     findings: list[Finding] = []
+    headings = {
+        HEADING_NUMBER_RE.sub("", match.group(1).strip())
+        for match in H2_RE.finditer(text)
+    }
 
     for heading in REQUIRED_HEADINGS:
-        if f"## {heading}" not in text:
+        if heading not in headings:
             findings.append(Finding(path, f"missing heading: {heading}"))
 
     if "```mermaid" not in text:

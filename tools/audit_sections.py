@@ -6,7 +6,7 @@ project, "word count" is treated as a Chinese-friendly content length:
 
 - each CJK character counts as one unit;
 - each contiguous ASCII word/number counts as one unit;
-- code fences, Mermaid blocks, lists under "本章回答的问题", summaries and
+- code fences, Mermaid blocks, chapter orientation sections, summaries and
   reading placeholders are excluded from the hard 500-800 section target.
 """
 
@@ -21,6 +21,8 @@ from pathlib import Path
 
 EXCLUDED_HEADINGS = {
     "本章回答的问题",
+    "本章上下文",
+    "读者测试",
     "小结",
     "延伸阅读",
 }
@@ -36,6 +38,7 @@ DEFAULT_INCLUDED_HEADINGS = {
 }
 
 NUMBERED_HEADING_RE = re.compile(r"^\d+(?:\.\d+)+\s+")
+HEADING_NUMBER_RE = re.compile(r"^\d+\.\d+\s+")
 H2_RE = re.compile(r"^##\s+(.+?)\s*$")
 CJK_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]")
 ASCII_WORD_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_./:+-]*")
@@ -73,9 +76,10 @@ def content_units(text: str) -> int:
 
 def should_audit_heading(heading: str) -> bool:
     clean = heading.strip()
-    if clean in EXCLUDED_HEADINGS:
+    normalized = HEADING_NUMBER_RE.sub("", clean)
+    if normalized in EXCLUDED_HEADINGS:
         return False
-    if clean in DEFAULT_INCLUDED_HEADINGS:
+    if normalized in DEFAULT_INCLUDED_HEADINGS:
         return True
     return bool(NUMBERED_HEADING_RE.match(clean))
 
