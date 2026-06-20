@@ -1377,6 +1377,62 @@ flowchart LR
   Telemetry -->|"drift / incident / cost overrun"| PRR
 ```
 
+RAG/Agent gate 不能只检查“应用能跑”。它必须演练索引发布、ACL 失效、context 回放、工具策略、幂等与预算控制。尤其是 Agent，一次 happy path 完成任务并不能证明生产可用；PRR 要故意注入工具 schema 漂移、外部 API 超时、预算接近上限、用户取消、高风险写操作和重复提交，确认系统会按策略停止、确认、回滚或转人工。
+
+```yaml
+agent_tool_policy_prr_drill:
+  drill_id: atp-prr-drill-20260620-001
+  production_readiness_review: prr-support-copilot-prod-2026-06
+  scope:
+    application: support-copilot
+    agent_type: support_agent
+    agent_tool_policy_contract: atpc-support-agent-20260620
+    rag_index_release_contract: rirc-support-kb-20260620
+  simulated_or_controlled_events:
+    - tool_schema_version_mismatch
+    - high_risk_tool_requires_confirmation
+    - idempotency_replay_after_network_timeout
+    - external_api_returns_partial_failure
+    - budget_near_limit_before_final_answer
+    - user_cancel_after_side_effect_intent
+    - retrieval_acl_invalidation_event_open
+    - citation_replay_failure
+  required_outputs:
+    rag_agent_admission_context: generated
+    retrieval_permission_decision: generated
+    rag_context_replay_bundle: generated_for_failed_citation
+    agent_tool_execution_record: generated
+    agent_budget_ledger: generated
+    agent_trajectory_replay_bundle: generated_for_failed_or_high_risk_run
+    rag_agent_fault_tree_execution: generated_by_controlled_failure
+    rag_agent_incident_cost_record: generated_if_failure_injected
+    production_readiness_review: gate_updated
+  pass_criteria:
+    stale_rag_index_blocked_when_acl_invalidation_open: true
+    high_risk_tool_not_auto_executed_without_approval: true
+    duplicate_side_effect_prevented_by_idempotency_key: true
+    failed_tool_does_not_loop_until_budget_exhaustion: true
+    context_replay_reproduces_citation_failure: true
+    trajectory_replay_disables_external_side_effects: true
+    cost_ledger_append_verified: true
+```
+
+```mermaid
+flowchart TB
+  Drill["agent_tool_policy_prr_drill"] --> Gateway["rag_agent_admission_context"]
+  Gateway --> RAG["rag_index_release_contract\nretrieval_permission_decision"]
+  Gateway --> ToolPolicy["agent_tool_policy_contract"]
+  RAG --> RReplay["rag_context_replay_bundle"]
+  ToolPolicy --> ToolExec["agent_tool_execution_record"]
+  ToolExec --> Traj["agent_trajectory_replay_bundle"]
+  Traj --> Fault["rag_agent_fault_tree_execution"]
+  RReplay --> Fault
+  Fault --> Cost["rag_agent_incident_cost_record"]
+  Cost --> PRR["PRR RAG/Agent gate update"]
+```
+
+这个演练拦截的是“演示成功但生产不受控”的风险。RAG 侧，如果 ACL 失效事件未完成仍能进入旧索引，PRR 必须阻断；如果引用错误不能通过 `rag_context_replay_bundle` 复现，说明质量闭环不完整。Agent 侧，如果工具 schema 漂移没有被 contract gate 拦住，或者网络超时导致重复副作用，说明工具治理不足；如果预算接近上限仍继续 reflection，说明 orchestrator 没有把预算当控制面。上线前能发现这些问题，比上线后用客户任务发现便宜得多。
+
 质量证据本身也要演练失效路径。PRR 不能只检查 `quality_gate_execution` 是否通过，还要验证当评测集被污染、judge 漂移、反馈 pipeline 丢失 trace 或线上实验护栏触发时，系统是否会阻断放量、重跑门禁、冻结实验并把成本写入账本。否则团队会在报告上看到“质量通过”，但这个通过结论可能已经失效。
 
 ```yaml

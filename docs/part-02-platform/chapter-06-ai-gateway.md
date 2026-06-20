@@ -443,6 +443,41 @@ rag_agent_admission_context:
 
 这个 admission context 应被写入 `policy_decision_record` 或与其关联。它能解释很多跨层事故：RAG 检索为什么没有看到某个文档，Agent 工具为什么被拒绝，为什么某个请求不能 fallback 到第三方 provider，为什么 trace 里没有明文 chunk，为什么 run 在预算未耗尽前就进入人工确认。Gateway 的职责不是执行检索或工具，而是把入口策略变成下游必须消费的事实。
 
+对 RAG 来说，Gateway 还应约束索引 release。`rag_agent_admission_context` 不应只写 allowed knowledge base，还应绑定允许使用的 `rag_index_release_contract` 或选择规则。这样下游不能随意使用刚构建但未通过权限和质量门禁的索引，也不能在 ACL snapshot 失效后继续服务旧 context cache。若 Gateway 只传 `knowledge_base=support-kb`，RAG 服务就会自行选择索引，入口策略和检索事实很容易漂移。
+
+```yaml
+rag_agent_admission_context:
+  context_id: raac-20260620-0002
+  request_id: req-support-0002
+  rag:
+    allowed_knowledge_bases: [support-kb]
+    required_index_contracts:
+      support-kb: rirc-support-kb-20260620
+    reject_if_retrieval_acl_invalidation_open: true
+    require_rag_context_replay_bundle_on_negative_feedback: true
+  agent:
+    required_tool_policy_contract: atpc-support-agent-20260620
+    require_agent_trajectory_replay_bundle_on_failed_run: true
+```
+
+这个约束让 Gateway 成为 RAG/Agent release 的入口门禁，而不是只做普通鉴权。RAG 索引、Agent 工具策略和模型 release 一样，都可能改变用户可见结果和安全边界。Gateway 不需要理解 chunk 细节或工具实现，但必须检查 contract 状态、失效事件和 PRR 阻断标记。若 `retrieval_acl_invalidation_event` 未完成，或者 `agent_tool_policy_contract` 的高风险工具演练未通过，Gateway 可以直接拒绝高风险流量、降级到只读模式或要求人工确认。
+
+```mermaid
+flowchart TB
+  Req["RAG / Agent request"] --> GW["AI Gateway"]
+  GW --> RAAC["rag_agent_admission_context"]
+  RAAC --> RIRC["rag_index_release_contract"]
+  RAAC --> ATPC["agent_tool_policy_contract"]
+  RIRC --> RAG["RAG retrieval service"]
+  ATPC --> Agent["Agent Orchestrator"]
+  RAG --> RPD["retrieval_permission_decision"]
+  RAG --> RCS["rag_context_snapshot"]
+  Agent --> ATER["agent_tool_execution_record"]
+  Agent --> ABL["agent_budget_ledger"]
+  RPD --> Trace["trace / evidence bundle"]
+  ATER --> Trace
+```
+
 `policy_decision_record` 是 Gateway 最关键的安全证据对象。它记录一次请求在 identity、capability、budget、data boundary、safety、route 和 commit 阶段的输入事实、命中规则、决策结果和策略版本。它不应包含完整 prompt 或敏感响应，而应包含足够解释策略的引用和摘要。这样既能保护数据边界，又能回答“为什么这个请求被允许、拒绝、限流、fallback 或路由到某个资源池”。
 
 ```mermaid
@@ -770,6 +805,8 @@ metering_events:
 
 第十类故障是实验对象不完整。灰度只写了“10% 流量到新模型”，没有随机化单元、护栏指标和停止条件；同一用户多轮对话被分到不同版本，反馈样本互相污染；回滚后没有把失败样本沉淀到评测集。AI Gateway 里的实验开关必须绑定 `online_experiment_record`，否则 A/B 会退化成不可解释的线上试错。
 
+第十一类故障是 RAG/Agent contract 没有进入 Gateway。索引 release 已被 ACL 失效事件阻断，但网关仍允许请求进入旧 RAG 服务；Agent 工具策略已经要求高风险写操作确认，但旧客户端路径绕过了 orchestrator；失败样本需要回放，却没有生成 `rag_context_replay_bundle` 或 `agent_trajectory_replay_bundle`。解决方向是把 `rag_index_release_contract`、`agent_tool_policy_contract` 和失效事件状态作为 admission 条件，而不是只作为下游服务的内部配置。
+
 ## 性能指标
 
 AI Gateway 指标应覆盖入口流量、治理结果、模型后端和成本。入口指标包括请求数、连接数、streaming duration、网关处理延迟、请求体大小、响应体大小和客户端取消率。治理指标包括认证失败、权限拒绝、限流命中、配额拒绝、上下文超限、fallback 次数、灰度流量比例、策略拦截和错误码分布。
@@ -785,6 +822,8 @@ AI Gateway 指标应覆盖入口流量、治理结果、模型后端和成本。
 性能指标还应连接容量规划。Gateway 看到的是最早的租户和模型流量分布，能提前发现某些模型、区域或资源池的需求增长。若这些指标只用于告警，不进入容量评审，平台会重复在高峰期被动扩容。入口指标是业务需求进入 AI Factory 的第一手信号。
 
 质量路由指标包括 scorecard 命中率、按任务切片的模型分布、质量 fallback 率、低质量反馈后的路由变更、实验样本量、实验护栏触发、回滚样本数和路由决策回放成功率。它们和普通网关指标不同：普通指标告诉你请求是否到达后端，质量路由指标告诉你请求是否被交给了合适能力的后端。若 `routing_quality_scorecard` 命中率低，说明大量请求仍在走默认路由；若护栏触发后没有自动冻结，说明实验治理还停留在人工观察。
+
+RAG/Agent admission 指标应单独展示。建议记录 `gateway.rag_index_contract_selected_total`、`gateway.rag_index_contract_block_total`、`gateway.retrieval_acl_invalidation_block_total`、`gateway.agent_tool_policy_contract_selected_total`、`gateway.agent_tool_policy_block_total`、`gateway.rag_agent_replay_required_total` 和 `gateway.rag_agent_contract_missing_total`。这些指标帮助平台判断入口是否真的消费了应用层契约，而不是把 RAG 和 Agent 的风险全部留给后端服务。
 
 对 Gateway 来说，错误指标必须能指导客户端行为。建议每个对外错误码至少带三类元数据：`retryable`、`billing_impact` 和 `owner_stage`。例如认证失败不可重试、无 token 费用、owner 是 identity；后端超时可能可重试、可能已有部分 token、owner 是 serving；客户端取消不可重试、可能已有 generated token、owner 是 client/runtime 边界。缺少这些元数据，应用会用同一种退避策略处理所有失败，平台也无法把故障归到正确团队。
 
@@ -817,6 +856,7 @@ AI Gateway 可以做得很厚，也可以做得很薄。厚网关统一治理强
 - Fallback 和灰度必须考虑模型能力、质量、成本和可回滚性。
 - 标准化网关生态正在形成，但生产系统仍需要结合租户、计费和可观测性闭环。
 - `routing_quality_scorecard` 和 `online_experiment_record` 让网关从“按健康转发”升级为“在质量、安全、SLO 和成本约束下可解释地路由与实验”。
+- RAG/Agent 请求应在 Gateway admission 阶段绑定索引发布契约、工具策略契约和回放要求，避免下游自行解释权限和预算。
 
 ## 延伸阅读
 

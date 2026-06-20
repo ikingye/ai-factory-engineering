@@ -301,9 +301,14 @@
 | `gpu_isolation_matrix` | 第 22 章、第 27 章 | 说明整卡、MIG、time-slicing、vGPU、PCIe passthrough 和容器共享的隔离边界 |
 | `data_boundary_policy` | 第 5 章、第 6 章、第 37 章 | 说明 prompt、response、RAG 文档、模型权重、日志、trace、cache 和导出数据的边界 |
 | `rag_agent_admission_context` | 第 6 章、第 5 章 | 说明 Gateway 如何把入口身份、用户代理、数据边界、检索范围、工具范围和任务预算传给 RAG/Agent 下游 |
+| `rag_index_release_contract` | 第 2、6、37、39、44 章 | 说明 RAG 索引如何绑定文档 lineage、embedding、chunking、rerank、ACL snapshot、context 模板、引用 schema、质量门禁和路由资格 |
+| `retrieval_acl_invalidation_event` | 第 2、6、37、39、41、44 章 | 说明 ACL、删除、数据边界或索引变化如何失效旧索引、rerank cache、context cache、评测样本和账单窗口 |
 | `retrieval_permission_decision` | 第 2 章、第 5 章、第 6 章、第 37 章 | 说明 RAG 检索时哪些文档/chunk 在当前租户、用户、ACL、数据边界和缓存策略下被允许或拒绝 |
+| `rag_context_replay_bundle` | 第 2、37、39、41、44 章 | 说明一次 RAG 失败如何冻结 admission、权限、索引、召回、rerank、context、引用和 serving release，用于稳定复现 |
 | `tool_side_effect_policy` | 第 3 章、第 5 章、第 40 章、第 44 章 | 说明 Agent 工具是否只读、是否有副作用、是否幂等、是否需要确认、是否允许重试和如何回滚 |
+| `agent_tool_policy_contract` | 第 3、6、37、39、41、44 章 | 说明 Agent release 如何绑定工具 schema、副作用策略、sandbox、credential、确认、幂等、budget、memory 和观测要求 |
 | `agent_tool_execution_record` | 第 3 章、第 37 章、第 40 章、第 41 章 | 说明一次工具调用的模型意图、策略决策、参数校验、执行环境、副作用、输出摘要、成本和回滚引用 |
+| `agent_trajectory_replay_bundle` | 第 3、37、39、41、44 章 | 说明 Agent 失败或高风险 run 如何在禁用外部副作用的环境中重放目标、状态、工具、observation、策略和预算 |
 | `tool_security_incident_record` | 第 40 章、第 37 章 | 说明 RAG 越权、Agent 工具越权、敏感数据暴露或高风险工具异常如何冻结证据、止血、评估影响和更新门禁 |
 | `bmc_driver_access_policy` | 第 27 章、第 28 章 | 说明 BMC、driver、kernel、MIG 配置、节点维护和资源池状态变更的特权边界 |
 | `security_audit_event` | 第 28 章、第 37 章、第 40 章 | 说明租户、操作者、策略、资源、时间线、证据和影响面如何进入不可变审计事件 |
@@ -335,6 +340,9 @@
 | `quality_regression_record` | 第 13 章、第 37 章、第 40 章 | 说明线上事故和评测失败如何沉淀为回归样本、owner、修复策略和复测状态 |
 | `agent_budget_ledger` | 第 3 章、第 6 章、第 37 章、第 41 章 | 说明 Agent run 的模型调用、工具调用、token、沙箱、外部 API、人工接管和预算控制动作如何计量 |
 | `rag_agent_evidence_bundle` | 第 37 章、第 40 章、第 41 章 | 说明 RAG/Agent 事故时如何冻结权限、上下文、工具执行、预算、安全审计和成本证据 |
+| `rag_agent_fault_tree_execution` | 第 39、44 章 | 说明 RAG/Agent 事故如何按 Gateway admission、检索权限、context、工具策略、工具 runtime、预算循环和经济影响执行故障树 |
+| `rag_agent_incident_cost_record` | 第 41、44 章 | 说明 RAG/Agent 事故如何把低质量 token、额外 context、rerank/embedding replay、失败 run、工具成本、外部 API、人工接管、客户 credit 和修复成本写入账本 |
+| `agent_tool_policy_prr_drill` | 第 44 章 | 说明上线前如何演练工具 schema 漂移、高风险确认、幂等重放、外部 API 失败、预算上限、ACL 失效、context replay、故障树和成本账本 |
 | `serving_quality_contract` | 第 14 章、第 15 章 | 说明 serving release 中 weights、tokenizer、template、engine、参数和质量门禁的绑定关系 |
 | `serving_release_bundle` | 第 14 章、第 37 章、第 39 章、第 41 章、第 44 章 | 说明模型发布组合如何把产物、route、fallback、runtime、usage、cache、rollback 和成本证据打成最小生产单元 |
 | `serving_route_release_contract` | 第 6 章、第 14 章、第 39 章、第 44 章 | 说明 Gateway 的 primary、canary、fallback 和 rollback 目标必须引用兼容 release bundle，而不是只引用 endpoint 名称 |

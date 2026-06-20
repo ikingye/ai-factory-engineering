@@ -870,6 +870,103 @@ flowchart TB
 
 这棵故障树的 stop rule 是：没有 `quality_evidence_validity`，不能把 gate 当作可信证据；没有 `serving_quality_contract` 与 gate execution 的一致性，不能断言线上组合等同于评测组合；没有 `routing_quality_decision_record`，不能判断是不是路由或 fallback 造成；没有 RAG/Agent 子证据，不能把上下文或工具问题归因给模型；没有 `quality_cost_ledger`，不能判断事故优先级和治理投入。质量事故最容易变成主观争论，故障树的价值就是把争论压回可验证证据。
 
+当质量或安全症状明确落在 RAG/Agent 链路时，应执行更细的 `rag_agent_fault_tree_execution`。它的入口可以是引用错误、越权检索、过期文档被引用、Agent 工具重复副作用、预算耗尽、工具策略拒绝突增、任务完成但轨迹不可接受，或者某个 Agent task slice 的 cost per successful task 上升。它不是替代质量故障树，而是把质量故障树中的 RAG/Agent 分支展开到权限、索引、context、工具、预算和副作用层。
+
+```yaml
+rag_agent_fault_tree_execution:
+  execution_id: rafte-20260620-001
+  incident_id: inc-20260620-rag-agent-001
+  trigger:
+    symptom: citation_failure_or_tool_side_effect_or_budget_loop
+    affected_task_slices: [rag_citation, support_agent_tooling]
+    affected_tenants: [enterprise-a]
+  entry_evidence:
+    rag_agent_evidence_bundle: raeb-20260620-001
+    rag_agent_admission_context: raac-20260620-0002
+    quality_fault_tree_execution: qfte-20260620-001
+  branches:
+    gateway_admission:
+      checks:
+        - rag_index_release_contract_selected_and_allowed
+        - agent_tool_policy_contract_selected_and_allowed
+        - data_boundary_and_budget_policy_versions_match
+      verdict: pass_or_bad_admission_context
+      action_if_confirmed: block_route_or_fix_gateway_policy
+    retrieval_permission:
+      checks:
+        - retrieval_permission_decision_replayable
+        - acl_snapshot_matches_rag_index_release_contract
+        - retrieval_acl_invalidation_event_none_open
+        - cache_key_includes_acl_snapshot
+      verdict: pass_or_acl_or_cache_failure
+      action_if_confirmed: invalidate_index_cache_and_billing_window
+    context_assembly:
+      checks:
+        - rag_context_snapshot_present
+        - rag_context_replay_bundle_reproduces_context
+        - truncation_report_did_not_drop_primary_evidence
+        - citation_map_matches_answer
+      verdict: pass_or_context_or_citation_failure
+      action_if_confirmed: fix_prompt_context_budget_or_citation_schema
+    tool_policy:
+      checks:
+        - agent_tool_policy_contract_matches_run
+        - tool_schema_versions_match_model_prompt
+        - side_effect_policy_requires_confirmation_when_needed
+        - idempotency_and_rollback_refs_present
+      verdict: pass_or_policy_or_schema_drift
+      action_if_confirmed: freeze_tool_or_rollback_contract
+    tool_runtime:
+      checks:
+        - agent_tool_execution_record_complete
+        - sandbox_profile_matches_contract
+        - external_api_errors_classified
+        - observation_size_within_budget
+      verdict: pass_or_tool_runtime_failure
+      action_if_confirmed: degrade_tool_retry_or_handoff
+    budget_and_loop:
+      checks:
+        - agent_budget_ledger_present
+        - loop_detection_triggered_if_applicable
+        - budget_actions_match_policy
+        - failed_run_waste_estimated
+      verdict: pass_or_budget_control_failure
+      action_if_confirmed: tighten_budget_or_add_handoff
+    economics:
+      checks:
+        - rag_agent_cost_attribution_updated
+        - rag_agent_incident_cost_record_required
+        - affected_low_quality_or_wasted_tokens_estimated
+      verdict: pass_or_cost_gap
+      action_if_confirmed: append_rag_agent_incident_cost_record
+  outputs:
+    rag_agent_incident_cost_record: generated_if_user_visible_or_side_effect
+    agent_tool_policy_contract: updated_if_schema_or_side_effect_drift
+    retrieval_acl_invalidation_event: emitted_if_stale_access_possible
+    prr_gate_update: generated_if_contract_gap_found
+```
+
+```mermaid
+flowchart TB
+  Symptom["RAG / Agent symptom"] --> RAFT["rag_agent_fault_tree_execution"]
+  RAFT --> Admission["Gateway admission\ncontract + boundary + budget"]
+  RAFT --> Retrieval["retrieval permission\nACL + index + cache"]
+  RAFT --> Context["context assembly\nsnapshot + replay + citation"]
+  RAFT --> Policy["tool policy\nschema + side effect"]
+  RAFT --> Runtime["tool runtime\nsandbox + API + observation"]
+  RAFT --> Budget["budget / loop control"]
+  RAFT --> Econ["cost attribution"]
+  Admission --> Action["block route / update policy"]
+  Retrieval --> Invalidate["invalidate index/cache"]
+  Context --> FixContext["fix context or citation"]
+  Policy --> FreezeTool["freeze or rollback tool contract"]
+  Runtime --> Handoff["degrade / retry / human handoff"]
+  Budget --> Tighten["tighten run budget"]
+  Econ --> Cost["rag_agent_incident_cost_record"]
+```
+
+这棵故障树的 stop rule 是：没有 `rag_index_release_contract`，不能证明线上索引可服务；没有 `retrieval_permission_decision` 和 ACL 失效状态，不能判断是否越权；没有 `rag_context_replay_bundle`，不能复现引用错误；没有 `agent_tool_policy_contract`，不能判断工具调用是否符合发布策略；没有 `agent_trajectory_replay_bundle`，不能安全复现多步任务；没有 `agent_budget_ledger`，不能判断成本失控来自模型、工具还是循环。它把“RAG 不准”和“Agent 不可靠”拆成可执行的证据路径。
+
 安全和成本型事故也需要故障树。典型症状包括：某个租户预算在短时间内被打满，同一 API Key 出现多地域来源，第三方 provider 成本突增，长上下文请求比例异常，Agent run 步数失控，或者高敏请求被错误 fallback 到外部 provider。它们与传统服务故障不同：HTTP 可能都是 2xx，模型质量也可能正常，但平台的身份边界、数据边界或经济边界已经失控。若仍用“服务是否可用”作为入口，事故会等到账单或客户投诉时才暴露。
 
 `security_policy_fault_tree_execution` 用来把这类事故拆成可验证分支。第一分支是 credential：key 是否泄露、是否新建、来源是否异常、是否绕过 rotation 或禁用策略。第二分支是 policy：Gateway 是否按正确版本执行 `policy_decision_record`，是否有 dry-run 漏放或实例配置漂移。第三分支是 egress：`egress_provider_decision` 是否存在、provider 合同和区域是否允许、fallback 是否越过数据边界。第四分支是 spend：请求形态和成本速度是否符合租户历史和审批。第五分支是 observability：trace、prompt、RAG context、tool 参数是否被正确脱敏。每个分支都要能指向证据和止血动作。

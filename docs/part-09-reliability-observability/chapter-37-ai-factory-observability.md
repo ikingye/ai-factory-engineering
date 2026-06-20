@@ -829,6 +829,42 @@ rag_agent_evidence_bundle:
 
 这个 bundle 应在两类场景自动生成。第一类是质量类：引用失败、无答案误答、Agent 任务失败、人工接管突增、预算耗尽突增。第二类是安全类：越权检索被拦截、工具策略拒绝突增、高风险工具请求异常、敏感数据脱敏失败。它让 SRE、知识平台、Agent 平台、安全和成本团队使用同一组事实，而不是各自截图。对资深工程师来说，RAG/Agent 观测的成熟度不在 dashboard 数量，而在能否把一次用户任务的权限、证据、动作、预算和结果完整串起来。
 
+这个 bundle 还应引用可回放对象，而不只是运行摘要。RAG 侧至少要有 `rag_index_release_contract`、`retrieval_acl_invalidation_event` 状态、`retrieval_permission_decision`、`rag_context_snapshot` 和必要时的 `rag_context_replay_bundle`；Agent 侧至少要有 `agent_tool_policy_contract`、`agent_tool_execution_record`、`agent_budget_ledger`、`agent_trajectory_record` 和必要时的 `agent_trajectory_replay_bundle`。如果这些对象缺失，bundle 的结论只能是“证据不足”，不能把事故归因给模型或用户。
+
+```yaml
+rag_agent_evidence_completeness:
+  bundle_id: raeb-20260620-001
+  rag_required_if_rag_slice:
+    rag_index_release_contract: present
+    retrieval_acl_invalidation_event_state: no_open_blocking_event
+    retrieval_permission_decision: present
+    rag_context_snapshot: present
+    rag_context_replay_bundle: present_if_negative_feedback_or_dispute
+  agent_required_if_agent_slice:
+    agent_tool_policy_contract: present
+    agent_tool_execution_records: present_if_tool_called
+    agent_budget_ledger: present
+    agent_trajectory_record: present
+    agent_trajectory_replay_bundle: present_if_failed_or_high_risk
+  verdict:
+    completeness: sufficient_or_gap
+    blocks_quality_fault_tree_conclusion: true_or_false
+```
+
+观测系统应把这些完整性结果作为质量信号。引用错误但缺少 `rag_context_replay_bundle`，说明 RAG 平台不可复现；工具越权但缺少 `agent_tool_policy_contract`，说明策略发布不可审计；成本失控但缺少 `agent_budget_ledger`，说明任务级计费口径不完整。这些不是事故的次要细节，而是平台治理缺陷。长期看，证据缺口数量和重复类型比单次投诉更能说明 AI Factory 的成熟度。
+
+```mermaid
+flowchart TB
+  QTE["quality_telemetry_event"] --> QEB["quality_evidence_bundle"]
+  QEB --> RAEB["rag_agent_evidence_bundle"]
+  RAEB --> RAGReplay["rag_context_replay_bundle"]
+  RAEB --> AgentReplay["agent_trajectory_replay_bundle"]
+  RAEB --> Cost["rag_agent_cost_attribution"]
+  RAGReplay --> Fault["rag_agent_fault_tree_execution"]
+  AgentReplay --> Fault
+  Cost --> IncidentCost["rag_agent_incident_cost_record"]
+```
+
 ## 工程实现
 
 工程实现的第一步是统一标签规范。所有采集系统都应使用同一套实体标识：tenant、project、model、model_version、endpoint、job、rank、pod、node、gpu_uuid、nic、rack、rail、storage_path、power_domain 和 cooling_domain。标签不统一，后续 dashboard、告警、trace 和成本归因都会变成手工拼接。

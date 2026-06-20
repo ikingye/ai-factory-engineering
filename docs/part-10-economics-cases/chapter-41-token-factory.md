@@ -1246,6 +1246,63 @@ rag_agent_cost_attribution:
 
 这个归因表能支持两类决策。第一类是架构决策：某个客服任务到底该用强模型直接回答，还是用 RAG + 小模型，还是用 Agent + 工具；比较时必须用每成功任务成本，而不是单次 LLM cost。第二类是治理决策：若某个 Agent 的 `failed_run_waste_cost` 很高，应该优化 planning、工具 schema 或预算停止条件；若 RAG 的 `truncated_context_tokens` 很高，应该优化 chunk、rerank 或 context budget，而不是盲目增加上下文窗口。
 
+RAG/Agent 事故还需要 `rag_agent_incident_cost_record`。`rag_agent_cost_attribution` 适合做窗口级归因，事故成本记录则解释一次具体事件：旧 ACL 导致越权召回，context 截断导致错误引用，Agent 工具重复提交工单，工具策略漂移造成外部写操作，预算循环烧掉 provider cost，或者人工接管突然上升。它把第 39 章的故障树输出转成可经营事实，让团队知道应该投资索引发布、工具策略、预算控制、人工确认还是评测样本。
+
+```yaml
+rag_agent_incident_cost_record:
+  record_id: raicr-20260620-001
+  incident_id: inc-20260620-rag-agent-001
+  fault_tree_execution: rafte-20260620-001
+  affected_scope:
+    tenant: enterprise-a
+    application: support-copilot
+    task_slices: [rag_citation, support_agent_tooling]
+    window: incident_window
+  evidence_refs:
+    rag_agent_evidence_bundle: raeb-20260620-001
+    rag_index_release_contract: rirc-support-kb-20260620
+    retrieval_acl_invalidation_event: raie-20260620-001_if_applicable
+    rag_context_replay_bundle: rcrb-20260620-0007_if_applicable
+    agent_tool_policy_contract: atpc-support-agent-20260620
+    agent_trajectory_replay_bundle: atrb-20260620-0042_if_applicable
+  cost_components:
+    low_quality_or_wrong_answer_tokens: estimated
+    extra_input_tokens_from_bad_context: measured_or_estimated
+    rerank_and_embedding_replay_cost: measured
+    failed_agent_run_tokens: measured
+    wasted_tool_runtime_cost: measured
+    external_api_spend: measured
+    sandbox_runtime_cost: measured
+    duplicate_side_effect_cleanup_cost: measured_or_estimated
+    human_handoff_cost: measured_or_estimated
+    customer_credit_or_billing_hold: measured_or_policy_defined
+    remediation_and_retest_cost: measured
+  prevention_economics:
+    would_have_been_blocked_by_contract_gate: true_or_false
+    avoided_future_loss_after_fix: estimated
+    recommended_investment:
+      - strengthen_rag_index_release_gate
+      - require_agent_tool_policy_prr_drill
+      - improve_context_replay_coverage
+  derived:
+    cost_per_failed_task: calculated
+    cost_per_successful_task_delta: calculated
+    gross_margin_impact: calculated
+```
+
+这个记录能避免两个极端。第一是把所有 RAG/Agent 事故都算成模型质量成本，导致团队不断换模型，却不投资索引、权限、工具和预算。第二是把所有治理成本都当成“平台开销”，看不到它避免了多少低质量 token、外部 API 浪费和人工接管。经济账本应把事故损失、响应成本、预防成本和避免损失分开。只有这样，PRR 中增加 tool policy 演练、context replay 采样或 ACL 失效阻断，才有可解释的 ROI。
+
+```mermaid
+flowchart LR
+  Fault["rag_agent_fault_tree_execution"] --> Record["rag_agent_incident_cost_record"]
+  Evidence["rag_agent_evidence_bundle"] --> Record
+  Attribution["rag_agent_cost_attribution"] --> Record
+  Record --> QCost["quality_cost_ledger"]
+  Record --> Ledger["Token Factory ledger"]
+  Record --> PRR["agent_tool_policy_prr_drill / PRR gate"]
+  Ledger --> Decision["route / budget / tool policy / pricing"]
+```
+
 训练成本也应拆出存储路径：
 
 ```text
