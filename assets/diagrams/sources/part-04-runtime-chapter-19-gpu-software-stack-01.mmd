@@ -1,0 +1,13 @@
+flowchart TB
+  App["训练 / 推理应用"] --> Framework["PyTorch / vLLM / TensorRT-LLM"]
+  Framework --> UserLibs["CUDA runtime / cuDNN / NCCL"]
+  UserLibs --> Toolkit["NVIDIA Container Toolkit"]
+  Toolkit --> Driver["NVIDIA Driver"]
+  Driver --> GPU["GPU Hardware"]
+  Driver --> DCGM["DCGM"]
+  K8s["Kubernetes"] --> DevicePlugin["GPU Device Plugin"]
+  K8s --> Operator["GPU Operator"]
+  Operator --> Driver
+  Operator --> Toolkit
+  Operator --> DCGM
+  DevicePlugin --> Toolkit

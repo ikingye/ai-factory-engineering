@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 1388" width="960" height="1388">
+  <defs>
+    <marker id="arrowA" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#7c3aed"/>
+    </marker>
+    <marker id="arrowB" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#10b981"/>
+    </marker>
+    <marker id="arrowC" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2563eb"/>
+    </marker>
+    <marker id="arrowE" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#f97316"/>
+    </marker>
+    <marker id="arrowF" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#7c3aed"/>
+    </marker>
+    <marker id="arrowG" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#ef4444"/>
+    </marker>
+    <marker id="arrowH" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#6b7280"/>
+    </marker>
+    <filter id="shadowSoft" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="3" stdDeviation="6" flood-color="#0f172a" flood-opacity="0.12"/>
+    </filter>
+    <filter id="shadowGlass" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="10" stdDeviation="16" flood-color="#020617" flood-opacity="0.28"/>
+    </filter>
+    <style>
+    text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', 'Microsoft JhengHei', 'SimHei', sans-serif; }
+    .title { font-size: 30px; font-weight: 700; fill: #111827; }
+    .subtitle { font-size: 14px; font-weight: 500; fill: #6b7280; }
+    .section { font-size: 13px; font-weight: 700; fill: #2563eb; letter-spacing: 1.4px; }
+    .section-sub { font-size: 12px; font-weight: 500; fill: #94a3b8; }
+    .node-title { font-size: 18px; font-weight: 700; fill: #111827; }
+    .node-sub { font-size: 12px; font-weight: 500; fill: #6b7280; }
+    .node-type { font-size: 12px; font-weight: 700; fill: #9ca3af; letter-spacing: 0.08em; }
+    .arrow-label { font-size: 12px; font-weight: 600; fill: #6b7280; }
+    .legend { font-size: 12px; font-weight: 500; fill: #6b7280; }
+    .footnote { font-size: 12px; font-weight: 500; fill: #94a3b8; }
+    </style>
+  </defs>
+  <rect width="960.0" height="1388.0" fill="#ffffff"/>
+  <text x="480.0" y="56" text-anchor="middle" class="title">27.4.1 工程实现</text>
+  <text x="480.0" y="82" text-anchor="middle" class="subtitle">part-06-gpu-iaas/chapter-27-gpu-virtualization-isolation.md:324</text>
+  <path d="M 480.0,212.0 L 480.0,284.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 480.0,342.0 L 480.0,414.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 480.0,472.0 L 480.0,544.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 480.0,602.0 L 480.0,674.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 480.0,732.0 L 480.0,804.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 480.0,862.0 L 480.0,934.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 480.0,992.0 L 480.0,1012.4 L 375.0,1043.6 L 375.0,1064.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 480.0,992.0 L 480.0,1012.4 L 585.0,1043.6 L 585.0,1064.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 585.0,1122.0 L 585.0,1142.4 L 480.0,1173.6 L 480.0,1194.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 562.0,1223.0 L 691.0,1223.0 L 691.0,963.0 L 562.0,963.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <rect x="398.0" y="154.0" width="164.0" height="58.0" rx="10.0" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.8"/>
+  <text x="480.0" y="183.0" text-anchor="middle" class="node-title">Start</text>
+  <rect x="398.0" y="284.0" width="164.0" height="58.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
+  <text x="480.0" y="313.0" text-anchor="middle" class="node-title">Allocated</text>
+  <rect x="398.0" y="414.0" width="164.0" height="58.0" rx="10.0" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.8"/>
+  <text x="480.0" y="443.0" text-anchor="middle" class="node-title">Released</text>
+  <rect x="398.0" y="544.0" width="164.0" height="58.0" rx="10.0" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.8"/>
+  <text x="480.0" y="573.0" text-anchor="middle" class="node-title">Draining</text>
+  <rect x="398.0" y="674.0" width="164.0" height="58.0" rx="10.0" fill="#f0fdfa" stroke="#99f6e4" stroke-width="1.8"/>
+  <text x="480.0" y="703.0" text-anchor="middle" class="node-title">Cleaning</text>
+  <rect x="398.0" y="804.0" width="164.0" height="58.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8"/>
+  <text x="480.0" y="833.0" text-anchor="middle" class="node-title">Resetting</text>
+  <rect x="398.0" y="934.0" width="164.0" height="58.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
+  <text x="480.0" y="963.0" text-anchor="middle" class="node-title">Retesting</text>
+  <rect x="293.0" y="1064.0" width="164.0" height="58.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
+  <text x="375.0" y="1093.0" text-anchor="middle" class="node-title">Allocatable</text>
+  <rect x="503.0" y="1064.0" width="164.0" height="58.0" rx="10.0" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.8"/>
+  <text x="585.0" y="1093.0" text-anchor="middle" class="node-title">Quarantine</text>
+  <rect x="398.0" y="1194.0" width="164.0" height="58.0" rx="10.0" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.8"/>
+  <text x="480.0" y="1223.0" text-anchor="middle" class="node-title">Maintenance</text>
+  <rect x="346.5" y="364.0" width="231" height="20" rx="6" fill="#ffffff" opacity="0.94"/>
+  <text x="462.0" y="378.0" text-anchor="middle" class="arrow-label">workload finished / lease ended</text>
+  <rect x="325.5" y="494.0" width="273" height="20" rx="6" fill="#ffffff" opacity="0.94"/>
+  <text x="462.0" y="508.0" text-anchor="middle" class="arrow-label">stop traffic / checkpoint / terminate</text>
+  <rect x="280.0" y="624.0" width="364" height="20" rx="6" fill="#ffffff" opacity="0.94"/>
+  <text x="462.0" y="638.0" text-anchor="middle" class="arrow-label">kill residual process / revoke secret / wipe cache</text>
+  <rect x="290.5" y="754.0" width="343" height="20" rx="6" fill="#ffffff" opacity="0.94"/>
+  <text x="462.0" y="768.0" text-anchor="middle" class="arrow-label">GPU reset / MIG restore / node reboot if needed</text>
+  <rect x="311.5" y="884.0" width="301" height="20" rx="6" fill="#ffffff" opacity="0.94"/>
+  <text x="462.0" y="898.0" text-anchor="middle" class="arrow-label">container GPU / NCCL / storage smoke test</text>
+  <rect x="322.5" y="998.0" width="210" height="20" rx="6" fill="#ffffff" opacity="0.94"/>
+  <text x="427.5" y="1012.0" text-anchor="middle" class="arrow-label">clean_to_reuse_record passed</text>
+  <rect x="459.0" y="1030.0" width="147" height="20" rx="6" fill="#ffffff" opacity="0.94"/>
+  <text x="532.5" y="1044.0" text-anchor="middle" class="arrow-label">failed verification</text>
+  <rect x="448.5" y="1128.0" width="168" height="20" rx="6" fill="#ffffff" opacity="0.94"/>
+  <text x="532.5" y="1142.0" text-anchor="middle" class="arrow-label">investigation / repair</text>
+  <text x="680.0" y="1372.0" class="footnote">Rendered with fireworks-tech-graph</text>
+</svg>

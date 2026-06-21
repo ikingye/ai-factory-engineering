@@ -3817,23 +3817,7 @@
 <p>统一控制面不一定意味着统一调度器。一个常见误区是认为多集群平台必须把所有资源交给一个全局 scheduler。事实上，全局 scheduler 很难完整理解每个集群的本地约束，尤其是 Slurm 的 HPC 语义、Kubernetes 的服务化控制器、不同 GPU 型号和不同网络拓扑。更稳妥的架构是全局层做能力匹配、配额判断、入口路由和策略下发，本地集群调度器负责最终放置。</p>
 <p>架构中需要清晰的数据流。训练集群产出的 checkpoint 进入模型注册和对象存储，评测集群读取模型和数据集生成报告，推理集群加载通过准入的模型版本，平台观测系统汇聚 token、延迟、GPU、NCCL、网络和存储指标，成本系统把资源消耗映射到租户和模型。若只有集群层面的调度，没有模型和成本层面的贯通，多集群会变成多个孤岛。</p>
 <p>还要设计控制路径和故障路径。控制路径包括创建集群、注册能力、分配 quota、提交任务、路由到集群、同步状态和回收资源。故障路径包括集群不可用、API server 抖动、Slurm 控制面异常、跨集群网络中断、镜像同步失败和模型产物不可达。多集群架构的成熟度，取决于这些异常是否被显式建模，而不是正常路径画得多整齐。</p>
-<pre class="mermaid"><code>flowchart TB
-  User["用户 / 平台 API"] --&gt; Control["统一平台面"]
-  Control --&gt; IAM["身份 / 租户 / 配额"]
-  Control --&gt; Catalog["集群能力目录"]
-  Control --&gt; Policy["策略 / 成本 / 准入"]
-  Control --&gt; Train["训练集群&lt;br/&gt;Slurm / Kubernetes"]
-  Control --&gt; Infer["生产推理集群&lt;br/&gt;Kubernetes"]
-  Control --&gt; Batch["批量与评测集群"]
-  Control --&gt; Exp["实验 / 验收集群"]
-  Train --&gt; Registry["model registry / checkpoint"]
-  Batch --&gt; Registry
-  Registry --&gt; Infer
-  Train --&gt; Obs["统一观测"]
-  Infer --&gt; Obs
-  Batch --&gt; Obs
-  Exp --&gt; Obs
-  Obs --&gt; Cost["成本与利用率"]</code></pre>
+<p><img alt="图：25.2.2 系统架构" src="../../assets/diagrams/part-05-orchestration-chapter-25-multi-cluster-01.svg" /></p>
 <h2 id="253">25.3 关键技术<a class="headerlink" href="#253" title="Permanent link">&para;</a></h2>
 <h3 id="2531">25.3.1 多集群管理<a class="headerlink" href="#2531" title="Permanent link">&para;</a></h3>
 <p>多集群管理首先是集群能力管理。每个集群都应有结构化能力描述：GPU 型号、每节点 GPU 数、显存、网络类型、是否支持 RDMA、是否适合 distributed training、是否支持 MIG、调度系统、软件栈基线、存储访问方式、地域、故障域、SLA 等级和当前健康状态。没有这些信息，平台无法判断一个任务应该进入哪个集群，只能依赖人工经验。</p>
@@ -3878,19 +3862,19 @@
 <h3 id="2541">25.4.1 工程实现<a class="headerlink" href="#2541" title="Permanent link">&para;</a></h3>
 <p>工程实现的第一步，是建立集群能力目录。每个集群注册自己的硬件、网络、调度器、软件栈、地域、SLA、适用 workload、维护窗口和健康状态。这个目录应由自动发现、准入测试和运维系统共同维护，不能只靠手工表格。任务提交时，平台根据任务需求匹配候选集群，再结合 quota、优先级、成本和健康状态选择目标。</p>
 <p>集群能力标签示例：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">cluster</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">inference-prod-a</span>
-<span class="w">  </span><span class="nt">region</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cn-east</span>
-<span class="w">  </span><span class="nt">scheduler</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kubernetes</span>
-<span class="w">  </span><span class="nt">workload_classes</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">online-inference</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">batch-inference</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">gpu_types</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">h100</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">network</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rdma</span>
-<span class="w">  </span><span class="nt">rdma</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">sla</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">production</span>
-<span class="w">  </span><span class="nt">software_stack</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-baseline-2026-06</span>
-<span class="w">  </span><span class="nt">isolation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dedicated-online</span>
-<span class="w">  </span><span class="nt">cost_tier</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">high</span>
-</code></pre></div>
+<pre><code class="language-yaml">cluster:
+  name: inference-prod-a
+  region: cn-east
+  scheduler: kubernetes
+  workload_classes: [online-inference, batch-inference]
+  gpu_types: [h100]
+  network: rdma
+  rdma: true
+  sla: production
+  software_stack: gpu-baseline-2026-06
+  isolation: dedicated-online
+  cost_tier: high
+</code></pre>
 <p>第二步，是定义任务需求模型。任务不应只声明“需要 8 张 GPU”，还要声明 workload 类型、延迟目标、是否可抢占、是否需要 RDMA、是否需要连续节点、模型权重位置、数据地域、最大可接受成本和恢复方式。平台用这些字段做路由，避免把生产推理放到实验集群，或把多节点训练放到没有合适拓扑的共享池。</p>
 <p>第三步，是建设跨集群状态同步和回调。任务提交后，平台需要跟踪目标集群、队列状态、运行状态、失败原因、资源消耗、日志、指标和产物。集群不可用时要有重试、降级或人工介入路径。多集群工程的难点不是写一个提交 API，而是保证任务从提交到结束的每个状态都能被解释、审计和追踪。</p>
 <p>第四步，是把集群路由做成可解释决策。每次任务被路由到哪个集群，都应记录候选集群、过滤原因、quota 判断、成本等级、SLA 匹配和最终选择。这样当用户质疑等待时间或成本时，平台能解释是缺少目标 GPU、拓扑不满足、quota 不足，还是某个集群处于维护窗口。可解释路由比黑盒全局调度更容易运营。</p>

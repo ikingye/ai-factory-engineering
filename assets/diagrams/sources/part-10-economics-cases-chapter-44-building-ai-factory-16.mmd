@@ -1,0 +1,11 @@
+flowchart TB
+  Drill["multimodal_prr_drill"] --> Profile["multimodal_workload_profile"]
+  Profile --> Manifest["media_artifact_manifest"]
+  Manifest --> Pipeline["media_processing_pipeline_record"]
+  Pipeline --> Serving["multimodal_serving_contract"]
+  Serving --> Gate["multimodal_quality_gate_execution"]
+  Gate --> Bundle["multimodal_evidence_bundle"]
+  Serving --> Meter["multimodal_metering_event"]
+  Meter --> Cost["multimodal_cost_ledger"]
+  Bundle --> PRR["PRR gate update"]
+  Cost --> PRR

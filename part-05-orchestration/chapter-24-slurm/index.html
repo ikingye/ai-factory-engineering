@@ -3866,16 +3866,7 @@
 <p>这要求在架构中建立映射关系：Slurm account 映射到租户，job id 映射到实验，partition 映射到资源池，node 映射到资产和健康状态，checkpoint 映射到模型产物。没有这些映射，Slurm 仍能运行训练，却无法支撑 AI Factory 的商业化和平台化运营。</p>
 <p>架构还要处理数据路径。Slurm 作业常直接访问并行文件系统或对象存储，Kubernetes 服务可能通过不同挂载或网关访问同一模型产物。若路径、权限和生命周期不统一，模型从训练到服务化会卡在文件系统边界。数据和产物规范是跨调度系统集成的基础。</p>
 <p>控制面集成还要避免反向耦合。Slurm 不必理解 MaaS 的全部业务语义，Kubernetes 也不必直接接管 Slurm 的调度循环；更稳妥的做法是在二者之间建立事件、元数据和产物接口。这样可以保留 Slurm 的调度稳定性，同时让平台获得足够的可观测和治理信息。</p>
-<pre class="mermaid"><code>flowchart LR
-  User["用户 / 训练脚本"] --&gt; Submit["sbatch / srun"]
-  Submit --&gt; Controller["slurmctld"]
-  Controller --&gt; Queue["partition / priority / fairshare"]
-  Queue --&gt; Nodes["compute nodes"]
-  Nodes --&gt; Step["job steps"]
-  Nodes --&gt; GPU["GPU / RDMA"]
-  Controller --&gt; Accounting["slurmdbd / accounting"]
-  Step --&gt; Registry["model registry / artifacts"]
-  Step --&gt; Metrics["logs / metrics / checkpoint"]</code></pre>
+<p><img alt="图：24.2.2 系统架构" src="../../assets/diagrams/part-05-orchestration-chapter-24-slurm-01.svg" /></p>
 <h2 id="243">24.3 关键技术<a class="headerlink" href="#243" title="Permanent link">&para;</a></h2>
 <h3 id="2431-slurm">24.3.1 Slurm 架构<a class="headerlink" href="#2431-slurm" title="Permanent link">&para;</a></h3>
 <p>Slurm 的核心是控制器和节点代理。slurmctld 负责维护资源状态、接受作业、执行调度、处理节点状态变化；slurmd 运行在计算节点，负责启动 job step、管理进程和汇报状态；slurmdbd 负责账户和历史记录。用户通过命令行工具与系统交互，形成稳定的 HPC 工作流。</p>
@@ -3944,75 +3935,75 @@
 <h3 id="2441">24.4.1 工程实现<a class="headerlink" href="#2441" title="Permanent link">&para;</a></h3>
 <p>Slurm 作业模板应把资源、环境、日志、checkpoint 和诊断标准化。用户可以继续使用 <code>sbatch</code> 提交训练，但平台模板应注入账户、partition、节点数、GPU 数、NCCL 环境、数据路径、checkpoint 路径、实验 id 和故障收集脚本。模板的目标不是限制研究，而是让生产训练可复现、可观测、可恢复。</p>
 <p>示例模板如下：</p>
-<div class="highlight"><pre><span></span><code><span class="ch">#!/bin/bash</span>
-<span class="c1">#SBATCH --job-name=pretrain</span>
-<span class="c1">#SBATCH --partition=training</span>
-<span class="c1">#SBATCH --nodes=8</span>
-<span class="c1">#SBATCH --gres=gpu:8</span>
-<span class="c1">#SBATCH --time=72:00:00</span>
-<span class="c1">#SBATCH --output=logs/%x-%j.out</span>
+<pre><code class="language-bash">#!/bin/bash
+#SBATCH --job-name=pretrain
+#SBATCH --partition=training
+#SBATCH --nodes=8
+#SBATCH --gres=gpu:8
+#SBATCH --time=72:00:00
+#SBATCH --output=logs/%x-%j.out
 
-<span class="nb">export</span><span class="w"> </span><span class="nv">EXPERIMENT_ID</span><span class="o">=</span><span class="si">${</span><span class="nv">SLURM_JOB_ID</span><span class="si">}</span>
-<span class="nb">export</span><span class="w"> </span><span class="nv">CHECKPOINT_DIR</span><span class="o">=</span>/checkpoints/<span class="si">${</span><span class="nv">EXPERIMENT_ID</span><span class="si">}</span>
-srun<span class="w"> </span>--ntasks-per-node<span class="o">=</span><span class="m">8</span><span class="w"> </span>bash<span class="w"> </span>train.sh
-</code></pre></div>
+export EXPERIMENT_ID=${SLURM_JOB_ID}
+export CHECKPOINT_DIR=/checkpoints/${EXPERIMENT_ID}
+srun --ntasks-per-node=8 bash train.sh
+</code></pre>
 <p>生产模板还应包含 precheck step，验证 GPU、driver、NCCL、RDMA、数据路径和 checkpoint 目录。训练结束后，应上传指标、产物和模型注册信息。平台可以把 Slurm job id、实验 id、模型版本和成本标签绑定。这样 Slurm 作业不只是命令行任务，而是 AI Factory 训练生命周期的一部分。</p>
 <p>工程实现还应提供 Slurm 到平台的同步器。它读取 job、step、node、accounting 和日志信息，写入统一观测和成本系统。同步器不需要改变用户使用 Slurm 的方式，却能让平台看到训练资源消耗和产物状态。这个集成往往比替换 Slurm 更实际。</p>
 <p>同步器应产出结构化事件，而不是只做批量日志导入。事件至少覆盖 job submitted、allocated、step started、first effective step、checkpoint committed、failed、completed、artifact registered。这样 Slurm 作业可以和 Kubernetes 训练作业进入同一条模型生命周期。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">slurm_platform_event</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">event_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">checkpoint_committed</span>
-<span class="w">  </span><span class="nt">slurm_job_id</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;123456&quot;</span>
-<span class="w">  </span><span class="nt">slurm_step_id</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;123456.3&quot;</span>
-<span class="w">  </span><span class="nt">experiment_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">exp-20260619-001</span>
-<span class="w">  </span><span class="nt">tenant</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">foundation-model-team</span>
-<span class="w">  </span><span class="nt">nodes</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">gpu-node-001</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">gpu-node-002</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">checkpoint_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ckpt-step-120000</span>
-<span class="w">  </span><span class="nt">runtime</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">framework_runtime_matrix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">frm-h100-train-20260620</span>
-<span class="w">    </span><span class="nt">parallelism_plan_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ppr-llm-20260620-001</span>
-<span class="w">    </span><span class="nt">rank_topology_contract</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rtc-llm-20260620-001</span>
-<span class="w">    </span><span class="nt">nccl_env_contract</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nec-h100-rdma-20260620</span>
-<span class="w">  </span><span class="nt">topology</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">placement_commit_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pcr-exp-20260619-001</span>
-<span class="w">    </span><span class="nt">rank_mapping</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rank-mapping-exp-20260619-001</span>
-<span class="w">  </span><span class="nt">resource_accounting</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">allocated_gpu_hours</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">effective_training_gpu_hours</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">  </span><span class="nt">artifact</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">registry_candidate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-</code></pre></div>
+<pre><code class="language-yaml">slurm_platform_event:
+  event_type: checkpoint_committed
+  slurm_job_id: &quot;123456&quot;
+  slurm_step_id: &quot;123456.3&quot;
+  experiment_id: exp-20260619-001
+  tenant: foundation-model-team
+  nodes: [gpu-node-001, gpu-node-002]
+  checkpoint_id: ckpt-step-120000
+  runtime:
+    framework_runtime_matrix: frm-h100-train-20260620
+    parallelism_plan_record: ppr-llm-20260620-001
+    rank_topology_contract: rtc-llm-20260620-001
+    nccl_env_contract: nec-h100-rdma-20260620
+  topology:
+    placement_commit_record: pcr-exp-20260619-001
+    rank_mapping: rank-mapping-exp-20260619-001
+  resource_accounting:
+    allocated_gpu_hours: measured
+    effective_training_gpu_hours: measured
+  artifact:
+    registry_candidate: true
+</code></pre>
 <p>Slurm account、partition 和 job id 还应映射到平台租户、资源池和实验。映射关系不能靠手工表格长期维护，应进入身份和资源管理系统。否则 Slurm accounting 与平台成本系统会长期漂移，同一训练成本在不同报表中出现不同归属。</p>
 <p>Slurm 集成尤其要避免“作业脚本自带宇宙”。用户可以继续用 <code>sbatch</code> 和 <code>srun</code>，但生产模板应在提交时生成或引用 <code>parallelism_plan_record</code>，在分配节点后生成 <code>placement_commit_record</code> 和 <code>rank_mapping</code>，在启动前校验 <code>nccl_env_contract</code>。如果这些对象只存在于 Kubernetes 路径，Slurm 训练会形成事实盲区：训练产物进入模型注册时，平台不知道它使用了什么并行拓扑、是否接受了放置降级、NCCL 环境是否经过准入。保留 Slurm 的前提，是把它接入同一证据模型。</p>
 <p>跨 Slurm 和 Kubernetes 的训练平台还需要 <code>training_accounting_reconciliation</code>。Slurm、Kubernetes、队列系统、GPU 资源池和成本仓库都会记录资源使用，但它们的时间边界和状态语义不同。Slurm 可能按 job allocation 计时，Kubernetes 可能按 Pod 生命周期计时，训练框架按 first effective step 计时，成本系统按资源池窗口分摊。对账对象的目标，是把这些口径差异显式化。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">training_accounting_reconciliation</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">reconciliation_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">acct-20260620-001</span>
-<span class="w">  </span><span class="nt">workload</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">experiment_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">exp-20260619-001</span>
-<span class="w">    </span><span class="nt">scheduler</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">slurm</span>
-<span class="w">    </span><span class="nt">slurm_job_id</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;123456&quot;</span>
-<span class="w">    </span><span class="nt">platform_training_job</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">train-20260619-001</span>
-<span class="w">  </span><span class="nt">identity_mapping</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">slurm_account</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">foundation</span>
-<span class="w">    </span><span class="nt">tenant</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">foundation-model-team</span>
-<span class="w">    </span><span class="nt">project</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">base-model-v4</span>
-<span class="w">    </span><span class="nt">cost_center</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ai-research</span>
-<span class="w">  </span><span class="nt">resource_mapping</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">partition</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pretrain-h100</span>
-<span class="w">    </span><span class="nt">resource_pool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">training-prod-h100</span>
-<span class="w">    </span><span class="nt">nodes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">gpu_flavor</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">h100</span>
-<span class="w">  </span><span class="nt">usage</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">slurm_allocated_gpu_hours</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">platform_allocated_gpu_hours</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">effective_training_gpu_hours</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">wasted_gpu_hours</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">  </span><span class="nt">artifacts</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">checkpoint_manifests</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">model_registry_versions</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded_if_any</span>
-<span class="w">  </span><span class="nt">diff</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">status</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">matched_or_explained</span>
-<span class="w">    </span><span class="nt">explanation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">accounting_window_or_failed_step_or_sync_delay</span>
-</code></pre></div>
+<pre><code class="language-yaml">training_accounting_reconciliation:
+  reconciliation_id: acct-20260620-001
+  workload:
+    experiment_id: exp-20260619-001
+    scheduler: slurm
+    slurm_job_id: &quot;123456&quot;
+    platform_training_job: train-20260619-001
+  identity_mapping:
+    slurm_account: foundation
+    tenant: foundation-model-team
+    project: base-model-v4
+    cost_center: ai-research
+  resource_mapping:
+    partition: pretrain-h100
+    resource_pool: training-prod-h100
+    nodes: recorded
+    gpu_flavor: h100
+  usage:
+    slurm_allocated_gpu_hours: measured
+    platform_allocated_gpu_hours: measured
+    effective_training_gpu_hours: measured
+    wasted_gpu_hours: calculated
+  artifacts:
+    checkpoint_manifests: recorded
+    model_registry_versions: recorded_if_any
+  diff:
+    status: matched_or_explained
+    explanation: accounting_window_or_failed_step_or_sync_delay
+</code></pre>
 <p>这个对象能解决双平台最常见的争议：Slurm 说某账户用了 10 万 GPU 小时，平台成本报表显示另一个数，模型团队说有效训练只有 7 万 GPU 小时。三者都可能正确，只是口径不同。对账不是为了消灭差异，而是让差异可解释、可重算、可审计。只有完成这一步，Slurm 才能真正进入 AI Factory 的 Token Factory 和训练 ROI 视角。</p>
 <p>同步器还应处理失败和延迟。Slurm accounting 可能滞后，日志上传可能失败，模型注册可能需要重试。平台应把同步状态展示出来，避免用户以为训练完成就代表所有产物都已进入平台。工程实现的重点是闭环，而不是单向采集。</p>
 <p>提交入口还应加入前置校验。平台可以在 <code>sbatch</code> 包装器或 Web/API 入口中检查账户权限、partition 合法性、数据路径、镜像版本、checkpoint 目录和预计资源。能在提交前发现的问题，不应等到作业排队数小时后才失败。前置校验越充分，调度系统越少承受无效作业。</p>

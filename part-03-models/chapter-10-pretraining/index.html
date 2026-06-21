@@ -3835,19 +3835,7 @@
 <p>架构上必须重视闭环。训练产生的 loss、吞吐、错误和 checkpoint 不只是日志，而是后续决策输入。Loss spike 可能触发暂停和数据排查；checkpoint 校验失败应阻止覆盖旧版本；评测下降可能要求回滚到早期 checkpoint；节点错误可能触发资源隔离。没有闭环，平台只能事后复盘；有闭环，平台可以在训练过程中降低损失。</p>
 <p>这套架构还需要明确控制面和数据面的边界。控制面管理任务、配置、队列、配额、checkpoint 索引和实验记录；数据面负责实际训练进程、通信、数据读取和指标上报。控制面必须能在训练进程失败后仍然保留事实，不能把所有状态都放在 worker 本地。否则最需要排障时，证据会随容器一起消失。</p>
 <p>另外，预训练架构应把评测放进主链路，而不是训练结束后的临时脚本。阶段 checkpoint 只有经过固定评测和质量记录，才知道是否值得继续投入。训练、评测和注册三者断开，会让模型生命周期缺少可信节点。</p>
-<pre class="mermaid"><code>flowchart LR
-  Raw["原始数据"] --&gt; Clean["清洗 / 去重 / 过滤"]
-  Clean --&gt; Tok["tokenization"]
-  Tok --&gt; Dataset["训练数据 shard"]
-  Dataset --&gt; Queue["训练队列 / 配额"]
-  Queue --&gt; Job["分布式训练任务"]
-  Job --&gt; GPU["GPU 集群"]
-  GPU --&gt; Loss["loss / throughput / health"]
-  GPU --&gt; Ckpt["checkpoint"]
-  Ckpt --&gt; Eval["阶段评测"]
-  Eval --&gt; Registry["model registry"]
-  Loss --&gt; Decision["继续 / 暂停 / 恢复 / 回滚"]
-  Decision --&gt; Job</code></pre>
+<p><img alt="图：10.2.2 系统架构" src="../../assets/diagrams/part-03-models-chapter-10-pretraining-01.svg" /></p>
 <h2 id="103">10.3 关键技术<a class="headerlink" href="#103" title="Permanent link">&para;</a></h2>
 <h3 id="1031">10.3.1 数据清洗<a class="headerlink" href="#1031" title="Permanent link">&para;</a></h3>
 <p>数据清洗包括格式解析、语言识别、去重、质量过滤、安全过滤、隐私处理和元数据补齐。预训练数据质量直接影响模型上限，也影响训练稳定性。低质量样本会让模型学习噪声，重复数据会浪费训练预算并增加过拟合风险，异常格式可能触发 tokenizer 或数据 loader 错误，高风险内容可能带来安全和合规问题。数据清洗不是训练前的附属步骤，而是模型能力建设的一部分。</p>
@@ -3903,275 +3891,260 @@
 <p>训练任务提交应包含数据、模型、并行和恢复配置，并进入实验追踪系统。配置至少包括 dataset version、tokenizer version、code commit、container image、model config、optimizer、learning rate schedule、global batch tokens、parallelism、checkpoint policy 和 resume policy。这些字段不是文档装饰，而是复现和排障的最低条件。平台应拒绝关键字段缺失的长周期训练任务。</p>
 <p>生产级预训练应把 <code>TrainingJob</code> 作为一等对象，而不是把 <code>torchrun</code>、<code>sbatch</code> 或 <code>kubectl apply</code> 当成唯一事实源。<code>TrainingJob</code> 要同时表达模型语义、数据语义、资源语义和恢复语义。调度器用它做 gang 和拓扑准入，训练框架用它初始化 runtime，checkpoint 系统用它记录状态，成本系统用它归集 GPU 小时。缺少统一对象，训练链路就会散落在脚本、队列、日志和文件系统里。</p>
 <p>示例任务配置如下：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">training_job</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">dataset</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pretrain-corpus-v3</span>
-<span class="w">  </span><span class="nt">tokenizer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tokenizer-v3</span>
-<span class="w">  </span><span class="nt">global_batch_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">configured</span>
-<span class="w">  </span><span class="nt">parallelism</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">data</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8</span>
-<span class="w">    </span><span class="nt">tensor</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">4</span>
-<span class="w">    </span><span class="nt">pipeline</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
-<span class="w">  </span><span class="nt">checkpoint</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">interval_steps</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1000</span>
-<span class="w">    </span><span class="nt">retention</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">last_5_and_best</span>
-<span class="w">    </span><span class="nt">verify_checksum</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">recovery</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">resume_from</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">latest_valid</span>
-</code></pre></div>
+<pre><code class="language-yaml">training_job:
+  dataset: pretrain-corpus-v3
+  tokenizer: tokenizer-v3
+  global_batch_tokens: configured
+  parallelism:
+    data: 8
+    tensor: 4
+    pipeline: 2
+  checkpoint:
+    interval_steps: 1000
+    retention: last_5_and_best
+    verify_checksum: true
+  recovery:
+    resume_from: latest_valid
+</code></pre>
 <p>更完整的 spec 应包含不可变版本和运行时门禁。下面示例不追求覆盖所有框架参数，而是展示哪些字段必须被平台理解。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">training_job</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">identity</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">tenant</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">foundation-model-team</span>
-<span class="w">    </span><span class="nt">project</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">base-model-v4</span>
-<span class="w">    </span><span class="nt">experiment_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">exp-20260619-001</span>
-<span class="w">  </span><span class="nt">source</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">code_commit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">git-sha</span>
-<span class="w">    </span><span class="nt">container_image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">registry/train-runtime@sha256:example</span>
-<span class="w">    </span><span class="nt">runtime_template</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pytorch-megatron-h100-v7</span>
-<span class="w">  </span><span class="nt">data</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">dataset_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">corpus-v3.2</span>
-<span class="w">    </span><span class="nt">tokenizer_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tokenizer-v3</span>
-<span class="w">    </span><span class="nt">shard_manifest</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">s3://datasets/corpus-v3.2/manifest.json</span>
-<span class="w">    </span><span class="nt">dataset_manifest_digest</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sha256:example</span>
-<span class="w">    </span><span class="nt">expected_cache_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prewarm_for_training_prod</span>
-<span class="w">  </span><span class="nt">model</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">architecture</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">transformer</span>
-<span class="w">    </span><span class="nt">parameter_scale</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">documented_by_team</span>
-<span class="w">    </span><span class="nt">sequence_length</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8192</span>
-<span class="w">  </span><span class="nt">optimization</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">global_batch_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">configured</span>
-<span class="w">    </span><span class="nt">optimizer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">adamw</span>
-<span class="w">    </span><span class="nt">lr_schedule</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cosine_with_warmup</span>
-<span class="w">    </span><span class="nt">precision</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bf16</span>
-<span class="w">  </span><span class="nt">parallelism</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">data_parallel</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">16</span>
-<span class="w">    </span><span class="nt">tensor_parallel</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8</span>
-<span class="w">    </span><span class="nt">pipeline_parallel</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">4</span>
-<span class="w">  </span><span class="nt">scheduling</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">queue</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">training-prod</span>
-<span class="w">    </span><span class="nt">gang</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">topology</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">same_fabric_required</span>
-<span class="w">  </span><span class="nt">checkpoint</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">interval_steps</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1000</span>
-<span class="w">    </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sharded</span>
-<span class="w">    </span><span class="nt">retention</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">last_5_best_and_milestones</span>
-<span class="w">    </span><span class="nt">verify_on_write</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">recovery</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">resume_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">latest_valid_checkpoint</span>
-<span class="w">    </span><span class="nt">max_auto_restarts</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
-</code></pre></div>
+<pre><code class="language-yaml">training_job:
+  identity:
+    tenant: foundation-model-team
+    project: base-model-v4
+    experiment_id: exp-20260619-001
+  source:
+    code_commit: git-sha
+    container_image: registry/train-runtime@sha256:example
+    runtime_template: pytorch-megatron-h100-v7
+  data:
+    dataset_version: corpus-v3.2
+    tokenizer_version: tokenizer-v3
+    shard_manifest: s3://datasets/corpus-v3.2/manifest.json
+    dataset_manifest_digest: sha256:example
+    expected_cache_policy: prewarm_for_training_prod
+  model:
+    architecture: transformer
+    parameter_scale: documented_by_team
+    sequence_length: 8192
+  optimization:
+    global_batch_tokens: configured
+    optimizer: adamw
+    lr_schedule: cosine_with_warmup
+    precision: bf16
+  parallelism:
+    data_parallel: 16
+    tensor_parallel: 8
+    pipeline_parallel: 4
+  scheduling:
+    queue: training-prod
+    gang: true
+    topology: same_fabric_required
+  checkpoint:
+    interval_steps: 1000
+    format: sharded
+    retention: last_5_best_and_milestones
+    verify_on_write: true
+  recovery:
+    resume_policy: latest_valid_checkpoint
+    max_auto_restarts: 2
+</code></pre>
 <p>训练任务还应有明确状态机。作业 pending、Pod running 或 Slurm running 都不是训练有效进展。真正的状态应覆盖数据就绪、资源准入、runtime 自检、NCCL rendezvous、有效 step、checkpoint、异常暂停、恢复和完成。</p>
-<pre class="mermaid"><code>stateDiagram-v2
-  [*] --&gt; Submitted
-  Submitted --&gt; Admitted: quota / gang / topology ok
-  Admitted --&gt; Starting: nodes allocated
-  Starting --&gt; Preflight: image / data / env checks
-  Preflight --&gt; Rendezvous: ranks start + NCCL init
-  Rendezvous --&gt; Running: first effective step
-  Running --&gt; Checkpointing: checkpoint interval
-  Checkpointing --&gt; Running: manifest verified
-  Running --&gt; Paused: anomaly or operator pause
-  Paused --&gt; Recovering: choose checkpoint
-  Recovering --&gt; Rendezvous
-  Running --&gt; Completed: target tokens / stop condition
-  Running --&gt; Failed: unrecoverable error
-  Failed --&gt; [*]
-  Completed --&gt; [*]</code></pre>
+<p><img alt="图：10.4.1 工程实现" src="../../assets/diagrams/part-03-models-chapter-10-pretraining-02.svg" /></p>
 <p>状态机里的 <code>Rendezvous</code> 和 <code>Running</code> 必须有可审计证据。Rendezvous 不是日志中出现 “init process group” 就算通过，而是所有预期 rank 在同一 world size、同一 rendezvous endpoint、同一 NCCL/env contract、同一 rank topology contract 下成功建立通信，并且没有 rank 迟到、重号、缺号或落到错误节点。平台应生成 <code>rendezvous_evidence</code>，把 launcher、调度放置、rank 映射和通信初始化绑定起来：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">rendezvous_evidence</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">evidence_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rv-exp-20260620-001</span>
-<span class="w">  </span><span class="nt">training_job</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">exp-20260620-031</span>
-<span class="w">  </span><span class="nt">launcher_contract</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">lc-torchrun-h100-202606</span>
-<span class="w">  </span><span class="nt">expected</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">world_size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">512</span>
-<span class="w">    </span><span class="nt">min_ready_ranks</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">512</span>
-<span class="w">    </span><span class="nt">rendezvous_backend</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">c10d_or_etcd_or_slurm</span>
-<span class="w">    </span><span class="nt">rank_topology_contract</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rtc-llm-20260620-001</span>
-<span class="w">    </span><span class="nt">nccl_env_contract</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nec-h100-rdma-20260620</span>
-<span class="w">  </span><span class="nt">observed</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">joined_ranks</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">512</span>
-<span class="w">    </span><span class="nt">duplicate_ranks</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[]</span>
-<span class="w">    </span><span class="nt">missing_ranks</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[]</span>
-<span class="w">    </span><span class="nt">late_ranks</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">endpoint</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">nodes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">gpu_assignment_records</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">attached</span>
-<span class="w">  </span><span class="nt">timing</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">first_rank_started_at</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">last_rank_joined_at</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">process_group_ready_at</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">  </span><span class="nt">verdict</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">rendezvous_complete</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">topology_matches_contract</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">safe_to_enter_training_loop</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-</code></pre></div>
+<pre><code class="language-yaml">rendezvous_evidence:
+  evidence_id: rv-exp-20260620-001
+  training_job: exp-20260620-031
+  launcher_contract: lc-torchrun-h100-202606
+  expected:
+    world_size: 512
+    min_ready_ranks: 512
+    rendezvous_backend: c10d_or_etcd_or_slurm
+    rank_topology_contract: rtc-llm-20260620-001
+    nccl_env_contract: nec-h100-rdma-20260620
+  observed:
+    joined_ranks: 512
+    duplicate_ranks: []
+    missing_ranks: []
+    late_ranks: measured
+    endpoint: recorded
+    nodes: recorded
+    gpu_assignment_records: attached
+  timing:
+    first_rank_started_at: recorded
+    last_rank_joined_at: recorded
+    process_group_ready_at: recorded
+  verdict:
+    rendezvous_complete: true
+    topology_matches_contract: true
+    safe_to_enter_training_loop: true
+</code></pre>
 <p>进入 <code>Running</code> 也不等于首个 batch 开始执行。生产平台更应该记录 <code>first_effective_step_record</code>：它证明训练已经完成数据读取、forward、backward、collective、optimizer update 和必要指标上报，产生了第一个有效训练 step。这个对象能把“任务启动成功”与“开始产生训练价值”分开，也是训练 ROI 中 effective GPU hours 的起点：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">first_effective_step_record</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">record_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fes-exp-20260620-001</span>
-<span class="w">  </span><span class="nt">training_job</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">exp-20260620-031</span>
-<span class="w">  </span><span class="nt">prerequisites</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">rendezvous_evidence</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rv-exp-20260620-001</span>
-<span class="w">    </span><span class="nt">dataset_manifest</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">corpus-v3.2</span>
-<span class="w">    </span><span class="nt">training_runtime_spec</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">trs-exp-20260620-031</span>
-<span class="w">    </span><span class="nt">placement_commit_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pcr-exp-20260620-031</span>
-<span class="w">  </span><span class="nt">step</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">global_step</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
-<span class="w">    </span><span class="nt">tokens_processed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">loss</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">forward_backward_complete</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">optimizer_step_complete</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">collective_trace_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">attached</span>
-<span class="w">    </span><span class="nt">data_shards_consumed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">  </span><span class="nt">timing</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">admitted_at</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">first_effective_step_at</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">startup_gpu_hours</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">  </span><span class="nt">verdict</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">effective_training_started</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">startup_waste_reason</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">none_or_image_or_rendezvous_or_data</span>
-</code></pre></div>
+<pre><code class="language-yaml">first_effective_step_record:
+  record_id: fes-exp-20260620-001
+  training_job: exp-20260620-031
+  prerequisites:
+    rendezvous_evidence: rv-exp-20260620-001
+    dataset_manifest: corpus-v3.2
+    training_runtime_spec: trs-exp-20260620-031
+    placement_commit_record: pcr-exp-20260620-031
+  step:
+    global_step: 1
+    tokens_processed: measured
+    loss: measured
+    forward_backward_complete: true
+    optimizer_step_complete: true
+    collective_trace_record: attached
+    data_shards_consumed: recorded
+  timing:
+    admitted_at: recorded
+    first_effective_step_at: recorded
+    startup_gpu_hours: calculated
+  verdict:
+    effective_training_started: true
+    startup_waste_reason: none_or_image_or_rendezvous_or_data
+</code></pre>
 <p>这两个对象能改变训练启动事故的归因。若 GPU 已分配但没有 <code>rendezvous_evidence</code>，浪费应归入启动或通信初始化；若 rendezvous 完成但没有 first effective step，可能是数据读取、首个 collective、optimizer 或框架配置问题；若 first effective step 已产生，后续 step time 和 loss 才能进入常规训练稳定性分析。没有这些阶段证据，平台会把大量启动浪费误算为正常训练成本。</p>
 <p>工程实现还要拆分控制面和运行面。控制面负责队列、配额、配置校验、实验记录和 checkpoint 索引；运行面负责启动容器、初始化通信、读取数据、执行训练和上报指标。控制面应能在任务失败后回答：使用了什么数据，跑到哪一步，最后有效 checkpoint 是哪个，哪些节点参与，失败前哪些指标异常。没有这些问题的答案，平台就没有真正管理训练。</p>
 <p>上线一个预训练平台时，可以先建立最小闭环：任务提交校验、节点准入、训练 telemetry、checkpoint 校验、失败事件归档和恢复演练。随后再逐步加入自动异常检测、数据 shard 追踪、拓扑感知调度和成本分析。一次性追求全自动训练平台容易延期；但如果最小闭环缺失，规模一上来就会用人工成本补系统缺口。</p>
 <p>还应提供任务结束后的标准报告。报告至少包含训练配置、数据版本、总 token、有效 step、失败和恢复记录、checkpoint 列表、阶段评测、资源消耗和未解决异常。这个报告既服务模型发布，也服务成本复盘。没有结项报告，预训练经验很难沉淀为下一次训练的改进。</p>
 <p>实现上还要把权限纳入流程。谁能提交大规模训练、谁能删除 checkpoint、谁能恢复任务、谁能修改数据版本，都应有审计记录。预训练消耗资源巨大，权限和审计是成本治理的一部分。</p>
 <p>训练数据也应有标准 <code>dataset_manifest</code>。第 33 章会从存储系统角度解释它；在预训练章节里，它首先是训练可复现和故障定位的合同。它不能只写数据集名称，而要固定处理 pipeline、tokenizer、shard 列表、采样权重、权限、缓存策略和从 step 到 shard 的映射规则。没有这些字段，loss spike、data loader hang 和恢复后状态漂移都很难证明。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">dataset_manifest</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">dataset_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">corpus-v3.2</span>
-<span class="w">  </span><span class="nt">immutable_digest</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sha256:dataset-manifest</span>
-<span class="w">  </span><span class="nt">tokenizer</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tokenizer-v3</span>
-<span class="w">    </span><span class="nt">digest</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sha256:tokenizer</span>
-<span class="w">  </span><span class="nt">processing</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">pipeline_digest</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sha256:clean-tokenize-pack</span>
-<span class="w">    </span><span class="nt">dedup_profile</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dedup-v4</span>
-<span class="w">    </span><span class="nt">packing_strategy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fixed_length_with_document_boundary</span>
-<span class="w">  </span><span class="nt">shards</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">indexed_binary</span>
-<span class="w">    </span><span class="nt">count</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8192</span>
-<span class="w">    </span><span class="nt">checksum_index</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">    </span><span class="nt">step_to_shard_mapping</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">deterministic_with_seed</span>
-<span class="w">  </span><span class="nt">sampling</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">mixture_weights</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">versioned</span>
-<span class="w">    </span><span class="nt">epoch_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">documented</span>
-<span class="w">    </span><span class="nt">random_seed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">  </span><span class="nt">access</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">data_classification</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">restricted</span>
-<span class="w">    </span><span class="nt">tenant_scope</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">foundation-model-team</span>
-<span class="w">    </span><span class="nt">cache_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prewarm_for_training_prod</span>
-</code></pre></div>
+<pre><code class="language-yaml">dataset_manifest:
+  dataset_id: corpus-v3.2
+  immutable_digest: sha256:dataset-manifest
+  tokenizer:
+    name: tokenizer-v3
+    digest: sha256:tokenizer
+  processing:
+    pipeline_digest: sha256:clean-tokenize-pack
+    dedup_profile: dedup-v4
+    packing_strategy: fixed_length_with_document_boundary
+  shards:
+    format: indexed_binary
+    count: 8192
+    checksum_index: required
+    step_to_shard_mapping: deterministic_with_seed
+  sampling:
+    mixture_weights: versioned
+    epoch_policy: documented
+    random_seed: recorded
+  access:
+    data_classification: restricted
+    tenant_scope: foundation-model-team
+    cache_policy: prewarm_for_training_prod
+</code></pre>
 <p>训练框架启动前应校验 manifest digest、shard checksum、reader 版本、缓存状态和权限；进入 first effective step 后，应把实际消费的 shard range 写入训练 telemetry。这样 loss 异常可以定位到数据版本和 shard，checkpoint 恢复也能验证 dataloader state 是否回到同一位置。数据 manifest 是训练控制面的一部分，不是存储目录旁边的说明文件。</p>
 <p><code>dataset_manifest</code> 描述训练数据“应该是什么”，还需要 <code>dataset_lineage_record</code> 说明它“实际如何生成”。Lineage 应记录原始来源、抓取时间、清洗和去重版本、安全过滤、tokenization、sharding、采样权重、人工审核、删除请求处理、数据许可证和生成者。没有 lineage，训练后发现某类能力退化或合规问题时，只能知道用了 <code>corpus-v3.2</code>，却不知道哪些来源、新增规则或删除动作改变了数据分布。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">dataset_lineage_record</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">lineage_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dlr-corpus-v3-2-20260620</span>
-<span class="w">  </span><span class="nt">dataset_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">corpus-v3.2</span>
-<span class="w">  </span><span class="nt">manifest_digest</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sha256:dataset-manifest</span>
-<span class="w">  </span><span class="nt">source_inputs</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">source</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">web_crawl</span>
-<span class="w">      </span><span class="nt">snapshot</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">crawl-20260601</span>
-<span class="w">      </span><span class="nt">license_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">reviewed</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">source</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">code_corpus</span>
-<span class="w">      </span><span class="nt">snapshot</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">code-20260605</span>
-<span class="w">      </span><span class="nt">license_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">restricted_allowlist</span>
-<span class="w">  </span><span class="nt">transformations</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">parse_pipeline</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">parse-v11@sha256:example</span>
-<span class="w">    </span><span class="nt">pii_filter</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pii-filter-v6</span>
-<span class="w">    </span><span class="nt">safety_filter</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">safety-filter-v9</span>
-<span class="w">    </span><span class="nt">dedup_profile</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dedup-v4</span>
-<span class="w">    </span><span class="nt">tokenizer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tokenizer-v3@sha256:tokenizer</span>
-<span class="w">    </span><span class="nt">packer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fixed_length_with_document_boundary</span>
-<span class="w">  </span><span class="nt">output_stats</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">documents_in</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">documents_removed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">tokens_out</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">shard_count</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8192</span>
-<span class="w">    </span><span class="nt">language_distribution</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">source_mixture_weights</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">versioned</span>
-<span class="w">  </span><span class="nt">governance</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">data_classification</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">restricted</span>
-<span class="w">    </span><span class="nt">deletion_requests_applied</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">dr-20260618-001</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">training_exclusion_registry</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">updated</span>
-<span class="w">    </span><span class="nt">reviewer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">data-governance-owner</span>
-</code></pre></div>
+<pre><code class="language-yaml">dataset_lineage_record:
+  lineage_id: dlr-corpus-v3-2-20260620
+  dataset_id: corpus-v3.2
+  manifest_digest: sha256:dataset-manifest
+  source_inputs:
+    - source: web_crawl
+      snapshot: crawl-20260601
+      license_policy: reviewed
+    - source: code_corpus
+      snapshot: code-20260605
+      license_policy: restricted_allowlist
+  transformations:
+    parse_pipeline: parse-v11@sha256:example
+    pii_filter: pii-filter-v6
+    safety_filter: safety-filter-v9
+    dedup_profile: dedup-v4
+    tokenizer: tokenizer-v3@sha256:tokenizer
+    packer: fixed_length_with_document_boundary
+  output_stats:
+    documents_in: measured
+    documents_removed: measured
+    tokens_out: measured
+    shard_count: 8192
+    language_distribution: recorded
+    source_mixture_weights: versioned
+  governance:
+    data_classification: restricted
+    deletion_requests_applied: [dr-20260618-001]
+    training_exclusion_registry: updated
+    reviewer: data-governance-owner
+</code></pre>
 <p>这个 record 让训练异常能回到数据供应链。若某次 loss spike 集中在一组 shard，平台可以从 shard 追到 parse、filter、tokenizer 和源 snapshot；若模型上线后出现某类版权或隐私风险，可以定位哪些数据版本和 checkpoint 受影响；若删除请求要求追踪衍生产物，lineage 能回答哪些 checkpoint、adapter、评测集和模型 artifact 依赖了该数据。数据 lineage 不是合规团队的文档，而是训练恢复、质量解释和模型发布的事实基础。</p>
 <p>Checkpoint manifest 应被平台标准化。每次写入 checkpoint 后，训练进程或 sidecar 不应只留下一个目录，而应写入 manifest，说明包含哪些 rank 分片、优化器和 scheduler 状态、数据读取位置、随机状态、校验和、评测状态和可恢复性。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">checkpoint_manifest</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">checkpoint_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ckpt-step-120000</span>
-<span class="w">  </span><span class="nt">training_job</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">exp-20260619-001</span>
-<span class="w">  </span><span class="nt">step</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">120000</span>
-<span class="w">  </span><span class="nt">global_tokens_seen</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">  </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sharded</span>
-<span class="w">  </span><span class="nt">world_size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">512</span>
-<span class="w">  </span><span class="nt">parallelism</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">data</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">16</span>
-<span class="w">    </span><span class="nt">tensor</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8</span>
-<span class="w">    </span><span class="nt">pipeline</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">4</span>
-<span class="w">  </span><span class="nt">contents</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">model_state</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">complete</span>
-<span class="w">    </span><span class="nt">optimizer_state</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">complete</span>
-<span class="w">    </span><span class="nt">scheduler_state</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">complete</span>
-<span class="w">    </span><span class="nt">rng_state</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">complete</span>
-<span class="w">    </span><span class="nt">dataloader_state</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">complete</span>
-<span class="w">  </span><span class="nt">validation</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">manifest_checksum</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sha256:example</span>
-<span class="w">    </span><span class="nt">shard_checksums</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">verified</span>
-<span class="w">    </span><span class="nt">restore_smoke_test</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed</span>
-<span class="w">  </span><span class="nt">lineage</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">parent_checkpoint</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ckpt-step-119000</span>
-<span class="w">    </span><span class="nt">dataset_shards_consumed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">manifest-range</span>
-</code></pre></div>
+<pre><code class="language-yaml">checkpoint_manifest:
+  checkpoint_id: ckpt-step-120000
+  training_job: exp-20260619-001
+  step: 120000
+  global_tokens_seen: measured
+  format: sharded
+  world_size: 512
+  parallelism:
+    data: 16
+    tensor: 8
+    pipeline: 4
+  contents:
+    model_state: complete
+    optimizer_state: complete
+    scheduler_state: complete
+    rng_state: complete
+    dataloader_state: complete
+  validation:
+    manifest_checksum: sha256:example
+    shard_checksums: verified
+    restore_smoke_test: passed
+  lineage:
+    parent_checkpoint: ckpt-step-119000
+    dataset_shards_consumed: manifest-range
+</code></pre>
 <p>Manifest 的价值在恢复时体现。恢复逻辑应先查询 latest valid checkpoint，而不是简单读取最新目录；恢复后应校验 world size、parallelism、tokenizer、数据位置和 scheduler state 是否匹配。若不匹配，应显式拒绝并给出原因。这样可以避免“恢复成功但训练轨迹已经变了”的隐性事故。</p>
 <p>Checkpoint 写入还应采用两阶段提交门禁。训练 rank 先写入临时路径和本地 checksum，validator 验证所有 rank 分片、manifest、optimizer、scheduler、rng 和 dataloader state，再把 checkpoint 标记为 latest valid。任何 rank 缺片、checksum 不一致、metadata 不完整或恢复 smoke test 失败，都不能更新 latest 指针。这样能防止“目录已经出现但 checkpoint 实际不可恢复”的生产事故。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">checkpoint_commit_record</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">checkpoint_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ckpt-step-120000</span>
-<span class="w">  </span><span class="nt">phase</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">commit_validation</span>
-<span class="w">  </span><span class="nt">temporary_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">managed_tmp_path</span>
-<span class="w">  </span><span class="nt">rank_shards</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">expected</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">512</span>
-<span class="w">    </span><span class="nt">written</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">checksum_verified</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">manifest</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">committed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">latest_pointer_updated</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">only_after_validation</span>
-<span class="w">  </span><span class="nt">restore_gate</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">world_size_match</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">parallelism_match</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">scheduler_state_match</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">dataloader_position_match</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">failure_policy</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">keep_previous_latest_valid</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">quarantine_partial_checkpoint</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-</code></pre></div>
+<pre><code class="language-yaml">checkpoint_commit_record:
+  checkpoint_id: ckpt-step-120000
+  phase: commit_validation
+  temporary_path: managed_tmp_path
+  rank_shards:
+    expected: 512
+    written: measured
+    checksum_verified: true
+  manifest:
+    committed: true
+    latest_pointer_updated: only_after_validation
+  restore_gate:
+    world_size_match: true
+    parallelism_match: true
+    scheduler_state_match: true
+    dataloader_position_match: true
+  failure_policy:
+    keep_previous_latest_valid: true
+    quarantine_partial_checkpoint: true
+</code></pre>
 <p>这个记录是训练恢复和成本账本的共同证据。若 checkpoint 写入拉长 step time，平台可以从 commit record 看到长尾来自 rank 写入、manifest 校验还是 latest 指针更新；若恢复失败，平台可以证明失败发生在 checkpoint 本身、恢复配置还是数据位置。Checkpoint 不是文件夹，而是一个有提交协议的训练状态对象。</p>
 <p>Checkpoint 还必须通过 <code>checkpoint_restore_drill</code>。恢复演练不是事故发生后的临时动作，而是持续验收：定期从真实 checkpoint 拉起短窗口训练，验证 manifest、rank shard、optimizer、scheduler、rng、dataloader state、并行配置和评测探针。很多 checkpoint 在写入时看起来完整，真正恢复时才发现权限、路径、world size、依赖镜像或 reader 版本不匹配。恢复演练能把这类问题提前暴露。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">checkpoint_restore_drill</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">drill_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">crd-20260620-ckpt-120000</span>
-<span class="w">  </span><span class="nt">checkpoint</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ckpt-step-120000</span>
-<span class="w">  </span><span class="nt">training_job</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">exp-20260619-001</span>
-<span class="w">  </span><span class="nt">trigger</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scheduled_or_preemption_readiness</span>
-<span class="w">    </span><span class="nt">policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">every_n_checkpoints_for_critical_training</span>
-<span class="w">  </span><span class="nt">restore_environment</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">container_image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">registry/train-runtime@sha256:example</span>
-<span class="w">    </span><span class="nt">world_size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">512</span>
-<span class="w">    </span><span class="nt">parallelism</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">data</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">16</span>
-<span class="w">      </span><span class="nt">tensor</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8</span>
-<span class="w">      </span><span class="nt">pipeline</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">4</span>
-<span class="w">    </span><span class="nt">resource_pool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">acceptance-or-spare-pool</span>
-<span class="w">  </span><span class="nt">validation</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">manifest_read</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">shard_checksums</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">optimizer_scheduler_rng</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">dataloader_position</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">first_effective_step_after_restore</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">short_eval_smoke</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">  </span><span class="nt">outcome</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">restorable</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">restore_duration_ms</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">rollback_distance_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">    </span><span class="nt">block_latest_pointer_if_failed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-</code></pre></div>
+<pre><code class="language-yaml">checkpoint_restore_drill:
+  drill_id: crd-20260620-ckpt-120000
+  checkpoint: ckpt-step-120000
+  training_job: exp-20260619-001
+  trigger:
+    type: scheduled_or_preemption_readiness
+    policy: every_n_checkpoints_for_critical_training
+  restore_environment:
+    container_image: registry/train-runtime@sha256:example
+    world_size: 512
+    parallelism:
+      data: 16
+      tensor: 8
+      pipeline: 4
+    resource_pool: acceptance-or-spare-pool
+  validation:
+    manifest_read: pass
+    shard_checksums: pass
+    optimizer_scheduler_rng: pass
+    dataloader_position: pass
+    first_effective_step_after_restore: pass
+    short_eval_smoke: pass
+  outcome:
+    restorable: true
+    restore_duration_ms: measured
+    rollback_distance_tokens: calculated
+    block_latest_pointer_if_failed: true
+</code></pre>
 <p><code>checkpoint_restore_drill</code> 应进入训练门禁和 SRE 例会。关键训练任务至少要知道最近几个 checkpoint 中哪些真正可恢复，恢复需要多久，回滚距离是多少，是否需要跨故障域复制。若 drill 失败，平台应阻止删除更早的健康 checkpoint，并把任务标记为恢复风险升高。训练可靠性不是“写 checkpoint”，而是“能在可接受损失内恢复训练进度”。</p>
 <p>预训练任务还应把数据路径纳入运行时自检。<code>dataset_manifest_digest</code>、实际挂载路径、缓存命中、shard 数量、reader 版本和 data loader 指标，都应在 first effective step 之前上报。若数据路径不可达、manifest checksum 不匹配或缓存预热未完成，任务应停在 preflight，而不是进入训练后让 GPU 等待。数据自检失败是平台问题，不应由训练 step 承担。</p>
 <h3 id="1042">10.4.2 常见故障<a class="headerlink" href="#1042" title="Permanent link">&para;</a></h3>

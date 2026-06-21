@@ -1,0 +1,12 @@
+flowchart LR
+  Req["HTTP Chat Request"] --> Id["1 identity\nkey / tenant / user"]
+  Id --> Cap["2 capability\nmodel supports features"]
+  Cap --> Budget["3 budget\ntoken / rpm / tpm / cost"]
+  Budget --> Policy["4 policy\nsafety / canary / fallback"]
+  Policy --> Route["5 route\nendpoint / pool / provider"]
+  Route --> Commit["6 commit\ntrace / metering start"]
+  Commit --> Upstream["Model Endpoint"]
+  Id -->|deny| Err["typed error"]
+  Cap -->|deny| Err
+  Budget -->|deny| Err
+  Policy -->|deny| Err

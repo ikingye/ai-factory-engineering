@@ -1,0 +1,11 @@
+flowchart LR
+  Tokens["generated / delivered tokens"] --> Base["base request cost"]
+  Feedback["quality_feedback_event"] --> Loss["quality losses\nhandoff / refund / rework"]
+  Eval["eval / labeling / regression\nslice / golden / drill"] --> Prevent["prevention cost"]
+  Guardrail["experiment guardrail / rollback drill"] --> Prevent
+  Base --> QCost["quality_cost_ledger"]
+  Loss --> QCost
+  Prevent --> QCost
+  QCost --> Route["quality-aware routing"]
+  QCost --> Pricing["pricing / plan design"]
+  QCost --> ROI["model and training ROI"]

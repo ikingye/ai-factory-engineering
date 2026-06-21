@@ -1,0 +1,21 @@
+flowchart TB
+  Trigger["training anomaly trigger"] --> Bundle["training_debug_bundle"]
+  Bundle --> Complete{evidence complete?}
+  Complete -->|no| Gap["record evidence_gaps\nfreeze affected scope"]
+  Complete -->|yes| Tree["training_fault_tree_execution"]
+  Gap --> Tree
+  Tree --> Rank["rank exit / launcher"]
+  Tree --> GPU["GPU Xid / ECC / NVLink"]
+  Tree --> Fabric["RDMA / rail / fabric"]
+  Tree --> Runtime["NCCL env / container injection"]
+  Tree --> Storage["checkpoint / dataset / storage"]
+  Tree --> Code["collective order / model code"]
+  Rank --> Verdict["probable root cause + confidence"]
+  GPU --> Verdict
+  Fabric --> Verdict
+  Runtime --> Verdict
+  Storage --> Verdict
+  Code --> Verdict
+  Verdict --> Incident["training_incident_record"]
+  Incident --> Cost["training_incident_cost_record"]
+  Incident --> PRR["PRR / acceptance / runbook updates"]

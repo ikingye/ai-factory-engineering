@@ -1,0 +1,10 @@
+flowchart TB
+  Contract["supply_chain_release_contract"] --> Drill["supply_chain_contract_prr_drill"]
+  Accept["contract acceptance\nrestore / provenance / boundary"] --> Drill
+  Drill --> Inject["inject revoke / mismatch / stale cache / ACL drift"]
+  Inject --> Evidence["supply_chain_invalidation_evidence_bundle"]
+  Evidence --> Tree["supply_chain_fault_tree_execution"]
+  Evidence --> Replay["trace + billing replay"]
+  Tree --> Cost["supply_chain_revoke_economics"]
+  Replay --> Cost
+  Cost --> Gate["PRR supply chain gate\napprove / conditional / block"]

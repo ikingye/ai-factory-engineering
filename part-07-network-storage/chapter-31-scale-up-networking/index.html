@@ -3844,22 +3844,7 @@
 <p>观测层也要覆盖 scale-up。PCIe link width 和 speed、NVLink/NVSwitch 错误计数、GPU-to-GPU bandwidth、单节点 NCCL 性能、GPU 与 NIC NUMA 关系、node 内 tokens/s 和 step time 都应有基线。节点“健康”不能只代表 GPU 可见，还要代表互联路径符合预期。</p>
 <p>架构还要处理拓扑变化。维修、更换 GPU、升级固件、修改 BIOS、重装系统或更换 NIC 后，节点拓扑都可能改变。资源画像必须重新生成并复验，否则调度器会基于过期拓扑做决策。</p>
 <p>架构还要定义拓扑数据的来源。自动探测能发现设备路径，资产系统能提供机架和故障域，准入测试能验证性能。三者缺一不可。只看设备发现，缺少业务语义；只看人工资产，容易过期。</p>
-<pre class="mermaid"><code>flowchart TB
-  CPU0["CPU Socket 0 / NUMA 0"] --- PCIe0["PCIe Root Complex 0"]
-  CPU1["CPU Socket 1 / NUMA 1"] --- PCIe1["PCIe Root Complex 1"]
-  PCIe0 --- NIC0["NIC / DPU 0"]
-  PCIe1 --- NIC1["NIC / DPU 1"]
-  PCIe0 --- GPU0["GPU 0"]
-  PCIe0 --- GPU1["GPU 1"]
-  PCIe1 --- GPU2["GPU 2"]
-  PCIe1 --- GPU3["GPU 3"]
-  GPU0 &lt;--&gt; NVSW["NVSwitch / NVLink Domain"]
-  GPU1 &lt;--&gt; NVSW
-  GPU2 &lt;--&gt; NVSW
-  GPU3 &lt;--&gt; NVSW
-  NVSW --&gt; MP["Tensor / Pipeline / Expert Parallel"]
-  NIC0 --&gt; SO["Scale-out Fabric"]
-  NIC1 --&gt; SO</code></pre>
+<p><img alt="图：31.2.2 系统架构" src="../../assets/diagrams/part-07-network-storage-chapter-31-scale-up-networking-01.svg" /></p>
 <h2 id="313">31.3 关键技术<a class="headerlink" href="#313" title="Permanent link">&para;</a></h2>
 <h3 id="3131-pcie">31.3.1 PCIe<a class="headerlink" href="#3131-pcie" title="Permanent link">&para;</a></h3>
 <p>PCIe 是服务器内部连接 CPU、GPU、NIC、DPU、NVMe 和其它设备的基础总线。即使节点有 NVLink 或 NVSwitch，GPU 到 CPU、GPU 到 NIC、GPU 到某些存储设备仍可能经过 PCIe。PCIe 的 link width、link speed、root complex、switch 层级和 NUMA 位置，都会影响数据路径和性能。</p>
@@ -3929,25 +3914,7 @@
 <p>NVSwitch 资源还要考虑共享策略。一个 8 卡域可以给一个大模型独占，也可以拆给多个小服务，但拆分后剩余 GPU 是否还能满足强通信任务，需要资源池持续跟踪。拓扑碎片不是普通空闲碎片，它会直接影响模型能否部署。</p>
 <p>因此，NVSwitch 域的空闲率要和完整域可用率分开看。还有 4 张空闲 GPU，不代表还有一个可用的 4 卡强通信组合。资源池指标必须表达这种差异。</p>
 <p>否则容量判断会过于乐观。完整域比零散 GPU 更稀缺，尤其在 tensor parallel 推理、单节点大模型微调和单节点高带宽评测中，完整域是可交付能力，零散 GPU 只是名义库存。</p>
-<pre class="mermaid"><code>flowchart LR
-  subgraph Healthy["完整 NVSwitch 域"]
-    H0["GPU0"] --- HSW["NVSwitch"]
-    H1["GPU1"] --- HSW
-    H2["GPU2"] --- HSW
-    H3["GPU3"] --- HSW
-    HSW --&gt; HT["4-GPU tensor parallel 可调度"]
-  end
-
-  subgraph Fragmented["拓扑碎片"]
-    F0["GPU0 busy"] --- FSW["NVSwitch"]
-    F1["GPU1 free"] --- FSW
-    F2["GPU2 busy"] --- FSW
-    F3["GPU3 free"] --- FSW
-    FSW --&gt; FT["剩余 2 张 GPU 不能满足 4-GPU 同域请求"]
-  end
-
-  Scheduler["资源池 / 调度器"] --&gt; Healthy
-  Scheduler --&gt; Fragmented</code></pre>
+<p><img alt="图：31.3.3 NVSwitch" src="../../assets/diagrams/part-07-network-storage-chapter-31-scale-up-networking-02.svg" /></p>
 <h3 id="3134-nvlink-switch">31.3.4 NVLink Switch<a class="headerlink" href="#3134-nvlink-switch" title="Permanent link">&para;</a></h3>
 <p>NVLink Switch 将 scale-up 域从单节点扩展到更大的系统级互联形态。它用于把更多 GPU 组织成一个紧耦合计算域，让模型或 runtime 看到更大的高带宽 GPU pool。对 AI Factory 来说，这类架构更像系统级生产单元，而不是一组松散服务器。</p>
 <p>这种形态会改变资源边界。过去调度单位可能是单台 8 卡服务器；在更大 NVLink 域中，调度单位可能变成 rack 级、机柜级或 GPU island。平台需要重新定义租户如何使用这个域，是否允许拆分，拆分后性能如何标注，故障时如何降级，维护时如何 drain。资源池必须表达这些新边界。</p>
@@ -3972,31 +3939,31 @@
 <p>对平台来说，node 内通信还决定默认模板。训练模板应设置合理的 CPU 绑核、进程布局和网络接口；推理模板应避免把一个模型实例拆到不合适 GPU 组合。模板是拓扑能力落地到 workload 的最后一环。</p>
 <p>模板版本也应写入作业元数据。否则性能变化难以复现：同一个模型、同一批 GPU，如果进程布局、CPU 绑核、接口选择或容器 runtime 版本变化，结果可能完全不同。复现依赖完整上下文，node 内通信尤其如此。</p>
 <p>节点内拓扑还需要一份可审计的 GPU/NIC 亲和报告。它不是 <code>nvidia-smi topo -m</code> 的截图，而是把 GPU UUID、NUMA、CPU set、NIC、rail、container device、NCCL selected interface 和准入基线放到同一个对象里。这样当训练任务跨节点通信慢时，平台能先判断是否从节点内部就选错了 NIC，避免把所有问题都推到 leaf-spine 或 RoCE 参数上。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">gpu_nic_affinity_report</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">node</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-node-042</span>
-<span class="w">  </span><span class="nt">baseline_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">node-topology-20260620</span>
-<span class="w">  </span><span class="nt">allocation</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">pod</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">train-worker-17</span>
-<span class="w">    </span><span class="nt">rank</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">17</span>
-<span class="w">    </span><span class="nt">gpu_uuid</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">GPU-aaaa</span>
-<span class="w">    </span><span class="nt">numa_node</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
-<span class="w">    </span><span class="nt">cpu_set</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;64-95&quot;</span>
-<span class="w">  </span><span class="nt">nic_affinity</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">preferred_nic</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mlx5_1</span>
-<span class="w">    </span><span class="nt">preferred_rail</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rail1</span>
-<span class="w">    </span><span class="nt">switch_port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">leaf12-eth1/42</span>
-<span class="w">    </span><span class="nt">distance</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">local_numa</span>
-<span class="w">  </span><span class="nt">container_view</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">visible_gpu_uuid</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">GPU-aaaa</span>
-<span class="w">    </span><span class="nt">visible_rdma_devices</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">mlx5_1</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">runtime_class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nvidia</span>
-<span class="w">  </span><span class="nt">nccl_view</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">selected_interface</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mlx5_1</span>
-<span class="w">    </span><span class="nt">selected_transport</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rdma</span>
-<span class="w">    </span><span class="nt">interface_matches_affinity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">decision</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">topology_ready_for_distributed_training</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-</code></pre></div>
+<pre><code class="language-yaml">gpu_nic_affinity_report:
+  node: gpu-node-042
+  baseline_id: node-topology-20260620
+  allocation:
+    pod: train-worker-17
+    rank: 17
+    gpu_uuid: GPU-aaaa
+    numa_node: 1
+    cpu_set: &quot;64-95&quot;
+  nic_affinity:
+    preferred_nic: mlx5_1
+    preferred_rail: rail1
+    switch_port: leaf12-eth1/42
+    distance: local_numa
+  container_view:
+    visible_gpu_uuid: GPU-aaaa
+    visible_rdma_devices: [mlx5_1]
+    runtime_class: nvidia
+  nccl_view:
+    selected_interface: mlx5_1
+    selected_transport: rdma
+    interface_matches_affinity: true
+  decision:
+    topology_ready_for_distributed_training: true
+</code></pre>
 <p>这份报告能区分三类常见问题：调度分配了正确 GPU 但容器没有 RDMA 设备，容器有多张 NIC 但 NCCL 选了管理网，或者 GPU 与 NIC 跨 NUMA 导致局部 rank 慢。对强通信训练，GPU/NIC 亲和失败应触发重新调度或节点降级；对普通推理或弱通信 batch，则可以进入 best-effort 资源等级。亲和不是绝对规则，而是 workload 级性能契约。</p>
 <h3 id="3137-rack">31.3.7 rack 内通信<a class="headerlink" href="#3137-rack" title="Permanent link">&para;</a></h3>
 <p>Rack 内通信位于 scale-up 与 scale-out 的交界。对于 rack 级 GPU 系统，rack 内可能拥有特殊互联或更高带宽域；对于普通服务器集群，rack 内通常由 ToR 或 leaf switch 承载。它比单节点范围更大，比跨 rack 通信更可控，是中等规模训练和批量推理的重要放置层级。</p>
@@ -4016,24 +3983,24 @@
 <h2 id="314">31.4 工程落地<a class="headerlink" href="#314" title="Permanent link">&para;</a></h2>
 <h3 id="3141">31.4.1 工程实现<a class="headerlink" href="#3141" title="Permanent link">&para;</a></h3>
 <p>Scale-up 拓扑应进入资源画像，而不是只保留在硬件文档中。资源画像至少包含 NUMA domain、CPU set、GPU 列表、NIC 列表、PCIe 路径、NVLink/NVSwitch 域、本地 NVMe、驱动和拓扑基线。示例：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">node_topology</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">node</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-node-042</span>
-<span class="w">  </span><span class="nt">numa_domains</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span>
-<span class="w">      </span><span class="nt">cpus</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;0-63&quot;</span>
-<span class="w">      </span><span class="nt">gpus</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;GPU0&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;GPU1&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;GPU2&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;GPU3&quot;</span><span class="p p-Indicator">]</span>
-<span class="w">      </span><span class="nt">nics</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;mlx5_0&quot;</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
-<span class="w">      </span><span class="nt">cpus</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;64-127&quot;</span>
-<span class="w">      </span><span class="nt">gpus</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;GPU4&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;GPU5&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;GPU6&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;GPU7&quot;</span><span class="p p-Indicator">]</span>
-<span class="w">      </span><span class="nt">nics</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;mlx5_1&quot;</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">gpu_fabric</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nvswitch</span>
-<span class="w">    </span><span class="nt">domain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nv-domain-a</span>
-<span class="w">  </span><span class="nt">scheduling_labels</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">topology.ai-factory/gpu-domain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nv-domain-a</span>
-<span class="w">    </span><span class="nt">topology.ai-factory/rdma-rail-count</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;2&quot;</span>
-</code></pre></div>
+<pre><code class="language-yaml">node_topology:
+  node: gpu-node-042
+  numa_domains:
+    - id: 0
+      cpus: &quot;0-63&quot;
+      gpus: [&quot;GPU0&quot;, &quot;GPU1&quot;, &quot;GPU2&quot;, &quot;GPU3&quot;]
+      nics: [&quot;mlx5_0&quot;]
+    - id: 1
+      cpus: &quot;64-127&quot;
+      gpus: [&quot;GPU4&quot;, &quot;GPU5&quot;, &quot;GPU6&quot;, &quot;GPU7&quot;]
+      nics: [&quot;mlx5_1&quot;]
+  gpu_fabric:
+    type: nvswitch
+    domain: nv-domain-a
+  scheduling_labels:
+    topology.ai-factory/gpu-domain: nv-domain-a
+    topology.ai-factory/rdma-rail-count: &quot;2&quot;
+</code></pre>
 <p>第二步是把画像接入调度。训练任务、推理服务和批量任务可以声明拓扑需求，例如同 NVSwitch 域、同 NUMA、GPU 与 NIC 邻近、完整 GPU island 或 best-effort。调度器根据需求选择资源，并把实际选择写入作业元数据。这样性能问题可以回溯到放置决策。</p>
 <p>第三步是建立准入和回归测试。节点入池前跑 PCIe、NVLink、NVSwitch、GPU-to-GPU bandwidth、单节点 NCCL、GPU-to-NIC RDMA 和典型模型 micro-benchmark。维修、驱动升级、firmware 变更或硬件更换后，重新运行同一测试。Scale-up 性能必须有基线。</p>
 <p>最后，要让运维系统能按拓扑隔离故障。单卡故障、NVLink 错误、NVSwitch 异常、PCIe 降速和 NUMA 配置错误的处理范围不同。平台应能隔离单 GPU、整节点或整个 GPU 域，并记录原因。故障隔离粒度决定资源池能否在稳定和利用率之间取得平衡。</p>
@@ -4042,24 +4009,24 @@
 <p>实现上还应把拓扑要求做成可验证字段，而不是自由文本。比如 <code>same_gpu_domain: true</code>、<code>gpu_nic_affinity: required</code>、<code>complete_island: preferred</code>。结构化字段才能被调度器和审计系统使用。</p>
 <p>字段也要有默认值，避免用户无意中选择错误拓扑。</p>
 <p>一个可操作的拓扑契约可以写成如下形式：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">scale_up_topology_contract</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">workload_class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tensor-parallel-inference</span>
-<span class="w">  </span><span class="nt">requested_gpus</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">4</span>
-<span class="w">  </span><span class="nt">required</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">same_gpu_fabric_domain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">min_gpu_to_gpu_bandwidth_baseline</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">production_profile</span>
-<span class="w">    </span><span class="nt">no_active_nvlink_errors</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">preferred</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">same_numa_domain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-<span class="w">    </span><span class="nt">gpu_nic_affinity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">best_effort</span>
-<span class="w">  </span><span class="nt">reject_if</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">topology_baseline_state</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">missing</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">failed</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">expired</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">gpu_domain_fragmented</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">record</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">allocated_gpu_uuids</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">node_topology_baseline_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">template_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-</code></pre></div>
+<pre><code class="language-yaml">scale_up_topology_contract:
+  workload_class: tensor-parallel-inference
+  requested_gpus: 4
+  required:
+    same_gpu_fabric_domain: true
+    min_gpu_to_gpu_bandwidth_baseline: production_profile
+    no_active_nvlink_errors: true
+  preferred:
+    same_numa_domain: false
+    gpu_nic_affinity: best_effort
+  reject_if:
+    topology_baseline_state: [missing, failed, expired]
+    gpu_domain_fragmented: true
+  record:
+    allocated_gpu_uuids: true
+    node_topology_baseline_id: true
+    template_version: true
+</code></pre>
 <p>它的价值在于把硬件拓扑、调度约束和复盘字段放到同一份合同里。用户不需要自己判断 <code>nvidia-smi topo -m</code> 的每个符号，平台也不能只凭空闲卡数量调度强通信任务。</p>
 <h3 id="3142">31.4.2 常见故障<a class="headerlink" href="#3142" title="Permanent link">&para;</a></h3>
 <p>第一类故障是同型号节点性能不同。GPU 型号、显存和驱动一致，但 PCIe、NVLink 或 GPU-to-NIC 拓扑不同，导致同一模型吞吐差异大。解决方向是建立拓扑画像和性能基线，不把同型号节点默认视为等价资源。</p>

@@ -1,0 +1,9 @@
+flowchart LR
+  Change["change / repair / incident"] --> Invalidate["baseline_invalidation_record"]
+  Invalidate --> Limit["resource pool: limited / deny high-risk workload"]
+  Invalidate --> Retest["required retest plan"]
+  Retest --> Pass{all required tests pass?}
+  Pass -->|yes| Restore["restore capabilities\nallocatable / workload-fit"]
+  Pass -->|no| Quarantine["quarantine / maintenance / vendor fix"]
+  Restore --> PRR["production readiness review can consume evidence"]
+  Quarantine --> Incident["incident / remediation backlog"]

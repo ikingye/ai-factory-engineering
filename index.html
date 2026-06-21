@@ -3207,33 +3207,12 @@
 <li>这些链路背后的容量、可靠性、成本和验收标准如何被设计，而不是靠经验临场处理？</li>
 </ul>
 <h2 id="2-ai-factory">2. 一张图理解 AI Factory<a class="headerlink" href="#2-ai-factory" title="Permanent link">&para;</a></h2>
-<pre class="mermaid"><code>flowchart TB
-  A["Application 层
-Chat / Agent / RAG / 行业应用"] --&gt; B["Platform 层
-MaaS / AI Gateway / Observability / Billing"]
-  B --&gt; C["Model 层
-训练 / 后训练 / 微调 / 评测 / 服务"]
-  C --&gt; D["AI Runtime 层
-CUDA / NCCL / RDMA / 推理引擎 / 训练框架"]
-  D --&gt; E["资源编排与作业调度层
-Container / Kubernetes / Slurm / Volcano / Kueue / Ray"]
-  E --&gt; F["GPU IaaS 层
-裸金属 / 虚拟化 / GPU 资源池 / 镜像 / 驱动"]
-  F --&gt; G["网络与存储层
-NVLink / NVSwitch / InfiniBand / RoCE / Object Storage / PFS / NVMe"]
-  G --&gt; H["物理基础设施层
-机房 / 电力 / 制冷 / GPU / NIC / Switch / Storage"]</code></pre>
+<p><img alt="图：2. 一张图理解 AI Factory" src="assets/diagrams/index-01.svg" /></p>
 <h2 id="3">3. 两条主线<a class="headerlink" href="#3" title="Permanent link">&para;</a></h2>
 <p>推理请求路径：</p>
-<pre class="mermaid"><code>flowchart LR
-  U["用户请求"] --&gt; GW["AI Gateway"] --&gt; Auth["认证鉴权"] --&gt; Limit["租户限流"] --&gt; Route["模型路由"]
-  Route --&gt; Serve["推理服务"] --&gt; Prefill["prefill"] --&gt; Decode["decode"] --&gt; KV["KV Cache"]
-  KV --&gt; Kernel["CUDA kernel"] --&gt; GPU["GPU / HBM"] --&gt; Stream["token streaming"] --&gt; Meter["token 计量"] --&gt; Bill["billing / observability"]</code></pre>
+<p><img alt="图：3. 两条主线" src="assets/diagrams/index-02.svg" /></p>
 <p>训练任务路径：</p>
-<pre class="mermaid"><code>flowchart LR
-  Submit["训练任务提交"] --&gt; Queue["队列"] --&gt; Quota["配额"] --&gt; Gang["gang scheduling"] --&gt; GPU["GPU 分配"]
-  GPU --&gt; Image["镜像启动"] --&gt; Data["数据读取"] --&gt; NCCL["NCCL 初始化"] --&gt; Train["forward / backward"]
-  Train --&gt; Grad["gradient communication"] --&gt; Ckpt["checkpoint"] --&gt; Eval["evaluation"] --&gt; Registry["model registry"] --&gt; Serving["model serving"]</code></pre>
+<p><img alt="图：3. 两条主线" src="assets/diagrams/index-03.svg" /></p>
 <h2 id="4">4. 适合谁读<a class="headerlink" href="#4" title="Permanent link">&para;</a></h2>
 <p>本书面向具备云计算、Kubernetes、后端工程或基础设施经验，但还没有系统理解 AI Infra 的工程师、架构师、SRE、平台团队和技术管理者。</p>
 <h2 id="5">5. 如何阅读<a class="headerlink" href="#5" title="Permanent link">&para;</a></h2>

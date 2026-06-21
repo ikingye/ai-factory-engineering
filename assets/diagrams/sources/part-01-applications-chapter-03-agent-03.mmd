@@ -1,0 +1,8 @@
+flowchart TB
+  Feedback["用户取消 / 工具失败 / 人工接管 / 审计告警"] --> QFE["quality_feedback_event"]
+  QFE --> Replay["agent run replay\nstate + tools + policies"]
+  Replay --> Traj["agent_trajectory_record"]
+  Traj --> Classify["failure layer classification"]
+  Classify --> Reg["agent_regression_case"]
+  Reg --> Gate["agent quality gate"]
+  Gate --> Release["model / orchestrator / tool schema release"]

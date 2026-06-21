@@ -3593,6 +3593,7 @@
 <li>故障树图：说明一个症状如何分解到可能根因。</li>
 <li>验收流水线图：说明准入、基线、异常检测和资源池状态如何闭环。</li>
 </ul>
+<p>公开正文中的图统一引用 <code>docs/assets/diagrams/</code> 下的 SVG 资产。图源、SVG、PNG 和正文引用必须通过 <code>python3 tools/audit_diagrams.py</code> 校验；不再把 Mermaid 源直接暴露在章节正文中。</p>
 <h2 id="4-gpu">4. GPU 容器运行时知识覆盖矩阵<a class="headerlink" href="#4-gpu" title="Permanent link">&para;</a></h2>
 <p>GPU 容器运行时不是单章孤立知识点，而是一条跨越主机驱动、容器运行时、Kubernetes 设备分配、准入验收、故障诊断和成本归因的生产链路。本书将这条链路拆分到相关章节中，读者读完后应能独立解释 GPU 如何从宿主机能力变成容器内可用设备，以及这条路径如何被调度、审计、验收和排障。</p>
 <table>
@@ -5287,7 +5288,7 @@
 <p>每轮完成后必须：</p>
 <ul>
 <li>更新对应章节正文。</li>
-<li>补充或修正 Mermaid 图。</li>
+<li>补充或修正 <code>fireworks-tech-graph</code> 静态图资产。</li>
 <li>补齐延伸阅读来源。</li>
 <li>运行 <code>python3 tools/audit_consistency.py</code>，检查核心术语、分层口径、公开 URL、旧结构规则和重复长段落。</li>
 <li>运行 <code>mkdocs build --strict</code>。</li>

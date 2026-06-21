@@ -1,0 +1,11 @@
+flowchart LR
+  Release["serving_release"] --> SQC["serving_quality_contract"]
+  Gate["quality_gate_record"] --> SQC
+  SQC --> Artifact["artifact digest check"]
+  SQC --> Protocol["protocol contract test"]
+  SQC --> Drift["token / output drift test"]
+  SQC --> Eval["quality regression suite"]
+  Artifact --> Decision["canary decision"]
+  Protocol --> Decision
+  Drift --> Decision
+  Eval --> Decision

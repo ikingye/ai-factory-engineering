@@ -3866,46 +3866,9 @@
 <p>架构中还应有节点生命周期控制。节点新加入、驱动升级、MIG 重切、RDMA 变更或故障维修后，都不应直接进入可调度资源池，而应先经过准入测试。通过后标记为 serving，失败则进入 quarantine 或 maintenance。GPU on Kubernetes 的稳定性，依赖控制面能理解节点状态，而不是只依赖 kubelet 上报 Ready。</p>
 <p>这要求 Kubernetes 节点 Ready 与 AI 节点 Ready 分开理解。前者表示 kubelet 与控制面正常，后者表示 GPU、驱动、runtime、RDMA、监控和基准测试都满足要求。AI Factory 应以后者决定是否接收 GPU workload。</p>
 <p>节点状态分层能避免把未验收资源暴露给用户。</p>
-<pre class="mermaid"><code>flowchart TB
-  subgraph Control["Kubernetes 控制面"]
-    API["API Server"] --&gt; Sched["Scheduler / scheduler plugin"]
-    API --&gt; Operator["GPU Operator"]
-  end
-  subgraph Node["GPU 节点"]
-    Kubelet["kubelet"] --&gt; DP["GPU Device Plugin"]
-    Kubelet --&gt; RDMA["RDMA / SR-IOV Device Plugin"]
-    Kubelet --&gt; Runtime["container runtime"]
-    Operator --&gt; Driver["NVIDIA Driver"]
-    Operator --&gt; Toolkit["NVIDIA Container Toolkit"]
-    Operator --&gt; DCGM["DCGM Exporter"]
-    DP --&gt; GPU["GPU / MIG"]
-    RDMA --&gt; NIC["RDMA NIC"]
-    Runtime --&gt; Pod["AI Pod"]
-    Pod --&gt; GPU
-    Pod --&gt; NIC
-  end
-  Sched --&gt; Kubelet</code></pre>
+<p><img alt="图：22.2.2 系统架构" src="../../assets/diagrams/part-05-orchestration-chapter-22-gpu-on-kubernetes-01.svg" /></p>
 <p>GPU 分配和 GPU 注入是两条相邻但不同的路径。分配路径回答“这个 Pod 允许使用哪张 GPU”，由 Scheduler、kubelet 和 device plugin 共同完成；注入路径回答“容器进程如何看到这张 GPU”，由 CRI、container runtime、OCI spec、NVIDIA runtime hook、<code>nvidia-container-cli</code> 和 <code>libnvidia-container</code> 完成。排障时必须先判断失败发生在哪条路径。</p>
-<pre class="mermaid"><code>sequenceDiagram
-  participant User as 用户 / 平台
-  participant API as API Server
-  participant S as Scheduler
-  participant K as kubelet
-  participant DP as GPU Device Plugin
-  participant CRI as containerd / CRI-O
-  participant NR as NVIDIA Runtime / Hook
-  participant C as Container
-
-  User-&gt;&gt;API: 提交 Pod, limits nvidia.com/gpu: 1
-  API-&gt;&gt;S: 待调度 Pod
-  S-&gt;&gt;API: 绑定到 GPU 节点
-  K-&gt;&gt;DP: Allocate 请求
-  DP--&gt;&gt;K: 返回 GPU device / env / annotations
-  K-&gt;&gt;CRI: CreateContainer
-  CRI-&gt;&gt;NR: 处理 OCI spec / prestart hook
-  NR-&gt;&gt;NR: 注入 /dev/nvidia* 与 driver libraries
-  CRI-&gt;&gt;C: 启动容器进程
-  C--&gt;&gt;User: CUDA / nvidia-smi / AI workload 可用</code></pre>
+<p><img alt="图：22.2.2 系统架构" src="../../assets/diagrams/part-05-orchestration-chapter-22-gpu-on-kubernetes-02.svg" /></p>
 <h2 id="223">22.3 关键技术<a class="headerlink" href="#223" title="Permanent link">&para;</a></h2>
 <h3 id="2231-gpu-device-plugin">22.3.1 GPU device plugin<a class="headerlink" href="#2231-gpu-device-plugin" title="Permanent link">&para;</a></h3>
 <p>Kubernetes 原生只理解 CPU、memory、ephemeral storage 等通用资源。GPU 这类硬件需要通过 Device Plugin 机制暴露给 kubelet。NVIDIA GPU device plugin 会发现节点上的 GPU 或 MIG 实例，并注册为 <code>nvidia.com/gpu</code> 或更细粒度资源。Scheduler 看到的是 allocatable 扩展资源，kubelet 在容器启动时调用 plugin 完成设备分配。</p>
@@ -3915,36 +3878,27 @@
 <p>Device Plugin 的健康变化也要触发调度保护。如果某张 GPU 被标记 unhealthy，新的 Pod 不应继续被分配；如果插件重启导致 allocatable 短暂变化，平台应避免错误释放或重复计算资源。资源注册是动态过程，容量系统必须处理这种动态性。</p>
 <p>否则库存数字会和真实可用资源不一致。</p>
 <p>Device Plugin 还决定“分配结果如何传递给 runtime”。常见策略包括通过环境变量传递 GPU 列表、通过 volume mount 传递设备信息、通过 CDI device name 传递标准化设备描述，或由厂商扩展机制配合 NRI 注入。不同策略对排障、隔离和可移植性影响很大。envvar strategy 最容易理解，但容易受到镜像默认环境变量和 runtime hook 行为影响；CDI strategy 更标准，能把 device nodes、mount、env 和 hook 描述为 runtime 可消费的 spec，但要求 container runtime、CRI 和节点配置都支持 CDI。平台选择策略时，应把它写入资源池基线，而不是让不同节点自由漂移。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">gpu_device_plugin_policy</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">resource_pool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">inference-prod-h100</span>
-<span class="w">  </span><span class="nt">plugin_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pinned</span>
-<span class="w">  </span><span class="nt">device_list_strategy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cdi</span>
-<span class="w">  </span><span class="nt">fallback_strategy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">disabled</span>
-<span class="w">  </span><span class="nt">advertised_resources</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nvidia.com/gpu</span>
-<span class="w">  </span><span class="nt">mig_strategy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mixed</span>
-<span class="w">  </span><span class="nt">fail_on_init_error</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">required_runtime_support</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">containerd_cdi</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">runtime_class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">optional</span>
-<span class="w">  </span><span class="nt">validation</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kubelet_device_plugin_registration</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cdi_spec_generated</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pod_allocated_resource_visible</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">container_device_matches_assignment</span>
-</code></pre></div>
+<pre><code class="language-yaml">gpu_device_plugin_policy:
+  resource_pool: inference-prod-h100
+  plugin_version: pinned
+  device_list_strategy: cdi
+  fallback_strategy: disabled
+  advertised_resources:
+    - nvidia.com/gpu
+  mig_strategy: mixed
+  fail_on_init_error: true
+  required_runtime_support:
+    containerd_cdi: true
+    runtime_class: optional
+  validation:
+    - kubelet_device_plugin_registration
+    - cdi_spec_generated
+    - pod_allocated_resource_visible
+    - container_device_matches_assignment
+</code></pre>
 <p>这个策略对象解决的是“同一个资源池内设备分配语义一致”。如果某些节点使用 envvar，某些节点使用 CDI，<code>gpu_assignment_record</code>、准入测试和用户诊断报告必须能区分；否则同样的 Pod 在不同节点上会有不同的失败模式。生产平台更推荐每个资源池固定一种策略，只有升级期间短暂混合，并由 admission 控制受影响范围。</p>
 <p>Device plugin 策略变更必须进入第 21 章的 <code>container_runtime_change_record</code>。从 envvar 切到 CDI，看起来只是 device plugin 配置项变化，实际会改变 kubelet Allocate 返回内容、CRI 传递给 runtime 的设备描述、OCI spec 中的 env/mount/device 差异、容器内 <code>NVIDIA_VISIBLE_DEVICES</code> 语义、MIG 标识和诊断入口。若 GPU Operator 同时升级 Toolkit 或 device plugin，变更面还会扩大。平台应禁止“只改 DaemonSet 参数”的生产变更，除非同一记录里已经说明 containerd/CDI/NRI 支持、RuntimeClass 策略、准入矩阵和回滚路径。</p>
-<pre class="mermaid"><code>flowchart LR
-  Policy["gpu_device_plugin_policy"] --&gt; Allocate["kubelet Allocate\nresource -&gt; device ids"]
-  Allocate --&gt; Strategy{"device_list_strategy"}
-  Strategy --&gt; Env["envvar\nNVIDIA_VISIBLE_DEVICES"]
-  Strategy --&gt; CDI["CDI device names\ncdi spec"]
-  Env --&gt; Diff["oci_runtime_injection_diff"]
-  CDI --&gt; Diff
-  Diff --&gt; Recon["gpu_device_visibility_reconciliation"]
-  Recon --&gt; Assignment["gpu_assignment_record"]
-  Assignment --&gt; Telemetry["DCGM / billing / incident"]</code></pre>
+<p><img alt="图：22.3.1 GPU device plugin" src="../../assets/diagrams/part-05-orchestration-chapter-22-gpu-on-kubernetes-03.svg" /></p>
 <p>这条图的关键是把 device plugin 的输出纳入全链路证据。很多故障不是 device plugin 没注册，而是它的分配语义和 runtime 消费语义不一致：device plugin 认为已经给了 CDI device name，containerd 没启 CDI；device plugin 仍用 envvar，镜像默认值覆盖了 visible devices；MIG mixed 策略下资源名和 CDI device name 不一致；device plugin 重启后 kubelet 资源视图与容器内事实脱节。<code>gpu_assignment_record</code> 应引用策略版本和分配事件，才能在事故中判断是策略错、runtime 错还是容器内探测错。</p>
 <h3 id="2232-gpu-operator">22.3.2 GPU Operator<a class="headerlink" href="#2232-gpu-operator" title="Permanent link">&para;</a></h3>
 <p>GPU Operator 使用 Kubernetes Operator 模式管理 GPU 节点软件栈。典型组件包括 NVIDIA Driver、NVIDIA Container Toolkit、GPU Device Plugin、DCGM Exporter、Node Feature Discovery 和 MIG Manager。它的价值在于把 GPU 节点配置声明化、自动化，减少手工安装和版本漂移。对于大规模 Kubernetes GPU 集群，这是重要的运维能力。</p>
@@ -3956,54 +3910,54 @@
 <p>Operator 变更也应写入审计记录，包括版本、策略和受影响节点。</p>
 <p>审计记录能支撑回滚。</p>
 <p>GPU Operator 的配置应显式表达哪些组件由它管理。常见模式有三种：一是 Operator 全管 driver、Toolkit、device plugin、DCGM 和 MIG，适合云原生团队主导且节点 OS 较标准的集群；二是 driver/OFED 由 golden image 或裸金属 provisioning 管理，Operator 只管 Toolkit、device plugin、DCGM 和 MIG；三是生产集群只使用 Operator 的部分组件，driver、Toolkit 甚至 device plugin 都由平台自研流水线管理。三种模式都可以成立，但不能混在一个资源池里不说明。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">gpu_operator_management_boundary</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">cluster</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ai-prod-k8s</span>
-<span class="w">  </span><span class="nt">node_pool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">h100-inference</span>
-<span class="w">  </span><span class="nt">operator_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pinned</span>
-<span class="w">  </span><span class="nt">manages</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">driver</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-<span class="w">    </span><span class="nt">container_toolkit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">device_plugin</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">dcgm_exporter</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">mig_manager</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-<span class="w">    </span><span class="nt">node_feature_discovery</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">external_owners</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">driver</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu_iaas_baseline</span>
-<span class="w">    </span><span class="nt">rdma_stack</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">network_baseline</span>
-<span class="w">    </span><span class="nt">mig_layout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">resource_pool_controller</span>
-<span class="w">  </span><span class="nt">conflict_checks</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">driver_daemonset_disabled_when_preinstalled</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">toolkit_version_matches_node_baseline</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">device_plugin_strategy_matches_resource_pool</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dcgm_labels_include_pod_and_gpu_uuid</span>
-<span class="w">  </span><span class="nt">upgrade_guardrails</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">canary_node_pool_required</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu_container_smoke_required</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dcgm_metric_schema_check_required</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rollback_to_previous_operator_chart</span>
-</code></pre></div>
+<pre><code class="language-yaml">gpu_operator_management_boundary:
+  cluster: ai-prod-k8s
+  node_pool: h100-inference
+  operator_version: pinned
+  manages:
+    driver: false
+    container_toolkit: true
+    device_plugin: true
+    dcgm_exporter: true
+    mig_manager: false
+    node_feature_discovery: true
+  external_owners:
+    driver: gpu_iaas_baseline
+    rdma_stack: network_baseline
+    mig_layout: resource_pool_controller
+  conflict_checks:
+    - driver_daemonset_disabled_when_preinstalled
+    - toolkit_version_matches_node_baseline
+    - device_plugin_strategy_matches_resource_pool
+    - dcgm_labels_include_pod_and_gpu_uuid
+  upgrade_guardrails:
+    - canary_node_pool_required
+    - gpu_container_smoke_required
+    - dcgm_metric_schema_check_required
+    - rollback_to_previous_operator_chart
+</code></pre>
 <p>这个边界对象能避免“自动化双写”。例如 driver 由 golden image 固定时，Operator 的 driver DaemonSet 应关闭；MIG layout 由资源池控制器管理时，Operator 的 MIG manager 不应独立修改节点；device plugin 策略从 envvar 切到 CDI 时，containerd 基线也必须同步升级。Operator 是运维工具，不是责任边界的替代品。</p>
 <p>GPU Operator 升级还要关注观测 schema。DCGM exporter 标签、device plugin 资源名、MIG entity id、Pod 到 GPU 的映射方式、CDI device name 和 RuntimeClass handler 都可能在升级后变化。若监控标签变化但成本系统和故障诊断没有同步，平台会出现“设备仍在跑，账本却断链”的问题。Operator 变更因此要同时验证运行路径和观测路径：Pod 能否启动，容器内 GPU 是否正确，DCGM 指标是否带 pod/namespace/GPU UUID，账单能否把 token 或 GPU hour 归到同一分配记录。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">gpu_operator_upgrade_evidence</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">upgrade_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gou-20260620-001</span>
-<span class="w">  </span><span class="nt">linked_change_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">crc-gpu-runtime-20260620-001</span>
-<span class="w">  </span><span class="nt">from_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pinned_previous</span>
-<span class="w">  </span><span class="nt">to_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pinned_next</span>
-<span class="w">  </span><span class="nt">affected_components</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">container_toolkit</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">device_plugin</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dcgm_exporter</span>
-<span class="w">  </span><span class="nt">validation</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">gpu_operator_management_boundary</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">reviewed</span>
-<span class="w">    </span><span class="nt">container_gpu_runtime_acceptance_matrix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass_on_canary_pool</span>
-<span class="w">    </span><span class="nt">gpu_device_visibility_reconciliation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">dcgm_metric_schema_compatible</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">pod_to_gpu_uuid_mapping_preserved</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">rollback_chart_and_values_available</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">rollout_decision</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">expand_to_prod_pool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true_or_false</span>
-<span class="w">    </span><span class="nt">required_follow_up</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[]</span>
-</code></pre></div>
+<pre><code class="language-yaml">gpu_operator_upgrade_evidence:
+  upgrade_id: gou-20260620-001
+  linked_change_record: crc-gpu-runtime-20260620-001
+  from_version: pinned_previous
+  to_version: pinned_next
+  affected_components:
+    - container_toolkit
+    - device_plugin
+    - dcgm_exporter
+  validation:
+    gpu_operator_management_boundary: reviewed
+    container_gpu_runtime_acceptance_matrix: pass_on_canary_pool
+    gpu_device_visibility_reconciliation: pass
+    dcgm_metric_schema_compatible: pass
+    pod_to_gpu_uuid_mapping_preserved: pass
+    rollback_chart_and_values_available: true
+  rollout_decision:
+    expand_to_prod_pool: true_or_false
+    required_follow_up: []
+</code></pre>
 <p>这个证据对象补齐了 Operator 的控制面风险。GPU Operator 的价值在自动化，但自动化组件一旦改变设备注入、指标标签或 MIG 配置，影响范围可能比单个业务发布更大。把升级结果绑定到 <code>container_runtime_change_record</code>，可以让第 38 章的准入、第 39 章的故障树、第 41 章的可靠性成本和第 44 章的 PRR 使用同一事实，而不是各自判断“Operator 看起来正常”。</p>
 <h3 id="2233-gpu-resource-request">22.3.3 GPU resource request<a class="headerlink" href="#2233-gpu-resource-request" title="Permanent link">&para;</a></h3>
 <p>Pod 通常通过扩展资源申请 GPU，例如在 <code>resources.limits</code> 中声明 <code>nvidia.com/gpu: 1</code>。Kubernetes 对这类扩展资源通常按整数设备处理，适合整卡分配。这个模型简单、稳定、易于调度，也是很多 GPU workload 的基础。但它只能表达数量，不能表达 GPU 型号、HBM 容量、NVLink 关系、MIG profile、RDMA rail、节点软件栈或性能等级。</p>
@@ -4017,138 +3971,119 @@
 <p>在更复杂的集群里，GPU 资源请求还可能从传统 extended resource 走向 DRA（Dynamic Resource Allocation，动态资源分配）。传统 device plugin 把设备暴露成整数扩展资源，例如 <code>nvidia.com/gpu: 1</code>；Kubernetes 官方文档也明确这类 extended resources 是整数、不可超卖，并且设备不能在容器之间共享。这个模型简单可靠，但表达能力有限：它很难描述“需要一个具备特定属性的设备”“需要某个设备类”“需要在 Pod 生命周期中把设备 claim 和容器使用绑定起来”。</p>
 <p>DRA 用 <code>DeviceClass</code>、<code>ResourceClaim</code>、<code>ResourceClaimTemplate</code>、<code>ResourceSlice</code> 等对象把设备分类、声明和调度结果结构化。它的思路类似动态存储卷：用户或上层控制面声明需要什么类型的资源，调度和资源驱动在集群中找到满足条件的设备，并把 claim 与 Pod 使用绑定。对 AI Factory 来说，DRA 的价值不在于替代所有 GPU 调度器，而在于提供更标准的资源声明语义：GPU class、MIG profile、HBM 等级、RDMA 亲和、驱动基线和资源池策略可以被更清楚地放进“声明-分配-使用”的链路里。</p>
 <p>但 DRA 也不会自动解决全部 AI 调度问题。它能改善设备属性表达和 claim 生命周期，却不直接替代 queue、quota、gang scheduling、rank topology、NCCL baseline、模型硬件匹配和 Token Factory 成本口径。一个大型训练任务仍然需要作业级准入，一个高 SLA 推理服务仍然需要 Gateway 路由和 runtime health，一个多租户资源池仍然需要 entitlement 和审计。因此，本书建议把 DRA 或 extended resource 都统一纳入 <code>gpu_resource_claim_contract</code>：无论底层机制是哪一种，平台都必须能证明用户意图、Kubernetes 声明、设备分配、runtime 注入、容器内事实和计费口径一致。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">gpu_resource_claim_contract</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">contract_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">grcc-code-chat-20260620</span>
-<span class="w">  </span><span class="nt">workload</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">maas-prod</span>
-<span class="w">    </span><span class="nt">workload_ref</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">deployment/code-chat-prod</span>
-<span class="w">    </span><span class="nt">tenant</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enterprise-a</span>
-<span class="w">    </span><span class="nt">workload_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">online_inference</span>
-<span class="w">  </span><span class="nt">intent</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">gpu_class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">h200-long-context-prod</span>
-<span class="w">    </span><span class="nt">quantity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
-<span class="w">    </span><span class="nt">isolation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">full_card_or_dedicated_mig</span>
-<span class="w">    </span><span class="nt">hbm_capacity_class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">extra_large</span>
-<span class="w">    </span><span class="nt">rdma_required</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-<span class="w">    </span><span class="nt">runtime_baseline</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rb-h200-202606</span>
-<span class="w">    </span><span class="nt">service_level</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">premium</span>
-<span class="w">  </span><span class="nt">kubernetes_binding</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dra_or_extended_resource</span>
-<span class="w">    </span><span class="nt">device_class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu.ai-factory/h200-long-context</span>
-<span class="w">    </span><span class="nt">resource_claim</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rc-code-chat-h200-001</span>
-<span class="w">    </span><span class="nt">resource_claim_template</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">optional_if_replicated</span>
-<span class="w">    </span><span class="nt">extended_resource_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nvidia.com/gpu</span>
-<span class="w">  </span><span class="nt">platform_policy</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">resource_pool_entitlement</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ent-enterprise-a-premium</span>
-<span class="w">    </span><span class="nt">model_hardware_fit_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mhf-code-assistant-20260620</span>
-<span class="w">    </span><span class="nt">heterogeneous_pool_acceptance_matrix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">hpa-mixed-prod-202606</span>
-<span class="w">    </span><span class="nt">queue_or_priority_class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">inference-premium</span>
-<span class="w">  </span><span class="nt">expected_runtime</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">device_list_strategy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cdi</span>
-<span class="w">    </span><span class="nt">runtime_class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nvidia_or_default_cdi</span>
-<span class="w">    </span><span class="nt">visible_device_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">exactly_claimed_devices</span>
-<span class="w">    </span><span class="nt">mig_visibility_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">no_whole_gpu_if_mig_claimed</span>
-<span class="w">  </span><span class="nt">required_evidence</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">resource_claim_admission_record</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu_assignment_record</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">oci_runtime_injection_diff</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu_device_visibility_reconciliation</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">metering_resource_label_continuity</span>
-</code></pre></div>
+<pre><code class="language-yaml">gpu_resource_claim_contract:
+  contract_id: grcc-code-chat-20260620
+  workload:
+    namespace: maas-prod
+    workload_ref: deployment/code-chat-prod
+    tenant: enterprise-a
+    workload_type: online_inference
+  intent:
+    gpu_class: h200-long-context-prod
+    quantity: 1
+    isolation: full_card_or_dedicated_mig
+    hbm_capacity_class: extra_large
+    rdma_required: false
+    runtime_baseline: rb-h200-202606
+    service_level: premium
+  kubernetes_binding:
+    mode: dra_or_extended_resource
+    device_class: gpu.ai-factory/h200-long-context
+    resource_claim: rc-code-chat-h200-001
+    resource_claim_template: optional_if_replicated
+    extended_resource_name: nvidia.com/gpu
+  platform_policy:
+    resource_pool_entitlement: ent-enterprise-a-premium
+    model_hardware_fit_record: mhf-code-assistant-20260620
+    heterogeneous_pool_acceptance_matrix: hpa-mixed-prod-202606
+    queue_or_priority_class: inference-premium
+  expected_runtime:
+    device_list_strategy: cdi
+    runtime_class: nvidia_or_default_cdi
+    visible_device_policy: exactly_claimed_devices
+    mig_visibility_policy: no_whole_gpu_if_mig_claimed
+  required_evidence:
+    - resource_claim_admission_record
+    - gpu_assignment_record
+    - oci_runtime_injection_diff
+    - gpu_device_visibility_reconciliation
+    - metering_resource_label_continuity
+</code></pre>
 <p>这个 contract 把“声明了资源”和“拿到了正确资源”分开。<code>ResourceClaim</code> 或 extended resource request 只是输入，<code>gpu_assignment_record</code> 才是分配事实，<code>oci_runtime_injection_diff</code> 才能说明 runtime 如何注入，<code>gpu_device_visibility_reconciliation</code> 才能证明容器内看到的是被分配设备，计量标签连续性才能证明账单和成本归属没有断。缺少任何一环，平台都只能说“Pod 可能调度成功”，不能说“租户拿到了被承诺的 GPU 能力”。</p>
-<pre class="mermaid"><code>flowchart LR
-  Intent["workload intent\nGPU class / HBM / isolation / SLO"] --&gt; Contract["gpu_resource_claim_contract"]
-  Contract --&gt; K8s["DeviceClass / ResourceClaim\nor extended resource"]
-  Contract --&gt; Policy["entitlement / quota / model fit"]
-  K8s --&gt; Assign["gpu_assignment_record"]
-  Policy --&gt; Admission["resource_claim_admission_record"]
-  Admission --&gt; Assign
-  Assign --&gt; Runtime["OCI / CDI / NVIDIA runtime"]
-  Runtime --&gt; Recon["gpu_device_visibility_reconciliation"]
-  Recon --&gt; Meter["metering + cost labels"]</code></pre>
+<p><img alt="图：22.3.3 GPU resource request" src="../../assets/diagrams/part-05-orchestration-chapter-22-gpu-on-kubernetes-04.svg" /></p>
 <p>这张图也说明排障顺序。若 claim 无法绑定，先看 DeviceClass、ResourceSlice、entitlement、quota 和资源池状态；若 claim 已绑定但 Pod 创建失败，看 device plugin、kubelet Allocate、CDI spec 和 runtime handler；若 Pod Running 但看到错误设备，看 runtime 注入和容器内对账；若设备正确但账单不准，看 metering label continuity。把这些阶段混在一起，会让 GPU 调度问题变成“调度器坏了”或“容器坏了”的泛化指责。</p>
 <p>GPU 分配还必须留下 <code>gpu_assignment_record</code>。它是连接调度、runtime、观测、计费和审计的证据对象，回答一个 Pod 实际拿到了哪块 GPU、哪个 MIG 实例、哪个 NIC、哪个 NUMA、哪个 RuntimeClass，以及这些事实来自哪个 device plugin 和 kubelet 事件。没有这个记录，后续看到 Xid、带宽下降、账单争议或租户隔离问题时，只能临时从日志里拼历史。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">gpu_assignment_record</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">assignment_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gar-20260619-0001</span>
-<span class="w">  </span><span class="nt">workload</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">maaS-prod</span>
-<span class="w">    </span><span class="nt">pod</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">model-af-chat-large-7d8f9</span>
-<span class="w">    </span><span class="nt">tenant_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enterprise-a</span>
-<span class="w">    </span><span class="nt">project_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">customer-service-prod</span>
-<span class="w">    </span><span class="nt">workload_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">online_inference</span>
-<span class="w">  </span><span class="nt">request</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">gpu_class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">inference-h100</span>
-<span class="w">    </span><span class="nt">resource_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nvidia.com/gpu</span>
-<span class="w">    </span><span class="nt">quantity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
-<span class="w">    </span><span class="nt">rdma_required</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-<span class="w">  </span><span class="nt">placement</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">node</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-node-001</span>
-<span class="w">    </span><span class="nt">runtime_class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nvidia</span>
-<span class="w">    </span><span class="nt">device_list_strategy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cdi</span>
-<span class="w">    </span><span class="nt">device_plugin_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">container_toolkit_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">container_runtime</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">containerd</span>
-<span class="w">    </span><span class="nt">runtime_handler</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nvidia</span>
-<span class="w">  </span><span class="nt">devices</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">gpu_uuid</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">GPU-xxxx</span>
-<span class="w">    </span><span class="nt">mig_uuid</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">none</span>
-<span class="w">    </span><span class="nt">numa_node</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span>
-<span class="w">    </span><span class="nt">rdma_device</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">none</span>
-<span class="w">    </span><span class="nt">nic</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mlx5_0</span>
-<span class="w">  </span><span class="nt">evidence</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">kubelet_allocate_event</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">linked</span>
-<span class="w">    </span><span class="nt">cdi_spec_ref</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/var/run/cdi/nvidia-gpu.yaml</span>
-<span class="w">    </span><span class="nt">cdi_device_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nvidia.com/gpu=GPU-xxxx</span>
-<span class="w">    </span><span class="nt">nvidia_visible_devices</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">GPU-xxxx</span>
-<span class="w">    </span><span class="nt">dcgm_entity_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">linked</span>
-<span class="w">  </span><span class="nt">billing_labels</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">resource_pool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">inference-premium-a</span>
-<span class="w">    </span><span class="nt">service_level</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">premium</span>
-<span class="w">    </span><span class="nt">cost_center</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cc-llm-cs</span>
-</code></pre></div>
+<pre><code class="language-yaml">gpu_assignment_record:
+  assignment_id: gar-20260619-0001
+  workload:
+    namespace: maaS-prod
+    pod: model-af-chat-large-7d8f9
+    tenant_id: enterprise-a
+    project_id: customer-service-prod
+    workload_type: online_inference
+  request:
+    gpu_class: inference-h100
+    resource_name: nvidia.com/gpu
+    quantity: 1
+    rdma_required: false
+  placement:
+    node: gpu-node-001
+    runtime_class: nvidia
+    device_list_strategy: cdi
+    device_plugin_version: measured
+    container_toolkit_version: measured
+    container_runtime: containerd
+    runtime_handler: nvidia
+  devices:
+    gpu_uuid: GPU-xxxx
+    mig_uuid: none
+    numa_node: 0
+    rdma_device: none
+    nic: mlx5_0
+  evidence:
+    kubelet_allocate_event: linked
+    cdi_spec_ref: /var/run/cdi/nvidia-gpu.yaml
+    cdi_device_name: nvidia.com/gpu=GPU-xxxx
+    nvidia_visible_devices: GPU-xxxx
+    dcgm_entity_id: linked
+  billing_labels:
+    resource_pool: inference-premium-a
+    service_level: premium
+    cost_center: cc-llm-cs
+</code></pre>
 <p>这个记录应在 Pod 创建时追加，在 Pod 重启、迁移、恢复或 device plugin 重新分配后追加新版本，而不是覆盖旧版本。训练任务尤其需要历史版本，因为某次恢复可能落到另一组 GPU/NIC，step time 变化就必须能解释。对安全审计来说，<code>gpu_assignment_record</code> 也能证明一个租户是否与另一个租户共置、是否使用了允许的资源等级、是否绕过了 device plugin。</p>
 <p><code>gpu_assignment_record</code> 还应支持分配事实与容器内事实对账。分配事实来自 kubelet/device plugin，容器内事实来自 <code>nvidia-smi -L</code>、CUDA runtime、CDI 解析和 <code>/dev/nvidia*</code> 可见性。两者不一致时，说明调度和 runtime 之间发生断裂。例如 record 中 <code>cdi_device_name</code> 指向某个 GPU UUID，但容器内 <code>nvidia-smi</code> 看到了全部 GPU；或者 record 中分配了 MIG 实例，容器内却看到了整卡设备。对账失败应触发 <code>device_visibility_mismatch</code> 告警，并阻止该节点继续接收生产 GPU Pod，直到 runtime 配置复测通过。</p>
 <p>多卡训练还需要 <code>gpu_nic_topology_evidence</code>。它把 Pod 或 rank 实际使用的 GPU、NUMA、CPU set、NIC、RDMA device、rail、NCCL interface 和 switch port 绑定在一起，回答“这组 GPU 是否真的靠近这组 NIC”。没有这个对象，NCCL 慢只能在训练框架、网络和调度之间来回甩锅；有这个对象，平台可以判断慢 rank 是否集中在跨 NUMA、跨 PCIe root complex、错 rail 或容器 RDMA 不可见的节点上。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">gpu_nic_topology_evidence</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">evidence_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gnte-train-20260620-rack12</span>
-<span class="w">  </span><span class="nt">workload</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">job</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pretrain-exp-20260620</span>
-<span class="w">    </span><span class="nt">pod</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">worker-17</span>
-<span class="w">    </span><span class="nt">rank</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">136</span>
-<span class="w">  </span><span class="nt">placement</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">node</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-node-017</span>
-<span class="w">    </span><span class="nt">gpu_uuid</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">GPU-xxxx</span>
-<span class="w">    </span><span class="nt">mig_uuid</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">none</span>
-<span class="w">    </span><span class="nt">numa_node</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span>
-<span class="w">    </span><span class="nt">cpu_set</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">  </span><span class="nt">network</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">rdma_device</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mlx5_0</span>
-<span class="w">    </span><span class="nt">nic_pci_bus</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;0000:41:00.0&quot;</span>
-<span class="w">    </span><span class="nt">rail</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rail-a</span>
-<span class="w">    </span><span class="nt">switch_port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">leaf11/1/17</span>
-<span class="w">    </span><span class="nt">nccl_selected_interface</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mlx5_0</span>
-<span class="w">  </span><span class="nt">runtime</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">runtime_class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nvidia</span>
-<span class="w">    </span><span class="nt">device_list_strategy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cdi</span>
-<span class="w">    </span><span class="nt">rdma_visible_in_container</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">gpu_device_visibility_reconciliation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gdvr-20260620-001</span>
-<span class="w">  </span><span class="nt">verdict</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">gpu_nic_numa_aligned</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">nccl_interface_matches_affinity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">topology_risk</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">none</span>
-</code></pre></div>
+<pre><code class="language-yaml">gpu_nic_topology_evidence:
+  evidence_id: gnte-train-20260620-rack12
+  workload:
+    job: pretrain-exp-20260620
+    pod: worker-17
+    rank: 136
+  placement:
+    node: gpu-node-017
+    gpu_uuid: GPU-xxxx
+    mig_uuid: none
+    numa_node: 0
+    cpu_set: measured
+  network:
+    rdma_device: mlx5_0
+    nic_pci_bus: &quot;0000:41:00.0&quot;
+    rail: rail-a
+    switch_port: leaf11/1/17
+    nccl_selected_interface: mlx5_0
+  runtime:
+    runtime_class: nvidia
+    device_list_strategy: cdi
+    rdma_visible_in_container: true
+    gpu_device_visibility_reconciliation: gdvr-20260620-001
+  verdict:
+    gpu_nic_numa_aligned: true
+    nccl_interface_matches_affinity: true
+    topology_risk: none
+</code></pre>
 <p>这份证据应由调度器、kubelet 事件、device plugin、CNI/RDMA 插件、NCCL 环境和网络 telemetry 共同生成。它不是静态拓扑表，而是某个 workload 的实际运行事实。节点拓扑正确但 Pod 没拿到对应 RDMA device，证据会失败；调度意图正确但 NCCL 选择了另一张网卡，证据也会失败。第 39 章的 NCCL hang 分支应优先引用它，而不是只看 switch 端口计数。</p>
-<pre class="mermaid"><code>flowchart LR
-  Intent["workload intent\nGPU class + RDMA + topology"] --&gt; Placement["placement_commit_record\nnode / rank / constraints"]
-  Placement --&gt; Assign["gpu_assignment_record\nGPU / MIG / runtime"]
-  Assign --&gt; Visibility["gpu_device_visibility_reconciliation\ncontainer GPU facts"]
-  Placement --&gt; NIC["RDMA device allocation\nNIC / rail / NUMA"]
-  NIC --&gt; Topology["gpu_nic_topology_evidence\nGPU + NIC + NCCL interface"]
-  Visibility --&gt; Topology
-  Topology --&gt; Telemetry["NCCL / DCGM / fabric telemetry"]
-  Telemetry --&gt; Decision{"meets baseline?"}
-  Decision --&gt;|yes| Run["run workload"]
-  Decision --&gt;|no| Action["cordon / relabel / retest / reroute"]</code></pre>
+<p><img alt="图：22.3.3 GPU resource request" src="../../assets/diagrams/part-05-orchestration-chapter-22-gpu-on-kubernetes-05.svg" /></p>
 <p>这张图把“意图、放置、注入、运行事实和 telemetry”串成一条证据流。对多卡训练，<code>placement_commit_record</code> 说明调度意图，<code>gpu_assignment_record</code> 说明设备分配，<code>gpu_device_visibility_reconciliation</code> 说明容器内是否看到正确 GPU，<code>gpu_nic_topology_evidence</code> 说明 GPU 与 NIC 是否真正对齐。只有这些事实都成立，NCCL 指标才有可靠解释基础。</p>
 <h3 id="2234-mig">22.3.4 MIG<a class="headerlink" href="#2234-mig" title="Permanent link">&para;</a></h3>
 <p>MIG 即 Multi-Instance GPU，可以把一张物理 GPU 切分成多个硬件隔离实例。每个 MIG 实例拥有独立的一部分计算和显存资源，适合小模型推理、开发测试、多租户隔离和资源粒度较细的场景。相比 time-slicing，MIG 的隔离更强，性能更可预测；相比整卡分配，MIG 能提高资源利用率，减少小任务占整卡的浪费。</p>
@@ -4250,18 +4185,18 @@
 <h3 id="2241">22.4.1 工程实现<a class="headerlink" href="#2241" title="Permanent link">&para;</a></h3>
 <p>GPU 节点应同时暴露资源和能力标签。资源字段告诉 Kubernetes 有多少可分配 GPU，能力标签告诉平台这些 GPU 适合什么 workload。标签可以描述 GPU 型号、HBM、NVLink/NVSwitch 域、RDMA、MIG、driver baseline、节点健康和资源池。上层平台再根据 workload spec 选择合适节点，而不是让用户手写所有 nodeSelector。</p>
 <p>示例标签如下：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">metadata</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">labels</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">accelerator.ai-factory/gpu</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">h100</span>
-<span class="w">    </span><span class="nt">topology.ai-factory/nvlink-domain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">node-local</span>
-<span class="w">    </span><span class="nt">topology.ai-factory/rdma</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enabled</span>
-<span class="w">    </span><span class="nt">runtime.ai-factory/gpu-baseline</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;2026-06&quot;</span>
-<span class="nt">spec</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">taints</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nvidia.com/gpu</span>
-<span class="w">      </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">present</span>
-<span class="w">      </span><span class="nt">effect</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">NoSchedule</span>
-</code></pre></div>
+<pre><code class="language-yaml">metadata:
+  labels:
+    accelerator.ai-factory/gpu: h100
+    topology.ai-factory/nvlink-domain: node-local
+    topology.ai-factory/rdma: enabled
+    runtime.ai-factory/gpu-baseline: &quot;2026-06&quot;
+spec:
+  taints:
+    - key: nvidia.com/gpu
+      value: present
+      effect: NoSchedule
+</code></pre>
 <p>任务提交系统应根据模型需求选择整卡、MIG、time-slicing 或专属节点，并生成资源请求、节点选择、队列和安全策略。节点加入资源池前，应通过 driver、CUDA、device plugin、container GPU smoke test、DCGM、MIG、NCCL 和 RDMA 验收。运行时，平台应记录 Pod 到 GPU/NIC 的映射。这样才能把调度、观测和计费连接起来。</p>
 <p>实现还应有准入和漂移检测。节点标签应由自动发现和验收流水线生成，不能长期依赖人工维护。若 driver、MIG、RDMA、device plugin 或 DCGM 状态变化，节点应重新评估能力标签。任务运行后，实际分配结果也要写入元数据，避免调度意图和运行事实脱节。</p>
 <p>实现还要提供资源等级。<code>production-dedicated</code> 可用于关键在线和训练，<code>mig-isolated</code> 用于小模型推理，<code>shared-best-effort</code> 用于开发测试。不同等级绑定不同准入、监控、计费和抢占策略。这样用户选择的是服务等级，而不是一堆底层硬件开关。</p>

@@ -1,0 +1,13 @@
+stateDiagram-v2
+  [*] --> Created
+  Created --> Pulling: image / artifact scheduled
+  Pulling --> Loading: container starts
+  Loading --> Warming: weights loaded, warmup running
+  Warming --> Ready: readiness probe passes
+  Ready --> Canary: receive canary traffic
+  Canary --> Stable: rollout gate passed
+  Canary --> RollingBack: gate failed
+  Stable --> Draining: rollout / scale down / maintenance
+  Draining --> Stopped: no active streams
+  RollingBack --> Draining
+  Stopped --> [*]

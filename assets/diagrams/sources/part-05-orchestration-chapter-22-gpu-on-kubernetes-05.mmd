@@ -1,0 +1,11 @@
+flowchart LR
+  Intent["workload intent\nGPU class + RDMA + topology"] --> Placement["placement_commit_record\nnode / rank / constraints"]
+  Placement --> Assign["gpu_assignment_record\nGPU / MIG / runtime"]
+  Assign --> Visibility["gpu_device_visibility_reconciliation\ncontainer GPU facts"]
+  Placement --> NIC["RDMA device allocation\nNIC / rail / NUMA"]
+  NIC --> Topology["gpu_nic_topology_evidence\nGPU + NIC + NCCL interface"]
+  Visibility --> Topology
+  Topology --> Telemetry["NCCL / DCGM / fabric telemetry"]
+  Telemetry --> Decision{"meets baseline?"}
+  Decision -->|yes| Run["run workload"]
+  Decision -->|no| Action["cordon / relabel / retest / reroute"]

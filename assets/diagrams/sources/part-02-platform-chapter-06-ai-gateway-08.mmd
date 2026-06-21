@@ -1,0 +1,13 @@
+stateDiagram-v2
+  [*] --> Designed
+  Designed --> DryRun: policy replay
+  DryRun --> Canary: eligibility and guardrails pass
+  Canary --> Observe: collect quality / SLO / cost
+  Observe --> Expand: guardrails pass
+  Observe --> Freeze: weak signal or insufficient sample
+  Observe --> Rollback: severe guardrail breach
+  Expand --> RolledOut: decision approved
+  Freeze --> Observe: extend window or adjust
+  Rollback --> Harvest: collect regression samples
+  RolledOut --> Harvest
+  Harvest --> [*]

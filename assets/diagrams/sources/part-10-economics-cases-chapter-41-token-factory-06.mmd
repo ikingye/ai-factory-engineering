@@ -1,0 +1,11 @@
+flowchart LR
+  Fault["inference_runtime_fault_tree_execution"] --> Cost["inference_runtime_incident_cost_record"]
+  State["engine_request_state_ledger"] --> Cost
+  Meter["metering replay"] --> Cost
+  KV["kv leak / block seconds"] --> Cost
+  PD["pd transfer retry"] --> Cost
+  Canary["canary guardrail action"] --> Cost
+  Cost --> RuntimeLedger["inference_runtime_cost_ledger"]
+  Cost --> TokenLedger["token ledger correction / hold"]
+  Cost --> Quality["quality_cost_ledger if affected"]
+  Cost --> Gate["runtime gate / PRR update"]

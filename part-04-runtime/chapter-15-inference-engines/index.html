@@ -3838,19 +3838,7 @@
 <p>引擎架构还需要处理生命周期。请求进入队列、进入 prefill、进入 decode、streaming 输出、完成、取消、超时和失败，每个阶段都应有明确状态和资源释放逻辑。缺少生命周期管理，最常见的结果是缓存泄漏、队列堆积和取消后继续占用 GPU。</p>
 <p>架构评审还应覆盖 backpressure。队列过长、KV Cache 不足或 GPU 错误时，引擎应如何拒绝、排队、降级或通知上游，必须提前定义。没有 backpressure，压力会从引擎扩散到 Gateway 和客户端重试。</p>
 <p>还应覆盖多副本一致性。同一 endpoint 下不同 replica 的引擎版本、配置和模型状态必须一致，否则灰度之外也会出现行为差异。引擎架构不是单进程结构，而是副本集合的运行规则。</p>
-<pre class="mermaid"><code>flowchart LR
-  Req["请求队列"] --&gt; Scheduler["engine scheduler"]
-  Scheduler --&gt; Batch["continuous batching"]
-  Batch --&gt; Prefill["prefill executor"]
-  Batch --&gt; Decode["decode executor"]
-  Prefill --&gt; KV["KV Cache manager"]
-  Decode --&gt; KV
-  Prefill --&gt; Kernels["CUDA kernels"]
-  Decode --&gt; Kernels
-  Kernels --&gt; GPU["GPU / HBM"]
-  Decode --&gt; Sampler["sampler"]
-  Sampler --&gt; Stream["token streaming"]
-  Scheduler --&gt; Metrics["metrics / traces"]</code></pre>
+<p><img alt="图：15.2.2 系统架构" src="../../assets/diagrams/part-04-runtime-chapter-15-inference-engines-01.svg" /></p>
 <h2 id="153">15.3 关键技术<a class="headerlink" href="#153" title="Permanent link">&para;</a></h2>
 <h3 id="1531-vllm">15.3.1 vLLM<a class="headerlink" href="#1531-vllm" title="Permanent link">&para;</a></h3>
 <p>vLLM 是常见的开源 LLM 推理引擎，核心工程价值在于高吞吐 serving、PagedAttention、continuous batching 和相对易用的 OpenAI-compatible server。它让平台可以较快把常见模型部署为在线服务，并通过 KV Cache 分页管理降低碎片问题。对很多团队来说，vLLM 是从实验模型走向生产推理的常见起点。</p>
@@ -3891,29 +3879,29 @@
 <p>因此它应与配额、限流和模型目录共同使用，向应用暴露明确上下文能力。</p>
 <p>缓存状态也应进入指标。</p>
 <p>生产系统应把 KV block 作为可审计资源，而不是只看总 HBM。<code>kv_block_ledger</code> 记录每个请求、租户、endpoint、engine profile 在 prefill 和 decode 中申请、复用、增长和释放了多少 block。它能解释三类关键问题：为什么 compute utilization 不高但不能接新请求，为什么用户取消后 GPU 仍忙，为什么某个租户 QPS 不高却拖慢其它租户。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">kv_block_ledger</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">endpoint</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-large-prod</span>
-<span class="w">  </span><span class="nt">engine_profile</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vllm-prod-h100-v7</span>
-<span class="w">  </span><span class="nt">request_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">req-20260620-001</span>
-<span class="w">  </span><span class="nt">tenant</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enterprise-a</span>
-<span class="w">  </span><span class="nt">lifecycle</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">state</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prefill_decode_closed</span>
-<span class="w">    </span><span class="nt">close_reason</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">stop</span>
-<span class="w">  </span><span class="nt">blocks</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">reserved_at_admission</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">estimated</span>
-<span class="w">    </span><span class="nt">allocated_after_prefill</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">peak_during_decode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">prefix_reused</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">released</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">unreleased_after_close</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">zero</span>
-<span class="w">  </span><span class="nt">fragmentation</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">free_blocks</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">fragmented_blocks</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">allocation_failures</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">  </span><span class="nt">economics</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">kv_block_seconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">    </span><span class="nt">wasted_block_seconds_after_cancel</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-</code></pre></div>
+<pre><code class="language-yaml">kv_block_ledger:
+  endpoint: af-chat-large-prod
+  engine_profile: vllm-prod-h100-v7
+  request_id: req-20260620-001
+  tenant: enterprise-a
+  lifecycle:
+    state: prefill_decode_closed
+    close_reason: stop
+  blocks:
+    reserved_at_admission: estimated
+    allocated_after_prefill: measured
+    peak_during_decode: measured
+    prefix_reused: measured
+    released: measured
+    unreleased_after_close: zero
+  fragmentation:
+    free_blocks: measured
+    fragmented_blocks: measured
+    allocation_failures: measured
+  economics:
+    kv_block_seconds: calculated
+    wasted_block_seconds_after_cancel: calculated
+</code></pre>
 <p>这个 ledger 会改变 capacity 口径。传统副本健康可能只看 GPU 利用率和 HBM 使用率，KV block 账本会告诉平台“是谁占用了状态、占用了多久、是否释放、是否产生有效 token”。当 Gateway 看到 <code>engine_admission_health.kv_block_pressure=high</code> 时，背后应能追到这类账本，而不是只有一个黑盒压力分数。</p>
 <h3 id="1536-speculative-decoding">15.3.6 speculative decoding<a class="headerlink" href="#1536-speculative-decoding" title="Permanent link">&para;</a></h3>
 <p>Speculative decoding 使用较小或较快的 draft 模型先生成候选 token，再由目标模型验证。如果候选被接受，就可以减少目标模型逐 token decode 的等待时间，从而降低输出阶段延迟。它针对的是 decode 逐步生成的瓶颈，尤其在目标模型较大、draft 模型质量足够时可能有效。</p>
@@ -3924,53 +3912,53 @@
 <p>质量也要回归。虽然目标模型负责验证 token，但实现细节和采样策略仍可能影响输出分布、日志和调试。上线前应比较质量、长度和错误行为。</p>
 <p>若收益只在少数样本上出现，平台应限制使用范围，而不是全局开启。</p>
 <p>Speculative decoding 的上线证据应沉淀为 <code>speculative_decoding_report</code>。它不只看 acceptance rate，还要记录 draft/target 模型版本、tokenizer 是否一致、额外资源、验证开销、输出长度漂移和质量指标。只有这样，平台才能判断它是真的降低 cost per successful answer，还是把成本转移到了 draft 模型和复杂运维上。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">speculative_decoding_report</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">report_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">spec-decode-20260620-001</span>
-<span class="w">  </span><span class="nt">endpoint</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-large-prod</span>
-<span class="w">  </span><span class="nt">target_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-large-202606</span>
-<span class="w">  </span><span class="nt">draft_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-small-draft-202606</span>
-<span class="w">  </span><span class="nt">workload_slice</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">long_generation</span>
-<span class="w">  </span><span class="nt">runtime</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">engine_profile</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vllm-prod-h100-v7</span>
-<span class="w">    </span><span class="nt">tokenizer_compatibility</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">verified</span>
-<span class="w">  </span><span class="nt">measurements</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">acceptance_rate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">draft_overhead_ms</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">target_verification_ms</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">tpot_delta</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">output_length_drift</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">quality_regression</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass_or_block</span>
-<span class="w">  </span><span class="nt">economics</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">extra_draft_resource_cost</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">    </span><span class="nt">cost_per_successful_answer_delta</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">  </span><span class="nt">decision</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">enable_for_slices</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">long_generation</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">disable_for_slices</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">short_chat</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">strict_json_tool_calling</span><span class="p p-Indicator">]</span>
-</code></pre></div>
+<pre><code class="language-yaml">speculative_decoding_report:
+  report_id: spec-decode-20260620-001
+  endpoint: af-chat-large-prod
+  target_model: af-chat-large-202606
+  draft_model: af-chat-small-draft-202606
+  workload_slice: long_generation
+  runtime:
+    engine_profile: vllm-prod-h100-v7
+    tokenizer_compatibility: verified
+  measurements:
+    acceptance_rate: measured
+    draft_overhead_ms: measured
+    target_verification_ms: measured
+    tpot_delta: measured
+    output_length_drift: measured
+    quality_regression: pass_or_block
+  economics:
+    extra_draft_resource_cost: calculated
+    cost_per_successful_answer_delta: calculated
+  decision:
+    enable_for_slices: [long_generation]
+    disable_for_slices: [short_chat, strict_json_tool_calling]
+</code></pre>
 <p>这个报告能防止“局部快、整体贵”。如果 long generation 的 TPOT 明显下降且质量不退化，可以只对这类请求开启；如果 strict JSON 或 tool calling 的格式失败率上升，即使接受率高，也应禁止。Speculative decoding 应由 workload slice 控制，而不是作为全局 engine 开关。</p>
 <p>上线后还需要 <code>speculative_decoding_regression_record</code>。<code>speculative_decoding_report</code> 回答“灰度前评测是否值得打开”，regression record 回答“打开后哪类真实流量发生退化，系统如何止血”。Speculative decoding 的退化不一定表现为模型答案错误，也可能是 JSON 结构更不稳定、工具参数漂移、输出长度变长、finish reason 分布变化、draft 模型占用资源导致其它请求变慢，或者接受率在某些语言/领域切片上突然下降。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">speculative_decoding_regression_record</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">regression_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">spec-reg-20260620-001</span>
-<span class="w">  </span><span class="nt">endpoint</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-large-prod</span>
-<span class="w">  </span><span class="nt">speculative_decoding_report</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">spec-decode-20260620-001</span>
-<span class="w">  </span><span class="nt">engine_canary_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">engine-canary-20260620-001</span>
-<span class="w">  </span><span class="nt">affected_slices</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">strict_json_tool_calling</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">multilingual_support_chat</span>
-<span class="w">  </span><span class="nt">regression_signals</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">acceptance_rate_delta</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">degraded</span>
-<span class="w">    </span><span class="nt">tpot_delta</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">improved_or_degraded</span>
-<span class="w">    </span><span class="nt">output_length_drift</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">increased</span>
-<span class="w">    </span><span class="nt">json_schema_failure_delta</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">regressed</span>
-<span class="w">    </span><span class="nt">cost_per_successful_answer_delta</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">worsened</span>
-<span class="w">  </span><span class="nt">containment</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">disable_speculative_for_slices</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">strict_json_tool_calling</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">keep_enabled_for_slices</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">long_generation</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">gateway_policy_patch</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ead_policy_patch_20260620_002</span>
-<span class="w">  </span><span class="nt">follow_up</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">draft_model_candidate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">retrain_or_replace</span>
-<span class="w">    </span><span class="nt">runtime_quality_gate_required</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-</code></pre></div>
+<pre><code class="language-yaml">speculative_decoding_regression_record:
+  regression_id: spec-reg-20260620-001
+  endpoint: af-chat-large-prod
+  speculative_decoding_report: spec-decode-20260620-001
+  engine_canary_record: engine-canary-20260620-001
+  affected_slices:
+    - strict_json_tool_calling
+    - multilingual_support_chat
+  regression_signals:
+    acceptance_rate_delta: degraded
+    tpot_delta: improved_or_degraded
+    output_length_drift: increased
+    json_schema_failure_delta: regressed
+    cost_per_successful_answer_delta: worsened
+  containment:
+    disable_speculative_for_slices: [strict_json_tool_calling]
+    keep_enabled_for_slices: [long_generation]
+    gateway_policy_patch: ead_policy_patch_20260620_002
+  follow_up:
+    draft_model_candidate: retrain_or_replace
+    runtime_quality_gate_required: true
+</code></pre>
 <p>这个记录避免把 speculative decoding 当成单一开关。成熟平台会按任务切片、模型能力和质量要求做 feature gating：长文本生成可以启用，严格 JSON/tool calling 可以关闭；内部低风险流量可以尝试，高价值客户先不启用。这样做的代价是策略更复杂，但收益是 runtime 优化不再和业务质量互相伤害。</p>
 <h3 id="1537-prefix-cache">15.3.7 prefix cache<a class="headerlink" href="#1537-prefix-cache" title="Permanent link">&para;</a></h3>
 <p>Prefix cache 缓存相同或可复用 prompt 前缀的计算结果，减少重复 prefill。系统提示词、工具 schema、固定模板、RAG 框架提示和多轮对话中的稳定历史，都可能形成可复用前缀。命中后，引擎可以跳过部分重复计算，降低 TTFT 和 prefill cost。对于长系统提示或工具描述，收益可能明显。</p>
@@ -3992,112 +3980,102 @@
 <p>它也需要更严格的成本模型。分离后可能提升单阶段利用率，但增加网络、状态管理和副本数量。最终是否划算，要看端到端 cost per token。</p>
 <p>PD 分离还应先在影子流量或低风险流量验证，避免直接改变核心链路。</p>
 <p>工程上，PD 分离必须先写 <code>pd_disaggregation_contract</code>。它规定 prefill 与 decode 的资源池、KV 传输、容量比例、失败语义和回滚路径。没有合同，系统无法判断一次慢请求到底是 prefill 排队、KV transfer、decode 拥塞还是状态丢失；也无法决定 streaming 已开始后是否允许 fallback。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">pd_disaggregation_contract</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">endpoint</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-large-pd-prod</span>
-<span class="w">  </span><span class="nt">prefill</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">pool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-prefill-h100</span>
-<span class="w">    </span><span class="nt">admission_budget_ms</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_defined</span>
-<span class="w">  </span><span class="nt">decode</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">pool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-decode-h100</span>
-<span class="w">    </span><span class="nt">admission_budget_ms</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_defined</span>
-<span class="w">  </span><span class="nt">kv_transfer</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">protocol</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">platform_defined</span>
-<span class="w">    </span><span class="nt">max_transfer_ms</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_defined</span>
-<span class="w">    </span><span class="nt">integrity_check</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">    </span><span class="nt">tenant_isolation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">  </span><span class="nt">capacity_model</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">prefill_to_decode_ratio</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">rebalance_trigger</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">queue_or_tpot_regression</span>
-<span class="w">  </span><span class="nt">failure_semantics</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">before_first_token</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">retry_or_fallback_allowed</span>
-<span class="w">    </span><span class="nt">after_first_token</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">no_model_fallback_emit_partial_usage</span>
-<span class="w">    </span><span class="nt">transfer_failure</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">typed_error_with_no_usage_or_partial_prefill_usage</span>
-<span class="w">  </span><span class="nt">rollback</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">monolithic_endpoint</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-large-prod</span>
-</code></pre></div>
+<pre><code class="language-yaml">pd_disaggregation_contract:
+  endpoint: af-chat-large-pd-prod
+  prefill:
+    pool: af-chat-prefill-h100
+    admission_budget_ms: policy_defined
+  decode:
+    pool: af-chat-decode-h100
+    admission_budget_ms: policy_defined
+  kv_transfer:
+    protocol: platform_defined
+    max_transfer_ms: policy_defined
+    integrity_check: required
+    tenant_isolation: required
+  capacity_model:
+    prefill_to_decode_ratio: measured
+    rebalance_trigger: queue_or_tpot_regression
+  failure_semantics:
+    before_first_token: retry_or_fallback_allowed
+    after_first_token: no_model_fallback_emit_partial_usage
+    transfer_failure: typed_error_with_no_usage_or_partial_prefill_usage
+  rollback:
+    monolithic_endpoint: af-chat-large-prod
+</code></pre>
 <p>这份合同的关键是失败语义。Prefill 失败且没有输出 token 时，可以按策略重试或 fallback；decode 已经开始 streaming 后，切换模型会破坏输出连续性，通常只能关闭请求并记录 partial usage；KV transfer 失败要区分是否已经消耗 prefill 资源。PD 分离的性能收益，必须以这些语义可控为前提。</p>
 <h2 id="154">15.4 工程落地<a class="headerlink" href="#154" title="Permanent link">&para;</a></h2>
 <h3 id="1541">15.4.1 工程实现<a class="headerlink" href="#1541" title="Permanent link">&para;</a></h3>
 <p>推理引擎配置应进入模型部署记录，成为可审计、可回滚的生产配置。配置至少包括 engine 名称、版本、模型 artifact、tokenizer、并行策略、max context、max num seqs、KV Cache 策略、batching 策略、量化、prefix cache、speculative decoding 和指标开关。没有配置记录，线上性能变化很难复盘。</p>
 <p>示例配置如下：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">inference_engine</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vllm</span>
-<span class="w">  </span><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pinned</span>
-<span class="w">  </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-large</span>
-<span class="w">  </span><span class="nt">tensor_parallel_size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
-<span class="w">  </span><span class="nt">max_model_len</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">configured</span>
-<span class="w">  </span><span class="nt">max_num_seqs</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">configured</span>
-<span class="w">  </span><span class="nt">kv_cache</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">paged</span>
-<span class="w">  </span><span class="nt">features</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">streaming</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">prefix_cache</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">optional</span>
-</code></pre></div>
+<pre><code class="language-yaml">inference_engine:
+  name: vllm
+  version: pinned
+  model: af-chat-large
+  tensor_parallel_size: 2
+  max_model_len: configured
+  max_num_seqs: configured
+  kv_cache:
+    policy: paged
+  features:
+    streaming: true
+    prefix_cache: optional
+</code></pre>
 <p>生产引擎还需要 admission model，用来把应用请求转换成引擎可承载的资源声明。这个模型至少要估算四件事：prefill 需要多少输入 token，decode 可能产生多少输出 token，KV Cache 需要多少 block，deadline 和优先级是什么。没有 admission model，引擎只能在运行中发现资源不够，表现为 queue 抖动、OOM 或请求被动失败。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">engine_admission</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">request_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">trace-abc</span>
-<span class="w">  </span><span class="nt">input_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2380</span>
-<span class="w">  </span><span class="nt">max_output_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1024</span>
-<span class="w">  </span><span class="nt">priority</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">interactive</span>
-<span class="w">  </span><span class="nt">deadline_ms</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30000</span>
-<span class="w">  </span><span class="nt">resource_estimate</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">kv_blocks</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">estimated</span>
-<span class="w">    </span><span class="nt">prefill_work</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">estimated</span>
-<span class="w">    </span><span class="nt">decode_steps_upper_bound</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1024</span>
-<span class="w">  </span><span class="nt">decision</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">admitted</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">queue_class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">low_ttft</span>
-<span class="w">    </span><span class="nt">reason</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">capacity_available</span>
-</code></pre></div>
+<pre><code class="language-yaml">engine_admission:
+  request_id: trace-abc
+  input_tokens: 2380
+  max_output_tokens: 1024
+  priority: interactive
+  deadline_ms: 30000
+  resource_estimate:
+    kv_blocks: estimated
+    prefill_work: estimated
+    decode_steps_upper_bound: 1024
+  decision:
+    admitted: true
+    queue_class: low_ttft
+    reason: capacity_available
+</code></pre>
 <p>引擎执行时应把请求分成清晰阶段。Tokenized 请求先进入 waiting queue；调度器选择一批进入 prefill；prefill 完成后生成 KV Cache；decode 阶段逐步加入 active set；请求完成、取消或失败后释放 block 并写出 close event。这些状态必须可观测，否则 continuous batching 和 KV Cache 会成为黑盒。</p>
-<pre class="mermaid"><code>flowchart TB
-  Tokenized["tokenized request"] --&gt; Waiting["waiting queue"]
-  Waiting --&gt; Admit{"capacity + priority"}
-  Admit --&gt;|admit| Prefill["prefill batch"]
-  Admit --&gt;|reject/backpressure| Reject["typed reject"]
-  Prefill --&gt; KVAlloc["allocate KV blocks"]
-  KVAlloc --&gt; Active["active decode set"]
-  Active --&gt; Step["decode step"]
-  Step --&gt; Active
-  Active --&gt;|finish/cancel/error| Release["release KV blocks"]
-  Release --&gt; Usage["emit usage + close reason"]</code></pre>
+<p><img alt="图：15.4.1 工程实现" src="../../assets/diagrams/part-04-runtime-chapter-15-inference-engines-02.svg" /></p>
 <p>这条生命周期还应沉淀为 <code>engine_request_state_ledger</code>。它不是业务请求日志，而是推理引擎内部状态账本：请求什么时候被接入，是否进入 prefill，分配了多少 KV block，何时开始 decode，stream 是否打开，关闭原因是什么，usage 是否和 streaming 交付一致。没有这张账本，<code>kv_block_ledger</code>、<code>endpoint_admission_decision</code>、<code>metering event</code> 和用户 trace 很难对齐。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">engine_request_state_ledger</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">request_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">req-20260620-001</span>
-<span class="w">  </span><span class="nt">endpoint</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-large-prod</span>
-<span class="w">  </span><span class="nt">engine_profile</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vllm-prod-h100-v7</span>
-<span class="w">  </span><span class="nt">serving_release</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-large-20260619-r3</span>
-<span class="w">  </span><span class="nt">request_shape</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">input_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">max_output_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">requested</span>
-<span class="w">    </span><span class="nt">tenant</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enterprise-a</span>
-<span class="w">    </span><span class="nt">workload_slice</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">long_context_qa</span>
-<span class="w">  </span><span class="nt">admission</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">endpoint_admission_decision</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ead-req-20260620-001</span>
-<span class="w">    </span><span class="nt">admitted_at</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">queue_class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">interactive</span>
-<span class="w">    </span><span class="nt">estimated_kv_blocks</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">  </span><span class="nt">phases</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">tokenized_at</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">prefill_started_at</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">prefill_finished_at</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">first_token_at</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">decode_started_at</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">stream_opened_at</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">request_closed_at</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">  </span><span class="nt">runtime_state</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">kv_block_ledger</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kvbl-req-20260620-001</span>
-<span class="w">    </span><span class="nt">active_sequence_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">batch_membership_samples</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sampled</span>
-<span class="w">    </span><span class="nt">pd_transfer_evidence</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">optional_if_pd_enabled</span>
-<span class="w">    </span><span class="nt">engine_canary_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">optional_if_canary</span>
-<span class="w">  </span><span class="nt">close</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">close_reason</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">stop_cancel_timeout_error_client_disconnect</span>
-<span class="w">    </span><span class="nt">generated_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">delivered_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">metering_events</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">request_admitted_first_token_usage_closed</span>
-<span class="w">    </span><span class="nt">kv_released_before_close_ack</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true_or_false</span>
-</code></pre></div>
+<pre><code class="language-yaml">engine_request_state_ledger:
+  request_id: req-20260620-001
+  endpoint: af-chat-large-prod
+  engine_profile: vllm-prod-h100-v7
+  serving_release: af-chat-large-20260619-r3
+  request_shape:
+    input_tokens: measured
+    max_output_tokens: requested
+    tenant: enterprise-a
+    workload_slice: long_context_qa
+  admission:
+    endpoint_admission_decision: ead-req-20260620-001
+    admitted_at: recorded
+    queue_class: interactive
+    estimated_kv_blocks: calculated
+  phases:
+    tokenized_at: recorded
+    prefill_started_at: recorded
+    prefill_finished_at: recorded
+    first_token_at: recorded
+    decode_started_at: recorded
+    stream_opened_at: recorded
+    request_closed_at: recorded
+  runtime_state:
+    kv_block_ledger: kvbl-req-20260620-001
+    active_sequence_id: recorded
+    batch_membership_samples: sampled
+    pd_transfer_evidence: optional_if_pd_enabled
+    engine_canary_record: optional_if_canary
+  close:
+    close_reason: stop_cancel_timeout_error_client_disconnect
+    generated_tokens: measured
+    delivered_tokens: measured
+    metering_events: request_admitted_first_token_usage_closed
+    kv_released_before_close_ack: true_or_false
+</code></pre>
 <p>这个账本能解决推理事故中最常见的账实不一致。客户端取消后，如果 <code>generated_tokens</code> 增长但 <code>delivered_tokens</code> 停止，说明引擎或 streaming 通道没有及时止损；如果 <code>request_closed_at</code> 已记录但 KV block 没释放，说明 allocator、prefix cache 或 PD session 可能泄漏；如果 usage close 早于最终 streaming close，计费和用户体验会分叉；如果 Gateway 认为请求 shed，engine 却有 active sequence，说明 admission 和 runtime 状态不同步。生产平台要把这些状态当成一等事实，而不是在事故后从日志里猜。</p>
 <p>上线前应执行兼容性测试、基准压测和故障场景测试。兼容性测试检查模型结构、tokenizer、streaming、tool calling 和错误码；基准压测覆盖短 prompt、长 prompt、长输出和混合并发；故障测试覆盖取消、超时、OOM、engine restart 和回滚。推理引擎升级不应只看正常样例。</p>
 <p>工程流程还应保留上一稳定配置。引擎版本、模型格式、量化方式和 CUDA/NCCL/driver 组合都可能影响行为。发布新引擎时，应能够同时回滚 runtime 和配置，而不是只回滚镜像。推理引擎是高风险生产依赖，版本管理必须严格。</p>
@@ -4106,98 +4084,81 @@
 <p>还应提供基准测试模板。每次引擎变更都用同一组模型、prompt 分布和并发参数运行，结果才能比较。没有标准模板，性能结论很容易受测试方式影响。</p>
 <p>最后，配置应能被 dry-run。发布前用历史请求回放配置，检查是否会拒绝过多请求、改变上下文上限或触发缓存异常。Dry-run 不能覆盖所有问题，但能拦截明显配置错误。</p>
 <p>引擎基准测试应避免“固定短 prompt 幻觉”。一个可用的 benchmark 至少包含四类负载：短输入短输出、长输入短输出、短输入长输出、长输入长输出，并按生产比例混合。每类都要记录 TTFT、TPOT、prefill tokens/s、decode tokens/s、KV Cache 峰值、OOM/reject、GPU/HBM 和 cost/token proxy。只报告总 tokens/s，会掩盖交互体验和显存边界。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">engine_benchmark_matrix</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">workloads</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">short_chat</span>
-<span class="w">      </span><span class="nt">input_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">p50_short</span>
-<span class="w">      </span><span class="nt">output_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">p50_short</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">long_context_qa</span>
-<span class="w">      </span><span class="nt">input_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">p95_long</span>
-<span class="w">      </span><span class="nt">output_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">p50_short</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">long_generation</span>
-<span class="w">      </span><span class="nt">input_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">p50_short</span>
-<span class="w">      </span><span class="nt">output_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">p95_long</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mixed_prod_shape</span>
-<span class="w">      </span><span class="nt">distribution</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">production_sampled</span>
-<span class="w">  </span><span class="nt">required_outputs</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ttft_p50_p95_p99</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tpot_p50_p95_p99</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prefill_tokens_per_second</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">decode_tokens_per_second</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kv_cache_peak_and_failures</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">engine_errors_by_stage</span>
-</code></pre></div>
+<pre><code class="language-yaml">engine_benchmark_matrix:
+  workloads:
+    - name: short_chat
+      input_tokens: p50_short
+      output_tokens: p50_short
+    - name: long_context_qa
+      input_tokens: p95_long
+      output_tokens: p50_short
+    - name: long_generation
+      input_tokens: p50_short
+      output_tokens: p95_long
+    - name: mixed_prod_shape
+      distribution: production_sampled
+  required_outputs:
+    - ttft_p50_p95_p99
+    - tpot_p50_p95_p99
+    - prefill_tokens_per_second
+    - decode_tokens_per_second
+    - kv_cache_peak_and_failures
+    - engine_errors_by_stage
+</code></pre>
 <p>推理引擎变更还需要 <code>runtime_quality_gate</code>。很多 runtime 变更看起来只是性能优化，例如打开 prefix cache、调整 max num seqs、升级 vLLM、启用 speculative decoding、切换量化格式或改 sampler 默认值，但它们可能改变输出长度、停止条件、JSON 稳定性、tool call 格式、错误码和 usage 时机。因此 engine qualification 不能只跑吞吐压测，还要绑定第 13 章的 <code>quality_gate_record</code> 和第 14 章的 <code>serving_quality_contract</code>。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">runtime_quality_gate</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">gate_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rqg-vllm-20260619</span>
-<span class="w">  </span><span class="nt">change</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">engine</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vllm</span>
-<span class="w">    </span><span class="nt">from_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">v0.previous</span>
-<span class="w">    </span><span class="nt">to_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">v0.candidate</span>
-<span class="w">    </span><span class="nt">config_delta</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">prefix_cache</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enabled</span>
-<span class="w">      </span><span class="nt">max_num_seqs</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">changed</span>
-<span class="w">      </span><span class="nt">speculative_decoding</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">disabled</span>
-<span class="w">  </span><span class="nt">scope</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">endpoints</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">af-chat-large-prod</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">support-chat-prod</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">models</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">af-chat-large-202606</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">required_checks</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">protocol_contract</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">token_count_drift</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">explained_or_block</span>
-<span class="w">    </span><span class="nt">output_format_regression</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">tool_call_schema_regression</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">safety_eval</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">latency_and_throughput</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass_under_slo</span>
-<span class="w">    </span><span class="nt">kv_cache_failure_rate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">zero_or_below_threshold</span>
-<span class="w">  </span><span class="nt">decision</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">canary</span>
-<span class="w">    </span><span class="nt">rollback_target</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">previous_engine_profile</span>
-</code></pre></div>
+<pre><code class="language-yaml">runtime_quality_gate:
+  gate_id: rqg-vllm-20260619
+  change:
+    engine: vllm
+    from_version: v0.previous
+    to_version: v0.candidate
+    config_delta:
+      prefix_cache: enabled
+      max_num_seqs: changed
+      speculative_decoding: disabled
+  scope:
+    endpoints: [af-chat-large-prod, support-chat-prod]
+    models: [af-chat-large-202606]
+  required_checks:
+    protocol_contract: pass
+    token_count_drift: explained_or_block
+    output_format_regression: pass
+    tool_call_schema_regression: pass
+    safety_eval: pass
+    latency_and_throughput: pass_under_slo
+    kv_cache_failure_rate: zero_or_below_threshold
+  decision:
+    action: canary
+    rollback_target: previous_engine_profile
+</code></pre>
 <p>Engine qualification 的核心是把 runtime 变化拆成四类影响。第一类是正确性：同一输入在确定性设置下是否仍满足答案、格式和安全要求。第二类是协议：streaming chunk、usage、finish reason、错误码、取消语义是否兼容。第三类是性能：TTFT、TPOT、tokens/s、KV Cache、OOM 和 queue 是否改善或保持。第四类是经济性：单位成功任务成本是否下降，额外 draft 模型、缓存和资源占用是否值得。只要其中一类没有证据，引擎变更就不应全量上线。</p>
-<pre class="mermaid"><code>flowchart LR
-  Change["engine/config change"] --&gt; Correct["quality regression"]
-  Change --&gt; Protocol["serving protocol contract"]
-  Change --&gt; Perf["performance benchmark"]
-  Change --&gt; Cost["cost per successful task"]
-  Correct --&gt; Gate["runtime_quality_gate"]
-  Protocol --&gt; Gate
-  Perf --&gt; Gate
-  Cost --&gt; Gate
-Gate --&gt; Canary["engine canary"]
-  Canary --&gt; SQC["serving_quality_contract update"]</code></pre>
+<p><img alt="图：15.4.1 工程实现" src="../../assets/diagrams/part-04-runtime-chapter-15-inference-engines-03.svg" /></p>
 <p><code>engine_canary_record</code> 是这条门禁在生产流量中的证据。它把 <code>runtime_quality_gate</code> 的离线/压测结论和线上 canary 观测连接起来，并要求每次 engine profile 变化都带上可回滚目标。若 canary 中只有 TTFT/TPOT，没有 protocol、token drift、KV allocation、quality feedback 和 cost 指标，就不能证明 runtime 变更适合全量发布。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">engine_canary_record</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">canary_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">engine-canary-20260620-001</span>
-<span class="w">  </span><span class="nt">runtime_quality_gate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rqg-vllm-20260620</span>
-<span class="w">  </span><span class="nt">serving_quality_contract</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sqc-af-chat-20260619-r3</span>
-<span class="w">  </span><span class="nt">engine_profile</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">from</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vllm-prod-h100-v6</span>
-<span class="w">    </span><span class="nt">to</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vllm-prod-h100-v7</span>
-<span class="w">  </span><span class="nt">traffic</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">percent</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5</span>
-<span class="w">    </span><span class="nt">slices</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">short_chat</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">long_context_qa</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">tool_calling</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">online_guardrails</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">protocol_error_rate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">token_count_drift</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">explained</span>
-<span class="w">    </span><span class="nt">kv_allocation_failure_rate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">ttft_p99</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">tpot_p99</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">quality_feedback_delta</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">cost_per_successful_answer_delta</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">  </span><span class="nt">decision</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">promote_or_freeze_or_rollback</span>
-<span class="w">    </span><span class="nt">rollback_engine_profile</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vllm-prod-h100-v6</span>
-</code></pre></div>
+<pre><code class="language-yaml">engine_canary_record:
+  canary_id: engine-canary-20260620-001
+  runtime_quality_gate: rqg-vllm-20260620
+  serving_quality_contract: sqc-af-chat-20260619-r3
+  engine_profile:
+    from: vllm-prod-h100-v6
+    to: vllm-prod-h100-v7
+  traffic:
+    percent: 5
+    slices: [short_chat, long_context_qa, tool_calling]
+  online_guardrails:
+    protocol_error_rate: pass
+    token_count_drift: explained
+    kv_allocation_failure_rate: pass
+    ttft_p99: pass
+    tpot_p99: pass
+    quality_feedback_delta: pass
+    cost_per_successful_answer_delta: pass
+  decision:
+    action: promote_or_freeze_or_rollback
+    rollback_engine_profile: vllm-prod-h100-v6
+</code></pre>
 <p>对于 speculative decoding，质量门禁要特别看 acceptance rate 之外的指标。Draft 模型的接受率高，不代表业务质量不变；采样参数、验证实现、停止条件和 tokenizer 兼容都可能改变输出行为。评测应比较输出长度、拒答率、结构化输出失败率、tool call 参数稳定性和用户可见错误。若收益主要来自少量长输出任务，Gateway 应按任务切片启用，而不是全局打开。</p>
 <p>Runtime 门禁还应定义自动止血动作。推理引擎问题的窗口很短，等人工确认后再调路由，往往已经消耗大量 token、产生用户可见失败或污染质量反馈。<code>engine_canary_guardrail_action</code> 应作为 canary 的配套对象：当 token drift、KV allocation failure、JSON failure、draft overhead、PD transfer timeout 或 cost per successful answer 越界时，系统应能冻结放量、关闭特性、降权 endpoint 或回滚 engine profile，并把动作写回 Gateway、Serving 和成本账本。</p>
-<pre class="mermaid"><code>flowchart LR
-  Canary["engine_canary_record"] --&gt; Guard{"guardrail breach?"}
-  Guard --&gt;|no| Promote["continue / promote"]
-  Guard --&gt;|yes| Action["engine_canary_guardrail_action"]
-  Action --&gt; GW["patch Gateway route / admission"]
-  Action --&gt; Runtime["disable feature or rollback profile"]
-  Action --&gt; Bundle["freeze diagnostic evidence"]
-  Action --&gt; Cost["record rollback and prevention cost"]</code></pre>
+<p><img alt="图：15.4.1 工程实现" src="../../assets/diagrams/part-04-runtime-chapter-15-inference-engines-04.svg" /></p>
 <p>止血动作要足够细。Speculative decoding 失败时，不一定要回滚整个模型服务，可以只按 workload slice 关闭 speculative；KV 泄漏时，可能需要冻结长上下文 admission，而不是停止短请求；PD transfer 超时时，可以把新请求切回 monolithic endpoint，同时让已开始 streaming 的请求按合同结束。自动动作越接近真实故障边界，越能减少爆炸半径。</p>
 <p>对于 prefix cache，质量门禁要看缓存 key 和数据边界。错误的 cache key 可能跨租户复用敏感前缀，过度动态的 key 又会导致低命中率和高内存占用。评测应验证模型版本、tokenizer、chat template、租户、数据等级和工具 schema 是否进入 cache key；还要确认缓存失效后输出行为一致。Prefix cache 是性能优化，同时也是状态管理和安全边界。</p>
 <h3 id="1542">15.4.2 常见故障<a class="headerlink" href="#1542" title="Permanent link">&para;</a></h3>

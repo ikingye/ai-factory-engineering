@@ -1,0 +1,17 @@
+flowchart TB
+  Alert["security / spend alert"] --> Bundle["security_evidence_bundle"]
+  Bundle --> Tree["security_policy_fault_tree_execution"]
+  Tree --> Cred["credential\nkey / source / lifecycle"]
+  Tree --> Policy["gateway policy\nversion / dry-run / drift"]
+  Tree --> Egress["provider egress\ncontract / region / fallback"]
+  Tree --> Spend["spend velocity\ncontext / provider / agent steps"]
+  Tree --> Export["trace export\nredaction / break-glass"]
+  Cred --> Contain["containment\nfreeze key / route / export / budget"]
+  Policy --> Contain
+  Egress --> Contain
+  Spend --> Contain
+  Export --> Contain
+  Contain --> DOW["denial_of_wallet_incident_record"]
+  Contain --> Replay["billing_dispute_replay"]
+  Contain --> Cost["abuse_cost_ledger"]
+  Contain --> PRR["security PRR gate update"]

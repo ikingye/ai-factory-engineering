@@ -3836,488 +3836,432 @@
 <p>性能评测应与质量评测并行，而不是上线前最后补做。候选模型的上下文长度、输出长度、batch 行为、显存占用和吞吐，都会影响服务策略。一个模型在质量上通过，但在目标 SLA 下需要两倍 GPU，可能仍然不适合默认上线。评测系统必须把质量和基础设施事实放在同一发布决策中。</p>
 <p>评测系统还需要权限和隔离。盲测集不应被随意下载，红队样本可能包含敏感攻击，线上反馈可能包含用户数据。评测平台既要让团队快速验证模型，又要防止数据泄漏和评测污染。评测数据治理是模型治理的一部分。</p>
 <p>架构中还应有基线模型。每次评测都要和当前线上版本、上一候选版本或成本更低的替代模型比较。没有基线，分数本身很难解释。模型发布决策本质上是相对选择，而不是绝对判断。</p>
-<pre class="mermaid"><code>flowchart LR
-  Candidate["候选模型"] --&gt; Offline["离线能力评测"]
-  Candidate --&gt; Domain["领域评测"]
-  Candidate --&gt; Safety["安全 / 红队"]
-  Candidate --&gt; Perf["性能 / 成本评测"]
-  Offline --&gt; Gate["上线门禁"]
-  Domain --&gt; Gate
-  Safety --&gt; Gate
-  Perf --&gt; Gate
-  Gate --&gt; Canary["灰度 / A-B"]
-  Canary --&gt; Decision["上线 / 回滚 / 继续训练"]
-  Decision --&gt; Registry["模型注册 / 模型目录"]
-  Canary --&gt; Feedback["线上反馈回流"]
-  Feedback --&gt; Domain</code></pre>
+<p><img alt="图：13.2.2 系统架构" src="../../assets/diagrams/part-03-models-chapter-13-model-evaluation-01.svg" /></p>
 <p>生产评测还需要把多个事实对象串成闭环：<code>eval_dataset_manifest</code> 定义评测数据和污染控制，<code>quality_gate_record</code> 定义上线门禁，<code>online_experiment_record</code> 定义线上实验，<code>quality_feedback_event</code> 定义真实用户反馈，<code>quality_regression_record</code> 定义失败样本的修复和复测。没有这些对象，评测会停留在报告；有了这些对象，评测才能进入路由、发布、SRE 和经济模型。</p>
-<pre class="mermaid"><code>flowchart TB
-  Feedback["online feedback\n投诉 / 点踩 / 人工接管"] --&gt; Triage["quality triage"]
-  Triage --&gt; Regression["quality_regression_record"]
-  Regression --&gt; Dataset["eval_dataset_manifest\n回归集 / 盲测集 / 任务切片"]
-  Dataset --&gt; EvalRun["offline eval / judge / human review"]
-  EvalRun --&gt; Gate["quality_gate_record"]
-  Gate --&gt; Release["serving release / model registry"]
-  Release --&gt; Experiment["online_experiment_record\ncanary / A-B"]
-  Experiment --&gt; Routing["routing_quality_scorecard"]
-  Routing --&gt; Cost["quality_cost_ledger"]
-  Cost --&gt; Triage</code></pre>
+<p><img alt="图：13.2.2 系统架构" src="../../assets/diagrams/part-03-models-chapter-13-model-evaluation-02.svg" /></p>
 <p><code>eval_dataset_manifest</code> 是评测系统最核心的元数据。它不是样本内容本身，而是说明样本从哪里来、覆盖什么任务、如何标注、谁能访问、如何防污染、何时过期、如何与线上反馈和回归集连接。一个模型候选如果只在“某个目录下的一批 JSON”上评测，后续无法判断分数变化来自模型、数据、prompt、评审规则还是样本泄漏。Manifest 让评测数据成为可治理资产。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">eval_dataset_manifest</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">dataset_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">support-quality-202606</span>
-<span class="w">  </span><span class="nt">owner</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">model-quality</span>
-<span class="w">  </span><span class="nt">purpose</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">release_gate</span>
-<span class="w">  </span><span class="nt">task_slices</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">faq_grounded_answer</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rag_citation</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">no_answer_refusal</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tool_call_json</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">safety_sensitive_request</span>
-<span class="w">  </span><span class="nt">source</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">curated_cases</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">object://eval/support/curated</span>
-<span class="w">    </span><span class="nt">online_feedback_events</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">qfe-20260619-0001</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">regression_cases</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">qrr-20260619-0007</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">labeling</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">rubric_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">support-rubric-v5</span>
-<span class="w">    </span><span class="nt">human_review_required_for</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">safety_sensitive_request</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">high_value_customer</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">judge_model_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">judge-202606</span>
-<span class="w">  </span><span class="nt">execution_binding</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">prompt_template_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">support-v18</span>
-<span class="w">    </span><span class="nt">tokenizer_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tokenizer-202606</span>
-<span class="w">    </span><span class="nt">decoding_profile</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">deterministic_eval</span>
-<span class="w">  </span><span class="nt">governance</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">blind_split</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">holdout-202606</span>
-<span class="w">    </span><span class="nt">data_classification</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">internal_sensitive</span>
-<span class="w">    </span><span class="nt">allowed_readers</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">model-quality</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">sre-oncall</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">exclude_from_training</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-</code></pre></div>
+<pre><code class="language-yaml">eval_dataset_manifest:
+  dataset_id: support-quality-202606
+  owner: model-quality
+  purpose: release_gate
+  task_slices:
+    - faq_grounded_answer
+    - rag_citation
+    - no_answer_refusal
+    - tool_call_json
+    - safety_sensitive_request
+  source:
+    curated_cases: object://eval/support/curated
+    online_feedback_events: [qfe-20260619-0001]
+    regression_cases: [qrr-20260619-0007]
+  labeling:
+    rubric_version: support-rubric-v5
+    human_review_required_for: [safety_sensitive_request, high_value_customer]
+    judge_model_version: judge-202606
+  execution_binding:
+    prompt_template_version: support-v18
+    tokenizer_version: tokenizer-202606
+    decoding_profile: deterministic_eval
+  governance:
+    blind_split: holdout-202606
+    data_classification: internal_sensitive
+    allowed_readers: [model-quality, sre-oncall]
+    exclude_from_training: true
+</code></pre>
 <p>Manifest 之后还需要 <code>eval_slice_contract</code>。Manifest 说明“有哪些样本”，slice contract 说明“每个任务切片为什么存在、最低覆盖要求是什么、由谁解释、失败后阻断什么生产动作”。很多评测体系看起来样本很多，但关键业务切片没有最低样本策略：高价值客户、长上下文、拒答、引用、工具调用、跨语言、低价模型 fallback 和人工接管场景混在一个总分里。这样总分上升时，团队无法知道核心业务是否真的安全。Slice contract 把评测从样本集合提升为发布契约。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">eval_slice_contract</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">contract_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">esc-support-202606</span>
-<span class="w">  </span><span class="nt">dataset_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">support-quality-202606</span>
-<span class="w">  </span><span class="nt">owner</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">model-quality</span>
-<span class="w">  </span><span class="nt">business_binding</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">application</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">support-chat</span>
-<span class="w">    </span><span class="nt">primary_business_metric</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">resolved_ticket_without_handoff</span>
-<span class="w">    </span><span class="nt">protected_segments</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enterprise_high_value_customer</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">regulated_knowledge_base</span>
-<span class="w">  </span><span class="nt">slices</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">slice_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rag_citation</span>
-<span class="w">      </span><span class="nt">purpose</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">verify_answer_grounded_in_allowed_evidence</span>
-<span class="w">      </span><span class="nt">minimum_coverage_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_defined_by_risk</span>
-<span class="w">      </span><span class="nt">required_metrics</span><span class="p">:</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">citation_precision</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">citation_recall_on_required_evidence</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">answer_supported_by_citation</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">refusal_when_no_allowed_evidence</span>
-<span class="w">      </span><span class="nt">hard_gates</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">no_high_severity_regression</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">        </span><span class="nt">permission_replay_pass</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">      </span><span class="nt">owner</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">knowledge-platform</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">slice_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tool_call_json</span>
-<span class="w">      </span><span class="nt">purpose</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">protect_agent_and_api_contract</span>
-<span class="w">      </span><span class="nt">required_metrics</span><span class="p">:</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">schema_validity</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tool_selection_accuracy</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">no_unapproved_side_effect</span>
-<span class="w">      </span><span class="nt">hard_gates</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">valid_json_for_contract_cases</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">        </span><span class="nt">side_effect_policy_replay</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">      </span><span class="nt">owner</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">agent-platform</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">slice_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">low_cost_fallback</span>
-<span class="w">      </span><span class="nt">purpose</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">verify_small_model_route_does_not_raise_handoff_cost</span>
-<span class="w">      </span><span class="nt">required_metrics</span><span class="p">:</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">task_success_rate</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">human_handoff_delta</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cost_per_successful_answer</span>
-<span class="w">      </span><span class="nt">hard_gates</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">no_negative_margin_for_target_plan</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">      </span><span class="nt">owner</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gateway-and-economics</span>
-<span class="w">  </span><span class="nt">release_binding</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">quality_gate_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qg-af-chat-20260619</span>
-<span class="w">    </span><span class="nt">online_experiment_guardrail</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">oeg-support-20260620</span>
-</code></pre></div>
+<pre><code class="language-yaml">eval_slice_contract:
+  contract_id: esc-support-202606
+  dataset_id: support-quality-202606
+  owner: model-quality
+  business_binding:
+    application: support-chat
+    primary_business_metric: resolved_ticket_without_handoff
+    protected_segments:
+      - enterprise_high_value_customer
+      - regulated_knowledge_base
+  slices:
+    - slice_id: rag_citation
+      purpose: verify_answer_grounded_in_allowed_evidence
+      minimum_coverage_policy: policy_defined_by_risk
+      required_metrics:
+        - citation_precision
+        - citation_recall_on_required_evidence
+        - answer_supported_by_citation
+        - refusal_when_no_allowed_evidence
+      hard_gates:
+        no_high_severity_regression: required
+        permission_replay_pass: required
+      owner: knowledge-platform
+    - slice_id: tool_call_json
+      purpose: protect_agent_and_api_contract
+      required_metrics:
+        - schema_validity
+        - tool_selection_accuracy
+        - no_unapproved_side_effect
+      hard_gates:
+        valid_json_for_contract_cases: required
+        side_effect_policy_replay: required
+      owner: agent-platform
+    - slice_id: low_cost_fallback
+      purpose: verify_small_model_route_does_not_raise_handoff_cost
+      required_metrics:
+        - task_success_rate
+        - human_handoff_delta
+        - cost_per_successful_answer
+      hard_gates:
+        no_negative_margin_for_target_plan: required
+      owner: gateway-and-economics
+  release_binding:
+    quality_gate_record: qg-af-chat-20260619
+    online_experiment_guardrail: oeg-support-20260620
+</code></pre>
 <p>这个对象的核心不是固定样本数量，而是固定风险口径。样本数量可以随业务规模、流量和风险等级调整，但每个切片必须能回答三件事：为什么这个切片保护生产价值，哪些指标是硬门禁，失败后谁负责解释和修复。若 <code>rag_citation</code> 切片失败，不能用通用问答分数抵消；若 <code>low_cost_fallback</code> 切片导致人工接管上升，不能只说 token 成本下降。切片契约让评测门禁和商业决策共享同一套任务边界。</p>
 <p>Golden set 还需要独立治理。Golden set 通常指长期保留、用于版本比较和回归判断的高价值样本集合；holdout 或 blind split 则是受控访问、用于防止调参过拟合的盲测部分。它们不能被随意复制到训练、prompt 调参或公开报告中。生产系统里常见的失败不是没有 golden set，而是 golden set 被多轮优化、人工挑选、样本泄漏和 judge 漂移污染后，仍然被当作可信门禁。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">golden_set_governance_record</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">governance_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gsg-support-202606</span>
-<span class="w">  </span><span class="nt">dataset_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">support-quality-202606</span>
-<span class="w">  </span><span class="nt">protected_splits</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">golden_regression</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">object://eval/support/golden@sha256:example</span>
-<span class="w">    </span><span class="nt">blind_holdout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">object://eval/support/holdout@sha256:example</span>
-<span class="w">  </span><span class="nt">access_control</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">readers</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">model-quality</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">raw_sample_export</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">denied_by_default</span>
-<span class="w">    </span><span class="nt">reviewer_ui_redaction</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">    </span><span class="nt">break_glass_approval</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">security_and_quality_owner</span>
-<span class="w">  </span><span class="nt">leakage_control</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">excluded_from_training</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enforced</span>
-<span class="w">    </span><span class="nt">excluded_from_sft_and_dpo</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enforced</span>
-<span class="w">    </span><span class="nt">prompt_tuning_access</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">denied</span>
-<span class="w">    </span><span class="nt">overlap_scan_against_training_manifests</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">access_audit_window</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">continuous</span>
-<span class="w">  </span><span class="nt">freshness_control</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">stale_case_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">review_or_retire_when_business_rule_changes</span>
-<span class="w">    </span><span class="nt">new_failure_intake</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">from_quality_regression_record</span>
-<span class="w">    </span><span class="nt">slice_distribution_review</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required_per_release_train</span>
-<span class="w">  </span><span class="nt">judge_drift_control</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">rubric_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">support-rubric-v5</span>
-<span class="w">    </span><span class="nt">judge_model_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">judge-202606</span>
-<span class="w">    </span><span class="nt">human_anchor_cases</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">    </span><span class="nt">judge_upgrade_requires_backtest</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">release_decision</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">usable_for_gate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">invalidation_conditions</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">overlap_with_training_data</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">unapproved_raw_export</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">judge_upgrade_without_backtest</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">stale_business_policy</span>
-</code></pre></div>
+<pre><code class="language-yaml">golden_set_governance_record:
+  governance_id: gsg-support-202606
+  dataset_id: support-quality-202606
+  protected_splits:
+    golden_regression: object://eval/support/golden@sha256:example
+    blind_holdout: object://eval/support/holdout@sha256:example
+  access_control:
+    readers: [model-quality]
+    raw_sample_export: denied_by_default
+    reviewer_ui_redaction: required
+    break_glass_approval: security_and_quality_owner
+  leakage_control:
+    excluded_from_training: enforced
+    excluded_from_sft_and_dpo: enforced
+    prompt_tuning_access: denied
+    overlap_scan_against_training_manifests: pass
+    access_audit_window: continuous
+  freshness_control:
+    stale_case_policy: review_or_retire_when_business_rule_changes
+    new_failure_intake: from_quality_regression_record
+    slice_distribution_review: required_per_release_train
+  judge_drift_control:
+    rubric_version: support-rubric-v5
+    judge_model_version: judge-202606
+    human_anchor_cases: required
+    judge_upgrade_requires_backtest: true
+  release_decision:
+    usable_for_gate: true
+    invalidation_conditions:
+      - overlap_with_training_data
+      - unapproved_raw_export
+      - judge_upgrade_without_backtest
+      - stale_business_policy
+</code></pre>
 <p>Golden set 的治理记录让“评测可信度”本身可审计。若一次模型升级在 golden regression 上通过，但治理记录显示 blind holdout 曾被导出给训练团队，门禁结论应降级；若业务政策改变导致历史拒答案例不再适用，旧样本应退役或改标，而不是继续制造假回归；若 judge model 升级后没有用人工 anchor cases 回放，分数变化不能直接解释为模型变化。评测系统的可信度取决于样本、rubric、judge 和访问控制共同成立。</p>
 <p>评测数据还需要 <code>eval_dataset_lineage_record</code>。Manifest 描述数据集应该是什么，lineage record 记录这次数据集版本实际如何生成、从哪些线上反馈或回归样本吸收、经过哪些脱敏和标注、是否进入训练排除列表、judge 或 rubric 是否变化。没有 lineage，团队看到评测分数变化时，无法区分是模型变了，还是评测集、评审规则或样本构成变了。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">eval_dataset_lineage_record</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">lineage_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">edl-support-quality-20260620</span>
-<span class="w">  </span><span class="nt">dataset_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">support-quality-202606</span>
-<span class="w">  </span><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">v20260620</span>
-<span class="w">  </span><span class="nt">inputs</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">curated_cases</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">object://eval/support/curated@sha256:example</span>
-<span class="w">    </span><span class="nt">quality_feedback_events</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">qfe-20260619-0001</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">qfe-20260619-0042</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">quality_regression_records</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">qrr-20260619-0007</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">red_team_cases</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">rt-support-202606</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">transformations</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">pii_redaction</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy-v4</span>
-<span class="w">    </span><span class="nt">deduplication</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">semantic-dedup-v2</span>
-<span class="w">    </span><span class="nt">task_slice_assignment</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rubric-support-v5</span>
-<span class="w">    </span><span class="nt">holdout_split</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">deterministic_seed_recorded</span>
-<span class="w">  </span><span class="nt">contamination_control</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">exclude_from_training_registry</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">overlap_check_against_sft_data</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">overlap_check_against_public_benchmarks</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">reviewed</span>
-<span class="w">  </span><span class="nt">judge_and_rubric</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">rubric_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">support-rubric-v5</span>
-<span class="w">    </span><span class="nt">judge_model_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">judge-202606</span>
-<span class="w">    </span><span class="nt">human_audit_sample_rate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_defined</span>
-<span class="w">  </span><span class="nt">diff_from_previous</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">added_cases</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">removed_cases</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">changed_labels</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">changed_task_slice_distribution</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-</code></pre></div>
+<pre><code class="language-yaml">eval_dataset_lineage_record:
+  lineage_id: edl-support-quality-20260620
+  dataset_id: support-quality-202606
+  version: v20260620
+  inputs:
+    curated_cases: object://eval/support/curated@sha256:example
+    quality_feedback_events: [qfe-20260619-0001, qfe-20260619-0042]
+    quality_regression_records: [qrr-20260619-0007]
+    red_team_cases: [rt-support-202606]
+  transformations:
+    pii_redaction: policy-v4
+    deduplication: semantic-dedup-v2
+    task_slice_assignment: rubric-support-v5
+    holdout_split: deterministic_seed_recorded
+  contamination_control:
+    exclude_from_training_registry: recorded
+    overlap_check_against_sft_data: pass
+    overlap_check_against_public_benchmarks: reviewed
+  judge_and_rubric:
+    rubric_version: support-rubric-v5
+    judge_model_version: judge-202606
+    human_audit_sample_rate: policy_defined
+  diff_from_previous:
+    added_cases: measured
+    removed_cases: measured
+    changed_labels: measured
+    changed_task_slice_distribution: measured
+</code></pre>
 <p>这个 record 的价值是让评测分数可解释。若候选模型在 RAG citation 上下降，同时 lineage 显示该版本新增了大量高风险投诉样本，下降未必是模型退化；若 judge model 升级后所有模型分数一起变化，问题可能是评审口径；若 overlap check 失败，门禁分数不应进入发布决策。评测数据在 AI Factory 中是生产控制面的一部分，必须像模型和镜像一样有 lineage。</p>
 <p>RAG 和 Agent 的 lineage 还应引用生产证据对象。RAG 样本应记录 <code>retrieval_permission_decision</code>、<code>rag_context_snapshot</code> 和 <code>rag_quality_regression_record</code>，因为问题不只是答案是否正确，还包括用户是否有权看到证据、正确证据是否进入 prompt、无答案和冲突场景是否被正确处理。Agent 样本应记录 <code>agent_tool_execution_record</code>、<code>tool_side_effect_policy</code>、<code>agent_budget_ledger</code> 和轨迹结果，因为最终任务成功不能掩盖越权工具、重复副作用或成本失控。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">eval_dataset_lineage_record</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">lineage_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">edl-rag-agent-20260620</span>
-<span class="w">  </span><span class="nt">dataset_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rag-agent-production-gates</span>
-<span class="w">  </span><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">v20260620</span>
-<span class="w">  </span><span class="nt">evidence_bindings</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">rag</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">context_snapshots</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">rcs-20260620-0001</span><span class="p p-Indicator">]</span>
-<span class="w">      </span><span class="nt">retrieval_permission_decisions</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">rpd-20260620-0001</span><span class="p p-Indicator">]</span>
-<span class="w">      </span><span class="nt">rag_quality_regression_records</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">rqr-20260619-0007</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">agent</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">tool_execution_records</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">ater-20260620-0001</span><span class="p p-Indicator">]</span>
-<span class="w">      </span><span class="nt">side_effect_policies</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">tsep-20260620-codefix</span><span class="p p-Indicator">]</span>
-<span class="w">      </span><span class="nt">budget_ledgers</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">abl-20260620-0001</span><span class="p p-Indicator">]</span>
-<span class="w">      </span><span class="nt">trajectory_records</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">agent-traj-20260619-0001</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">gate_requirements</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">rag_permission_replay</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">    </span><span class="nt">rag_context_replay</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">    </span><span class="nt">agent_tool_policy_replay</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">    </span><span class="nt">agent_budget_replay</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-</code></pre></div>
+<pre><code class="language-yaml">eval_dataset_lineage_record:
+  lineage_id: edl-rag-agent-20260620
+  dataset_id: rag-agent-production-gates
+  version: v20260620
+  evidence_bindings:
+    rag:
+      context_snapshots: [rcs-20260620-0001]
+      retrieval_permission_decisions: [rpd-20260620-0001]
+      rag_quality_regression_records: [rqr-20260619-0007]
+    agent:
+      tool_execution_records: [ater-20260620-0001]
+      side_effect_policies: [tsep-20260620-codefix]
+      budget_ledgers: [abl-20260620-0001]
+      trajectory_records: [agent-traj-20260619-0001]
+  gate_requirements:
+    rag_permission_replay: required
+    rag_context_replay: required
+    agent_tool_policy_replay: required
+    agent_budget_replay: required
+</code></pre>
 <p>这让评测可以检查系统行为，而不只是模型输出。RAG gate 可以重放同一用户权限下的检索和 context assembly，确认没有越权证据进入模型；Agent gate 可以重放工具策略，确认高风险动作被确认或拒绝，预算控制没有被绕过。若离线评测样本缺少这些绑定，只能测“模型看到一段文本后怎么答”，不能测 AI Factory 真实生产链路。</p>
 <p>线上反馈进入评测系统还需要一条明确的 intake pipeline。<code>quality_feedback_event</code> 是入口，但不是所有反馈都能直接进入门禁样本：有些是用户误用，有些缺少 trace，有些包含敏感数据，有些只是低严重度偏好，有些需要人工裁决。<code>quality_feedback_intake_pipeline</code> 负责把反馈从“原始信号”变成可复现、可标注、可进入回归或可丢弃的质量事实。它的目标不是最大化样本数量，而是最大化样本的可解释性和可用性。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">quality_feedback_intake_pipeline</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">pipeline_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qfip-support-202606</span>
-<span class="w">  </span><span class="nt">sources</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">frontend_thumbs_down</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">regenerate_clicked</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">crm_complaint</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">human_handoff</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">agent_run_failed</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">safety_or_policy_escalation</span>
-<span class="w">  </span><span class="nt">required_correlation</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">request_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">    </span><span class="nt">trace_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">    </span><span class="nt">serving_quality_contract</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">    </span><span class="nt">routing_quality_decision_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required_if_routed</span>
-<span class="w">    </span><span class="nt">experiment_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required_if_experiment</span>
-<span class="w">    </span><span class="nt">prompt_context_snapshot</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required_for_replay</span>
-<span class="w">  </span><span class="nt">triage</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">severity_routing</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">sev1</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">quality_incident</span>
-<span class="w">      </span><span class="nt">high</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">regression_candidate</span>
-<span class="w">      </span><span class="nt">medium</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sampling_queue</span>
-<span class="w">      </span><span class="nt">low</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">aggregate_metric</span>
-<span class="w">    </span><span class="nt">failure_layer_labels</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">model_behavior</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prompt_template</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rag_retrieval</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rag_context_assembly</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tool_policy</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gateway_route</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">runtime_protocol</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">client_rendering</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">user_misuse</span>
-<span class="w">  </span><span class="nt">privacy</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">raw_prompt_export</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">denied_by_default</span>
-<span class="w">    </span><span class="nt">use_references</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">prompt_ref</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">response_ref</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">context_snapshot_ref</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">pii_redaction_before_labeling</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">  </span><span class="nt">outputs</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">human_feedback_evidence</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">generated_if_reviewed</span>
-<span class="w">    </span><span class="nt">quality_regression_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">generated_if_reproduced</span>
-<span class="w">    </span><span class="nt">eval_dataset_lineage_record_update</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">generated_if_added_to_dataset</span>
-<span class="w">    </span><span class="nt">quality_cost_ledger_update</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">generated_if_user_visible_loss</span>
-</code></pre></div>
+<pre><code class="language-yaml">quality_feedback_intake_pipeline:
+  pipeline_id: qfip-support-202606
+  sources:
+    - frontend_thumbs_down
+    - regenerate_clicked
+    - crm_complaint
+    - human_handoff
+    - agent_run_failed
+    - safety_or_policy_escalation
+  required_correlation:
+    request_id: required
+    trace_id: required
+    serving_quality_contract: required
+    routing_quality_decision_record: required_if_routed
+    experiment_id: required_if_experiment
+    prompt_context_snapshot: required_for_replay
+  triage:
+    severity_routing:
+      sev1: quality_incident
+      high: regression_candidate
+      medium: sampling_queue
+      low: aggregate_metric
+    failure_layer_labels:
+      - model_behavior
+      - prompt_template
+      - rag_retrieval
+      - rag_context_assembly
+      - tool_policy
+      - gateway_route
+      - runtime_protocol
+      - client_rendering
+      - user_misuse
+  privacy:
+    raw_prompt_export: denied_by_default
+    use_references: [prompt_ref, response_ref, context_snapshot_ref]
+    pii_redaction_before_labeling: required
+  outputs:
+    human_feedback_evidence: generated_if_reviewed
+    quality_regression_record: generated_if_reproduced
+    eval_dataset_lineage_record_update: generated_if_added_to_dataset
+    quality_cost_ledger_update: generated_if_user_visible_loss
+</code></pre>
 <p>这条 pipeline 的关键控制点是 reproduction。一个反馈如果无法用当时的 serving contract、prompt template、retrieval snapshot、tool trace 和 route decision 重放，就不能直接作为门禁样本，只能作为 aggregate signal 或人工调查线索。反过来，高严重度且可复现的反馈应自动生成 <code>quality_regression_record</code>，并进入目标 <code>eval_slice_contract</code> 的候选样本池。这样线上反馈不会变成噪声池，也不会在客服系统和模型团队之间丢失。</p>
-<pre class="mermaid"><code>flowchart TB
-  Feedback["quality_feedback_event"] --&gt; Correlate["correlate\ntrace / contract / route / experiment"]
-  Correlate --&gt; Privacy["redact / reference\nprompt and context"]
-  Privacy --&gt; Triage["triage severity + failure layer"]
-  Triage --&gt; Replay{"replayable?"}
-  Replay --&gt;|yes| Review["human_feedback_evidence\nrubric review"]
-  Replay --&gt;|no| Aggregate["aggregate signal\nmissing evidence action"]
-  Review --&gt; Regression["quality_regression_record"]
-  Regression --&gt; Dataset["eval_dataset_lineage_record update"]
-  Regression --&gt; Cost["quality_cost_ledger update"]
-  Aggregate --&gt; Observability["quality evidence completeness metric"]</code></pre>
+<p><img alt="图：13.2.2 系统架构" src="../../assets/diagrams/part-03-models-chapter-13-model-evaluation-03.svg" /></p>
 <p>评测证据还会失效，因此需要 <code>eval_contamination_invalidation_record</code>。很多团队只在创建 golden set 时做污染检查，却忽略后续访问、导出、prompt 调参、训练数据合并、外包标注和 judge 升级都会改变证据可信度。一旦发现 golden set 或 holdout 被未授权访问、与训练数据重叠、样本业务规则过期、label 规则被改写，相关 gate execution 就不应继续作为生产放行依据，直到完成替换、重标或降级。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">eval_contamination_invalidation_record</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">invalidation_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ecir-support-20260620-001</span>
-<span class="w">  </span><span class="nt">dataset_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">support-quality-202606</span>
-<span class="w">  </span><span class="nt">affected_splits</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">golden_regression</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">blind_holdout</span>
-<span class="w">  </span><span class="nt">trigger</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">unauthorized_access_or_overlap_or_stale_policy_or_judge_change</span>
-<span class="w">    </span><span class="nt">detected_by</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">access_audit_and_overlap_scan</span>
-<span class="w">  </span><span class="nt">evidence</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">golden_set_governance_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gsg-support-202606</span>
-<span class="w">    </span><span class="nt">eval_dataset_lineage_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">edl-support-quality-20260620</span>
-<span class="w">    </span><span class="nt">access_audit_events</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sampled</span>
-<span class="w">    </span><span class="nt">overlap_scan_report</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">attached</span>
-<span class="w">    </span><span class="nt">affected_quality_gate_executions</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">qge-af-chat-20260620-001</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">decision</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">gate_status</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">invalidated_or_degraded</span>
-<span class="w">    </span><span class="nt">allowed_use</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">historical_reference_only_until_remediated</span>
-<span class="w">    </span><span class="nt">production_readiness_review</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">block_high_value_release</span>
-<span class="w">  </span><span class="nt">remediation</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">remove_contaminated_cases</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required_if_confirmed</span>
-<span class="w">    </span><span class="nt">relabel_or_replace_cases</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">    </span><span class="nt">regenerate_blind_split</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required_if_holdout_affected</span>
-<span class="w">    </span><span class="nt">rerun_quality_gate_execution</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-</code></pre></div>
+<pre><code class="language-yaml">eval_contamination_invalidation_record:
+  invalidation_id: ecir-support-20260620-001
+  dataset_id: support-quality-202606
+  affected_splits:
+    - golden_regression
+    - blind_holdout
+  trigger:
+    type: unauthorized_access_or_overlap_or_stale_policy_or_judge_change
+    detected_by: access_audit_and_overlap_scan
+  evidence:
+    golden_set_governance_record: gsg-support-202606
+    eval_dataset_lineage_record: edl-support-quality-20260620
+    access_audit_events: sampled
+    overlap_scan_report: attached
+    affected_quality_gate_executions: [qge-af-chat-20260620-001]
+  decision:
+    gate_status: invalidated_or_degraded
+    allowed_use: historical_reference_only_until_remediated
+    production_readiness_review: block_high_value_release
+  remediation:
+    remove_contaminated_cases: required_if_confirmed
+    relabel_or_replace_cases: required
+    regenerate_blind_split: required_if_holdout_affected
+    rerun_quality_gate_execution: required
+</code></pre>
 <p>这个对象让“评测集不可信”成为可执行状态，而不是质量团队内部备注。若 <code>gate_status</code> 已 invalidated，Gateway 不能用该 execution 扩大高价值流量，serving release 不能把它作为质量证据，PRR 不能批准外部客户上线。很多组织在模型事故后才发现评测集早已被训练或调参污染；更好的做法是让污染检测直接失效门禁证据，并要求重新执行 gate。</p>
 <p>AI judge 也需要治理。Judge model、rubric 和解析器升级会改变分数，甚至改变回归趋势。如果没有 <code>judge_drift_calibration_record</code>，团队可能把 judge 变严误判为模型退化，也可能把 judge 变松误判为模型提升。校准记录应使用人工 anchor cases、历史模型输出和跨版本 backtest，对比新旧 judge 的一致性、偏差、严重样本漏判和任务切片影响。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">judge_drift_calibration_record</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">calibration_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">jdcr-support-20260620-001</span>
-<span class="w">  </span><span class="nt">judge_change</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">previous_judge</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">judge-202605</span>
-<span class="w">    </span><span class="nt">candidate_judge</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">judge-202606</span>
-<span class="w">    </span><span class="nt">rubric_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">support-rubric-v5</span>
-<span class="w">    </span><span class="nt">parser_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">eval-parser-v3</span>
-<span class="w">  </span><span class="nt">calibration_sets</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">human_anchor_cases</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">support-anchor-202606</span>
-<span class="w">    </span><span class="nt">historical_outputs</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-large-202605</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-large-202606</span>
-<span class="w">    </span><span class="nt">high_risk_slices</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rag_citation</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">safety_sensitive_request</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tool_call_json</span>
-<span class="w">  </span><span class="nt">results</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">agreement_with_human_anchor</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">severity_flip_rate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">false_pass_on_high_severity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">score_shift_by_slice</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">  </span><span class="nt">decision</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">usable_for_gate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true_or_false</span>
-<span class="w">    </span><span class="nt">requires_threshold_rebaseline</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true_or_false</span>
-<span class="w">    </span><span class="nt">affected_gate_executions_to_rerun</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">qge-af-chat-20260620-001</span><span class="p p-Indicator">]</span>
-</code></pre></div>
+<pre><code class="language-yaml">judge_drift_calibration_record:
+  calibration_id: jdcr-support-20260620-001
+  judge_change:
+    previous_judge: judge-202605
+    candidate_judge: judge-202606
+    rubric_version: support-rubric-v5
+    parser_version: eval-parser-v3
+  calibration_sets:
+    human_anchor_cases: support-anchor-202606
+    historical_outputs:
+      - af-chat-large-202605
+      - af-chat-large-202606
+    high_risk_slices:
+      - rag_citation
+      - safety_sensitive_request
+      - tool_call_json
+  results:
+    agreement_with_human_anchor: measured
+    severity_flip_rate: measured
+    false_pass_on_high_severity: measured
+    score_shift_by_slice: measured
+  decision:
+    usable_for_gate: true_or_false
+    requires_threshold_rebaseline: true_or_false
+    affected_gate_executions_to_rerun: [qge-af-chat-20260620-001]
+</code></pre>
 <p>Judge 校准不是追求 judge 永远不变，而是让变化可解释。新的 judge 可能更好，但只要它改变了阈值含义，就必须重跑或重标关键 gate；某些 slice 的 score shift 可能很大，阈值需要重新标定；如果高严重度样本 false pass 增加，不能进入生产门禁。把 judge 当作基础设施组件治理，才能让自动评测长期可信。</p>
 <p><code>quality_gate_record</code> 是把评测结果转成发布决策的对象。它应记录候选、基线、门禁维度、阈值、通过或失败、豁免、owner、审批和后续动作。门禁不应只说 pass/fail，还要表达“在哪些任务切片通过，哪些指标观察，哪些风险被接受”。这样第 14 章的 serving release、第 6 章的 Gateway 路由和第 40 章的 SRE 变更管理才能消费同一事实。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">quality_gate_record</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">gate_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qg-af-chat-20260619</span>
-<span class="w">  </span><span class="nt">candidate</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">model_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-large-202606</span>
-<span class="w">    </span><span class="nt">prompt_template_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">support-v18</span>
-<span class="w">    </span><span class="nt">runtime_profile</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vllm-prod-v7</span>
-<span class="w">  </span><span class="nt">baseline</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">model_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-large-202605</span>
-<span class="w">  </span><span class="nt">datasets</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">support-quality-202606</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rag-support-202606</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">agent-codefix-202606</span>
-<span class="w">  </span><span class="nt">hard_gates</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">safety_eval</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">no_domain_regression</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">citation_accuracy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">latency_p95_under_slo</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">token_count_drift_explained</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">  </span><span class="nt">soft_gates</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">output_length_delta</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">review</span>
-<span class="w">    </span><span class="nt">cost_per_successful_task</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">review</span>
-<span class="w">  </span><span class="nt">decision</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">canary</span>
-<span class="w">    </span><span class="nt">approved_by</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">release_owner</span>
-<span class="w">    </span><span class="nt">expiry</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">next_major_release</span>
-</code></pre></div>
+<pre><code class="language-yaml">quality_gate_record:
+  gate_id: qg-af-chat-20260619
+  candidate:
+    model_version: af-chat-large-202606
+    prompt_template_version: support-v18
+    runtime_profile: vllm-prod-v7
+  baseline:
+    model_version: af-chat-large-202605
+  datasets:
+    - support-quality-202606
+    - rag-support-202606
+    - agent-codefix-202606
+  hard_gates:
+    safety_eval: pass
+    no_domain_regression: pass
+    citation_accuracy: pass
+    latency_p95_under_slo: pass
+    token_count_drift_explained: pass
+  soft_gates:
+    output_length_delta: review
+    cost_per_successful_task: review
+  decision:
+    action: canary
+    approved_by: release_owner
+    expiry: next_major_release
+</code></pre>
 <p>门禁配置还要落成 <code>quality_gate_execution</code>。同一条 gate 可能在不同时间、不同 runtime、不同评测数据版本、不同 judge 版本下执行；只保存最终 pass/fail 会丢掉决策证据。Execution 记录这次运行的输入、环境、结果、豁免和后续发布动作，是 PRR、serving release 和 SRE 质量事故复盘共同引用的事实。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">quality_gate_execution</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">execution_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qge-af-chat-20260620-001</span>
-<span class="w">  </span><span class="nt">gate_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qg-af-chat-20260619</span>
-<span class="w">  </span><span class="nt">candidate</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">model_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-large-202606</span>
-<span class="w">    </span><span class="nt">serving_quality_contract</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sqc-af-chat-20260619-r3</span>
-<span class="w">    </span><span class="nt">runtime_quality_gate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rqg-vllm-20260620</span>
-<span class="w">  </span><span class="nt">datasets</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">dataset_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">support-quality-202606</span>
-<span class="w">      </span><span class="nt">lineage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">edl-support-quality-20260620</span>
-<span class="w">  </span><span class="nt">execution_environment</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">runner_image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">eval-runner@sha256:example</span>
-<span class="w">    </span><span class="nt">decoding_profile</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">deterministic_eval</span>
-<span class="w">    </span><span class="nt">judge_model_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">judge-202606</span>
-<span class="w">  </span><span class="nt">results</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">hard_gates</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">soft_gates</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">review_required</span>
-<span class="w">    </span><span class="nt">regressions_opened</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">qrr-20260620-0012</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">token_count_drift</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">explained</span>
-<span class="w">    </span><span class="nt">cost_per_successful_answer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">within_or_review</span>
-<span class="w">  </span><span class="nt">waivers</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">metric</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">output_length_delta</span>
-<span class="w">      </span><span class="nt">reason</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">expected_more_complete_answer</span>
-<span class="w">      </span><span class="nt">expires_at</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">next_gate_execution</span>
-<span class="w">      </span><span class="nt">approver</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">model-release-owner</span>
-<span class="w">  </span><span class="nt">decision</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">approve_canary</span>
-<span class="w">    </span><span class="nt">canary_scope</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">internal_and_low_risk_tenants</span>
-</code></pre></div>
+<pre><code class="language-yaml">quality_gate_execution:
+  execution_id: qge-af-chat-20260620-001
+  gate_id: qg-af-chat-20260619
+  candidate:
+    model_version: af-chat-large-202606
+    serving_quality_contract: sqc-af-chat-20260619-r3
+    runtime_quality_gate: rqg-vllm-20260620
+  datasets:
+    - dataset_id: support-quality-202606
+      lineage: edl-support-quality-20260620
+  execution_environment:
+    runner_image: eval-runner@sha256:example
+    decoding_profile: deterministic_eval
+    judge_model_version: judge-202606
+  results:
+    hard_gates: pass
+    soft_gates: review_required
+    regressions_opened: [qrr-20260620-0012]
+    token_count_drift: explained
+    cost_per_successful_answer: within_or_review
+  waivers:
+    - metric: output_length_delta
+      reason: expected_more_complete_answer
+      expires_at: next_gate_execution
+      approver: model-release-owner
+  decision:
+    action: approve_canary
+    canary_scope: internal_and_low_risk_tenants
+</code></pre>
 <p>这份 execution 让质量门禁可以审计和复用。Gateway 的 <code>routing_quality_scorecard</code> 可以引用最近一次通过的 execution；第 14 章的 <code>serving_quality_contract</code> 可以证明上线组合与评测组合一致；第 40 章的 quality incident 可以检查当初是否有豁免或未关闭回归；第 41 章可以把评测成本和低质量损失放进质量账本。门禁不是静态清单，而是一条可追溯的发布证据链。</p>
 <p>质量门禁还需要 <code>quality_gate_freshness_contract</code>。很多平台的 gate 在执行当天是可信的，但几天后依赖已经变化：评测数据集新增了高风险反馈样本，judge 模型升级，rubric 变更，serving runtime 改了输出协议，Gateway route 增加了 fallback，RAG index 的 ACL 策略更新，或者 feedback pipeline 暂时丢失 trace。若 gate 仍被当作“最近一次通过”使用，就会出现评测证据过期但发布继续放量。Freshness contract 的作用是定义一次 gate 结果在什么依赖不变的条件下可用，哪些变化会让它自动降级或失效。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">quality_gate_freshness_contract</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">contract_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qgfc-support-20260620</span>
-<span class="w">  </span><span class="nt">gate_execution</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qge-af-chat-20260620-001</span>
-<span class="w">  </span><span class="nt">valid_for</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">serving_quality_contract</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sqc-af-chat-20260619-r3</span>
-<span class="w">    </span><span class="nt">task_slices</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">support_chat</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">rag_citation</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">tool_call_json</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">release_train</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">maas-chat-2026-06</span>
-<span class="w">    </span><span class="nt">max_age</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_defined_by_risk</span>
-<span class="w">  </span><span class="nt">dependency_versions</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">eval_dataset_lineage_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">edl-support-quality-20260620</span>
-<span class="w">    </span><span class="nt">golden_set_governance_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gsg-support-202606</span>
-<span class="w">    </span><span class="nt">judge_drift_calibration_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">jdcr-support-20260620-001</span>
-<span class="w">    </span><span class="nt">rubric_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">support-rubric-v5</span>
-<span class="w">    </span><span class="nt">eval_runner_image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">eval-runner@sha256:example</span>
-<span class="w">    </span><span class="nt">prompt_template</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">support-v18</span>
-<span class="w">    </span><span class="nt">runtime_profile</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vllm-prod-h100-v7</span>
-<span class="w">    </span><span class="nt">serving_route_release_contract</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">srrc-af-chat-large-20260620</span>
-<span class="w">    </span><span class="nt">quality_feedback_intake_pipeline</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qfip-support-202606</span>
-<span class="w">  </span><span class="nt">invalidation_triggers</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">eval_dataset_lineage_changed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rerun_affected_slices</span>
-<span class="w">    </span><span class="nt">contamination_record_opened</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">block_high_value_release</span>
-<span class="w">    </span><span class="nt">judge_or_rubric_changed_without_calibration</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">block_gate_reuse</span>
-<span class="w">    </span><span class="nt">serving_contract_changed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rerun_protocol_and_quality_gate</span>
-<span class="w">    </span><span class="nt">route_or_fallback_changed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">require_route_quality_replay</span>
-<span class="w">    </span><span class="nt">feedback_replay_rate_below_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">degrade_to_observation_only</span>
-<span class="w">  </span><span class="nt">decision</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">reusable_for_canary</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">reusable_for_full_ramp</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true_or_false</span>
-<span class="w">    </span><span class="nt">next_required_rerun</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">before_major_ramp_or_dependency_change</span>
-</code></pre></div>
+<pre><code class="language-yaml">quality_gate_freshness_contract:
+  contract_id: qgfc-support-20260620
+  gate_execution: qge-af-chat-20260620-001
+  valid_for:
+    serving_quality_contract: sqc-af-chat-20260619-r3
+    task_slices: [support_chat, rag_citation, tool_call_json]
+    release_train: maas-chat-2026-06
+    max_age: policy_defined_by_risk
+  dependency_versions:
+    eval_dataset_lineage_record: edl-support-quality-20260620
+    golden_set_governance_record: gsg-support-202606
+    judge_drift_calibration_record: jdcr-support-20260620-001
+    rubric_version: support-rubric-v5
+    eval_runner_image: eval-runner@sha256:example
+    prompt_template: support-v18
+    runtime_profile: vllm-prod-h100-v7
+    serving_route_release_contract: srrc-af-chat-large-20260620
+    quality_feedback_intake_pipeline: qfip-support-202606
+  invalidation_triggers:
+    eval_dataset_lineage_changed: rerun_affected_slices
+    contamination_record_opened: block_high_value_release
+    judge_or_rubric_changed_without_calibration: block_gate_reuse
+    serving_contract_changed: rerun_protocol_and_quality_gate
+    route_or_fallback_changed: require_route_quality_replay
+    feedback_replay_rate_below_threshold: degrade_to_observation_only
+  decision:
+    reusable_for_canary: true
+    reusable_for_full_ramp: true_or_false
+    next_required_rerun: before_major_ramp_or_dependency_change
+</code></pre>
 <p>这个契约让质量门禁从“时间最近”变成“依赖仍然一致”。它也避免两个极端：一端是每次小变更都全量重跑，导致发布效率过低；另一端是只要 gate 曾经通过就无限复用，导致证据失真。工程上应把 invalidation trigger 做成控制面事件：dataset lineage 更新、judge 校准失败、serving contract 变化、fallback 变化或 feedback pipeline 失效时，自动更新 gate 状态，并让 PRR、Gateway 和 release pipeline 消费这个状态。</p>
 <p>还应建立 <code>quality_evidence_dependency_graph</code>。Freshness contract 定义规则，dependency graph 记录实际依赖关系和影响面。它能回答：某个 judge 校准失败会影响哪些 gate execution、哪些 serving release、哪些 online experiment、哪些 task slice 和哪些客户 ramp；某个 golden set 污染是否只影响 RAG citation，还是也影响 tool_call_json；某条 feedback pipeline 关联失败会不会让线上实验结论不可用。没有这张图，质量证据失效只能靠人工开会传播。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">quality_evidence_dependency_graph</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">graph_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qedg-support-20260620</span>
-<span class="w">  </span><span class="nt">nodes</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">gate_execution</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qge-af-chat-20260620-001</span>
-<span class="w">    </span><span class="nt">eval_dataset_lineage</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">edl-support-quality-20260620</span>
-<span class="w">    </span><span class="nt">golden_set_governance</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gsg-support-202606</span>
-<span class="w">    </span><span class="nt">judge_calibration</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">jdcr-support-20260620-001</span>
-<span class="w">    </span><span class="nt">serving_quality_contract</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sqc-af-chat-20260619-r3</span>
-<span class="w">    </span><span class="nt">online_experiment_guardrail</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">oeg-support-20260620</span>
-<span class="w">    </span><span class="nt">quality_feedback_pipeline</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qfip-support-202606</span>
-<span class="w">  </span><span class="nt">edges</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">from</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">edl-support-quality-20260620</span>
-<span class="w">      </span><span class="nt">to</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qge-af-chat-20260620-001</span>
-<span class="w">      </span><span class="nt">relation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">provides_eval_cases</span>
-<span class="w">      </span><span class="nt">invalidation_action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rerun_affected_slices</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">from</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">jdcr-support-20260620-001</span>
-<span class="w">      </span><span class="nt">to</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qge-af-chat-20260620-001</span>
-<span class="w">      </span><span class="nt">relation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">defines_judge_score_semantics</span>
-<span class="w">      </span><span class="nt">invalidation_action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rebaseline_threshold_or_block</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">from</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qge-af-chat-20260620-001</span>
-<span class="w">      </span><span class="nt">to</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sqc-af-chat-20260619-r3</span>
-<span class="w">      </span><span class="nt">relation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">approves_serving_combination</span>
-<span class="w">      </span><span class="nt">invalidation_action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">freeze_release_or_rerun_gate</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">from</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qfip-support-202606</span>
-<span class="w">      </span><span class="nt">to</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">oeg-support-20260620</span>
-<span class="w">      </span><span class="nt">relation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">supplies_feedback_guardrail</span>
-<span class="w">      </span><span class="nt">invalidation_action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">freeze_experiment_if_correlation_broken</span>
-<span class="w">  </span><span class="nt">impact_query</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">input_event</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">judge_calibration_failed</span>
-<span class="w">    </span><span class="nt">affected_gate_executions</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">qge-af-chat-20260620-001</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">affected_serving_contracts</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">sqc-af-chat-20260619-r3</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">affected_experiments</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">oeg-support-20260620</span><span class="p p-Indicator">]</span>
-</code></pre></div>
-<pre class="mermaid"><code>flowchart TB
-  Dataset["eval_dataset_lineage_record"] --&gt; Gate["quality_gate_execution"]
-  Golden["golden_set_governance_record"] --&gt; Gate
-  Judge["judge_drift_calibration_record"] --&gt; Gate
-  Rubric["rubric / parser version"] --&gt; Gate
-  Gate --&gt; Fresh["quality_gate_freshness_contract"]
-  Fresh --&gt; SQC["serving_quality_contract"]
-  SQC --&gt; Route["serving_route_release_contract"]
-  Route --&gt; Experiment["online_experiment_guardrail"]
-  Feedback["quality_feedback_intake_pipeline"] --&gt; Experiment
-  Fresh --&gt; PRR["production readiness review"]
-  Judge --&gt; Dep["quality_evidence_dependency_graph"]
-  Dataset --&gt; Dep
-  Dep --&gt; Impact["affected gates / releases / experiments"]</code></pre>
+<pre><code class="language-yaml">quality_evidence_dependency_graph:
+  graph_id: qedg-support-20260620
+  nodes:
+    gate_execution:
+      - qge-af-chat-20260620-001
+    eval_dataset_lineage:
+      - edl-support-quality-20260620
+    golden_set_governance:
+      - gsg-support-202606
+    judge_calibration:
+      - jdcr-support-20260620-001
+    serving_quality_contract:
+      - sqc-af-chat-20260619-r3
+    online_experiment_guardrail:
+      - oeg-support-20260620
+    quality_feedback_pipeline:
+      - qfip-support-202606
+  edges:
+    - from: edl-support-quality-20260620
+      to: qge-af-chat-20260620-001
+      relation: provides_eval_cases
+      invalidation_action: rerun_affected_slices
+    - from: jdcr-support-20260620-001
+      to: qge-af-chat-20260620-001
+      relation: defines_judge_score_semantics
+      invalidation_action: rebaseline_threshold_or_block
+    - from: qge-af-chat-20260620-001
+      to: sqc-af-chat-20260619-r3
+      relation: approves_serving_combination
+      invalidation_action: freeze_release_or_rerun_gate
+    - from: qfip-support-202606
+      to: oeg-support-20260620
+      relation: supplies_feedback_guardrail
+      invalidation_action: freeze_experiment_if_correlation_broken
+  impact_query:
+    input_event: judge_calibration_failed
+    affected_gate_executions: [qge-af-chat-20260620-001]
+    affected_serving_contracts: [sqc-af-chat-20260619-r3]
+    affected_experiments: [oeg-support-20260620]
+</code></pre>
+<p><img alt="图：13.2.2 系统架构" src="../../assets/diagrams/part-03-models-chapter-13-model-evaluation-04.svg" /></p>
 <p>这张图说明质量证据不是线性的。评测数据、judge、rubric、serving contract、route 和反馈管线共同决定一次 gate 是否仍可信。<code>quality_evidence_dependency_graph</code> 应进入 release pipeline：当依赖事件发生时，系统不需要猜哪些 release 受影响，而是直接查询图并更新状态。对资深工程师来说，这比“质量团队确认过”更可靠，因为它把人的确认变成可回放、可审计、可自动传播的控制面状态。</p>
 <p><code>quality_regression_record</code> 是失败样本从发现到关闭的状态机。它要记录发现来源、复现条件、影响范围、归因层级、owner、修复方案、复测结果和是否加入门禁。没有 regression record，线上反馈很容易被临时修掉，却不能防止复发；有了它，质量事故会沉淀成长期资产。</p>
-<pre class="mermaid"><code>stateDiagram-v2
-  [*] --&gt; Detected
-  Detected --&gt; Triaged: classify failure layer
-  Triaged --&gt; Reproduced: replay with frozen artifacts
-  Reproduced --&gt; Assigned: owner and fix layer selected
-  Assigned --&gt; Fixed: model / prompt / RAG / tool / route / runtime
-  Fixed --&gt; Retested: run regression suite
-  Retested --&gt; GateUpdated: add or update gate case
-  GateUpdated --&gt; Closed: pass and monitored
-  Retested --&gt; Reopened: failure persists
-  Reopened --&gt; Assigned</code></pre>
-<div class="highlight"><pre><span></span><code><span class="nt">quality_regression_record</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">regression_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qrr-20260619-0007</span>
-<span class="w">  </span><span class="nt">discovered_by</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">online_feedback</span>
-<span class="w">  </span><span class="nt">feedback_event</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qfe-20260619-0001</span>
-<span class="w">  </span><span class="nt">affected_versions</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-large-202606</span>
-<span class="w">    </span><span class="nt">prompt_template</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">support-v18</span>
-<span class="w">    </span><span class="nt">gateway_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gw-20260619.4</span>
-<span class="w">  </span><span class="nt">failure</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">task_slice</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rag_citation</span>
-<span class="w">    </span><span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">high</span>
-<span class="w">    </span><span class="nt">layer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">context_assembly</span>
-<span class="w">    </span><span class="nt">symptom</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">correct_evidence_retrieved_but_truncated</span>
-<span class="w">  </span><span class="nt">reproduction</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">prompt_context_snapshot</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pcs-20260619-0001</span>
-<span class="w">    </span><span class="nt">replay_status</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">reproduced</span>
-<span class="w">  </span><span class="nt">ownership</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">team</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">knowledge-platform</span>
-<span class="w">    </span><span class="nt">fix_layer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rag_context_budget</span>
-<span class="w">  </span><span class="nt">retest</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">status</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pending</span>
-<span class="w">    </span><span class="nt">added_to_dataset</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">support-quality-202606</span>
-</code></pre></div>
+<p><img alt="图：13.2.2 系统架构" src="../../assets/diagrams/part-03-models-chapter-13-model-evaluation-05.svg" /></p>
+<pre><code class="language-yaml">quality_regression_record:
+  regression_id: qrr-20260619-0007
+  discovered_by: online_feedback
+  feedback_event: qfe-20260619-0001
+  affected_versions:
+    model: af-chat-large-202606
+    prompt_template: support-v18
+    gateway_policy: gw-20260619.4
+  failure:
+    task_slice: rag_citation
+    severity: high
+    layer: context_assembly
+    symptom: correct_evidence_retrieved_but_truncated
+  reproduction:
+    prompt_context_snapshot: pcs-20260619-0001
+    replay_status: reproduced
+  ownership:
+    team: knowledge-platform
+    fix_layer: rag_context_budget
+  retest:
+    status: pending
+    added_to_dataset: support-quality-202606
+</code></pre>
 <h2 id="133">13.3 关键技术<a class="headerlink" href="#133" title="Permanent link">&para;</a></h2>
 <h3 id="1331-benchmark">13.3.1 benchmark<a class="headerlink" href="#1331-benchmark" title="Permanent link">&para;</a></h3>
 <p>Benchmark 是标准化测试集和指标，适合横向比较模型在特定能力上的表现，例如知识、推理、数学、代码、多语言或安全。它的价值在于可复现、可比较和低成本，能作为模型基础体检。对于模型团队，benchmark 能帮助判断训练或后训练是否带来能力提升；对于平台团队，benchmark 能提供模型目录中的基础能力信号。</p>
@@ -4374,20 +4318,20 @@
 <h3 id="1341">13.4.1 工程实现<a class="headerlink" href="#1341" title="Permanent link">&para;</a></h3>
 <p>模型上线门禁应声明评测项、阈值、数据版本、回滚条件和灰度策略。它不应只写“评测通过”，而要说明哪些维度必须不回退，哪些维度允许折中，哪些指标触发人工审批。门禁配置应进入 model registry，与候选模型、评测报告和发布记录绑定。这样每次上线都有可追溯依据。</p>
 <p>示例配置如下：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">release_gate</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-v2-candidate</span>
-<span class="w">  </span><span class="nt">required</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">benchmark</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">domain_eval</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">no_regression</span>
-<span class="w">    </span><span class="nt">safety_eval</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">latency_p95</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">within_slo</span>
-<span class="w">    </span><span class="nt">cost_per_token</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">within_budget</span>
-<span class="w">  </span><span class="nt">rollout</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">canary_tenants</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">internal-test</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">rollback_on</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">error_rate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">high</span>
-<span class="w">      </span><span class="nt">complaint_rate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">high</span>
-</code></pre></div>
+<pre><code class="language-yaml">release_gate:
+  model: af-chat-v2-candidate
+  required:
+    benchmark: pass
+    domain_eval: no_regression
+    safety_eval: pass
+    latency_p95: within_slo
+    cost_per_token: within_budget
+  rollout:
+    canary_tenants: [internal-test]
+    rollback_on:
+      error_rate: high
+      complaint_rate: high
+</code></pre>
 <p>工程实现还应支持评测复现。每次评测要记录模型版本、runtime、prompt 模板、解码参数、评测数据版本、评审模型版本和执行环境。若一个月后要复查某次上线决策，平台必须能重跑或解释当时结果。缺少复现能力，评测报告会变成一次性文档。</p>
 <p>评测平台还应提供失败样本管理。失败样本可以进入数据修复、后训练、RAG 改造或安全策略；已修复样本应加入回归集；争议样本应有人工裁决。评测的最终价值不只是拦截模型，而是让失败变成下一轮改进的输入。模型评测和数据闭环必须连接。</p>
 <p>实现上还应支持评测报告自动生成。报告应包含模型版本、基线、评测数据、通过项、失败项、风险、性能、成本、建议动作和审批记录。人可以写结论，但事实数据应自动汇总，减少手工复制错误。评测报告是发布审计的一部分。</p>
@@ -4395,164 +4339,140 @@
 <p>评测产物应长期保存，至少保存摘要、失败样本索引和关键配置。</p>
 <p>审批记录也应绑定报告。</p>
 <p>线上实验的工程实现要复用第 6 章的 <code>online_experiment_record</code>，并把结果回写到 <code>quality_gate_record</code>。实验不是门禁之外的例外，而是门禁之后的受控验证。实验期间产生的投诉、人工接管、格式错误、引用错误和安全拦截，应通过 <code>quality_feedback_event</code> 回流，并按实验 variant 切分。否则线上 A/B 只能告诉你某个指标变了，不能解释是哪类样本、哪个版本、哪个策略造成。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">online_eval_summary</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">experiment_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">exp-support-model-20260619</span>
-<span class="w">  </span><span class="nt">gate_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qg-af-chat-20260619</span>
-<span class="w">  </span><span class="nt">variants</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">control</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">model_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-large-202605</span>
-<span class="w">      </span><span class="nt">sample_size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">treatment</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">model_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-large-202606</span>
-<span class="w">      </span><span class="nt">sample_size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">  </span><span class="nt">primary_metrics</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">task_success_rate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">treatment_non_inferior</span>
-<span class="w">    </span><span class="nt">citation_accuracy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">treatment_better</span>
-<span class="w">  </span><span class="nt">guardrails</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">ttft_p95</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">no_regression</span>
-<span class="w">    </span><span class="nt">complaint_rate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">no_regression</span>
-<span class="w">    </span><span class="nt">cost_per_successful_answer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">review_required</span>
-<span class="w">  </span><span class="nt">harvested_feedback</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">quality_feedback_events</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">new_regression_records</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">  </span><span class="nt">decision</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">expand_or_review</span>
-</code></pre></div>
+<pre><code class="language-yaml">online_eval_summary:
+  experiment_id: exp-support-model-20260619
+  gate_id: qg-af-chat-20260619
+  variants:
+    control:
+      model_version: af-chat-large-202605
+      sample_size: measured
+    treatment:
+      model_version: af-chat-large-202606
+      sample_size: measured
+  primary_metrics:
+    task_success_rate: treatment_non_inferior
+    citation_accuracy: treatment_better
+  guardrails:
+    ttft_p95: no_regression
+    complaint_rate: no_regression
+    cost_per_successful_answer: review_required
+  harvested_feedback:
+    quality_feedback_events: measured
+    new_regression_records: measured
+  decision: expand_or_review
+</code></pre>
 <p>线上实验还需要 <code>online_experiment_guardrail</code>。<code>online_experiment_record</code> 记录实验是什么，guardrail 记录实验允许伤害多少、何时自动停止、如何保护随机化和归因。没有 guardrail 的 A/B 很容易出现三类错误：第一，随机化单元选错，把同一用户会话切到多个模型，污染多轮上下文；第二，只看主指标，忽略投诉、人工接管、安全拦截和成本；第三，实验失败后没有冻结样本和路由证据，导致结论争议无法复盘。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">online_experiment_guardrail</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">guardrail_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">oeg-support-20260620</span>
-<span class="w">  </span><span class="nt">experiment_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">exp-support-model-20260619</span>
-<span class="w">  </span><span class="nt">randomization</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">unit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">user_or_conversation</span>
-<span class="w">    </span><span class="nt">stickiness</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required_for_multi_turn</span>
-<span class="w">    </span><span class="nt">exclusion</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">high_risk_tenants_without_approval</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">users_in_active_incident</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">requests_without_trace_or_contract_id</span>
-<span class="w">  </span><span class="nt">exposure_control</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">initial_percent</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">small_canary</span>
-<span class="w">    </span><span class="nt">max_percent_before_human_review</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_defined</span>
-<span class="w">    </span><span class="nt">ramp_requires</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">quality_gate_execution_valid</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">serving_quality_contract_match</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">no_open_sev1_quality_regression</span>
-<span class="w">  </span><span class="nt">guardrail_metrics</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">safety_block_miss</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">hard_stop</span>
-<span class="w">    </span><span class="nt">citation_failure_rate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">freeze_and_collect_bundle</span>
-<span class="w">    </span><span class="nt">human_handoff_rate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">freeze_if_regressed</span>
-<span class="w">    </span><span class="nt">complaint_rate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">freeze_if_regressed</span>
-<span class="w">    </span><span class="nt">ttft_p95</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">freeze_if_slo_regressed</span>
-<span class="w">    </span><span class="nt">cost_per_successful_answer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">review_if_regressed</span>
-<span class="w">  </span><span class="nt">stop_rules</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">automatic_freeze</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enabled</span>
-<span class="w">    </span><span class="nt">route_weight_to_candidate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">set_to_zero_on_hard_stop</span>
-<span class="w">    </span><span class="nt">evidence_bundle</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">quality_evidence_bundle_required</span>
-<span class="w">    </span><span class="nt">rollback_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required_if_serving_reverted</span>
-<span class="w">  </span><span class="nt">attribution_requirements</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">task_slice</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">    </span><span class="nt">routing_quality_decision_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sampled</span>
-<span class="w">    </span><span class="nt">serving_quality_contract</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">    </span><span class="nt">quality_feedback_event_variant</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-</code></pre></div>
+<pre><code class="language-yaml">online_experiment_guardrail:
+  guardrail_id: oeg-support-20260620
+  experiment_id: exp-support-model-20260619
+  randomization:
+    unit: user_or_conversation
+    stickiness: required_for_multi_turn
+    exclusion:
+      - high_risk_tenants_without_approval
+      - users_in_active_incident
+      - requests_without_trace_or_contract_id
+  exposure_control:
+    initial_percent: small_canary
+    max_percent_before_human_review: policy_defined
+    ramp_requires:
+      - quality_gate_execution_valid
+      - serving_quality_contract_match
+      - no_open_sev1_quality_regression
+  guardrail_metrics:
+    safety_block_miss: hard_stop
+    citation_failure_rate: freeze_and_collect_bundle
+    human_handoff_rate: freeze_if_regressed
+    complaint_rate: freeze_if_regressed
+    ttft_p95: freeze_if_slo_regressed
+    cost_per_successful_answer: review_if_regressed
+  stop_rules:
+    automatic_freeze: enabled
+    route_weight_to_candidate: set_to_zero_on_hard_stop
+    evidence_bundle: quality_evidence_bundle_required
+    rollback_record: required_if_serving_reverted
+  attribution_requirements:
+    task_slice: required
+    routing_quality_decision_record: sampled
+    serving_quality_contract: required
+    quality_feedback_event_variant: required
+</code></pre>
 <p>护栏的价值在于把“实验伦理”和“工程止血”落到控制面。实验可以允许小范围探索，但不能允许无限制伤害用户任务。对于客服、代码、安全和工具执行这类高风险场景，实验必须有 blast radius、停止规则和证据保留。若 treatment 的主指标略好，但 <code>human_handoff_rate</code> 和 <code>cost_per_successful_answer</code> 同时恶化，不能简单扩大流量；若随机化单元不是 conversation，多轮对话的质量差异可能被历史上下文污染。A/B 的可信度来自实验设计和护栏，而不只是统计显著性。</p>
-<pre class="mermaid"><code>flowchart TB
-  Gate["quality_gate_execution"] --&gt; Guardrail["online_experiment_guardrail"]
-  Contract["serving_quality_contract"] --&gt; Guardrail
-  Guardrail --&gt; Experiment["online_experiment_record"]
-  Experiment --&gt; Telemetry["quality_telemetry_event by variant"]
-  Telemetry --&gt; Stop{"guardrail breached?"}
-  Stop --&gt;|no| Ramp["continue / ramp"]
-  Stop --&gt;|yes| Freeze["freeze traffic expansion"]
-  Freeze --&gt; Bundle["quality_evidence_bundle"]
-  Freeze --&gt; Rollback["serving_rollback_record if needed"]
-  Bundle --&gt; Regression["quality_regression_record"]
-  Regression --&gt; Dataset["eval_slice_contract / golden set update"]</code></pre>
+<p><img alt="图：13.4.1 工程实现" src="../../assets/diagrams/part-03-models-chapter-13-model-evaluation-06.svg" /></p>
 <p>人类反馈也要结构化成 <code>human_feedback_evidence</code>。用户点踩、客服工单、人工接管、标注员评分和专家评审常常存在不同系统里，若没有统一证据对象，质量团队只能看到“有人说不好”，无法把反馈变成回归样本和质量成本。这个对象应保留来源、任务切片、上下文引用、评审规则、冲突处理、隐私边界和后续动作。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">human_feedback_evidence</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">evidence_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">hfe-support-20260620-001</span>
-<span class="w">  </span><span class="nt">source</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">user_feedback_crm_human_review</span>
-<span class="w">    </span><span class="nt">feedback_event</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qfe-20260620-0042</span>
-<span class="w">    </span><span class="nt">reviewer_role</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">support_domain_expert</span>
-<span class="w">    </span><span class="nt">consent_and_privacy_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">applied</span>
-<span class="w">  </span><span class="nt">binding</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">request_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">req-20260620-001</span>
-<span class="w">    </span><span class="nt">trace_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">trace-20260620-001</span>
-<span class="w">    </span><span class="nt">task_slice</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rag_citation</span>
-<span class="w">    </span><span class="nt">experiment_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">exp-support-model-20260619</span>
-<span class="w">    </span><span class="nt">serving_quality_contract</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sqc-af-chat-20260619-r3</span>
-<span class="w">    </span><span class="nt">routing_quality_decision_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rqdr-20260620-001</span>
-<span class="w">  </span><span class="nt">review</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">rubric_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">support-rubric-v5</span>
-<span class="w">    </span><span class="nt">label</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">task_success</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-<span class="w">      </span><span class="nt">citation_supported</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-<span class="w">      </span><span class="nt">should_handoff</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">disagreement_resolution</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">adjudicated_if_conflict</span>
-<span class="w">    </span><span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">high</span>
-<span class="w">  </span><span class="nt">downstream_actions</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">quality_regression_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qrr-20260620-0012</span>
-<span class="w">    </span><span class="nt">add_to_eval_slice</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rag_citation</span>
-<span class="w">    </span><span class="nt">golden_set_candidate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">quality_cost_ledger</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qcost-20260620-support</span>
-</code></pre></div>
+<pre><code class="language-yaml">human_feedback_evidence:
+  evidence_id: hfe-support-20260620-001
+  source:
+    type: user_feedback_crm_human_review
+    feedback_event: qfe-20260620-0042
+    reviewer_role: support_domain_expert
+    consent_and_privacy_policy: applied
+  binding:
+    request_id: req-20260620-001
+    trace_id: trace-20260620-001
+    task_slice: rag_citation
+    experiment_id: exp-support-model-20260619
+    serving_quality_contract: sqc-af-chat-20260619-r3
+    routing_quality_decision_record: rqdr-20260620-001
+  review:
+    rubric_version: support-rubric-v5
+    label:
+      task_success: false
+      citation_supported: false
+      should_handoff: true
+    disagreement_resolution: adjudicated_if_conflict
+    severity: high
+  downstream_actions:
+    quality_regression_record: qrr-20260620-0012
+    add_to_eval_slice: rag_citation
+    golden_set_candidate: true
+    quality_cost_ledger: qcost-20260620-support
+</code></pre>
 <p>这份证据把人工判断从“主观意见”变成生产事实。它不要求把用户原文无限制复制到评测平台，而是通过脱敏引用和上下文快照保留可回放性。若客服专家判定应该转人工，路由和成本系统就能把该请求计入 <code>cost_per_successful_answer</code>；若多个评审对同一类样本分歧很大，问题可能不是模型，而是 rubric 不清；若某个 experiment variant 收集到大量高严重度反馈，guardrail 应冻结放量。人类反馈的工程目标是闭环，而不是收集更多表单。</p>
 <p>评测平台还应支持“修复层级”统计。一次失败可能要改模型权重、prompt、RAG、工具 schema、Gateway 路由、runtime 参数或客户端展示。每个 <code>quality_regression_record</code> 都应填写 <code>fix_layer</code>，并在月度质量评审中统计。若多数问题来自 RAG context 截断，继续训练模型收益有限；若多数问题来自 tool schema，应该改工具协议；若多数问题来自 runtime token drift，应该加强 serving quality contract。评测系统的目标是把投资指向真正瓶颈。</p>
 <p>多模态模型还需要专门的 <code>multimodal_quality_gate_execution</code>。通用文本 gate 无法覆盖媒体链路的关键风险：OCR 是否漏字，ASR 是否错分段，表格结构是否错列，图像区域引用是否对齐，视频抽帧是否漏掉关键片段，模型回答是否来自允许的媒体证据，敏感信息是否被正确脱敏。多模态评测不应只问“模型描述图片是否正确”，而要验证从上传、预处理、派生产物、模型输入到答案引用的完整系统行为。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">multimodal_quality_gate_execution</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">execution_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mm-qge-claims-20260620</span>
-<span class="w">  </span><span class="nt">scope</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">application</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">claims-document-review</span>
-<span class="w">    </span><span class="nt">multimodal_workload_profile</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mwp-claims-document-review-202606</span>
-<span class="w">    </span><span class="nt">serving_release</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">claims-mm-model-20260620-r2</span>
-<span class="w">  </span><span class="nt">media_inputs</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">manifests</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">media_artifact_manifest</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mam-claims-doc-20260620-001</span>
-<span class="w">        </span><span class="nt">media_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scanned_pdf</span>
-<span class="w">        </span><span class="nt">derived_artifacts_required</span><span class="p">:</span>
-<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ocr_text</span>
-<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">layout_blocks</span>
-<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">page_images</span>
-<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">visual_embeddings</span>
-<span class="w">  </span><span class="nt">slices</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">ocr_fidelity</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">metrics</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">field_exactness</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">low_confidence_region_reviewed</span><span class="p p-Indicator">]</span>
-<span class="w">      </span><span class="nt">hard_gate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">table_extraction</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">metrics</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">cell_alignment</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">header_mapping</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">numeric_consistency</span><span class="p p-Indicator">]</span>
-<span class="w">      </span><span class="nt">hard_gate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass_for_financial_fields</span>
-<span class="w">    </span><span class="nt">visual_grounding</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">metrics</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">answer_region_iou_or_region_match</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">unsupported_visual_claim_rate</span><span class="p p-Indicator">]</span>
-<span class="w">      </span><span class="nt">hard_gate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">citation_to_source_region</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">metrics</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">page_region_citation_precision</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">citation_click_replay</span><span class="p p-Indicator">]</span>
-<span class="w">      </span><span class="nt">hard_gate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">privacy_and_safety</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">metrics</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">redaction_leak_rate</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">sensitive_media_refusal</span><span class="p p-Indicator">]</span>
-<span class="w">      </span><span class="nt">hard_gate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">  </span><span class="nt">execution_environment</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">preprocessing_pipeline_records</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">mppr-claims-20260620-001</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">judge_rubric</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">multimodal-claims-rubric-v3</span>
-<span class="w">    </span><span class="nt">human_review_required_for</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">low_confidence_ocr</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">claim_denial_recommendation</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">decision</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">approve_canary_or_block</span>
-<span class="w">    </span><span class="nt">blocked_slices</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[]</span>
-<span class="w">    </span><span class="nt">required_follow_up</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[]</span>
-</code></pre></div>
+<pre><code class="language-yaml">multimodal_quality_gate_execution:
+  execution_id: mm-qge-claims-20260620
+  scope:
+    application: claims-document-review
+    multimodal_workload_profile: mwp-claims-document-review-202606
+    serving_release: claims-mm-model-20260620-r2
+  media_inputs:
+    manifests:
+      - media_artifact_manifest: mam-claims-doc-20260620-001
+        media_type: scanned_pdf
+        derived_artifacts_required:
+          - ocr_text
+          - layout_blocks
+          - page_images
+          - visual_embeddings
+  slices:
+    ocr_fidelity:
+      metrics: [field_exactness, low_confidence_region_reviewed]
+      hard_gate: pass
+    table_extraction:
+      metrics: [cell_alignment, header_mapping, numeric_consistency]
+      hard_gate: pass_for_financial_fields
+    visual_grounding:
+      metrics: [answer_region_iou_or_region_match, unsupported_visual_claim_rate]
+      hard_gate: pass
+    citation_to_source_region:
+      metrics: [page_region_citation_precision, citation_click_replay]
+      hard_gate: pass
+    privacy_and_safety:
+      metrics: [redaction_leak_rate, sensitive_media_refusal]
+      hard_gate: pass
+  execution_environment:
+    preprocessing_pipeline_records: [mppr-claims-20260620-001]
+    judge_rubric: multimodal-claims-rubric-v3
+    human_review_required_for: [low_confidence_ocr, claim_denial_recommendation]
+  decision:
+    action: approve_canary_or_block
+    blocked_slices: []
+    required_follow_up: []
+</code></pre>
 <p>这个 gate 的关键是引用 <code>media_artifact_manifest</code> 和 <code>media_processing_pipeline_record</code>。如果 OCR 产物已经缺失关键字段，模型回答错误不能简单算作模型能力不足；如果表格解析错列，后续 LLM 再强也可能生成错误理赔结论；如果答案引用的是页码但没有 region，用户无法审计证据；如果视频任务只评最终文字，不评抽帧覆盖，系统可能在关键帧缺失时仍然给出自信回答。多模态门禁必须把媒体处理和模型行为一起评估。</p>
-<pre class="mermaid"><code>flowchart TB
-  Manifest["media_artifact_manifest"] --&gt; Slices["multimodal eval slices"]
-  Pipeline["media_processing_pipeline_record"] --&gt; Slices
-  Slices --&gt; OCR["OCR / ASR fidelity"]
-  Slices --&gt; Layout["layout / table extraction"]
-  Slices --&gt; Ground["visual grounding\nregion / frame / timestamp"]
-  Slices --&gt; Safety["privacy / safety / redaction"]
-  OCR --&gt; Gate["multimodal_quality_gate_execution"]
-  Layout --&gt; Gate
-  Ground --&gt; Gate
-  Safety --&gt; Gate
-  Gate --&gt; Serving["serving release / canary"]
-  Gate --&gt; Cost["multimodal_cost_ledger"]
-  Gate --&gt; Regression["quality_regression_record"]</code></pre>
+<p><img alt="图：13.4.1 工程实现" src="../../assets/diagrams/part-03-models-chapter-13-model-evaluation-07.svg" /></p>
 <p>多模态评测还要处理人工复核。对于合同、票据、医疗影像、保险理赔、工业质检和合规审查，模型输出即使通过自动 gate，也可能需要人工确认关键字段、区域引用和风险结论。人工复核不应只在业务系统里打一个“通过”，而应生成 <code>human_feedback_evidence</code> 或质量复核记录，绑定 media manifest、页码/区域、rubric、评审人角色和后续动作。这样，后续模型升级才能知道哪些样本是高价值回归，哪些错误来自 OCR，哪些错误来自模型推理。</p>
 <h3 id="1342">13.4.2 常见故障<a class="headerlink" href="#1342" title="Permanent link">&para;</a></h3>
 <p>第一类故障是只看通用 benchmark，忽略领域任务。模型通用分数上升，但客服、代码、RAG 或 Agent 任务下降。排查时应查看任务切片，而不是只看总分。上线门禁应要求目标应用相关评测通过，公开 benchmark 只能作为基础体检。</p>

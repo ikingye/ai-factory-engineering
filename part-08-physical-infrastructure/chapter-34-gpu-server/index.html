@@ -3885,59 +3885,46 @@
 <p>服务器架构还要与拓扑调度结合。资源池需要表达哪些 GPU 属于同一 NVSwitch 域，哪些 GPU 靠近哪张 NIC，哪些本地 NVMe 适合做权重缓存，哪些节点位于同一 rack 或 power domain。运行时和调度器根据这些属性选择放置策略；监控系统则用同一套属性解释性能异常。架构的关键不是画出服务器内部组件，而是让组件关系能被上层系统消费。</p>
 <p>这也是为什么服务器架构图必须连接到 Scheduler 和 Resource Pool。若图只停留在硬件连线层，上层系统无法使用；若资源池只记录 GPU 数量，硬件拓扑又被浪费。AI Factory 需要的是“可执行架构”：硬件事实能进入标签、准入、告警、隔离和容量模型。</p>
 <p>可执行架构还要求每条关键路径都有验证方法。计算路径用 workload 和 profiler 验证，互联路径用 NCCL、RDMA 和拓扑基线验证，管理路径用 BMC 操作和事件采集验证，物理路径用功耗、温度和长稳测试验证。</p>
-<pre class="mermaid"><code>flowchart TB
-  BMC["BMC / Redfish"] --&gt; Health["Hardware Events / Health State"]
-  Power["Power Shelf / PSU"] --&gt; Server["GPU Server"]
-  Cooling["Fan / Liquid Cooling"] --&gt; Server
-  CPU["CPU / NUMA"] --- PCIe["PCIe Fabric"]
-  PCIe --- GPU["GPU + HBM"]
-  GPU --- NVLink["NVLink / NVSwitch Domain"]
-  PCIe --- NIC["NIC / DPU"]
-  PCIe --- NVMe["Local NVMe"]
-  Health --&gt; Pool["GPU Resource Pool"]
-  Server --&gt; Driver["Driver / Firmware"]
-  Driver --&gt; Runtime["CUDA / NCCL / Container Runtime"]
-  Runtime --&gt; Scheduler["Kubernetes / Slurm"]
-  Pool --&gt; Scheduler</code></pre>
+<p><img alt="图：34.2.2 系统架构" src="../../assets/diagrams/part-08-physical-infrastructure-chapter-34-gpu-server-01.svg" /></p>
 <p>服务器画像应形成 <code>gpu_server_profile</code>。它不是 CMDB 的重复字段，而是把服务器内部拓扑、硬件健康和资源能力交给调度、准入、SRE 和成本系统使用的契约：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">gpu_server_profile</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">server_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-srv-042</span>
-<span class="w">  </span><span class="nt">placement</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">rack</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rack-12</span>
-<span class="w">    </span><span class="nt">power_domain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pdu-a-12</span>
-<span class="w">    </span><span class="nt">cooling_domain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cdu-loop-2</span>
-<span class="w">    </span><span class="nt">fault_domain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dc-a/rack-12</span>
-<span class="w">  </span><span class="nt">compute</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">cpu_sockets</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">gpu_count</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8</span>
-<span class="w">    </span><span class="nt">gpu_flavor</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">h100-class</span>
-<span class="w">    </span><span class="nt">hbm_capacity_class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">nvlink_domain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nvswitch-domain-a</span>
-<span class="w">  </span><span class="nt">topology</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">gpu_to_nic</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">GPU0</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mlx5_0</span>
-<span class="w">      </span><span class="nt">GPU4</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mlx5_1</span>
-<span class="w">    </span><span class="nt">gpu_to_nvme</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">GPU0</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nvme0</span>
-<span class="w">      </span><span class="nt">GPU4</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nvme1</span>
-<span class="w">    </span><span class="nt">numa_affinity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">pcie_baseline</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">  </span><span class="nt">management</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">bmc</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">reachable</span>
-<span class="w">    </span><span class="nt">redfish</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enabled</span>
-<span class="w">    </span><span class="nt">firmware_baseline</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">managed</span>
-<span class="w">  </span><span class="nt">power_thermal</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">envelope_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">power-thermal-rack12-a</span>
-<span class="w">    </span><span class="nt">sustained_full_load_validated</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">scheduling</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">suitable_for</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">distributed_training</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">long_context_inference</span>
-<span class="w">    </span><span class="nt">deny_if</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">power_limited</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cooling_limited</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pcie_degraded</span>
-</code></pre></div>
+<pre><code class="language-yaml">gpu_server_profile:
+  server_id: gpu-srv-042
+  placement:
+    rack: rack-12
+    power_domain: pdu-a-12
+    cooling_domain: cdu-loop-2
+    fault_domain: dc-a/rack-12
+  compute:
+    cpu_sockets: measured
+    gpu_count: 8
+    gpu_flavor: h100-class
+    hbm_capacity_class: recorded
+    nvlink_domain: nvswitch-domain-a
+  topology:
+    gpu_to_nic:
+      GPU0: mlx5_0
+      GPU4: mlx5_1
+    gpu_to_nvme:
+      GPU0: nvme0
+      GPU4: nvme1
+    numa_affinity: recorded
+    pcie_baseline: recorded
+  management:
+    bmc: reachable
+    redfish: enabled
+    firmware_baseline: managed
+  power_thermal:
+    envelope_id: power-thermal-rack12-a
+    sustained_full_load_validated: true
+  scheduling:
+    suitable_for:
+      - distributed_training
+      - long_context_inference
+    deny_if:
+      - power_limited
+      - cooling_limited
+      - pcie_degraded
+</code></pre>
 <p>这个 profile 的作用，是把“同型号服务器”拆成可解释资源。训练调度能看到 GPU-to-NIC 亲和，推理平台能看到 GPU-to-NVMe 权重缓存路径，SRE 能从 BMC 和 power domain 反查故障域，成本系统能把 tokens/W 归到服务器和 rack。没有服务器画像，上层系统只能假设所有节点等价，而生产事实通常不是这样。</p>
 <h2 id="343">34.3 关键技术<a class="headerlink" href="#343" title="Permanent link">&para;</a></h2>
 <h3 id="3431-cpu">34.3.1 CPU<a class="headerlink" href="#3431-cpu" title="Permanent link">&para;</a></h3>
@@ -4008,63 +3995,63 @@
 <p>Power shelf 的状态还要和训练策略关联。长时间预训练、短时批量推理和在线推理的功耗曲线不同；同一 rack 同时跑多个满载训练，风险也不同。调度器如果能理解 power domain，就可以在风险较高时限制新任务、错峰批量任务或优先保障高 SLA 服务。</p>
 <p>电力约束还应进入扩容计划。新增服务器前要确认 rack、PDU 和上游配电都能承载目标 workload，而不是只确认插座数量。否则装机完成后仍无法释放产能。</p>
 <p>服务器还应声明 <code>power_thermal_envelope</code>，把可持续功耗和散热能力表达成资源约束：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">power_thermal_envelope</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">envelope_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">power-thermal-rack12-a</span>
-<span class="w">  </span><span class="nt">scope</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">rack</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rack-12</span>
-<span class="w">    </span><span class="nt">servers</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">gpu-srv-042</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">power</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">full_load_power</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">redundancy_state</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">n_plus_policy_defined</span>
-<span class="w">    </span><span class="nt">pdu_capacity_margin</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">power_capping_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_defined</span>
-<span class="w">  </span><span class="nt">thermal</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">cooling_mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">liquid_or_air_or_hybrid</span>
-<span class="w">    </span><span class="nt">inlet_temperature_range</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">coolant_flow_or_fan_capacity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">sustained_soak_test</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed</span>
-<span class="w">    </span><span class="nt">throttle_events_under_load</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">none_or_recorded</span>
-<span class="w">  </span><span class="nt">workload_limits</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">allow_sustained_pretraining</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">allow_batch_inference_burst</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">deny_if_cooling_limited</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">long_running_training</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">observability</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">gpu_power</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">    </span><span class="nt">rack_power</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">    </span><span class="nt">bmc_power_event</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">    </span><span class="nt">throttle_reason</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-</code></pre></div>
+<pre><code class="language-yaml">power_thermal_envelope:
+  envelope_id: power-thermal-rack12-a
+  scope:
+    rack: rack-12
+    servers: [gpu-srv-042]
+  power:
+    full_load_power: measured
+    redundancy_state: n_plus_policy_defined
+    pdu_capacity_margin: measured
+    power_capping_policy: policy_defined
+  thermal:
+    cooling_mode: liquid_or_air_or_hybrid
+    inlet_temperature_range: measured
+    coolant_flow_or_fan_capacity: measured
+    sustained_soak_test: passed
+    throttle_events_under_load: none_or_recorded
+  workload_limits:
+    allow_sustained_pretraining: true
+    allow_batch_inference_burst: true
+    deny_if_cooling_limited: [long_running_training]
+  observability:
+    gpu_power: required
+    rack_power: required
+    bmc_power_event: required
+    throttle_reason: required
+</code></pre>
 <p>Envelope 的关键不是给出一个静态功耗数字，而是说明某个物理范围能否长期承载目标 workload。训练任务可能连续满载数天，推理高峰可能短时拉高功耗，批量推理可以错峰。资源池如果能消费 envelope，就可以在 power_limited 或 cooling_limited 时降级资源，而不是继续按满配 GPU 调度。</p>
 <p>运行中还需要 <code>capacity_derating_record</code>。Envelope 描述“设计上能承载什么”，derating record 描述“此刻因为电力、冷却、PSU、液冷或温度风险，实际只能承载多少”。二者的区别很重要：一个 rack 验收时可以通过 sustained training，但在某次 CDU 维护、PDU 冗余丢失、外部高温或液冷流量异常期间，只能临时降低调度等级。若没有降额记录，调度器仍会按满血资源分配，成本系统也无法解释 tokens/W 下降。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">capacity_derating_record</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">derating_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">derate-rack12-20260620-001</span>
-<span class="w">  </span><span class="nt">scope</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">rack_capacity_unit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dc-a-rack-12</span>
-<span class="w">    </span><span class="nt">power_thermal_envelope</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">power-thermal-rack12-a</span>
-<span class="w">    </span><span class="nt">affected_servers</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">gpu-srv-042</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">affected_fault_domain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dc-a/rack-12/cdu-loop-2</span>
-<span class="w">  </span><span class="nt">trigger</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cooling_or_power_or_thermal</span>
-<span class="w">    </span><span class="nt">signal</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">coolant_flow_below_policy</span>
-<span class="w">    </span><span class="nt">detected_by</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">facility_telemetry_and_bmc</span>
-<span class="w">  </span><span class="nt">derating</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">previous_schedulable_state</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">allocatable</span>
-<span class="w">    </span><span class="nt">new_schedulable_state</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">limited</span>
-<span class="w">    </span><span class="nt">deny_workload</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">long_running_pretraining</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">large_distributed_training</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">allow_workload</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">short_debug</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">low_priority_batch</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">inference_with_power_cap</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">gpu_power_cap_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">optional</span>
-<span class="w">  </span><span class="nt">evidence</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">rack_power</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">gpu_throttle_events</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">inlet_or_coolant_temperature</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">bmc_power_thermal_events</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">attached</span>
-<span class="w">  </span><span class="nt">recovery</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">required_retests</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">thermal_full_load_soak</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rack_power_under_load</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">representative_workload_tokens_per_watt</span>
-<span class="w">    </span><span class="nt">return_to_allocatable_after</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">all_retests_pass</span>
-</code></pre></div>
+<pre><code class="language-yaml">capacity_derating_record:
+  derating_id: derate-rack12-20260620-001
+  scope:
+    rack_capacity_unit: dc-a-rack-12
+    power_thermal_envelope: power-thermal-rack12-a
+    affected_servers: [gpu-srv-042]
+    affected_fault_domain: dc-a/rack-12/cdu-loop-2
+  trigger:
+    type: cooling_or_power_or_thermal
+    signal: coolant_flow_below_policy
+    detected_by: facility_telemetry_and_bmc
+  derating:
+    previous_schedulable_state: allocatable
+    new_schedulable_state: limited
+    deny_workload: [long_running_pretraining, large_distributed_training]
+    allow_workload: [short_debug, low_priority_batch, inference_with_power_cap]
+    gpu_power_cap_policy: optional
+  evidence:
+    rack_power: measured
+    gpu_throttle_events: measured
+    inlet_or_coolant_temperature: measured
+    bmc_power_thermal_events: attached
+  recovery:
+    required_retests:
+      - thermal_full_load_soak
+      - rack_power_under_load
+      - representative_workload_tokens_per_watt
+    return_to_allocatable_after: all_retests_pass
+</code></pre>
 <p>这条记录让电力和散热从设施告警变成资源状态。SRE 可以用它解释为什么某些 GPU 空闲但不能启动大训练，容量团队可以看到 planned capacity 与 workload-fit capacity 的差距，Token Factory 可以把 power/cooling-induced waste 归因到具体 rack。更重要的是，它给恢复设置了复测条件，避免告警消失后资源未经满载验证就回到高优池。</p>
 <h3 id="34310-compute-tray">34.3.10 compute tray<a class="headerlink" href="#34310-compute-tray" title="Permanent link">&para;</a></h3>
 <p>Compute tray 是高密度 GPU 系统中的计算托盘，通常承载 CPU、GPU、内存、互联组件和部分电源/冷却接口。它体现了 AI 服务器从“单台 8 卡机器”向“系统级计算单元”演进的趋势。在这类架构中，资源边界可能不再等同于一台传统服务器，而是一个 tray、一个 chassis、一个 rack 级 GPU island 或一个 NVLink domain。</p>
@@ -4078,29 +4065,29 @@
 <p>服务器资源画像应由资产系统、准入系统、监控系统、调度系统和维修系统共同维护。画像的目标不是生成一份静态 YAML，而是把服务器从“库存设备”转化为可调度资源。每次节点入池、维修、升级、换卡、换 NIC、调整 BIOS、更新 driver 或变更线缆后，画像都应被更新并重新验收。</p>
 <p>实现流程可以分四步。第一，资产入库时记录机房、rack、power domain、cooling domain、序列号、BMC、CPU、GPU、NIC、DPU、NVMe 和线缆映射。第二，OS 和驱动安装后自动发现 NUMA、PCIe、NVLink、GPU-to-NIC、GPU-to-NVMe 和本地盘路径。第三，准入系统运行 burn-in、PCIe、NVLink、NCCL、RDMA、nvbandwidth、存储和典型 workload micro-benchmark。第四，把结果写入资源池状态，决定节点是 allocatable、degraded、maintenance 还是 quarantine。</p>
 <p>画像还应支持解释调度。用户看到 pending 时，平台可以说明是 GPU 型号不足、完整 NVSwitch 域不足、GPU-to-NIC 拓扑不满足，还是节点因 BMC 事件处于隔离。SRE 看到告警时，可以从 job 反查服务器、GPU、NIC、power 和 cooling 域。工程实现的成熟度，体现在问题发生时能否快速形成证据链。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">gpu_server</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">asset_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-srv-042</span>
-<span class="w">  </span><span class="nt">rack</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rack-12</span>
-<span class="w">  </span><span class="nt">power_domain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pd-3</span>
-<span class="w">  </span><span class="nt">cooling_domain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cd-2</span>
-<span class="w">  </span><span class="nt">cpu_numa</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span>
-<span class="w">      </span><span class="nt">gpus</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;GPU0&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;GPU1&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;GPU2&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;GPU3&quot;</span><span class="p p-Indicator">]</span>
-<span class="w">      </span><span class="nt">nics</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;mlx5_0&quot;</span><span class="p p-Indicator">]</span>
-<span class="w">      </span><span class="nt">nvme</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;nvme0&quot;</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
-<span class="w">      </span><span class="nt">gpus</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;GPU4&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;GPU5&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;GPU6&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;GPU7&quot;</span><span class="p p-Indicator">]</span>
-<span class="w">      </span><span class="nt">nics</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;mlx5_1&quot;</span><span class="p p-Indicator">]</span>
-<span class="w">      </span><span class="nt">nvme</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;nvme1&quot;</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">gpu_fabric</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nvswitch-domain-a</span>
-<span class="w">  </span><span class="nt">health</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">bmc</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">reachable</span>
-<span class="w">    </span><span class="nt">pci_health</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">nvlink_health</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">rdma</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">acceptance</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">  </span><span class="nt">state</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">allocatable</span>
-</code></pre></div>
+<pre><code class="language-yaml">gpu_server:
+  asset_id: gpu-srv-042
+  rack: rack-12
+  power_domain: pd-3
+  cooling_domain: cd-2
+  cpu_numa:
+    - id: 0
+      gpus: [&quot;GPU0&quot;, &quot;GPU1&quot;, &quot;GPU2&quot;, &quot;GPU3&quot;]
+      nics: [&quot;mlx5_0&quot;]
+      nvme: [&quot;nvme0&quot;]
+    - id: 1
+      gpus: [&quot;GPU4&quot;, &quot;GPU5&quot;, &quot;GPU6&quot;, &quot;GPU7&quot;]
+      nics: [&quot;mlx5_1&quot;]
+      nvme: [&quot;nvme1&quot;]
+  gpu_fabric: nvswitch-domain-a
+  health:
+    bmc: reachable
+    pci_health: pass
+    nvlink_health: pass
+    rdma: pass
+    acceptance: pass
+  state: allocatable
+</code></pre>
 <p>实现时要避免画像和真实状态分离。资产系统可能记录了 rack 和序列号，监控系统记录健康，调度系统记录 allocatable，维修系统记录工单。如果这些系统没有统一主键和状态同步，节点就会出现“资产已维修、调度仍隔离”或“监控 degraded、资源池仍可分配”的矛盾。统一画像的价值在于减少这种状态撕裂。</p>
 <p>画像还应有变更历史。一次节点状态变化，应能追溯是谁触发、依据哪项测试、影响哪些任务、何时回滚或回池。长期看，这些历史能暴露供应商批次、维修流程和准入策略的问题。</p>
 <p>最小可行版本可以先覆盖高价值字段：asset_id、rack、GPU、NIC、NVLink、BMC、准入状态和维修状态。先把关键事实统一，再逐步补齐更细拓扑。</p>

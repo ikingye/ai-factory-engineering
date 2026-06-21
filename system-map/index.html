@@ -3335,62 +3335,7 @@
 <p>本页不是新的正文层级，而是全书的索引页。它帮助读者按三种方式进入本书：按角色阅读、按工程对象检索、按故障症状定位。AI Factory 的难点不在于名词数量，而在于把应用、平台、模型、运行时、调度、GPU、网络、存储、物理设施、SRE 和经济性连成可验证的生产系统。</p>
 <p>全书的写作和审稿遵循 <a href="../doc-coauthoring-review/">Doc Coauthoring 审稿标准</a>：每章必须说明上下文、给出读者测试，并能在主题链路中通过新读者问题验证。</p>
 <h2 id="1">1. 一张图串起全书<a class="headerlink" href="#1" title="Permanent link">&para;</a></h2>
-<pre class="mermaid"><code>flowchart TB
-  subgraph Demand["目标与需求"]
-    WP["workload_profile\n应用如何消耗能力"]
-    BMP["business_model_profile\n能力如何商业化或结算"]
-    COE["customer_onboarding_evidence\n客户接入证据"]
-    BP["ai_factory_build_plan\n建设阶段与停止条件"]
-  end
-
-  subgraph Production["生产路径"]
-    Req["推理请求链路\nGateway -&gt; Serving -&gt; Runtime -&gt; GPU -&gt; Billing"]
-    Train["训练任务链路\nQueue -&gt; Gang -&gt; NCCL -&gt; Checkpoint -&gt; Registry"]
-    Data["数据链路\nDataset / Artifact / Cache / Checkpoint"]
-  end
-
-  subgraph Resource["资源与基础设施"]
-    Runtime["AI Runtime\nCUDA / NCCL / Engine / Framework"]
-    Sched["Orchestration\nKubernetes / Slurm / Kueue / Volcano"]
-    Pool["GPU Resource Pool\nhealth / quota / topology / isolation"]
-    Fabric["Network &amp; Storage\nNVLink / RDMA / PFS / NVMe"]
-    Physical["Physical\nrack / power / cooling / server"]
-  end
-
-  subgraph Evidence["证据与治理"]
-    Baseline["acceptance_baseline\n准入与验收"]
-    Quality["quality_evidence_bundle\n质量证据包"]
-    Telemetry["telemetry_event\n观测事实"]
-    Incident["incident_record\n故障复盘"]
-    Ledger["Token Factory ledger\n成本与价值"]
-    PNL["commercial_pnl_ledger\n商业 P&amp;L"]
-    Risk["launch_risk_register\n上线风险登记"]
-    PRR["production_readiness_review\n上线门禁"]
-  end
-
-  WP --&gt; Req
-  WP --&gt; Train
-  BMP --&gt; Ledger
-  BMP --&gt; COE
-  COE --&gt; PRR
-  BP --&gt; PRR
-  Risk --&gt; PRR
-  Req --&gt; Runtime --&gt; Sched --&gt; Pool --&gt; Fabric --&gt; Physical
-  Train --&gt; Runtime
-  Train --&gt; Data --&gt; Fabric
-  Physical --&gt; Baseline --&gt; Pool
-  Pool --&gt; Telemetry
-  Runtime --&gt; Telemetry
-  Req --&gt; Quality
-  Quality --&gt; Incident
-  Quality --&gt; Ledger
-  Req --&gt; Ledger
-  Train --&gt; Ledger
-  Ledger --&gt; PNL
-  PNL --&gt; BMP
-  Telemetry --&gt; Incident --&gt; BP
-  Ledger --&gt; BMP
-  PRR --&gt; Req</code></pre>
+<p><img alt="图：1. 一张图串起全书" src="../assets/diagrams/system-map-01.svg" /></p>
 <p>这张图的读法是：需求对象先定义系统要生产什么，生产路径把请求和任务落到运行时与资源池，资源层用准入和观测证明自己可用，SRE 与经济账本再把运行结果反哺到建设计划和商业模式。若某个项目只有中间的 GPU 和 Runtime，而缺少两端的 profile、baseline、telemetry 和 ledger，它还不是完整 AI Factory。</p>
 <h2 id="2">2. 按角色阅读<a class="headerlink" href="#2" title="Permanent link">&para;</a></h2>
 <table>

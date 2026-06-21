@@ -1,0 +1,10 @@
+flowchart LR
+  Train["release_train_record"] --> Bundle["offline_release_bundle_manifest"]
+  Bundle --> Verify["signature / digest / SBOM verification"]
+  Verify --> Import["offline import\nregistry / charts / models / configs"]
+  Import --> Migrate["schema / artifact / cache migration"]
+  Migrate --> Validate["bootstrap + GPU runtime + endpoint smoke"]
+  Validate --> Rehearsal["offline_upgrade_rehearsal"]
+  Rehearsal --> Acceptance["private_deployment_acceptance_record"]
+  Rehearsal --> Rollback["rollback bundle verified"]
+  Rehearsal --> Support["diagnostic_bundle_sla"]

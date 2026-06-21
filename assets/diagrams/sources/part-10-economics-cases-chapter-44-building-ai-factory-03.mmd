@@ -1,0 +1,9 @@
+flowchart LR
+  Drill["capacity_activation_prr_drill"] --> Matrix["physical_capacity_activation_matrix"]
+  Matrix --> Gate["workload_fit_capacity_gate"]
+  Gate --> Guard["capacity_commitment_guard"]
+  Matrix --> Bundle["facility_capacity_evidence_bundle"]
+  Bundle --> Energy["energy_ledger"]
+  Energy --> Cost["capacity_activation_cost_record"]
+  Guard --> PRR["PRR capacity gate"]
+  Cost --> PRR

@@ -3865,32 +3865,9 @@
 <p>架构还需要把拓扑传递给调度系统。节点属于哪个 rack、leaf、spine、rail、故障域、网络 fabric 和存储路径，应进入资源画像。调度器知道 GPU 数量不够，还要知道通信密集任务是否跨越不合适拓扑。网络设计如果不能被调度系统使用，只能停留在网络图纸上，无法转化为 workload 性能。</p>
 <p>观测层应同时覆盖设备、协议、flow 和任务。交换机端口计数、NIC 计数、RDMA 错误、ECN/PFC、NCCL 日志、推理 trace、存储客户端指标和作业时间线要能关联。没有关联，网络团队只能说端口正常，模型团队只能说训练慢。AI Factory 需要的是跨层证据链。</p>
 <p>架构上还要保留隔离和降级路径。训练 fabric 出现问题时，平台应能阻止新训练进入受影响拓扑；推理入口异常时，网关应能 fallback 或降级；存储网络拥塞时，批量任务应能限速。网络系统不仅要承载流量，还要把异常状态反馈给调度、网关和资源池，让上层能做动作。</p>
-<pre class="mermaid"><code>flowchart TB
-  subgraph NorthSouth["North-South Path"]
-    User["用户 / API Client"] --&gt; Gateway["AI Gateway / LB"]
-    Gateway --&gt; Serving["Model Serving"]
-  end
-
-  subgraph EastWest["East-West Path"]
-    W1["Training Worker A"] &lt;--&gt; W2["Training Worker B"]
-    W2 &lt;--&gt; W3["Training Worker C"]
-    Serving --&gt; Cache["KV / Weight Cache"]
-  end
-
-  W1 --&gt; Storage["Dataset / Checkpoint Storage"]
-  W2 --&gt; Storage
-  Fabric["IB / RoCE / Ethernet Fabric"] --- EastWest
-  Fabric --- Storage
-  Telemetry["Port counters / RDMA / NCCL / Trace"] --&gt; Fabric
-  Scheduler["Topology-aware Scheduler"] --&gt; W1</code></pre>
+<p><img alt="图：30.2.2 系统架构" src="../../assets/diagrams/part-07-network-storage-chapter-30-ai-networking-basics-01.svg" /></p>
 <p>AI 网络排障最重要的不是某一层指标，而是跨层证据链。一个训练任务变慢时，平台应能从 job id 找到 rank placement，再找到 node、GPU、NIC、rail、leaf/spine port、fabric baseline 和同一时间窗口的端口计数；一个推理请求变慢时，平台应能从 request trace 找到 gateway、route、replica、node、storage path 和 streaming gap。这个证据链把“设备状态”转换成“workload 影响”。</p>
-<pre class="mermaid"><code>flowchart LR
-  Job["job / request"] --&gt; Placement["placement: rank / replica / node"]
-  Placement --&gt; Device["GPU / NIC / NUMA / container"]
-  Device --&gt; Path["rail / leaf / spine / storage path"]
-  Path --&gt; Counters["RDMA / ECN / PFC / errors / latency"]
-  Counters --&gt; Baseline["acceptance baseline / historical baseline"]
-  Baseline --&gt; Action["isolate / reroute / reschedule / repair"]</code></pre>
+<p><img alt="图：30.2.2 系统架构" src="../../assets/diagrams/part-07-network-storage-chapter-30-ai-networking-basics-02.svg" /></p>
 <p>这条链路也定义了团队协作边界。网络团队负责 fabric 和端口事实，平台团队负责 placement 和资源状态，训练或推理团队负责 workload 阶段和 runtime 参数。任何结论都应能同时回答三个问题：哪个 workload 受影响，经过哪条网络路径，和基线相比发生了什么变化。回答不了这三个问题，就还只是线索，不是根因。</p>
 <h2 id="303">30.3 关键技术<a class="headerlink" href="#303" title="Permanent link">&para;</a></h2>
 <h3 id="3031-east-west-traffic">30.3.1 east-west traffic<a class="headerlink" href="#3031-east-west-traffic" title="Permanent link">&para;</a></h3>
@@ -3957,83 +3934,83 @@
 <h3 id="3041">30.4.1 工程实现<a class="headerlink" href="#3041" title="Permanent link">&para;</a></h3>
 <p>AI 网络工程落地可以分成四类资产。第一类是网络域：推理入口、训练 fabric、存储网络、管理网络和 BMC 网络应有清晰边界。第二类是能力标签：节点所属 rack、leaf、spine、rail、NIC、NUMA、存储路径和故障域要进入资源画像。第三类是基线：节点间带宽、延迟、NCCL、RDMA、存储读写和端口计数都要有 baseline。第四类是变更闭环：网络配置、firmware、driver 和调度策略变化后要回归。</p>
 <p>示例网络验收记录：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">network_baseline</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">fabric</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">training-roce-a</span>
-<span class="w">  </span><span class="nt">scope</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rack-12</span>
-<span class="w">  </span><span class="nt">tests</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">node_pair_latency</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">node_pair_bandwidth</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">nccl_all_reduce</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">storage_read</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">  </span><span class="nt">counters</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">packet_loss</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">within_baseline</span>
-<span class="w">    </span><span class="nt">rdma_retransmit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">within_baseline</span>
-<span class="w">  </span><span class="nt">state</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">schedulable</span>
-</code></pre></div>
+<pre><code class="language-yaml">network_baseline:
+  fabric: training-roce-a
+  scope: rack-12
+  tests:
+    node_pair_latency: pass
+    node_pair_bandwidth: pass
+    nccl_all_reduce: pass
+    storage_read: pass
+  counters:
+    packet_loss: within_baseline
+    rdma_retransmit: within_baseline
+  state: schedulable
+</code></pre>
 <p>工程实现还要把网络事实提供给调度和排障系统。调度器需要知道节点之间的拓扑亲和和排除条件；排障系统需要从 job id 找到节点、NIC、交换机端口和链路计数；容量系统需要知道哪些 fabric 接近瓶颈。网络信息如果只保留在网络团队的设备系统里，平台无法使用它。</p>
 <p>最后，要建立联合演练。选择典型训练任务、推理服务和存储读写场景，定期在变更后运行。演练结果不只用于证明网络可用，也用于更新基线。AI 网络基线应随硬件、软件和 workload 演进，而不是部署时测一次就结束。</p>
 <p>工程实现还应把网络异常反馈给上层系统。资源池可以标记某个 fabric degraded，调度器避免新任务进入；AI Gateway 可以降低某个地域或集群的路由权重；批量任务可以被限速。网络状态如果不能驱动平台动作，只能在事故复盘中发挥作用。</p>
 <p>还要建立标准诊断包。训练网络诊断包应包含 job id、rank 映射、节点、NIC、端口、NCCL 日志和端口计数；推理网络诊断包应包含 trace、网关日志、upstream、连接状态和后端指标。诊断包能减少跨团队来回询问。</p>
 <p>更具体地说，AI Factory 应维护一个可查询的 <code>network_path_evidence</code> 对象。它不是网络设备清单，而是 workload 到网络路径的连接表。示例：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">network_path_evidence</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">workload</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">training_job</span>
-<span class="w">    </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">train-20260619-042</span>
-<span class="w">    </span><span class="nt">phase</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">all_reduce</span>
-<span class="w">  </span><span class="nt">placement</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">ranks</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">rank</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">17</span>
-<span class="w">        </span><span class="nt">node</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-node-117</span>
-<span class="w">        </span><span class="nt">gpu_uuid</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">GPU-aaaa</span>
-<span class="w">        </span><span class="nt">nic</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mlx5_1</span>
-<span class="w">        </span><span class="nt">rail</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rail1</span>
-<span class="w">        </span><span class="nt">rack</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rack-12</span>
-<span class="w">        </span><span class="nt">switch_port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">leaf12-eth1/17</span>
-<span class="w">  </span><span class="nt">runtime</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">nccl_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">selected_interface</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mlx5_1</span>
-<span class="w">    </span><span class="nt">transport</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rdma</span>
-<span class="w">  </span><span class="nt">telemetry_window</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">start</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">incident_start_minus_5m</span>
-<span class="w">    </span><span class="nt">end</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">incident_end_plus_5m</span>
-<span class="w">    </span><span class="nt">counters</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">rdma_retransmit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">compare_with_baseline</span>
-<span class="w">      </span><span class="nt">ecn_mark</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">compare_with_baseline</span>
-<span class="w">      </span><span class="nt">pfc_pause</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">compare_with_baseline</span>
-<span class="w">      </span><span class="nt">port_error</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">compare_with_baseline</span>
-<span class="w">  </span><span class="nt">baseline</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">acceptance_baseline_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rack12-fabric-20260619</span>
-<span class="w">    </span><span class="nt">expected_topology</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">same_fabric_multi_rail</span>
-</code></pre></div>
+<pre><code class="language-yaml">network_path_evidence:
+  workload:
+    type: training_job
+    id: train-20260619-042
+    phase: all_reduce
+  placement:
+    ranks:
+      - rank: 17
+        node: gpu-node-117
+        gpu_uuid: GPU-aaaa
+        nic: mlx5_1
+        rail: rail1
+        rack: rack-12
+        switch_port: leaf12-eth1/17
+  runtime:
+    nccl_version: recorded
+    selected_interface: mlx5_1
+    transport: rdma
+  telemetry_window:
+    start: incident_start_minus_5m
+    end: incident_end_plus_5m
+    counters:
+      rdma_retransmit: compare_with_baseline
+      ecn_mark: compare_with_baseline
+      pfc_pause: compare_with_baseline
+      port_error: compare_with_baseline
+  baseline:
+    acceptance_baseline_id: rack12-fabric-20260619
+    expected_topology: same_fabric_multi_rail
+</code></pre>
 <p>这个对象能直接服务三个动作：调度器用它解释 pending 或降级原因，SRE 用它生成 incident 诊断包，容量团队用它发现长期热点。没有这种对象，网络事实会散落在交换机、Prometheus、训练日志和资产系统里，事故中只能手工拼接。</p>
 <p>拥塞也应被记录成事件，而不是在事故复盘中笼统写“网络抖动”。一个有用的 <code>congestion_event_record</code> 至少要说明拥塞发生在哪个 fabric、哪组 rail、哪些端口、哪些流量类别、持续多长时间、影响了哪些 workload，以及采取了什么动作：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">congestion_event_record</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">event_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">net-cong-20260620-001</span>
-<span class="w">  </span><span class="nt">fabric</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">train-fabric-a</span>
-<span class="w">  </span><span class="nt">topology_scope</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">racks</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">rack-12</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">rack-13</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">rails</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">rail1</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">switch_ports</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">leaf12-eth1/17</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">leaf13-eth1/21</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">signals</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">ecn_mark_rate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">above_baseline</span>
-<span class="w">    </span><span class="nt">pfc_pause_duration</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">above_baseline</span>
-<span class="w">    </span><span class="nt">rdma_retransmit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">above_baseline</span>
-<span class="w">    </span><span class="nt">queue_occupancy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sustained_high</span>
-<span class="w">    </span><span class="nt">packet_drop</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">none_or_measured</span>
-<span class="w">  </span><span class="nt">workload_impact</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">affected_jobs</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">train-20260620-017</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">affected_models</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">af-base-v4</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">exposed_communication_ms</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">    </span><span class="nt">gpu_idle_due_to_network_hours</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">    </span><span class="nt">checkpoint_overlap</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">suspected_trigger</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">traffic_class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">checkpoint_plus_all_reduce</span>
-<span class="w">    </span><span class="nt">recent_change</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">none</span>
-<span class="w">  </span><span class="nt">actions</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">immediate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">throttle_checkpoint_writes</span>
-<span class="w">    </span><span class="nt">scheduling</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">avoid_rail1_for_large_training</span>
-<span class="w">    </span><span class="nt">follow_up</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">review_checkpoint_window_and_qos</span>
-</code></pre></div>
+<pre><code class="language-yaml">congestion_event_record:
+  event_id: net-cong-20260620-001
+  fabric: train-fabric-a
+  topology_scope:
+    racks: [rack-12, rack-13]
+    rails: [rail1]
+    switch_ports: [leaf12-eth1/17, leaf13-eth1/21]
+  signals:
+    ecn_mark_rate: above_baseline
+    pfc_pause_duration: above_baseline
+    rdma_retransmit: above_baseline
+    queue_occupancy: sustained_high
+    packet_drop: none_or_measured
+  workload_impact:
+    affected_jobs: [train-20260620-017]
+    affected_models: [af-base-v4]
+    exposed_communication_ms: calculated
+    gpu_idle_due_to_network_hours: calculated
+    checkpoint_overlap: true
+  suspected_trigger:
+    traffic_class: checkpoint_plus_all_reduce
+    recent_change: none
+  actions:
+    immediate: throttle_checkpoint_writes
+    scheduling: avoid_rail1_for_large_training
+    follow_up: review_checkpoint_window_and_qos
+</code></pre>
 <p>这份记录能把 ECN、PFC、队列和 RDMA 计数从设备语言翻译成平台语言。若没有 workload impact，拥塞只是网络噪音；若没有端口和 rail，影响无法定位；若没有 action，事件无法闭环。长期积累后，平台可以区分容量不足、调度热点、checkpoint 叠加、QoS 配置问题和硬件退化，而不是把所有长尾都归类为“网络不稳定”。</p>
 <h3 id="3042">30.4.2 常见故障<a class="headerlink" href="#3042" title="Permanent link">&para;</a></h3>
 <p>第一类故障是拓扑与调度不一致。某些 rack 的训练任务持续慢，原因是跨 rack 路径 oversubscription 高，或 rank 被放置到不同 rail。调度系统只满足 GPU 数量，却没有满足网络邻近。解决方向是把 rack、leaf、rail 和故障域纳入资源模型。</p>

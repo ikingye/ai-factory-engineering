@@ -1,0 +1,17 @@
+sequenceDiagram
+  participant App as 应用
+  participant GW as Gateway
+  participant RAG as RAG
+  participant S as 模型服务
+  participant E as 推理引擎
+  participant M as Metering
+  App->>GW: request + trace_id
+  GW->>GW: auth / quota / route
+  GW->>RAG: retrieve / rerank
+  RAG-->>GW: context
+  GW->>S: model request
+  S->>E: queue + prefill + decode
+  E-->>S: token stream
+  S-->>GW: usage + chunks
+  GW->>M: metering event
+  GW-->>App: streaming response

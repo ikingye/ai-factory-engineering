@@ -1,0 +1,14 @@
+flowchart TB
+  Bundle["offline_release_bundle_manifest"] --> Import["offline_import_record"]
+  Import --> Registry["offline registry\nimage digests"]
+  Import --> Artifact["model artifact store\nweights / tokenizer / template"]
+  Import --> RAG["RAG index + ACL snapshot"]
+  Import --> DB["database migration state"]
+  Registry --> Smoke["runtime smoke"]
+  Artifact --> Smoke
+  RAG --> Smoke
+  DB --> Smoke
+  Smoke --> Rehearsal["offline_upgrade_rehearsal"]
+  Rehearsal --> Cache["cache_residency / invalidation"]
+  Rehearsal --> Rollback["rollback drill"]
+  Rehearsal --> Support["redacted diagnostic export"]

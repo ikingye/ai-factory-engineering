@@ -3845,163 +3845,145 @@
 <p>查询路径也要分层。调度器需要低延迟、机器可读的资源能力和状态；用户界面需要解释等待原因；容量团队需要历史趋势；运维团队需要节点和硬件证据。同一份事实可以有不同视图，但不能有不同结论。否则多系统对账会吞掉平台效率。</p>
 <p>这也是资源池 API 设计的核心：既要服务自动化调度，也要服务人类排障和经营分析。</p>
 <p>在多租户平台中，资源池还必须有 entitlement 视图。<code>resource_pool_entitlement</code> 描述某个租户、项目或服务等级可以使用哪些资源等级、是否允许共享、是否可以预留、能否借用低优资源、需要什么审批。没有 entitlement，调度器只能看到资源可用，却不知道某个租户是否有资格使用这组 GPU；计费系统也无法区分正常共享、专属承诺和越权分配。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">resource_pool_entitlement</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">entitlement_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ent-enterprise-a-premium</span>
-<span class="w">  </span><span class="nt">tenant_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enterprise-a</span>
-<span class="w">  </span><span class="nt">projects</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">customer-service-prod</span>
-<span class="w">  </span><span class="nt">allowed_resource_classes</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-container-full-card</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-mig-dedicated-profile</span>
-<span class="w">  </span><span class="nt">denied_resource_classes</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-time-slicing-best-effort</span>
-<span class="w">  </span><span class="nt">data_classification</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">max_allowed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">confidential</span>
-<span class="w">  </span><span class="nt">sharing_policy</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">allow_shared_node</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-<span class="w">    </span><span class="nt">allow_shared_gpu</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-<span class="w">    </span><span class="nt">allow_same_tenant_colocation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">reservation_policy</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">max_reserved_gpu</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_defined</span>
-<span class="w">    </span><span class="nt">max_duration</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_defined</span>
-<span class="w">    </span><span class="nt">approval_required</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">preemption_policy</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">can_borrow_idle_capacity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">can_be_preempted_by</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">none_for_premium</span>
-<span class="w">  </span><span class="nt">audit</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">policy_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ent-20260619.1</span>
-<span class="w">    </span><span class="nt">approved_by</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">platform-capacity-owner</span>
-</code></pre></div>
+<pre><code class="language-yaml">resource_pool_entitlement:
+  entitlement_id: ent-enterprise-a-premium
+  tenant_id: enterprise-a
+  projects:
+    - customer-service-prod
+  allowed_resource_classes:
+    - gpu-container-full-card
+    - gpu-mig-dedicated-profile
+  denied_resource_classes:
+    - gpu-time-slicing-best-effort
+  data_classification:
+    max_allowed: confidential
+  sharing_policy:
+    allow_shared_node: false
+    allow_shared_gpu: false
+    allow_same_tenant_colocation: true
+  reservation_policy:
+    max_reserved_gpu: policy_defined
+    max_duration: policy_defined
+    approval_required: true
+  preemption_policy:
+    can_borrow_idle_capacity: true
+    can_be_preempted_by: none_for_premium
+  audit:
+    policy_version: ent-20260619.1
+    approved_by: platform-capacity-owner
+</code></pre>
 <p>Entitlement 不等同于 quota。Quota 说“最多能用多少”，entitlement 说“允许用什么类型、在什么边界下使用”。一个租户可能有 100 张 GPU quota，但只允许使用专属节点池；另一个租户 quota 较小，却可以使用 best-effort 共享池。把两者混在一起，会导致安全租户被调度到不该使用的共享资源，或低风险任务占用高隔离资源造成浪费。</p>
 <p>在真实 AI Factory 中，资源池通常还是异构的。同一个平台可能同时拥有多代 GPU、不同 HBM 容量、不同互联域、MIG profile、不同驱动基线、不同液冷条件和不同电力约束。若资源池只暴露 <code>gpu=1</code> 或单一型号标签，调度和模型路由会把不同能力的资源当成等价商品，结果是长上下文模型落到 HBM 不足的池子，FP8 runtime 落到未验收节点，大训练跨过不合适的 fabric，或者高 SLA 推理被路由到尚处 canary 状态的新硬件。</p>
 <p>因此，资源池应维护 <code>heterogeneous_gpu_pool_profile</code>。它不是资产清单，而是把 GPU 代际、系统形态、runtime baseline、准入状态、适用 workload、故障域和经济口径放在同一个可查询对象里。Kubernetes 传统 device plugin 常用 extended resource 表达整数设备数量，适合简单整卡分配；DRA（Dynamic Resource Allocation）则提供按设备类、属性和 claim 进行声明和分配的更细粒度路径。无论底层使用哪种机制，资源池都应先把能力事实表达清楚，再让调度器消费。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">heterogeneous_gpu_pool_profile</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">pool_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-prod-mixed-202606</span>
-<span class="w">  </span><span class="nt">purpose</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mixed_inference_and_batch</span>
-<span class="w">  </span><span class="nt">resource_classes</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">class_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">h100-full-card-prod</span>
-<span class="w">      </span><span class="nt">gpu_family</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">h100-class</span>
-<span class="w">      </span><span class="nt">partitioning</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">full_card</span>
-<span class="w">      </span><span class="nt">hbm_capacity_class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">large</span>
-<span class="w">      </span><span class="nt">interconnect</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nvswitch_or_pcie_recorded</span>
-<span class="w">      </span><span class="nt">runtime_baseline</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rb-h100-202606</span>
-<span class="w">      </span><span class="nt">acceptance_baseline</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">acc-h100-prod-202606</span>
-<span class="w">      </span><span class="nt">production_state</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">production</span>
-<span class="w">      </span><span class="nt">allowed_workload_tiers</span><span class="p">:</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">premium_chat_short_context</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">batch_inference</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">selected_finetuning</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">class_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">h200-long-context-prod</span>
-<span class="w">      </span><span class="nt">gpu_family</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">h200-class</span>
-<span class="w">      </span><span class="nt">partitioning</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">full_card</span>
-<span class="w">      </span><span class="nt">hbm_capacity_class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">extra_large</span>
-<span class="w">      </span><span class="nt">runtime_baseline</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rb-h200-202606</span>
-<span class="w">      </span><span class="nt">acceptance_baseline</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">acc-h200-long-context-202606</span>
-<span class="w">      </span><span class="nt">production_state</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">validated</span>
-<span class="w">      </span><span class="nt">allowed_workload_tiers</span><span class="p">:</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">long_context_inference_canary</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">retrieval_heavy_generation</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">class_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">b200-canary</span>
-<span class="w">      </span><span class="nt">gpu_family</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">b200-or-newer-class</span>
-<span class="w">      </span><span class="nt">partitioning</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">full_card_or_mig_if_validated</span>
-<span class="w">      </span><span class="nt">runtime_baseline</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rb-b200-canary-202606</span>
-<span class="w">      </span><span class="nt">acceptance_baseline</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">acc-b200-canary-202606</span>
-<span class="w">      </span><span class="nt">production_state</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">canary</span>
-<span class="w">      </span><span class="nt">blocked_workload_tiers</span><span class="p">:</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">premium_inference_without_route_fallback</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">large_pretraining_without_full_thermal_soak</span>
-<span class="w">  </span><span class="nt">governance</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">entitlement_required</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">model_hardware_fit_required</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">gpu_generation_route_decision_required_for_serving</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">heterogeneous_pool_acceptance_matrix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">hpa-mixed-prod-202606</span>
-</code></pre></div>
+<pre><code class="language-yaml">heterogeneous_gpu_pool_profile:
+  pool_id: gpu-prod-mixed-202606
+  purpose: mixed_inference_and_batch
+  resource_classes:
+    - class_id: h100-full-card-prod
+      gpu_family: h100-class
+      partitioning: full_card
+      hbm_capacity_class: large
+      interconnect: nvswitch_or_pcie_recorded
+      runtime_baseline: rb-h100-202606
+      acceptance_baseline: acc-h100-prod-202606
+      production_state: production
+      allowed_workload_tiers:
+        - premium_chat_short_context
+        - batch_inference
+        - selected_finetuning
+    - class_id: h200-long-context-prod
+      gpu_family: h200-class
+      partitioning: full_card
+      hbm_capacity_class: extra_large
+      runtime_baseline: rb-h200-202606
+      acceptance_baseline: acc-h200-long-context-202606
+      production_state: validated
+      allowed_workload_tiers:
+        - long_context_inference_canary
+        - retrieval_heavy_generation
+    - class_id: b200-canary
+      gpu_family: b200-or-newer-class
+      partitioning: full_card_or_mig_if_validated
+      runtime_baseline: rb-b200-canary-202606
+      acceptance_baseline: acc-b200-canary-202606
+      production_state: canary
+      blocked_workload_tiers:
+        - premium_inference_without_route_fallback
+        - large_pretraining_without_full_thermal_soak
+  governance:
+    entitlement_required: true
+    model_hardware_fit_required: true
+    gpu_generation_route_decision_required_for_serving: true
+    heterogeneous_pool_acceptance_matrix: hpa-mixed-prod-202606
+</code></pre>
 <p>这个对象把“异构”从口头事实变成调度事实。<code>production_state</code> 决定资源能否进入生产、灰度或测试；<code>allowed_workload_tiers</code> 决定哪些业务形态可以使用；<code>runtime_baseline</code> 和 <code>acceptance_baseline</code> 决定能力是否经过验证；<code>model_hardware_fit_required</code> 则强制模型服务不能只按价格或空闲率路由。资源池不需要替代 Kubernetes、Slurm 或 Gateway，但要为它们提供同一份能力边界。</p>
 <p>异构池的核心风险是“隐性降级”。同一模型在成熟 GPU 上满足 TPOT，在新 GPU canary 上因为 runtime 未适配反而更慢；某个旧 GPU 单卡吞吐低，但对低价批量任务毛利更好；某个高 HBM 资源池适合长上下文，却被短请求抢占。资源池要把这些差异暴露给模型路由和容量系统，否则优化会被平均值掩盖。</p>
-<pre class="mermaid"><code>flowchart LR
-  ModelReq["model requirements\ncontext / precision / engine / SLO"] --&gt; Fit["model_hardware_fit_record"]
-  Pool["heterogeneous_gpu_pool_profile\nclasses / baselines / entitlement"] --&gt; Fit
-  Fit --&gt; Route["gpu_generation_route_decision"]
-  Route --&gt; Serving["serving placement / endpoint"]
-  Serving --&gt; Meter["metering events"]
-  Meter --&gt; Cost["heterogeneous_gpu_cost_scorecard"]
-  Cost --&gt; Pool
-  Fit --&gt; PRR["production_readiness_review"]</code></pre>
+<p><img alt="图：28.2.2 系统架构" src="../../assets/diagrams/part-06-gpu-iaas-chapter-28-gpu-resource-pool-01.svg" /></p>
 <p>这条链路能解释为什么“有 GPU”不等于“适合这个模型”。模型要求先和硬件能力匹配，匹配结果再进入路由、服务、计量和成本 scorecard。PRR 消费的是匹配证据，而不是只消费库存数量。后续第 35 章会说明模型硬件匹配，第 38 章会说明异构池验收，第 41 章会说明不同 GPU class 的经济比较，第 44 章会把它们纳入上线门禁。</p>
 <p>资源池还需要显式管理切分策略。MIG、整卡容器、VM passthrough、vGPU、time-slicing、MPS 和用户态配额不是调度器的临时实现细节，而是资源池产品形态。<code>gpu_slicing_policy</code> 应描述哪些 GPU class 允许切分、允许哪些 profile、profile 变更是否需要 drain、哪些租户可使用共享池、哪些 workload 禁止共享、碎片如何回收、计费如何折算。没有切分策略，平台会在利用率压力下不断临时切卡，最后形成无法解释的 profile 碎片和 SLA 争议。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">gpu_slicing_policy</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">policy_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gsp-inference-20260620</span>
-<span class="w">  </span><span class="nt">scope</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">resource_pool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">inference-shared</span>
-<span class="w">    </span><span class="nt">gpu_classes</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">h100-full-card-prod</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">h200-long-context-prod</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">allowed_modes</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">mig</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">allowed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">      </span><span class="nt">profiles</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">small_inference</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">medium_inference</span><span class="p p-Indicator">]</span>
-<span class="w">      </span><span class="nt">reconfigure_requires_drain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">time_slicing</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">allowed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">      </span><span class="nt">max_replicas_per_gpu</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_defined</span>
-<span class="w">      </span><span class="nt">allowed_workloads</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">dev_test</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">low_priority_batch</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">mps</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">allowed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">conditional</span>
-<span class="w">      </span><span class="nt">allowed_workloads</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">same_tenant_batch</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">denied_workloads</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">premium_low_latency_inference</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">confidential_training</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">large_distributed_training</span>
-<span class="w">  </span><span class="nt">accounting</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">unit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">profile_or_shared_gpu_time</span>
-<span class="w">    </span><span class="nt">noise_discount_or_sla</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">best_effort_policy</span>
-</code></pre></div>
+<pre><code class="language-yaml">gpu_slicing_policy:
+  policy_id: gsp-inference-20260620
+  scope:
+    resource_pool: inference-shared
+    gpu_classes: [h100-full-card-prod, h200-long-context-prod]
+  allowed_modes:
+    mig:
+      allowed: true
+      profiles: [small_inference, medium_inference]
+      reconfigure_requires_drain: true
+    time_slicing:
+      allowed: true
+      max_replicas_per_gpu: policy_defined
+      allowed_workloads: [dev_test, low_priority_batch]
+    mps:
+      allowed: conditional
+      allowed_workloads: [same_tenant_batch]
+  denied_workloads:
+    - premium_low_latency_inference
+    - confidential_training
+    - large_distributed_training
+  accounting:
+    unit: profile_or_shared_gpu_time
+    noise_discount_or_sla: best_effort_policy
+</code></pre>
 <p>显存超分也应被治理，而不是让运行时自行冒险。显存超分可以通过按需分页、统一内存、CPU/主机内存分层、压缩、冷数据迁移或访问预测提高表面可承载量，但它会引入 page fault、尾延迟、OOM、QoS 违约和恢复复杂度。资源池应维护 <code>gpu_memory_overcommit_policy</code>，明确哪些池允许 overcommit、最大比例、保留水位、触发降级、禁止场景和观测指标。在线高 SLA 推理、长训练和强同步任务通常不应依赖显存超分；开发测试、离线批处理和可重试任务可以在明确风险下使用。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">gpu_memory_overcommit_policy</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">policy_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gmop-devtest-20260620</span>
-<span class="w">  </span><span class="nt">scope</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">resource_pool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-devtest-shared</span>
-<span class="w">  </span><span class="nt">allowed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">max_overcommit_ratio</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_defined</span>
-<span class="w">  </span><span class="nt">mechanisms</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">demand_paging</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">allowed_if_runtime_validated</span>
-<span class="w">    </span><span class="nt">cpu_memory_tiering</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">allowed_for_batch</span>
-<span class="w">    </span><span class="nt">compression</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">experimental</span>
-<span class="w">  </span><span class="nt">guardrails</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">reserved_memory_for_system</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">    </span><span class="nt">oom_preemption_order</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">low_priority_first</span>
-<span class="w">    </span><span class="nt">qos_blocked_tiers</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">premium_inference</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">production_training</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">required_metrics</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu_memory_fault_rate</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">p95_tpot_or_step_time</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">oom_count</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">eviction_count</span>
-</code></pre></div>
+<pre><code class="language-yaml">gpu_memory_overcommit_policy:
+  policy_id: gmop-devtest-20260620
+  scope:
+    resource_pool: gpu-devtest-shared
+  allowed: true
+  max_overcommit_ratio: policy_defined
+  mechanisms:
+    demand_paging: allowed_if_runtime_validated
+    cpu_memory_tiering: allowed_for_batch
+    compression: experimental
+  guardrails:
+    reserved_memory_for_system: required
+    oom_preemption_order: low_priority_first
+    qos_blocked_tiers: [premium_inference, production_training]
+  required_metrics:
+    - gpu_memory_fault_rate
+    - p95_tpot_or_step_time
+    - oom_count
+    - eviction_count
+</code></pre>
 <p>远程 GPU 资源也要有契约。若平台支持 API proxy、虚拟设备或跨节点 GPU service，资源池必须记录远端 GPU 所在地域、网络路径、带宽延迟、认证、数据边界、错误传播、重试语义和计费方式。<code>remote_gpu_access_contract</code> 应明确调用方看到的是“远端加速服务”，不是本地裸 GPU。否则网络抖动、代理错误或远端 reset 会被用户误判为本地 GPU 异常。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">remote_gpu_access_contract</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">contract_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rgac-batch-20260620</span>
-<span class="w">  </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">api_proxy_or_virtual_device</span>
-<span class="w">  </span><span class="nt">allowed_workloads</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">offline_inference</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">batch_embedding</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">dev_test</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">denied_workloads</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">low_latency_serving</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">tightly_synchronized_training</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">network_requirements</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">min_bandwidth</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_defined</span>
-<span class="w">    </span><span class="nt">max_rtt</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_defined</span>
-<span class="w">    </span><span class="nt">encryption</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required_if_cross_tenant</span>
-<span class="w">  </span><span class="nt">failure_semantics</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">remote_reset_visible_to_client</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">retry_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">idempotent_jobs_only</span>
-<span class="w">  </span><span class="nt">accounting</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">bill_gpu_time_and_network_egress</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-</code></pre></div>
-<pre class="mermaid"><code>flowchart LR
-  Inventory["inventory / asset"] --&gt; State["health &amp; maintenance state"]
-  Telemetry["DCGM / BMC / network"] --&gt; State
-  State --&gt; Pool["GPU resource pool"]
-  Pool --&gt; Reservation["reservation"]
-  Pool --&gt; Allocation["allocation"]
-  Allocation --&gt; Scheduler["Kubernetes / Slurm"]
-  Scheduler --&gt; Usage["usage / accounting"]
-  Usage --&gt; Pool
-  Pool --&gt; Capacity["capacity planning"]
-  Pool --&gt; Ops["repair / reclaim / retire"]</code></pre>
+<pre><code class="language-yaml">remote_gpu_access_contract:
+  contract_id: rgac-batch-20260620
+  mode: api_proxy_or_virtual_device
+  allowed_workloads: [offline_inference, batch_embedding, dev_test]
+  denied_workloads: [low_latency_serving, tightly_synchronized_training]
+  network_requirements:
+    min_bandwidth: policy_defined
+    max_rtt: policy_defined
+    encryption: required_if_cross_tenant
+  failure_semantics:
+    remote_reset_visible_to_client: true
+    retry_policy: idempotent_jobs_only
+  accounting:
+    bill_gpu_time_and_network_egress: true
+</code></pre>
+<p><img alt="图：28.2.2 系统架构" src="../../assets/diagrams/part-06-gpu-iaas-chapter-28-gpu-resource-pool-02.svg" /></p>
 <h2 id="283">28.3 关键技术<a class="headerlink" href="#283" title="Permanent link">&para;</a></h2>
 <h3 id="2831-gpu-inventory">28.3.1 GPU inventory<a class="headerlink" href="#2831-gpu-inventory" title="Permanent link">&para;</a></h3>
 <p>GPU inventory 记录资产和能力事实。基础字段包括 GPU 型号、序列号、显存、节点、槽位、PCIe 地址、NVLink 组、NUMA、连接的 NIC、机架、交换机端口、BMC、驱动版本、固件、资源池、租户归属和保修状态。对 AI Factory 来说，这些字段不是可选装饰，而是调度、准入、维修和成本归因的基础。</p>
@@ -4033,30 +4015,30 @@
 <p>Reclaim 还应区分安全清理和性能恢复。安全清理关注数据、凭据和缓存是否残留，性能恢复关注 GPU、MIG、驱动、进程和节点状态是否回到基线。两个目标都满足，资源才适合再次分配。</p>
 <p>回收完成后应留下验证记录，否则平台无法证明资源复用是安全且干净的。第 27 章中的 <code>clean_to_reuse_record</code> 应在这里成为状态流转门禁：allocation 释放后进入 reclaim，清理和复验通过后才能进入 allocatable；失败则进入 quarantine 或 maintenance。资源池不能只相信 Pod 删除、VM 删除或租约结束，因为这些动作只说明控制面对象消失，不说明设备、缓存、凭据和本地数据已经恢复到可复用状态。</p>
 <p>资源池还应记录 <code>security_audit_event</code>。创建 reservation、修改 entitlement、解除 isolation、强制 reclaim、手工覆盖 inventory、访问完整 GPU UUID 和邻居租户信息，都属于高价值操作。审计事件至少包含操作者、租户、资源对象、旧值、新值、审批、原因、策略版本和影响范围。GPU 资源池中的状态变更直接影响成本、隔离和 SLA，不能只靠普通操作日志。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">security_audit_event</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">event_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sae-20260619-0001</span>
-<span class="w">  </span><span class="nt">time</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">  </span><span class="nt">actor</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">human</span>
-<span class="w">    </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sre-oncall-a</span>
-<span class="w">    </span><span class="nt">role</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-pool-admin</span>
-<span class="w">  </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">override_resource_state</span>
-<span class="w">  </span><span class="nt">resource</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">node</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-node-001</span>
-<span class="w">    </span><span class="nt">gpu_uuid</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">GPU-xxxx</span>
-<span class="w">    </span><span class="nt">pool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">inference-premium-a</span>
-<span class="w">  </span><span class="nt">before</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">state</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">quarantine</span>
-<span class="w">  </span><span class="nt">after</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">state</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">allocatable</span>
-<span class="w">  </span><span class="nt">evidence</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">clean_to_reuse_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ctr-20260619-0001</span>
-<span class="w">    </span><span class="nt">dcgm_health</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed</span>
-<span class="w">    </span><span class="nt">approval_ticket</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ticket-123</span>
-<span class="w">  </span><span class="nt">impact</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">tenants_potentially_affected</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">enterprise-a</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">capacity_delta_gpu</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
-</code></pre></div>
+<pre><code class="language-yaml">security_audit_event:
+  event_id: sae-20260619-0001
+  time: measured
+  actor:
+    type: human
+    id: sre-oncall-a
+    role: gpu-pool-admin
+  action: override_resource_state
+  resource:
+    node: gpu-node-001
+    gpu_uuid: GPU-xxxx
+    pool: inference-premium-a
+  before:
+    state: quarantine
+  after:
+    state: allocatable
+  evidence:
+    clean_to_reuse_record: ctr-20260619-0001
+    dcgm_health: passed
+    approval_ticket: ticket-123
+  impact:
+    tenants_potentially_affected: [enterprise-a]
+    capacity_delta_gpu: 1
+</code></pre>
 <h3 id="2835-health-state">28.3.5 health state<a class="headerlink" href="#2835-health-state" title="Permanent link">&para;</a></h3>
 <p>Health state 描述资源是否健康以及适合哪些 workload。GPU health 不只是 up/down，还包括 Xid、ECC、温度、功耗、降频、NVLink error、PCIe replay、掉卡、HBM 异常、DCGM 诊断、NCCL test、RDMA test、容器 GPU smoke test 和历史故障趋势。健康状态应是多信号综合结果。</p>
 <p>Health state 应影响调度。Healthy 资源可以进入生产训练或推理，degraded 资源可以进入低风险测试或隔离观察，unhealthy 资源应从可调度池移除，unknown 资源不应默认可用。很多平台把 unknown 当 healthy，导致新接入或监控缺失节点直接进入生产，这是高风险做法。</p>
@@ -4065,34 +4047,34 @@
 <p>健康状态还应支持分级使用。某些轻微降级资源不适合生产训练，但可以用于短时调试、低优先级评测或维修后观察。把所有异常都等同于彻底下线，会降低可用性；把所有异常都忽略，会增加生产失败。分级状态能表达更细的风险。</p>
 <p>健康判断也要避免只看单点指标。GPU、NIC、NVLink、存储和温度之间存在关联，一张 GPU 的错误可能来自节点散热或网络链路。资源池应保留跨组件上下文，帮助运维判断根因。</p>
 <p>生产资源池应把健康判断固化为 <code>resource_health_record</code>，而不是散落在监控告警、工单和人工备注里。这个对象记录健康信号、状态转移、影响范围和调度动作。示例：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">resource_health_record</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">resource</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu</span>
-<span class="w">    </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-node-017-2</span>
-<span class="w">    </span><span class="nt">node</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-node-017</span>
-<span class="w">    </span><span class="nt">pool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">training-prod-h100</span>
-<span class="w">    </span><span class="nt">fault_domain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rack-12/power-a/rail-1</span>
-<span class="w">  </span><span class="nt">signals</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">dcgm</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">xid_detected</span>
-<span class="w">    </span><span class="nt">ecc</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">clean</span>
-<span class="w">    </span><span class="nt">nvlink</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">error_rate_increased</span>
-<span class="w">    </span><span class="nt">rdma</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">baseline_ok</span>
-<span class="w">    </span><span class="nt">thermal</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">normal</span>
-<span class="w">    </span><span class="nt">acceptance_baseline</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">h100-rack12-20260619</span>
-<span class="w">  </span><span class="nt">state</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">previous</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">healthy</span>
-<span class="w">    </span><span class="nt">current</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">degraded</span>
-<span class="w">    </span><span class="nt">reason</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">repeated_nvlink_error</span>
-<span class="w">    </span><span class="nt">confidence</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">high</span>
-<span class="w">  </span><span class="nt">scheduling_policy</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">allow_workload</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">debug</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">low_priority_evaluation</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">deny_workload</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">distributed_training</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">premium_inference</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">require_retest</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">nvbandwidth</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">nccl_single_node</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">audit</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">detected_at</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">owner</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-platform-sre</span>
-<span class="w">    </span><span class="nt">expires_or_rechecks_at</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_defined</span>
-</code></pre></div>
+<pre><code class="language-yaml">resource_health_record:
+  resource:
+    type: gpu
+    id: gpu-node-017-2
+    node: gpu-node-017
+    pool: training-prod-h100
+    fault_domain: rack-12/power-a/rail-1
+  signals:
+    dcgm: xid_detected
+    ecc: clean
+    nvlink: error_rate_increased
+    rdma: baseline_ok
+    thermal: normal
+    acceptance_baseline: h100-rack12-20260619
+  state:
+    previous: healthy
+    current: degraded
+    reason: repeated_nvlink_error
+    confidence: high
+  scheduling_policy:
+    allow_workload: [debug, low_priority_evaluation]
+    deny_workload: [distributed_training, premium_inference]
+    require_retest: [nvbandwidth, nccl_single_node]
+  audit:
+    detected_at: recorded
+    owner: gpu-platform-sre
+    expires_or_rechecks_at: policy_defined
+</code></pre>
 <p>这个记录解决三个问题。第一，调度器能消费结构化状态，而不是解析告警文本。第二，SRE 能解释资源为什么降级、何时复测、哪些任务受影响。第三，容量和成本系统能计算 degraded 资源造成的可用产能损失。健康状态一旦进入统一记录，就可以从“设备问题”变成资源治理对象。</p>
 <h3 id="2836-maintenance-state">28.3.6 maintenance state<a class="headerlink" href="#2836-maintenance-state" title="Permanent link">&para;</a></h3>
 <p>Maintenance state 表示资源正在维修、升级、排空、复测或退役。进入维护状态的节点不应接收新任务，已有任务需要 drain、迁移、等待完成或被抢占。维护状态把基础设施变更从隐性动作变成显式资源状态，避免调度器把任务放到变化中的节点。</p>
@@ -4103,31 +4085,31 @@
 <p>对用户来说，维护原因也要可见。知道资源减少是因为计划升级、硬件维修还是故障隔离，可以减少无效沟通，并帮助业务安排训练和发布窗口。</p>
 <p>维护可见性越好，业务越容易接受资源短期不可用。</p>
 <p>维护窗口也应被结构化，而不是停留在日历事件。<code>maintenance_window</code> 至少应描述范围、原因、drain 方式、容量影响、复测项、回滚和沟通对象：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">maintenance_window</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">window_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">maint-driver-20260619-rack12</span>
-<span class="w">  </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">planned</span>
-<span class="w">  </span><span class="nt">scope</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">resource_pool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">training-prod-h100</span>
-<span class="w">    </span><span class="nt">racks</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">rack-12</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">nodes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">16</span>
-<span class="w">  </span><span class="nt">reason</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nvidia_driver_baseline_upgrade</span>
-<span class="w">  </span><span class="nt">drain</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">stop_new_allocations</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">wait_for_training_checkpoint</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">inference_replica_migration</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">not_applicable</span>
-<span class="w">  </span><span class="nt">capacity_impact</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">gpu_unavailable</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">128</span>
-<span class="w">    </span><span class="nt">affected_reservations</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">foundation-train-window-042</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">risk_to_slo</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">medium</span>
-<span class="w">  </span><span class="nt">validation_before_return</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bootstrap_validation</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nccl_multi_node</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">container_gpu_runtime</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">acceptance_baseline_diff</span>
-<span class="w">  </span><span class="nt">rollback</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">target_baseline</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-node-2026-05</span>
-<span class="w">    </span><span class="nt">max_recovery_time</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_defined</span>
-</code></pre></div>
+<pre><code class="language-yaml">maintenance_window:
+  window_id: maint-driver-20260619-rack12
+  type: planned
+  scope:
+    resource_pool: training-prod-h100
+    racks: [rack-12]
+    nodes: 16
+  reason: nvidia_driver_baseline_upgrade
+  drain:
+    stop_new_allocations: true
+    wait_for_training_checkpoint: true
+    inference_replica_migration: not_applicable
+  capacity_impact:
+    gpu_unavailable: 128
+    affected_reservations: [foundation-train-window-042]
+    risk_to_slo: medium
+  validation_before_return:
+    - bootstrap_validation
+    - nccl_multi_node
+    - container_gpu_runtime
+    - acceptance_baseline_diff
+  rollback:
+    target_baseline: gpu-node-2026-05
+    max_recovery_time: policy_defined
+</code></pre>
 <p>维护窗口的关键是让“资源暂时消失”有解释、有边界、有结束条件。若维护没有 drain 规则，训练任务会被粗暴中断；若没有复测项，坏节点会回流；若没有容量影响，业务会在维护当天才发现 reservation 无法兑现。维护状态必须和资源池、变更系统、调度器和 SLO 预算联动。</p>
 <p>维护窗口还应显式触发 baseline 失效。更换 NIC、升级 driver、重插线缆、调整液冷、维修 PDU 或替换 GPU 后，资源不应因为维护窗口关闭就回到 allocatable，而应先生成 <code>baseline_invalidation_record</code>，把受影响能力降级，再由第 38 章的复测计划恢复能力。资源池状态机可以把维护结束拆成三步：<code>maintenance_completed</code>、<code>baseline_retest_passed</code>、<code>allocatable_restored</code>。这能避免“工单关闭等于资源健康”的常见误判，也让容量系统看见维护造成的真实产能损失。</p>
 <h3 id="2837">28.3.7 故障隔离<a class="headerlink" href="#2837" title="Permanent link">&para;</a></h3>
@@ -4145,63 +4127,63 @@
 <p>容量规划还要区分峰值、保底和弹性需求。在线推理需要保留容量，大训练需要连续窗口，实验任务可以等待或抢占。不同需求不能简单相加。资源池提供的历史等待、利用率和抢占数据，是把需求拆分成不同资源产品的依据。</p>
 <p>这能避免用昂贵的生产资源承载本可等待的实验需求。</p>
 <p>容量规划还必须把 ROI 和技术成熟度放在一起看。GPU 虚拟化、切分、远程调用和显存超分都可能提高利用率，但它们也会增加工程复杂度、事故概率、性能噪声和排障成本。收益应按硬件节省、能耗节省、排队减少、上线速度和可售资源增加计算；成本应按软件研发、license、运维、故障重跑、SLA 赔付、安全审计和迁移成本计算。若共享策略让训练失败率上升，账面利用率提升可能被重跑成本抵消。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">gpu_resource_roi_record</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">initiative</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mig_and_timeslicing_for_inference_devtest</span>
-<span class="w">  </span><span class="nt">baseline</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">average_gpu_utilization</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">queue_wait_time</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">cost_per_successful_job</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">  </span><span class="nt">expected_benefit</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">hardware_deferral</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">    </span><span class="nt">queue_reduction</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">    </span><span class="nt">developer_throughput</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">estimated</span>
-<span class="w">  </span><span class="nt">expected_cost</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">engineering_effort</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">planned</span>
-<span class="w">    </span><span class="nt">operational_complexity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">assessed</span>
-<span class="w">    </span><span class="nt">incident_risk_cost</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">estimated</span>
-<span class="w">    </span><span class="nt">quality_or_latency_risk</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">assessed</span>
-<span class="w">  </span><span class="nt">decision</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">rollout_scope</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">devtest_then_selected_inference</span>
-<span class="w">    </span><span class="nt">production_gate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-</code></pre></div>
+<pre><code class="language-yaml">gpu_resource_roi_record:
+  initiative: mig_and_timeslicing_for_inference_devtest
+  baseline:
+    average_gpu_utilization: measured
+    queue_wait_time: measured
+    cost_per_successful_job: measured
+  expected_benefit:
+    hardware_deferral: calculated
+    queue_reduction: calculated
+    developer_throughput: estimated
+  expected_cost:
+    engineering_effort: planned
+    operational_complexity: assessed
+    incident_risk_cost: estimated
+    quality_or_latency_risk: assessed
+  decision:
+    rollout_scope: devtest_then_selected_inference
+    production_gate: required
+</code></pre>
 <p>资源池还应接入 <code>rack_capacity_unit</code> 和 <code>capacity_activation_record</code>。容量规划里至少要同时展示四个数字：installed GPU、accepted GPU、allocatable GPU 和 workload-fit GPU。Installed GPU 是设备数量，accepted GPU 是通过准入的数量，allocatable GPU 是当前可调度数量，workload-fit GPU 是满足某类任务拓扑、电力、制冷、网络和存储要求的数量。只有最后一个数字，才适合用来承诺具体业务。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">capacity_view</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">resource_pool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">training-prod-h100</span>
-<span class="w">  </span><span class="nt">scope</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rack_capacity_unit</span>
-<span class="w">  </span><span class="nt">capacity_counts</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">installed_gpu</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">accepted_gpu</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">    </span><span class="nt">allocatable_gpu</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">    </span><span class="nt">fit_for_512_gpu_training</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">    </span><span class="nt">fit_for_premium_inference</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">  </span><span class="nt">limiting_factors</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">power_limited_gpu</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">    </span><span class="nt">cooling_limited_gpu</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">    </span><span class="nt">fabric_limited_gpu</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">    </span><span class="nt">storage_limited_gpu</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">    </span><span class="nt">maintenance_gpu</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">  </span><span class="nt">activation_records</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dc-a-rack-12-2026-06</span>
-</code></pre></div>
+<pre><code class="language-yaml">capacity_view:
+  resource_pool: training-prod-h100
+  scope: rack_capacity_unit
+  capacity_counts:
+    installed_gpu: recorded
+    accepted_gpu: calculated
+    allocatable_gpu: calculated
+    fit_for_512_gpu_training: calculated
+    fit_for_premium_inference: calculated
+  limiting_factors:
+    power_limited_gpu: calculated
+    cooling_limited_gpu: calculated
+    fabric_limited_gpu: calculated
+    storage_limited_gpu: calculated
+    maintenance_gpu: calculated
+  activation_records:
+    - dc-a-rack-12-2026-06
+</code></pre>
 <p>这个视图能解释扩容争议。采购团队说 GPU 到货，设施团队说 rack 已上电，平台团队却不能承诺大训练，是因为 workload-fit GPU 还受 power、cooling、fabric、storage 或准入状态约束。资源池把这些约束展开，容量讨论就不再停留在“还有多少卡”。</p>
 <h2 id="284">28.4 工程落地<a class="headerlink" href="#284" title="Permanent link">&para;</a></h2>
 <h3 id="2841">28.4.1 工程实现<a class="headerlink" href="#2841" title="Permanent link">&para;</a></h3>
 <p>工程实现应先定义资源对象模型。GPU、node、pool、allocation、reservation、health event、maintenance event 和 capacity forecast 应有稳定字段和生命周期。资源对象示例：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">gpu</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-node-001-3</span>
-<span class="w">  </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">h100-class</span>
-<span class="w">  </span><span class="nt">node</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-node-001</span>
-<span class="w">  </span><span class="nt">health</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">healthy</span>
-<span class="w">  </span><span class="nt">maintenance</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">none</span>
-<span class="w">  </span><span class="nt">allocatable</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">topology</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">numa</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span>
-<span class="w">    </span><span class="nt">nvlink_group</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">group-a</span>
-<span class="w">    </span><span class="nt">rdma_nic</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mlx5_0</span>
-<span class="w">  </span><span class="nt">owner</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">pool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">training-prod</span>
-<span class="w">    </span><span class="nt">tenant</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">shared</span>
-</code></pre></div>
+<pre><code class="language-yaml">gpu:
+  id: gpu-node-001-3
+  model: h100-class
+  node: gpu-node-001
+  health: healthy
+  maintenance: none
+  allocatable: true
+  topology:
+    numa: 0
+    nvlink_group: group-a
+    rdma_nic: mlx5_0
+  owner:
+    pool: training-prod
+    tenant: shared
+</code></pre>
 <p>第二步是实现 reconcile。资源池定期从资产系统、Kubernetes、Slurm、DCGM、BMC、网络和存储系统拉取事实，并与自身状态对比。冲突时生成事件，而不是静默覆盖。例如调度器显示节点 allocatable，但 DCGM 报告 GPU unhealthy，资源池应触发隔离或人工确认。Reconcile 是资源事实可信的基础。</p>
 <p>第三步是暴露 API 和事件。调度器需要查询可用资源和约束，平台需要创建 reservation，运维需要标记 maintenance，成本系统需要读取 allocation，容量系统需要读取历史趋势。资源池不应只提供 dashboard，而应成为可编程事实源。所有写操作都要有审计记录。</p>
 <p>第四步是建立资源动作闭环。健康异常触发隔离，维护完成触发复测，reservation 到期触发回收，allocation 超时触发清理，容量短缺触发规划。资源池的价值在动作，而不是数据展示。只展示 GPU 数量的系统，还没有真正管理资源。</p>

@@ -1,0 +1,10 @@
+flowchart LR
+  Contract["agent_tool_policy_contract"] --> Run["agent run"]
+  Gateway["rag_agent_admission_context"] --> Run
+  Run --> ToolExec["agent_tool_execution_record"]
+  Run --> Budget["agent_budget_ledger"]
+  Run --> Traj["agent_trajectory_record"]
+  ToolExec --> Replay["agent_trajectory_replay_bundle"]
+  Budget --> Replay
+  Traj --> Replay
+  Replay --> Gate["agent quality / safety gate"]

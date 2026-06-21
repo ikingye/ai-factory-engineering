@@ -1,0 +1,11 @@
+flowchart TB
+  Tokenized["tokenized request"] --> Waiting["waiting queue"]
+  Waiting --> Admit{"capacity + priority"}
+  Admit -->|admit| Prefill["prefill batch"]
+  Admit -->|reject/backpressure| Reject["typed reject"]
+  Prefill --> KVAlloc["allocate KV blocks"]
+  KVAlloc --> Active["active decode set"]
+  Active --> Step["decode step"]
+  Step --> Active
+  Active -->|finish/cancel/error| Release["release KV blocks"]
+  Release --> Usage["emit usage + close reason"]

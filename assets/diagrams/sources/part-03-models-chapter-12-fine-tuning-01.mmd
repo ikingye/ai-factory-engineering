@@ -1,0 +1,11 @@
+flowchart LR
+  Data["租户私有数据"] --> Guard["校验 / 脱敏 / 权限"]
+  Guard --> Split["训练集 / 验证集"]
+  Base["基础模型"] --> Job["微调任务"]
+  Split --> Job
+  Job --> Artifact["checkpoint / LoRA / adapter"]
+  Artifact --> Eval["质量 + 安全评测"]
+  Eval --> Registry["模型注册"]
+  Registry --> Serving["模型服务 / MaaS"]
+  Serving --> Metrics["线上指标 / 反馈"]
+  Metrics --> Guard

@@ -1,0 +1,10 @@
+flowchart TB
+  Alert["quality / cost / privacy alert"] --> Bundle["multimodal_evidence_bundle"]
+  Manifest["media_artifact_manifest"] --> Bundle
+  Pipeline["media_processing_pipeline_record"] --> Bundle
+  Contract["multimodal_serving_contract"] --> Bundle
+  Gate["multimodal_quality_gate_execution"] --> Bundle
+  Meter["multimodal_metering_event"] --> Bundle
+  Bundle --> Fault["failure layer\npreprocess / model / render / policy"]
+  Bundle --> Cost["multimodal_cost_ledger"]
+  Bundle --> PRR["multimodal_prr_drill / gate update"]

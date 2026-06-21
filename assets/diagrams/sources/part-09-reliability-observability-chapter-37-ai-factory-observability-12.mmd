@@ -1,0 +1,12 @@
+flowchart LR
+  Gateway["AI Gateway\npolicy + budget"] --> PDR["policy_decision_record"]
+  Gateway --> EPD["egress_provider_decision"]
+  Gateway --> Guard["denial_of_wallet_admission_guard"]
+  Guard --> Bundle["security_evidence_bundle"]
+  PDR --> Bundle
+  EPD --> Bundle
+  Meter["metering events\ninput/output/provider"] --> Bundle
+  Bundle --> Hold["billing hold"]
+  Bundle --> Cost["abuse_cost_ledger"]
+  Bundle --> Tree["security_policy_fault_tree_execution"]
+  Bundle --> Audit["security_audit_event"]

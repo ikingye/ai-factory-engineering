@@ -1,0 +1,17 @@
+sequenceDiagram
+  participant U as 用户
+  participant A as Agent
+  participant M as 模型
+  participant T as 工具
+  U->>A: 提交目标
+  A->>M: 规划 prompt
+  M-->>A: plan + tool call
+  A->>T: 执行工具
+  T-->>A: observation
+  A->>M: 带 observation 的下一轮 prompt
+  M-->>A: 下一步动作
+  A->>T: 再次执行工具
+  T-->>A: 结果
+  A->>M: 汇总 prompt
+  M-->>A: 最终回答
+  A-->>U: 任务结果

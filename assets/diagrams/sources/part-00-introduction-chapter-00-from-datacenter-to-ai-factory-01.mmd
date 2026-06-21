@@ -1,0 +1,16 @@
+flowchart TB
+  A["Application
+Chat / Agent / RAG / 办公 / 编程 / 行业应用"] --> B["Platform
+MaaS / API Gateway / Agent Platform / Observability / Billing"]
+  B --> C["Model
+预训练 / 后训练 / 微调 / 评测 / 模型服务"]
+  C --> D["Runtime
+CUDA / NCCL / RDMA / 推理引擎 / 训练框架"]
+  D --> E["Orchestration
+Container Runtime / Kubernetes / Slurm / Volcano / Kueue / Ray / GPU 调度"]
+  E --> F["GPU IaaS
+裸金属 / 虚拟化 / GPU 资源池 / 镜像 / 驱动 / 初始化"]
+  F --> G["Network / Storage
+NVLink / NVSwitch / InfiniBand / RoCE / Object Storage / PFS / Local NVMe"]
+  G --> H["Physical
+机房 / 电力 / 制冷 / GPU / CPU / DPU / NIC / Switch / Storage"]

@@ -1,0 +1,13 @@
+flowchart LR
+  Trigger["交付 / 维修 / 升级 / 变更"] --> Inventory["资产与拓扑采集"]
+  Inventory --> Burn["GPU burn-in"]
+  Burn --> HPL["HPL / 计算基准"]
+  HPL --> NVBW["nvbandwidth"]
+  NVBW --> Runtime["container GPU runtime test"]
+  Runtime --> NCCL["NCCL test"]
+  NCCL --> Storage["storage benchmark"]
+  Storage --> Network["network benchmark"]
+  Network --> Baseline["acceptance baseline"]
+  Baseline --> Decision["pass / limited / quarantine"]
+  Decision --> Pool["资源池状态更新"]
+  Decision --> Ticket["维修 / 复测工单"]

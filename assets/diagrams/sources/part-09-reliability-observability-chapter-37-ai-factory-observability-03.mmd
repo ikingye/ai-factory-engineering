@@ -1,0 +1,6 @@
+flowchart LR
+  Port["switch / NIC counters"] --> Topology["port-to-node-to-rank mapping"]
+  Topology --> Workload["job / model / tenant impact"]
+  Workload --> Baseline["baseline drift"]
+  Baseline --> Severity["severity and owner"]
+  Severity --> Action["degrade fabric / isolate node / reroute / repair"]

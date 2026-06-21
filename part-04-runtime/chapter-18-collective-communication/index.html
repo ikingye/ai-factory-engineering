@@ -3841,56 +3841,37 @@
 <p>统一视图还应保留时间关系，避免把同时发生的事件误判为因果。</p>
 <p>时间线是通信诊断的基本数据结构。</p>
 <p>没有时间线，就没有因果分析。</p>
-<pre class="mermaid"><code>flowchart LR
-  Framework["训练框架"] --&gt; Ops["collective / P2P ops"]
-  Ops --&gt; NCCL["NCCL runtime"]
-  NCCL --&gt; Intra["NVLink / NVSwitch / PCIe"]
-  NCCL --&gt; Inter["IB / RoCE / RDMA"]
-  Intra --&gt; GPU["GPU ranks"]
-  Inter --&gt; NIC["NIC / Switch / Fabric"]
-  NCCL --&gt; Logs["NCCL logs"]
-  Framework --&gt; Profiler["framework profiler"]
-  NIC --&gt; Telemetry["network telemetry"]</code></pre>
+<p><img alt="图：18.2.2 系统架构" src="../../assets/diagrams/part-04-runtime-chapter-18-collective-communication-01.svg" /></p>
 <p>生产诊断需要把通信证据拆成四类：配置契约、运行 trace、回归记录和关键路径影响。配置契约证明任务“应该怎样通信”，运行 trace 证明任务“实际怎样通信”，回归记录证明变更前后是否等价，关键路径影响证明慢通信是否真的浪费 GPU。四类证据缺一，排障就容易滑向猜测：只有配置不知道真实路径，只有 trace 不知道是否偏离预期，只有 benchmark 不知道是否影响训练，只有成本数字不知道根因在哪一层。</p>
-<pre class="mermaid"><code>flowchart TB
-  Plan["parallelism_plan_record"] --&gt; Contract["rank_topology_contract"]
-  Contract --&gt; Env["nccl_env_contract"]
-  Env --&gt; Run["collective_trace_record"]
-  Run --&gt; Critical["communication_critical_path_record"]
-  Baseline["fabric_baseline / NCCL baseline"] --&gt; Regression["communication_regression_record"]
-  Run --&gt; Regression
-  Regression --&gt; Bundle["communication_diagnostic_bundle"]
-  Critical --&gt; Bundle
-  Bundle --&gt; Incident["training_incident_record"]
-  Incident --&gt; Cost["training_roi_ledger / reliability_cost_ledger"]</code></pre>
+<p><img alt="图：18.2.2 系统架构" src="../../assets/diagrams/part-04-runtime-chapter-18-collective-communication-02.svg" /></p>
 <p>这张图强调，NCCL 不是孤立库。它承接并行计划和拓扑契约，依赖容器、RDMA、fabric 和调度事实，最终影响训练进度和经济账本。平台若只保存 NCCL 日志，会丢失上游意图；若只保存 topology，会丢失真实 op；若只看成本，会丢失技术根因。因此通信章节的核心，是把这些事实串成同一条证据链。</p>
 <p>通信诊断还要覆盖 checkpoint overlap。很多训练 step spike 并不是 collective 本身退化，而是 checkpoint 写入、manifest commit、对象存储限流或 metadata hotspot 与 collective 暴露在同一个时间窗口。平台应生成 <code>checkpoint_overlap_evidence</code>，区分“通信慢导致 checkpoint 慢”“checkpoint 抢占网络/存储导致通信慢”和“二者同时受底层 fabric 影响”：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">checkpoint_overlap_evidence</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">evidence_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">coe-exp-20260620-step120000</span>
-<span class="w">  </span><span class="nt">training_job</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">exp-20260620-031</span>
-<span class="w">  </span><span class="nt">window</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">start_step</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">119980</span>
-<span class="w">    </span><span class="nt">end_step</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">120020</span>
-<span class="w">    </span><span class="nt">checkpoint_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ckpt-step-120000</span>
-<span class="w">  </span><span class="nt">communication</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">collective_trace_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ctr-exp-20260620-120000</span>
-<span class="w">    </span><span class="nt">exposed_collective_wait_ms</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">affected_ops</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">all_reduce</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">reduce_scatter</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">checkpoint</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">checkpoint_commit_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ckpt-step-120000</span>
-<span class="w">    </span><span class="nt">write_duration_ms</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">manifest_commit_ms</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">slow_ranks</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">  </span><span class="nt">storage_and_network</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">storage_evidence</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">storage-ev-20260620-017</span>
-<span class="w">    </span><span class="nt">network_path_evidence</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">optional</span>
-<span class="w">    </span><span class="nt">congestion_event_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">optional</span>
-<span class="w">  </span><span class="nt">verdict</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">overlap_detected</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">likely_cause</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">checkpoint_write_competes_with_collective_or_storage_backpressure</span>
-<span class="w">    </span><span class="nt">gpu_idle_seconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">    </span><span class="nt">recommended_action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">stagger_checkpoint_or_isolate_path_or_fix_storage</span>
-</code></pre></div>
+<pre><code class="language-yaml">checkpoint_overlap_evidence:
+  evidence_id: coe-exp-20260620-step120000
+  training_job: exp-20260620-031
+  window:
+    start_step: 119980
+    end_step: 120020
+    checkpoint_id: ckpt-step-120000
+  communication:
+    collective_trace_record: ctr-exp-20260620-120000
+    exposed_collective_wait_ms: measured
+    affected_ops: [all_reduce, reduce_scatter]
+  checkpoint:
+    checkpoint_commit_record: ckpt-step-120000
+    write_duration_ms: measured
+    manifest_commit_ms: measured
+    slow_ranks: recorded
+  storage_and_network:
+    storage_evidence: storage-ev-20260620-017
+    network_path_evidence: optional
+    congestion_event_record: optional
+  verdict:
+    overlap_detected: true
+    likely_cause: checkpoint_write_competes_with_collective_or_storage_backpressure
+    gpu_idle_seconds: calculated
+    recommended_action: stagger_checkpoint_or_isolate_path_or_fix_storage
+</code></pre>
 <p>这个对象能防止错误投资。若 spike 来自 checkpoint 与 collective 叠加，盲目升级 NCCL 或增加 GPU 不能解决问题；更有效的动作可能是错峰 checkpoint、改写入格式、限制并发、隔离存储路径、优化 manifest commit 或调整 checkpoint interval。它也能把周期性 step spike 转成 <code>training_roi_ledger</code> 中的 wasted GPU hours，而不是让它隐藏在平均 step time 里。</p>
 <h2 id="183">18.3 关键技术<a class="headerlink" href="#183" title="Permanent link">&para;</a></h2>
 <h3 id="1831-allreduce">18.3.1 AllReduce<a class="headerlink" href="#1831-allreduce" title="Permanent link">&para;</a></h3>
@@ -3942,37 +3923,37 @@
 <p>NCCL 是 GPU 集合通信的核心运行时之一，提供 AllReduce、AllGather、ReduceScatter、Broadcast 和 P2P 等能力。它会根据拓扑和配置选择算法、协议和网络接口。NCCL 的行为受 CUDA、driver、NCCL 版本、容器设备注入、RDMA 栈、网卡选择、DNS/主机名、环境变量和防火墙等因素影响。很多 NCCL 问题并不是库本身错误，而是运行环境不一致。</p>
 <p>生产平台要把 NCCL 配置作为运行时基线管理。NCCL 版本、关键环境变量、网络接口选择、拓扑文件、debug 级别、timeout 策略都应可追溯。容器内看不到 RDMA 设备、选择了错误网卡、节点间主机名解析异常、RoCE 配置不完整，都可能表现为 NCCL 初始化失败、性能下降或 hang。排障时不能只让用户贴一段错误日志，而要自动收集环境和拓扑上下文。</p>
 <p>更严格的做法是生成 <code>nccl_env_contract</code>。它定义一类训练模板允许哪些 NCCL 环境变量、接口选择、RDMA 设备、timeout、debug 和拓扑文件。用户可以覆盖部分参数，但覆盖必须进入审计，并触发对应回归。这个 contract 能防止“某个脚本临时加了 <code>NCCL_SOCKET_IFNAME</code>，后来所有任务都走错接口”这种隐性事故。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">nccl_env_contract</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">contract_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nec-h100-rdma-20260620</span>
-<span class="w">  </span><span class="nt">framework_runtime_matrix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">frm-h100-train-20260620</span>
-<span class="w">  </span><span class="nt">rank_topology_contract</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rtc-llm-20260620-001</span>
-<span class="w">  </span><span class="nt">allowed_backend</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nccl</span>
-<span class="w">  </span><span class="nt">required</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">nccl_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pinned</span>
-<span class="w">    </span><span class="nt">rdma_devices_visible_in_container</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">gpu_nic_topology_evidence</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">    </span><span class="nt">interface_selection_source</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">platform_generated</span>
-<span class="w">  </span><span class="nt">env_policy</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">NCCL_DEBUG</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">default</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">WARN</span>
-<span class="w">      </span><span class="nt">escalation_on_failure</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">INFO_or_TRACE_windowed</span>
-<span class="w">    </span><span class="nt">NCCL_SOCKET_IFNAME</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">source</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">platform_template</span>
-<span class="w">      </span><span class="nt">user_override</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">audited</span>
-<span class="w">    </span><span class="nt">NCCL_IB_DISABLE</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">expected</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;0&quot;</span>
-<span class="w">      </span><span class="nt">violation_action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">reject_if_rdma_required</span>
-<span class="w">    </span><span class="nt">topology_file</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">source</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">generated_from_inventory_if_used</span>
-<span class="w">      </span><span class="nt">drift_action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">invalidate_baseline</span>
-<span class="w">  </span><span class="nt">timeout_policy</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">init_timeout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">platform_default</span>
-<span class="w">    </span><span class="nt">collective_timeout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">platform_default</span>
-<span class="w">    </span><span class="nt">hang_detection</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">step_progress_and_rank_heartbeat</span>
-<span class="w">  </span><span class="nt">evidence</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">capture_on_start</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">env_summary</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">interface_probe</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">rdma_device_probe</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">capture_on_failure</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">nccl_logs</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">rank_state</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">port_counters</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">recent_changes</span><span class="p p-Indicator">]</span>
-</code></pre></div>
+<pre><code class="language-yaml">nccl_env_contract:
+  contract_id: nec-h100-rdma-20260620
+  framework_runtime_matrix: frm-h100-train-20260620
+  rank_topology_contract: rtc-llm-20260620-001
+  allowed_backend: nccl
+  required:
+    nccl_version: pinned
+    rdma_devices_visible_in_container: true
+    gpu_nic_topology_evidence: required
+    interface_selection_source: platform_generated
+  env_policy:
+    NCCL_DEBUG:
+      default: WARN
+      escalation_on_failure: INFO_or_TRACE_windowed
+    NCCL_SOCKET_IFNAME:
+      source: platform_template
+      user_override: audited
+    NCCL_IB_DISABLE:
+      expected: &quot;0&quot;
+      violation_action: reject_if_rdma_required
+    topology_file:
+      source: generated_from_inventory_if_used
+      drift_action: invalidate_baseline
+  timeout_policy:
+    init_timeout: platform_default
+    collective_timeout: platform_default
+    hang_detection: step_progress_and_rank_heartbeat
+  evidence:
+    capture_on_start: [env_summary, interface_probe, rdma_device_probe]
+    capture_on_failure: [nccl_logs, rank_state, port_counters, recent_changes]
+</code></pre>
 <p><code>nccl_env_contract</code> 的重要性在于把“环境变量经验”变成“运行时边界”。很多 NCCL 事故并非网络突然坏掉，而是接口命名、容器设备、OFED、debug 参数或拓扑文件发生了漂移。Contract 让这些漂移能被检测，并让变更评审知道哪些 baseline 需要失效重跑。它也能减少用户脚本中的神秘参数，把 NCCL 默认值收敛到平台模板中。</p>
 <p>NCCL tests 是准入和诊断的重要工具，但它不等于真实训练性能。Tests 可以验证某种消息大小和 rank 数下的带宽，真实训练会有不同 op 混合、计算通信重叠、慢 rank 和框架调度。平台应同时保存 NCCL baseline 和真实任务的 NCCL 观测。前者判断基础设施是否健康，后者判断训练策略是否合理。两者结合，才能避免把所有问题都归因于网络或框架。</p>
 <p>NCCL 版本治理也很关键。升级 NCCL 可能改善某些拓扑或算法，也可能改变默认接口选择、timeout 行为或性能特征。AI Factory 应把 NCCL 升级纳入 Runtime 基线，而不是让用户镜像随意漂移。灰度升级时，应同时跑 NCCL tests、代表性训练任务和失败恢复测试，并保留回滚路径。</p>
@@ -4003,77 +3984,77 @@
 <h3 id="1841">18.4.1 工程实现<a class="headerlink" href="#1841" title="Permanent link">&para;</a></h3>
 <p>工程实现应让训练任务自动记录通信环境。至少包括 backend、NCCL 版本、CUDA/driver 版本、关键 NCCL 环境变量、网络接口、RDMA 设备、rank 到 GPU/NIC 映射、并行组、collective metrics 和 debug 日志策略。没有这些信息，通信故障复盘会依赖人工记忆。平台应把它们写入作业元数据和运行报告。</p>
 <p>示例配置如下：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">communication</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">backend</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nccl</span>
-<span class="w">  </span><span class="nt">nccl_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pinned</span>
-<span class="w">  </span><span class="nt">network</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rdma</span>
-<span class="w">  </span><span class="nt">interfaces</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">configured_by_platform</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">topology</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">tensor_parallel</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">same_node</span>
-<span class="w">    </span><span class="nt">data_parallel</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cross_node</span>
-<span class="w">  </span><span class="nt">diagnostics</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">collect_nccl_logs_on_failure</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">record_rank_to_nic_mapping</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-</code></pre></div>
+<pre><code class="language-yaml">communication:
+  backend: nccl
+  nccl_version: pinned
+  network: rdma
+  interfaces: [configured_by_platform]
+  topology:
+    tensor_parallel: same_node
+    data_parallel: cross_node
+  diagnostics:
+    collect_nccl_logs_on_failure: true
+    record_rank_to_nic_mapping: true
+</code></pre>
 <p>运行中还应生成 <code>collective_trace_record</code>。它不是全量 profiler dump，而是对关键 step 窗口做结构化摘要：每类 collective 的耗时、消息大小、参与 rank、等待关系、是否处于 critical path、是否和计算重叠。这样排障系统可以在不依赖巨大 trace 文件的情况下做第一轮归因。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">collective_trace_record</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">trace_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ctr-exp-20260620-031-window-84200</span>
-<span class="w">  </span><span class="nt">training_job</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">exp-20260620-031</span>
-<span class="w">  </span><span class="nt">parallelism_plan_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ppr-llm-20260620-001</span>
-<span class="w">  </span><span class="nt">placement_commit_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pcr-exp-20260620-031</span>
-<span class="w">  </span><span class="nt">nccl_env_contract</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nec-h100-rdma-20260620</span>
-<span class="w">  </span><span class="nt">window</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">start_step</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">84200</span>
-<span class="w">    </span><span class="nt">end_step</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">84250</span>
-<span class="w">    </span><span class="nt">trigger</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">step_time_p99_regression</span>
-<span class="w">  </span><span class="nt">operations</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">op</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">all_reduce</span>
-<span class="w">      </span><span class="nt">group</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">data_parallel</span>
-<span class="w">      </span><span class="nt">message_size_bucket</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">large</span>
-<span class="w">      </span><span class="nt">duration_ms_p50</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">      </span><span class="nt">duration_ms_p99</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">      </span><span class="nt">exposed_on_critical_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">      </span><span class="nt">slow_ranks</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">17</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">49</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">81</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">op</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">all_gather</span>
-<span class="w">      </span><span class="nt">group</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fsdp_param_gather</span>
-<span class="w">      </span><span class="nt">message_size_bucket</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">medium</span>
-<span class="w">      </span><span class="nt">hbm_temporary_buffer_peak</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">      </span><span class="nt">exposed_on_critical_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-<span class="w">  </span><span class="nt">correlation</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">rank_mapping_ref</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rank-mapping-exp-20260620-031</span>
-<span class="w">    </span><span class="nt">rail_balance_report</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rail-balance-exp-20260620-031</span>
-<span class="w">    </span><span class="nt">fabric_baseline</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fabric-h100-rail-20260619</span>
-</code></pre></div>
+<pre><code class="language-yaml">collective_trace_record:
+  trace_id: ctr-exp-20260620-031-window-84200
+  training_job: exp-20260620-031
+  parallelism_plan_record: ppr-llm-20260620-001
+  placement_commit_record: pcr-exp-20260620-031
+  nccl_env_contract: nec-h100-rdma-20260620
+  window:
+    start_step: 84200
+    end_step: 84250
+    trigger: step_time_p99_regression
+  operations:
+    - op: all_reduce
+      group: data_parallel
+      message_size_bucket: large
+      duration_ms_p50: measured
+      duration_ms_p99: measured
+      exposed_on_critical_path: true
+      slow_ranks: [17, 49, 81]
+    - op: all_gather
+      group: fsdp_param_gather
+      message_size_bucket: medium
+      hbm_temporary_buffer_peak: measured
+      exposed_on_critical_path: false
+  correlation:
+    rank_mapping_ref: rank-mapping-exp-20260620-031
+    rail_balance_report: rail-balance-exp-20260620-031
+    fabric_baseline: fabric-h100-rail-20260619
+</code></pre>
 <p>这个记录能回答一个经常被忽略的问题：慢 op 是否真的导致慢 step。某些 AllGather 耗时很长，但被 backward 重叠，对端到端吞吐影响较小；某个 AllReduce 绝对耗时不算最大，却让大量 rank 等待，它才是关键路径。<code>collective_trace_record</code> 应和 <code>communication_critical_path_record</code> 配合使用，避免把全部优化资源投向最显眼但不是最关键的曲线。</p>
 <p>通信故障发生时，平台应自动生成 communication diagnostic bundle。这个包不是把所有日志打包，而是围绕一次异常 step 或异常 op 收集最小充分证据：op、rank、节点、NIC、端口、NCCL 环境、网络错误、GPU 状态和最近变更。这样网络、Runtime 和训练团队可以围绕同一份证据排查。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">communication_diagnostic_bundle</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">incident_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">comm-20260619-001</span>
-<span class="w">  </span><span class="nt">training_job</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">exp-20260619-001</span>
-<span class="w">  </span><span class="nt">window</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">start</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">anomaly_start_time</span>
-<span class="w">    </span><span class="nt">end</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">anomaly_end_time</span>
-<span class="w">  </span><span class="nt">slow_ops</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">op</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">all_reduce</span>
-<span class="w">      </span><span class="nt">step</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">84520</span>
-<span class="w">      </span><span class="nt">ranks</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">17</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">42</span><span class="p p-Indicator">]</span>
-<span class="w">      </span><span class="nt">expected_ms</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">baseline</span>
-<span class="w">      </span><span class="nt">observed_ms</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">  </span><span class="nt">topology</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">rank_mapping_ref</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rank-mapping.json</span>
-<span class="w">    </span><span class="nt">affected_nodes</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">gpu-node-001</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">gpu-node-018</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">affected_nics</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">mlx5_0</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">switch_ports</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">leaf12/1</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">leaf12/18</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">runtime</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">nccl_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pinned</span>
-<span class="w">    </span><span class="nt">cuda_driver</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">env</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">NCCL_DEBUG_and_interface_summary</span>
-<span class="w">    </span><span class="nt">nccl_env_contract</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nec-h100-rdma-20260620</span>
-<span class="w">  </span><span class="nt">telemetry</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">rdma_errors</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">collected</span>
-<span class="w">    </span><span class="nt">port_counters</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">collected</span>
-<span class="w">    </span><span class="nt">dcgm_events</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">collected</span>
-<span class="w">    </span><span class="nt">recent_changes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">driver_or_network_changes</span>
-</code></pre></div>
+<pre><code class="language-yaml">communication_diagnostic_bundle:
+  incident_id: comm-20260619-001
+  training_job: exp-20260619-001
+  window:
+    start: anomaly_start_time
+    end: anomaly_end_time
+  slow_ops:
+    - op: all_reduce
+      step: 84520
+      ranks: [0, 17, 42]
+      expected_ms: baseline
+      observed_ms: measured
+  topology:
+    rank_mapping_ref: rank-mapping.json
+    affected_nodes: [gpu-node-001, gpu-node-018]
+    affected_nics: [mlx5_0]
+    switch_ports: [leaf12/1, leaf12/18]
+  runtime:
+    nccl_version: pinned
+    cuda_driver: recorded
+    env: NCCL_DEBUG_and_interface_summary
+    nccl_env_contract: nec-h100-rdma-20260620
+  telemetry:
+    rdma_errors: collected
+    port_counters: collected
+    dcgm_events: collected
+    recent_changes: driver_or_network_changes
+</code></pre>
 <p>诊断包应在异常发生后尽快生成。很多网络计数器、容器日志和 profiler trace 保留时间有限，等事故复盘时再补采集，证据往往已经丢失。自动采集不意味着全量高噪声日志长期打开，而是在触发条件满足时提升采样并冻结窗口。</p>
 <p>任务启动前应执行通信自检：确认容器能看到 GPU 和 RDMA 设备，NCCL 能选择正确接口，节点间主机名和端口可达，rank 数与调度结果一致。任务运行中应采集 op 级耗时、带宽、错误和超时。失败时自动打包 NCCL 日志、环境变量、拓扑、网络端口状态和最近的 step trace。工程目标是让通信问题从“玄学”变成可复现的诊断流程。</p>
 <p>平台还应提供分级诊断。普通用户看到的是“通信初始化失败”“跨节点带宽低”“某个 rank 超时”等可行动结论；SRE 可以进入详细视图查看 NCCL 环境变量、接口选择、端口错误和 rank 映射。这样既避免把底层复杂度暴露给所有人，也保证事故时有足够证据深入排查。</p>
@@ -4082,57 +4063,57 @@
 <p>这些结果还应可导出，便于事故复盘和供应商协同。</p>
 <p>平台还应建立通信基线库。基线库按 GPU 型号、节点内拓扑、rack、rail、NCCL 版本、消息大小和 rank 数记录测试结果。真实训练出现退化时，先与同条件基线比较，再判断是否进入网络、Runtime 或训练策略排查。基线库可以来自准入测试，也可以来自周期性巡检和代表性训练任务。</p>
 <p>任何通信相关变更都应产出 <code>communication_regression_record</code>。它覆盖 NCCL、CUDA、driver、OFED、NIC firmware、交换机配置、GPU Operator、container runtime、CNI、调度标签、rank topology contract 和训练模板。记录的目标不是证明“某个 nccl-test 通过”，而是证明变更前后的真实训练关键路径没有不可接受回归。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">communication_regression_record</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">record_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">crr-20260620-004</span>
-<span class="w">  </span><span class="nt">change</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nccl_or_ofed_or_fabric_or_runtime</span>
-<span class="w">    </span><span class="nt">change_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fabric-or-runtime-change-id</span>
-<span class="w">    </span><span class="nt">affected_resource_pools</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">training-prod-h100</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">baselines</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">fabric_baseline_before</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fabric-h100-rail-20260619</span>
-<span class="w">    </span><span class="nt">fabric_baseline_after</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fabric-h100-rail-20260620</span>
-<span class="w">    </span><span class="nt">framework_runtime_matrix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">frm-h100-train-20260620</span>
-<span class="w">    </span><span class="nt">nccl_env_contract</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nec-h100-rdma-20260620</span>
-<span class="w">  </span><span class="nt">tests</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">nccl_tests_same_node</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed</span>
-<span class="w">    </span><span class="nt">nccl_tests_cross_node</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed</span>
-<span class="w">    </span><span class="nt">multi_rail_balance</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed_or_degraded</span>
-<span class="w">    </span><span class="nt">representative_training_short_run</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed</span>
-<span class="w">    </span><span class="nt">checkpoint_overlap_run</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed</span>
-<span class="w">  </span><span class="nt">regression_budget</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">collective_bandwidth_delta</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">within_policy</span>
-<span class="w">    </span><span class="nt">step_time_delta</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">within_policy</span>
-<span class="w">    </span><span class="nt">rank_skew_delta</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">within_policy</span>
-<span class="w">    </span><span class="nt">hang_or_timeout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">none</span>
-<span class="w">  </span><span class="nt">decision</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">promote</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true_or_false</span>
-<span class="w">    </span><span class="nt">rollback_required</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-<span class="w">    </span><span class="nt">invalidated_baselines</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[]</span>
-</code></pre></div>
+<pre><code class="language-yaml">communication_regression_record:
+  record_id: crr-20260620-004
+  change:
+    type: nccl_or_ofed_or_fabric_or_runtime
+    change_record: fabric-or-runtime-change-id
+    affected_resource_pools: [training-prod-h100]
+  baselines:
+    fabric_baseline_before: fabric-h100-rail-20260619
+    fabric_baseline_after: fabric-h100-rail-20260620
+    framework_runtime_matrix: frm-h100-train-20260620
+    nccl_env_contract: nec-h100-rdma-20260620
+  tests:
+    nccl_tests_same_node: passed
+    nccl_tests_cross_node: passed
+    multi_rail_balance: passed_or_degraded
+    representative_training_short_run: passed
+    checkpoint_overlap_run: passed
+  regression_budget:
+    collective_bandwidth_delta: within_policy
+    step_time_delta: within_policy
+    rank_skew_delta: within_policy
+    hang_or_timeout: none
+  decision:
+    promote: true_or_false
+    rollback_required: false
+    invalidated_baselines: []
+</code></pre>
 <p>这份记录能把第 32 章的 fabric 变更、第 38 章的验收、第 39 章的故障树和第 44 章的 PRR 接起来。若一次 NCCL 升级只跑了单节点测试，没有跑代表性训练和 checkpoint overlap，不能认为生产可用；若网络变更使 NCCL test 带宽略降但真实训练 step 不受影响，可以记录为可接受；若 NCCL test 通过但 rank skew 增大，应暂停放量。回归标准必须和 workload 绑定。</p>
 <p>训练通信还经常被 checkpoint 干扰。Checkpoint 写入会占用存储、网络、CPU、PCIe、内存和调度线程，可能与 NCCL 或数据读取叠加，表现为周期性 step time spike。平台应保留 <code>checkpoint_overlap_evidence</code>，说明 checkpoint 是否与通信、数据加载和评测同时争用关键路径。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">checkpoint_overlap_evidence</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">evidence_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">coe-exp-20260620-031</span>
-<span class="w">  </span><span class="nt">training_job</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">exp-20260620-031</span>
-<span class="w">  </span><span class="nt">checkpoint_window</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">checkpoint_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ckpt-84200</span>
-<span class="w">    </span><span class="nt">start_step</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">84190</span>
-<span class="w">    </span><span class="nt">end_step</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">84220</span>
-<span class="w">    </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">synchronous_or_async</span>
-<span class="w">  </span><span class="nt">overlap</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">collective_ops_during_checkpoint</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">all_reduce</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">reduce_scatter</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">storage_backend</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">parallel_fs_or_object_storage</span>
-<span class="w">    </span><span class="nt">network_path_shared_with_training</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">gpu_idle_due_to_checkpoint_ms</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">    </span><span class="nt">communication_exposed_ms_delta</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">  </span><span class="nt">verdict</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">checkpoint_interferes_with_collective</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true_or_false</span>
-<span class="w">    </span><span class="nt">recommended_action</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">shift_checkpoint_window</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">throttle_checkpoint_io</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">separate_storage_network</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tune_async_checkpoint</span>
-</code></pre></div>
+<pre><code class="language-yaml">checkpoint_overlap_evidence:
+  evidence_id: coe-exp-20260620-031
+  training_job: exp-20260620-031
+  checkpoint_window:
+    checkpoint_id: ckpt-84200
+    start_step: 84190
+    end_step: 84220
+    mode: synchronous_or_async
+  overlap:
+    collective_ops_during_checkpoint: [all_reduce, reduce_scatter]
+    storage_backend: parallel_fs_or_object_storage
+    network_path_shared_with_training: true
+    gpu_idle_due_to_checkpoint_ms: calculated
+    communication_exposed_ms_delta: calculated
+  verdict:
+    checkpoint_interferes_with_collective: true_or_false
+    recommended_action:
+      - shift_checkpoint_window
+      - throttle_checkpoint_io
+      - separate_storage_network
+      - tune_async_checkpoint
+</code></pre>
 <p>这个对象能防止把周期性通信抖动误判为 fabric 问题。若每次 checkpoint 前后通信变慢，且端口错误没有增加，根因可能是 I/O 与训练通信共享路径、rank 写入长尾或异步 checkpoint 回压。反过来，如果无 checkpoint 窗口也出现同类退化，才更应该进入 fabric、runtime 或 collective mismatch 分支。通信诊断必须把 checkpoint 作为一等变量。</p>
 <h3 id="1842">18.4.2 常见故障<a class="headerlink" href="#1842" title="Permanent link">&para;</a></h3>
 <p>第一类故障是 NCCL 选择了错误路径。容器内网卡命名不同、环境变量缺失、RDMA 设备没有注入，可能让通信走低性能接口或直接失败。第二类故障是 RoCE/IB 网络异常，例如丢包、拥塞、链路降速、PFC/ECN 配置问题或交换机端口错误。它们常表现为训练间歇性变慢，而不是每次都失败。</p>
@@ -4154,30 +4135,30 @@
 <p>GPU 空转时间是最直观的成本信号。</p>
 <p>通信指标还应有训练有效性口径。<code>comm_time_ms</code> 本身不说明问题，只有当它暴露在 critical path 上并造成 rank 等待时，才直接浪费 GPU。建议记录 <code>communication_exposed_ms</code>、<code>rank_wait_ms</code> 和 <code>gpu_idle_due_to_comm_hours</code>。这样网络优化可以和 GPU 成本直接关联，便于判断是否值得升级 fabric、调整拓扑或修改并行策略。</p>
 <p>一份更可用的通信性能记录应把 op、等待关系和成本影响绑定在一起。注意这里不把端口吞吐直接等同于浪费，只有通信处在 step 的关键路径上、且其它 rank 被它阻塞时，才计入 exposed communication waste：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">communication_critical_path_record</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">training_job</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">train-20260620-017</span>
-<span class="w">  </span><span class="nt">step_window</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">start_step</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">84200</span>
-<span class="w">    </span><span class="nt">end_step</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">84300</span>
-<span class="w">  </span><span class="nt">slow_operation</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">op</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">all_reduce</span>
-<span class="w">    </span><span class="nt">bucket</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">grad_bucket_31</span>
-<span class="w">    </span><span class="nt">message_size_bucket</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">large</span>
-<span class="w">    </span><span class="nt">affected_ranks</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">17</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">49</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">81</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">timing</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">op_duration_ms_p50</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">op_duration_ms_p99</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">rank_wait_ms_max</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">communication_exposed_ms</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">  </span><span class="nt">topology</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">rank_mapping_ref</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rank-mapping.json</span>
-<span class="w">    </span><span class="nt">fabric_baseline_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">train-fabric-a-20260619</span>
-<span class="w">    </span><span class="nt">rail_balance_report</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rail-balance-20260620-017</span>
-<span class="w">  </span><span class="nt">impact</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">gpu_idle_due_to_comm_hours</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">    </span><span class="nt">step_time_delta_vs_baseline</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">    </span><span class="nt">suspected_owner</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">network_or_runtime_or_placement</span>
-</code></pre></div>
+<pre><code class="language-yaml">communication_critical_path_record:
+  training_job: train-20260620-017
+  step_window:
+    start_step: 84200
+    end_step: 84300
+  slow_operation:
+    op: all_reduce
+    bucket: grad_bucket_31
+    message_size_bucket: large
+    affected_ranks: [17, 49, 81]
+  timing:
+    op_duration_ms_p50: measured
+    op_duration_ms_p99: measured
+    rank_wait_ms_max: measured
+    communication_exposed_ms: calculated
+  topology:
+    rank_mapping_ref: rank-mapping.json
+    fabric_baseline_id: train-fabric-a-20260619
+    rail_balance_report: rail-balance-20260620-017
+  impact:
+    gpu_idle_due_to_comm_hours: calculated
+    step_time_delta_vs_baseline: calculated
+    suspected_owner: network_or_runtime_or_placement
+</code></pre>
 <p>这个对象能防止两个误判。第一，某个 collective 总耗时很长，但被 backward 完全 overlap，它不是当前 step time 的主因；第二，某个端口出现拥塞计数，但没有对应 rank 等待，也不能直接归因为训练变慢。通信诊断要先证明等待关系，再讨论网络、runtime 或并行策略根因。这样才能把 NCCL profiler、rank timeline、fabric telemetry 和 Token Factory 成本账本接起来。</p>
 <h3 id="1844">18.4.4 设计取舍<a class="headerlink" href="#1844" title="Permanent link">&para;</a></h3>
 <p>通信优化的第一个取舍是硬件投入与软件复杂度。更强网络和更好的 scale-up 拓扑可以降低通信瓶颈，但成本高、交付周期长；更复杂的并行策略、overlap 和 bucket 调优可以在现有硬件上提升效率，但会增加调试难度。平台需要基于真实 workload 判断瓶颈，而不是先假设一定要升级网络或一定能靠软件解决。</p>

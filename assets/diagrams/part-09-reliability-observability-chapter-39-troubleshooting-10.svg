@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1894 774" width="1894" height="774">
+  <defs>
+    <marker id="arrowA" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#7c3aed"/>
+    </marker>
+    <marker id="arrowB" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#10b981"/>
+    </marker>
+    <marker id="arrowC" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2563eb"/>
+    </marker>
+    <marker id="arrowE" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#f97316"/>
+    </marker>
+    <marker id="arrowF" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#7c3aed"/>
+    </marker>
+    <marker id="arrowG" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#ef4444"/>
+    </marker>
+    <marker id="arrowH" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#6b7280"/>
+    </marker>
+    <filter id="shadowSoft" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="3" stdDeviation="6" flood-color="#0f172a" flood-opacity="0.12"/>
+    </filter>
+    <filter id="shadowGlass" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="10" stdDeviation="16" flood-color="#020617" flood-opacity="0.28"/>
+    </filter>
+    <style>
+    text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', 'Microsoft JhengHei', 'SimHei', sans-serif; }
+    .title { font-size: 30px; font-weight: 700; fill: #111827; }
+    .subtitle { font-size: 14px; font-weight: 500; fill: #6b7280; }
+    .section { font-size: 13px; font-weight: 700; fill: #2563eb; letter-spacing: 1.4px; }
+    .section-sub { font-size: 12px; font-weight: 500; fill: #94a3b8; }
+    .node-title { font-size: 18px; font-weight: 700; fill: #111827; }
+    .node-sub { font-size: 12px; font-weight: 500; fill: #6b7280; }
+    .node-type { font-size: 12px; font-weight: 700; fill: #9ca3af; letter-spacing: 0.08em; }
+    .arrow-label { font-size: 12px; font-weight: 600; fill: #6b7280; }
+    .legend { font-size: 12px; font-weight: 500; fill: #6b7280; }
+    .footnote { font-size: 12px; font-weight: 500; fill: #94a3b8; }
+    </style>
+  </defs>
+  <rect width="1894.0" height="774.0" fill="#ffffff"/>
+  <text x="947.0" y="56" text-anchor="middle" class="title">39.3.8 inference latency spike</text>
+  <text x="947.0" y="82" text-anchor="middle" class="subtitle">part-09-reliability-observability/chapter-39-troubleshooting.md:982</text>
+  <path d="M 947.0,212.0 L 947.0,284.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 947.0,354.0 L 947.0,374.4 L 185.0,405.6 L 185.0,426.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 947.0,354.0 L 947.0,374.4 L 453.0,405.6 L 453.0,426.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 947.0,354.0 L 947.0,374.4 L 721.0,405.6 L 721.0,426.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 947.0,354.0 L 947.0,374.4 L 989.0,405.6 L 989.0,426.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 947.0,354.0 L 947.0,374.4 L 1253.5,405.6 L 1253.5,426.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 947.0,354.0 L 947.0,374.4 L 1521.5,411.6 L 1521.5,432.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 947.0,354.0 L 947.0,374.4 L 1751.0,411.6 L 1751.0,432.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 185.0,496.0 L 185.0,516.4 L 210.5,547.6 L 210.5,568.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 453.0,496.0 L 453.0,516.4 L 442.5,553.6 L 442.5,574.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 721.0,496.0 L 721.0,516.4 L 700.0,553.6 L 700.0,574.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 989.0,496.0 L 989.0,516.4 L 961.0,547.6 L 961.0,568.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 1253.5,496.0 L 1253.5,516.4 L 1196.5,547.6 L 1196.5,568.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 1521.5,490.0 L 1521.5,510.4 L 1414.5,553.6 L 1414.5,574.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 1751.0,490.0 L 1751.0,510.4 L 1658.0,547.6 L 1658.0,568.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <rect x="853.5" y="154.0" width="187.0" height="58.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
+  <text x="947.0" y="183.0" text-anchor="middle" class="node-title">RAG / Agent symptom</text>
+  <rect x="850.0" y="284.0" width="194.0" height="70.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
+  <text x="947.0" y="319.0" text-anchor="middle" class="node-title">rag_agent_fault_tree</text>
+  <text x="947.0" y="341.0" text-anchor="middle" class="node-sub">execution</text>
+  <rect x="60.0" y="426.0" width="250.0" height="70.0" rx="10.0" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.8"/>
+  <text x="185.0" y="461.0" text-anchor="middle" class="node-title">Gateway admission</text>
+  <text x="185.0" y="483.0" text-anchor="middle" class="node-sub">contract + boundary + budget</text>
+  <rect x="356.0" y="426.0" width="194.0" height="70.0" rx="10.0" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.8"/>
+  <text x="453.0" y="461.0" text-anchor="middle" class="node-title">retrieval permission</text>
+  <text x="453.0" y="483.0" text-anchor="middle" class="node-sub">ACL + index + cache</text>
+  <rect x="596.0" y="426.0" width="250.0" height="70.0" rx="10.0" fill="#f0fdfa" stroke="#99f6e4" stroke-width="1.8"/>
+  <text x="721.0" y="461.0" text-anchor="middle" class="node-title">context assembly</text>
+  <text x="721.0" y="483.0" text-anchor="middle" class="node-sub">snapshot + replay + citation</text>
+  <rect x="892.0" y="426.0" width="194.0" height="70.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8"/>
+  <text x="989.0" y="461.0" text-anchor="middle" class="node-title">tool policy</text>
+  <text x="989.0" y="483.0" text-anchor="middle" class="node-sub">schema + side effect</text>
+  <rect x="1132.0" y="426.0" width="243.0" height="70.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
+  <text x="1253.5" y="461.0" text-anchor="middle" class="node-title">tool runtime</text>
+  <text x="1253.5" y="483.0" text-anchor="middle" class="node-sub">sandbox + API + observation</text>
+  <rect x="1421.0" y="432.0" width="201.0" height="58.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
+  <text x="1521.5" y="461.0" text-anchor="middle" class="node-title">budget / loop control</text>
+  <rect x="1668.0" y="432.0" width="166.0" height="58.0" rx="10.0" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.8"/>
+  <text x="1751.0" y="461.0" text-anchor="middle" class="node-title">cost attribution</text>
+  <rect x="128.5" y="568.0" width="164.0" height="70.0" rx="10.0" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.8"/>
+  <text x="210.5" y="603.0" text-anchor="middle" class="node-title">block route</text>
+  <text x="210.5" y="625.0" text-anchor="middle" class="node-sub">update policy</text>
+  <rect x="338.5" y="574.0" width="208.0" height="58.0" rx="10.0" fill="#f0fdfa" stroke="#99f6e4" stroke-width="1.8"/>
+  <text x="442.5" y="603.0" text-anchor="middle" class="node-title">invalidate index/cache</text>
+  <rect x="592.5" y="574.0" width="215.0" height="58.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8"/>
+  <text x="700.0" y="603.0" text-anchor="middle" class="node-title">fix context or citation</text>
+  <rect x="853.5" y="568.0" width="215.0" height="70.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
+  <text x="961.0" y="603.0" text-anchor="middle" class="node-title">freeze or rollback tool</text>
+  <text x="961.0" y="625.0" text-anchor="middle" class="node-sub">contract</text>
+  <rect x="1114.5" y="568.0" width="164.0" height="70.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
+  <text x="1196.5" y="603.0" text-anchor="middle" class="node-title">degrade / retry</text>
+  <text x="1196.5" y="625.0" text-anchor="middle" class="node-sub">human handoff</text>
+  <rect x="1324.5" y="574.0" width="180.0" height="58.0" rx="10.0" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.8"/>
+  <text x="1414.5" y="603.0" text-anchor="middle" class="node-title">tighten run budget</text>
+  <rect x="1550.5" y="568.0" width="215.0" height="70.0" rx="10.0" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.8"/>
+  <text x="1658.0" y="603.0" text-anchor="middle" class="node-title">rag_agent_incident_cost</text>
+  <text x="1658.0" y="625.0" text-anchor="middle" class="node-sub">record</text>
+  <text x="1614.0" y="758.0" class="footnote">Rendered with fireworks-tech-graph</text>
+</svg>

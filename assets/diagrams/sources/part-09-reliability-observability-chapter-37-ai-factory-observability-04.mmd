@@ -1,0 +1,9 @@
+flowchart LR
+  Raw["raw telemetry"] --> Classify["classify\nprompt / response / infra / billing"]
+  Classify --> Redact["redact / tokenize / hash"]
+  Redact --> Store["tiered storage\nhot / cold / evidence"]
+  Store --> TenantView["tenant view\nown workload only"]
+  Store --> AdminView["admin view\nneed-to-know"]
+  TenantView --> QueryAudit["query_audit_event"]
+  AdminView --> QueryAudit
+  QueryAudit --> Review["periodic access review"]

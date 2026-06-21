@@ -3844,17 +3844,7 @@
 <p>架构图还应提醒我们：上层指标不是芯片指标的简单投影。tokens/s 可能受 Tensor Core 影响，也可能受 HBM、CPU、网络、调度和请求分布影响；training step time 可能受 GEMM 影响，也可能受 AllReduce、checkpoint 和数据加载影响。系统架构的价值，是帮助团队知道该往哪一层找证据。</p>
 <p>因此，GPU 架构评估要同时包含 micro-benchmark 和 workload benchmark。前者用于确认硬件路径，后者用于确认业务收益。两者缺一不可。</p>
 <p>这也决定了组织分工。硬件团队提供规格和基线，runtime 团队验证 kernel 和 engine，模型团队验证质量，平台团队验证调度和容量，SRE 团队验证可观测和回滚。GPU 架构只有穿过这些环节，才算进入生产。</p>
-<pre class="mermaid"><code>flowchart TB
-  Model["Model: matmul / attention / KV Cache"] --&gt; Framework["Framework / Engine"]
-  Framework --&gt; Kernel["CUDA Kernels / Compiler"]
-  Kernel --&gt; SM["SM Scheduler"]
-  SM --&gt; TensorCore["Tensor Core"]
-  SM --&gt; CUDACore["CUDA Core"]
-  TensorCore --&gt; HBM["HBM Capacity / Bandwidth"]
-  CUDACore --&gt; HBM
-  HBM --&gt; Interconnect["NVLink / NVSwitch / PCIe"]
-  Interconnect --&gt; MultiGPU["Multi-GPU Parallelism"]
-  MultiGPU --&gt; Metrics["tokens/s / step time / tokens/W"]</code></pre>
+<p><img alt="图：35.2.2 系统架构" src="../../assets/diagrams/part-08-physical-infrastructure-chapter-35-gpu-architecture-01.svg" /></p>
 <h2 id="353">35.3 关键技术<a class="headerlink" href="#353" title="Permanent link">&para;</a></h2>
 <h3 id="3531-sm">35.3.1 SM<a class="headerlink" href="#3531-sm" title="Permanent link">&para;</a></h3>
 <p>SM 是 Streaming Multiprocessor，是 GPU 上执行计算的基本并行单元。SM 内部包含 warp scheduler、寄存器、共享内存、load/store 单元、CUDA core、Tensor Core 和其它执行资源。模型算子最终会被编译或调度成一个个 kernel，在多个 SM 上并行执行。SM 的数量、频率、调度能力和片上资源共同影响 GPU 的计算上限。</p>
@@ -4131,187 +4121,177 @@
 <p>GPU 能力画像应把芯片能力、系统拓扑、软件基线和 workload 适配写成统一事实源。画像不是规格表复制，而是调度和容量规划可使用的抽象。它应回答：这类 GPU 适合哪些模型，支持哪些精度，经过哪些 runtime 验收，属于哪些互联域，功耗和冷却边界如何，当前处于生产、灰度还是实验状态。</p>
 <p>落地可以分三步。第一，硬件入池时记录架构代际、显存容量等级、带宽等级、互联能力、功耗等级和系统形态。第二，软件栈验收时记录 driver、CUDA、NCCL、cuDNN、推理引擎、训练框架、低精度路径和 benchmark 结果。第三，模型平台把 artifact 的精度、context、并行策略和 runtime 需求与 GPU 能力匹配。这样，模型不会被部署到能力不匹配的资源池。</p>
 <p>画像还应连接经济系统。tokens/s、tokens/W、单卡并发、训练 step time、失败率、平均功耗和折旧成本共同决定 cost per token 或训练成本。新 GPU 是否值得用于某个 workload，不能只看峰值算力，而要看真实生产曲线。工程实现要让平台能比较不同 GPU 代际、不同精度和不同 runtime 策略下的经济结果。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">gpu_capability</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">family</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nvidia-hopper-or-newer</span>
-<span class="w">  </span><span class="nt">memory</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">capacity_class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">large</span>
-<span class="w">    </span><span class="nt">bandwidth_class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">high</span>
-<span class="w">  </span><span class="nt">precision</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">bf16</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">production</span>
-<span class="w">    </span><span class="nt">fp8</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">validated_for_selected_models</span>
-<span class="w">    </span><span class="nt">int8</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">production_for_quantized_inference</span>
-<span class="w">  </span><span class="nt">interconnect</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">nvswitch_domain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">runtime_baseline</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">driver</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">managed</span>
-<span class="w">    </span><span class="nt">cuda</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">managed</span>
-<span class="w">    </span><span class="nt">nccl</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">managed</span>
-<span class="w">    </span><span class="nt">engines</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;vllm&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;tensorrt-llm&quot;</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">suitable_workloads</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">distributed-training</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">long-context-inference</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">batch-inference</span>
-</code></pre></div>
+<pre><code class="language-yaml">gpu_capability:
+  family: nvidia-hopper-or-newer
+  memory:
+    capacity_class: large
+    bandwidth_class: high
+  precision:
+    bf16: production
+    fp8: validated_for_selected_models
+    int8: production_for_quantized_inference
+  interconnect:
+    nvswitch_domain: true
+  runtime_baseline:
+    driver: managed
+    cuda: managed
+    nccl: managed
+    engines: [&quot;vllm&quot;, &quot;tensorrt-llm&quot;]
+  suitable_workloads:
+    - distributed-training
+    - long-context-inference
+    - batch-inference
+</code></pre>
 <p>实现时还要保留验证来源。某个 capability 是厂商声明、实验室测试、灰度验证还是线上生产基线，可信度不同。资源池可以使用这些状态决定调度范围：experimental 只给测试项目，validated 可给灰度，production 才进入 SLA 池。这样能避免新硬件能力未经验证就影响关键业务。</p>
 <p>更进一步，平台应维护 <code>gpu_capability_scorecard</code>，把硬件能力、软件成熟度和 workload 结果放在同一个评估对象里：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">gpu_capability_scorecard</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">gpu_family</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">next_gen_gpu_pool</span>
-<span class="w">  </span><span class="nt">scope</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">resource_pool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">inference-and-training-canary</span>
-<span class="w">    </span><span class="nt">server_profile</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu_server_profile_class_a</span>
-<span class="w">  </span><span class="nt">hardware_capability</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">hbm_capacity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">hbm_bandwidth_class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">high</span>
-<span class="w">    </span><span class="nt">tensor_core_precision</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">bf16</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">supported</span>
-<span class="w">      </span><span class="nt">fp8</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">supported</span>
-<span class="w">      </span><span class="nt">int8</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">supported</span>
-<span class="w">    </span><span class="nt">interconnect_domain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nvswitch_or_equivalent</span>
-<span class="w">    </span><span class="nt">power_thermal_envelope</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">validated</span>
-<span class="w">  </span><span class="nt">software_validation</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">driver_cuda_nccl</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">validated</span>
-<span class="w">    </span><span class="nt">inference_engine</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">vllm</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">validated_for_selected_models</span>
-<span class="w">      </span><span class="nt">tensorrt_llm</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">experimental_or_validated</span>
-<span class="w">    </span><span class="nt">training_framework</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">pytorch</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">validated</span>
-<span class="w">      </span><span class="nt">megatron_or_fsdp</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">validated_if_used</span>
-<span class="w">  </span><span class="nt">workload_results</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">long_context_inference</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">tokens_per_second</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">      </span><span class="nt">ttft_tpot</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">      </span><span class="nt">quality_gate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed</span>
-<span class="w">      </span><span class="nt">cost_per_token_delta</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">    </span><span class="nt">distributed_training</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">step_time</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">      </span><span class="nt">scaling_efficiency</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">      </span><span class="nt">stability</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">  </span><span class="nt">production_state</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">status</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">validated</span>
-<span class="w">    </span><span class="nt">allowed_tiers</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">canary</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">internal_prod</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">blocked_until</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">quality_gate_for_sensitive_models</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">full_power_thermal_soak</span>
-</code></pre></div>
+<pre><code class="language-yaml">gpu_capability_scorecard:
+  gpu_family: next_gen_gpu_pool
+  scope:
+    resource_pool: inference-and-training-canary
+    server_profile: gpu_server_profile_class_a
+  hardware_capability:
+    hbm_capacity: recorded
+    hbm_bandwidth_class: high
+    tensor_core_precision:
+      bf16: supported
+      fp8: supported
+      int8: supported
+    interconnect_domain: nvswitch_or_equivalent
+    power_thermal_envelope: validated
+  software_validation:
+    driver_cuda_nccl: validated
+    inference_engine:
+      vllm: validated_for_selected_models
+      tensorrt_llm: experimental_or_validated
+    training_framework:
+      pytorch: validated
+      megatron_or_fsdp: validated_if_used
+  workload_results:
+    long_context_inference:
+      tokens_per_second: measured
+      ttft_tpot: measured
+      quality_gate: passed
+      cost_per_token_delta: calculated
+    distributed_training:
+      step_time: measured
+      scaling_efficiency: measured
+      stability: measured
+  production_state:
+    status: validated
+    allowed_tiers: [canary, internal_prod]
+    blocked_until:
+      - quality_gate_for_sensitive_models
+      - full_power_thermal_soak
+</code></pre>
 <p>Scorecard 能避免两类错误。第一，把厂商规格直接当成生产能力，忽略 runtime、模型质量和机房约束。第二，因为早期某个模型没有吃到收益，就否定整个新硬件。更合理的做法是按 workload、runtime、精度、质量和能效逐项记录，让 GPU 代际迁移成为可复盘的工程过程。</p>
 <p>新 GPU 或新系统形态进入生产前，还应有 <code>gpu_generation_readiness_gate</code>。它比 <code>gpu_capability_scorecard</code> 更偏发布门禁：scorecard 记录能力，gate 决定能否进入某个租户、模型或资源等级。新代际 GPU 往往同时改变低精度路径、HBM 行为、互联域、功耗、液冷、driver、NCCL、推理引擎和训练框架。如果只按“benchmark 更快”放量，质量、稳定性或机房约束会在生产中补课。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">gpu_generation_readiness_gate</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">gate_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ggr-nextgen-20260620</span>
-<span class="w">  </span><span class="nt">resource_pool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nextgen-gpu-canary</span>
-<span class="w">  </span><span class="nt">gpu_capability_scorecard</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nextgen-scorecard-20260620</span>
-<span class="w">  </span><span class="nt">required_evidence</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">power_thermal_envelope</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed</span>
-<span class="w">    </span><span class="nt">physical_acceptance_matrix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed</span>
-<span class="w">    </span><span class="nt">framework_runtime_matrix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed_if_training</span>
-<span class="w">    </span><span class="nt">inference_runtime_gate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed_if_serving</span>
-<span class="w">    </span><span class="nt">quality_gate_execution</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed_for_target_models</span>
-<span class="w">    </span><span class="nt">energy_ledger_window</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">collected</span>
-<span class="w">  </span><span class="nt">rollout_policy</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">allowed_initial_tiers</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">internal_canary</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">low_risk_batch</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">blocked_tiers_until_evidence</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">premium_inference</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">slo_canary_passed</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">rollback_drill_passed</span><span class="p p-Indicator">]</span>
-<span class="w">      </span><span class="nt">large_pretraining</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">training_communication_acceptance_matrix</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">full_power_thermal_soak</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">stop_conditions</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tokens_per_watt_below_expected_band</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">quality_regression_open</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">thermal_throttle_above_policy</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">runtime_error_rate_above_baseline</span>
-</code></pre></div>
+<pre><code class="language-yaml">gpu_generation_readiness_gate:
+  gate_id: ggr-nextgen-20260620
+  resource_pool: nextgen-gpu-canary
+  gpu_capability_scorecard: nextgen-scorecard-20260620
+  required_evidence:
+    power_thermal_envelope: passed
+    physical_acceptance_matrix: passed
+    framework_runtime_matrix: passed_if_training
+    inference_runtime_gate: passed_if_serving
+    quality_gate_execution: passed_for_target_models
+    energy_ledger_window: collected
+  rollout_policy:
+    allowed_initial_tiers: [internal_canary, low_risk_batch]
+    blocked_tiers_until_evidence:
+      premium_inference: [slo_canary_passed, rollback_drill_passed]
+      large_pretraining: [training_communication_acceptance_matrix, full_power_thermal_soak]
+  stop_conditions:
+    - tokens_per_watt_below_expected_band
+    - quality_regression_open
+    - thermal_throttle_above_policy
+    - runtime_error_rate_above_baseline
+</code></pre>
 <p>这类 gate 能把“硬件导入”变成跨团队发布。设施团队证明 power/cooling，Runtime 团队证明引擎和训练框架，模型团队证明质量，SRE 证明回滚和证据采集，经济系统证明 tokens/W 和 cost/token。任何一项不成熟，都可以允许低风险灰度，但不应直接进入高价值租户或长周期大训练。硬件代际迁移本质上是生产变更，不是采购完成后的自然结果。</p>
 <p>能力画像最终要落到模型和 endpoint。<code>gpu_capability_scorecard</code> 说某类 GPU 能力如何，<code>gpu_generation_readiness_gate</code> 说这类 GPU 是否能进入生产，而 <code>model_hardware_fit_record</code> 则回答“某个模型、某个 serving profile 或某类训练任务，应该跑在哪些 GPU class 上，不能跑在哪些 GPU class 上”。没有这个对象，模型路由会退化成按空闲率、价格或人工经验选择资源。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">model_hardware_fit_record</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">fit_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mhf-code-assistant-20260620</span>
-<span class="w">  </span><span class="nt">model</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">code-assistant-large</span>
-<span class="w">    </span><span class="nt">artifact</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">model-artifact-digest-recorded</span>
-<span class="w">    </span><span class="nt">precision_profiles</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bf16</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fp8_candidate</span>
-<span class="w">    </span><span class="nt">context_window_class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">long</span>
-<span class="w">    </span><span class="nt">serving_engine</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vllm-or-tensorrt-llm-profile</span>
-<span class="w">  </span><span class="nt">requirements</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">hbm_capacity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">must_fit_target_context_and_concurrency</span>
-<span class="w">    </span><span class="nt">hbm_bandwidth</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">latency_sensitive_decode</span>
-<span class="w">    </span><span class="nt">tensor_core_precision</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">bf16</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">      </span><span class="nt">fp8</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">allowed_only_if_quality_gate_passed</span>
-<span class="w">    </span><span class="nt">interconnect</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">multi_gpu</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required_if_tensor_parallel</span>
-<span class="w">      </span><span class="nt">nvswitch_or_equivalent</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">preferred_for_low_tpot</span>
-<span class="w">    </span><span class="nt">runtime</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">engine_config</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">exact_profile_required</span>
-<span class="w">      </span><span class="nt">tokenizer_template</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bound_to_artifact</span>
-<span class="w">    </span><span class="nt">slo</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">ttft</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">target_defined</span>
-<span class="w">      </span><span class="nt">tpot</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">target_defined</span>
-<span class="w">      </span><span class="nt">error_budget</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">production_policy</span>
-<span class="w">  </span><span class="nt">fit_results</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">h100-full-card-prod</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">decision</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">allowed</span>
-<span class="w">      </span><span class="nt">reason</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mature_runtime_and_quality_gate_passed</span>
-<span class="w">      </span><span class="nt">constraints</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">short_and_medium_context_preferred</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">h200-long-context-prod</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">decision</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">preferred</span>
-<span class="w">      </span><span class="nt">reason</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">hbm_capacity_and_decode_bandwidth_better_for_long_context</span>
-<span class="w">      </span><span class="nt">constraints</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">canary_until_route_cost_scorecard_stable</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">b200-canary</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">decision</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">canary_only</span>
-<span class="w">      </span><span class="nt">reason</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">runtime_and_quality_evidence_not_yet_production</span>
-<span class="w">      </span><span class="nt">constraints</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">traffic_cap</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">automatic_fallback_required</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">evidence</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">gpu_capability_scorecard</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nextgen-scorecard-20260620</span>
-<span class="w">    </span><span class="nt">quality_gate_execution</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qge-code-assistant-20260620</span>
-<span class="w">    </span><span class="nt">inference_runtime_gate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">inf-runtime-code-20260620</span>
-<span class="w">    </span><span class="nt">energy_ledger_window</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">energy-20260620-01</span>
-</code></pre></div>
+<pre><code class="language-yaml">model_hardware_fit_record:
+  fit_id: mhf-code-assistant-20260620
+  model:
+    name: code-assistant-large
+    artifact: model-artifact-digest-recorded
+    precision_profiles:
+      - bf16
+      - fp8_candidate
+    context_window_class: long
+    serving_engine: vllm-or-tensorrt-llm-profile
+  requirements:
+    hbm_capacity: must_fit_target_context_and_concurrency
+    hbm_bandwidth: latency_sensitive_decode
+    tensor_core_precision:
+      bf16: required
+      fp8: allowed_only_if_quality_gate_passed
+    interconnect:
+      multi_gpu: required_if_tensor_parallel
+      nvswitch_or_equivalent: preferred_for_low_tpot
+    runtime:
+      engine_config: exact_profile_required
+      tokenizer_template: bound_to_artifact
+    slo:
+      ttft: target_defined
+      tpot: target_defined
+      error_budget: production_policy
+  fit_results:
+    h100-full-card-prod:
+      decision: allowed
+      reason: mature_runtime_and_quality_gate_passed
+      constraints: [short_and_medium_context_preferred]
+    h200-long-context-prod:
+      decision: preferred
+      reason: hbm_capacity_and_decode_bandwidth_better_for_long_context
+      constraints: [canary_until_route_cost_scorecard_stable]
+    b200-canary:
+      decision: canary_only
+      reason: runtime_and_quality_evidence_not_yet_production
+      constraints: [traffic_cap, automatic_fallback_required]
+  evidence:
+    gpu_capability_scorecard: nextgen-scorecard-20260620
+    quality_gate_execution: qge-code-assistant-20260620
+    inference_runtime_gate: inf-runtime-code-20260620
+    energy_ledger_window: energy-20260620-01
+</code></pre>
 <p>这份记录的关键是同时表达硬约束、偏好和禁止条件。HBM 不足、runtime 不支持、精度未验收、质量门禁未通过、回滚路径缺失，都是 hard block；tokens/W 更好、冷启动更快、TPOT 更稳，是 preference；新代际 canary 则可以带流量上限和自动 fallback。模型硬件匹配不能只产出一个“推荐 GPU”，而应产出可审计的决策理由。</p>
 <p>在线推理还需要 <code>gpu_generation_route_decision</code>。它不是普通模型路由的重复，而是把 GPU class 作为路由维度，决定一次请求或一个流量切片应该走成熟池、长上下文池、新代际 canary 池还是 fallback 池。它要同时看 capability、SLO、cost、quality、energy、availability 和 tenant entitlement。若路由只看 cost/token，可能把高敏租户送到未验证共享池；若只看最新 GPU，可能把稳定业务暴露给 runtime canary 风险。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">gpu_generation_route_decision</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">decision_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ggrd-chat-prod-20260620-0001</span>
-<span class="w">  </span><span class="nt">request_or_slice</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">tenant</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enterprise-a</span>
-<span class="w">    </span><span class="nt">endpoint</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">chat-code-prod</span>
-<span class="w">    </span><span class="nt">workload_shape</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">input_tokens_bucket</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">long</span>
-<span class="w">      </span><span class="nt">output_tokens_budget</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">medium</span>
-<span class="w">      </span><span class="nt">latency_tier</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">premium</span>
-<span class="w">  </span><span class="nt">candidates</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">h100-full-card-prod</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">h200-long-context-prod</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">b200-canary</span>
-<span class="w">  </span><span class="nt">inputs</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">model_hardware_fit_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mhf-code-assistant-20260620</span>
-<span class="w">    </span><span class="nt">resource_pool_entitlement</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ent-enterprise-a-premium</span>
-<span class="w">    </span><span class="nt">engine_admission_health</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">healthy_for_h100_and_h200</span>
-<span class="w">    </span><span class="nt">heterogeneous_gpu_cost_scorecard</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">hgc-code-assistant-20260620</span>
-<span class="w">    </span><span class="nt">quality_gate_execution</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qge-code-assistant-20260620</span>
-<span class="w">  </span><span class="nt">decision</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">selected_class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">h200-long-context-prod</span>
-<span class="w">    </span><span class="nt">fallback_class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">h100-full-card-prod</span>
-<span class="w">    </span><span class="nt">rejected</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">b200-canary</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">canary_not_allowed_for_premium_without_explicit_approval</span>
-<span class="w">    </span><span class="nt">reason</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">long_context_hbm_headroom</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">lower_tpot_under_target_shape</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">entitlement_allows_dedicated_pool</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cost_per_successful_answer_within_policy</span>
-<span class="w">  </span><span class="nt">audit</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">replayable</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">price_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pricing-202606</span>
-<span class="w">    </span><span class="nt">policy_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">route-gpu-gen-20260620</span>
-</code></pre></div>
+<pre><code class="language-yaml">gpu_generation_route_decision:
+  decision_id: ggrd-chat-prod-20260620-0001
+  request_or_slice:
+    tenant: enterprise-a
+    endpoint: chat-code-prod
+    workload_shape:
+      input_tokens_bucket: long
+      output_tokens_budget: medium
+      latency_tier: premium
+  candidates:
+    - h100-full-card-prod
+    - h200-long-context-prod
+    - b200-canary
+  inputs:
+    model_hardware_fit_record: mhf-code-assistant-20260620
+    resource_pool_entitlement: ent-enterprise-a-premium
+    engine_admission_health: healthy_for_h100_and_h200
+    heterogeneous_gpu_cost_scorecard: hgc-code-assistant-20260620
+    quality_gate_execution: qge-code-assistant-20260620
+  decision:
+    selected_class: h200-long-context-prod
+    fallback_class: h100-full-card-prod
+    rejected:
+      b200-canary: canary_not_allowed_for_premium_without_explicit_approval
+    reason:
+      - long_context_hbm_headroom
+      - lower_tpot_under_target_shape
+      - entitlement_allows_dedicated_pool
+      - cost_per_successful_answer_within_policy
+  audit:
+    replayable: true
+    price_version: pricing-202606
+    policy_version: route-gpu-gen-20260620
+</code></pre>
 <p>这个对象把“新 GPU 上线”从资源运维问题拉回产品控制面。Gateway 或 Serving 可以根据请求形态选择 GPU class，但每次选择都要能回放：当延迟变差、质量回退、客户质疑价格或成本异常时，团队能看到当时为什么选择这类硬件，哪些候选被拒绝，是否存在更便宜但不满足 SLO 的选择，是否存在更快但不满足数据边界的选择。</p>
-<pre class="mermaid"><code>flowchart TB
-  Artifact["model artifact\nprecision / context / engine"] --&gt; Fit["model_hardware_fit_record"]
-  Score["gpu_capability_scorecard"] --&gt; Fit
-  Gate["gpu_generation_readiness_gate"] --&gt; Fit
-  Fit --&gt; Decision["gpu_generation_route_decision"]
-  Ent["resource_pool_entitlement"] --&gt; Decision
-  Health["engine_admission_health"] --&gt; Decision
-  Cost["heterogeneous_gpu_cost_scorecard"] --&gt; Decision
-  Decision --&gt; Endpoint["endpoint placement / request route"]
-  Endpoint --&gt; Metrics["TTFT / TPOT / quality / tokens/W / cost"]
-  Metrics --&gt; Score</code></pre>
+<p><img alt="图：35.4.1 工程实现" src="../../assets/diagrams/part-08-physical-infrastructure-chapter-35-gpu-architecture-02.svg" /></p>
 <p>这张图说明，硬件能力、模型要求和经济结果必须形成反馈环。新 GPU 不是一次性通过验收后永久可用；当 runtime 升级、模型 context 增长、精度策略改变或机房降额时，fit record 和 route decision 都要重新计算。异构 GPU 管理的成熟度，不在于标签数量，而在于这些标签是否能驱动模型路由并接受生产指标校正。</p>
 <p>能力画像还应定期刷新。driver、engine、模型版本和 kernel 优化变化后，同一 GPU 的生产能力也会变化。画像如果不随软件演进更新，就会逐渐变成过期文档。</p>
 <p>刷新不一定全量重测，但关键 runtime 和关键模型必须保留基线。这样升级收益和回归风险才可比较。</p>

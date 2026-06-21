@@ -3850,22 +3850,7 @@
 <p>这个分层不是为了画组织架构，而是为了定位工程责任。一个用户请求 TTFT 变差，可能在 Application 层表现为体验问题，在 Platform 层表现为队列和路由问题，在 Runtime 层表现为 prefill 过载，在 GPU 层表现为 HBM 紧张，在网络存储层表现为权重加载慢。一个训练任务失败，也可能从模型代码一路追到 NCCL、RDMA、交换机端口、存储延迟和节点健康。分层的价值，是让排查有路径，让指标有归属，让设计取舍能被讨论。</p>
 <p>还要注意，Kubernetes、Slurm、容器和 GPU 调度不应被简单归类为 PaaS 或 IaaS。它们承担的是资源编排与作业调度职责：理解 workload、队列、配额、拓扑、gang scheduling、抢占和多集群策略。MaaS、Agent Platform、API Gateway、Observability 和 Billing 更接近 Platform 层。GPU IaaS 则关注裸金属、虚拟化、资源池、镜像、驱动和节点初始化。把层次放错，会导致组织边界和技术责任都混乱。</p>
 <p>用这张图读全书时，可以采用“向下追因、向上验收”的方法。向下追因，是从一个用户可见问题出发，逐层寻找真正约束：延迟问题可能追到 prefill，也可能追到 HBM 或权重缓存；训练失败可能追到 NCCL，也可能追到某个 rack 的网络配置。向上验收，是从一个底层能力出发，确认它是否真的转化为业务能力：GPU 通过 burn-in 只是第一步，还要看 NCCL、存储、调度和模型服务；网络带宽达标也只是第一步，还要看训练 step time 和推理冷启动。分层架构只有和这两种动作结合，才不是静态图。</p>
-<pre class="mermaid"><code>flowchart TB
-  A["Application
-Chat / Agent / RAG / 办公 / 编程 / 行业应用"] --&gt; B["Platform
-MaaS / API Gateway / Agent Platform / Observability / Billing"]
-  B --&gt; C["Model
-预训练 / 后训练 / 微调 / 评测 / 模型服务"]
-  C --&gt; D["Runtime
-CUDA / NCCL / RDMA / 推理引擎 / 训练框架"]
-  D --&gt; E["Orchestration
-Container Runtime / Kubernetes / Slurm / Volcano / Kueue / Ray / GPU 调度"]
-  E --&gt; F["GPU IaaS
-裸金属 / 虚拟化 / GPU 资源池 / 镜像 / 驱动 / 初始化"]
-  F --&gt; G["Network / Storage
-NVLink / NVSwitch / InfiniBand / RoCE / Object Storage / PFS / Local NVMe"]
-  G --&gt; H["Physical
-机房 / 电力 / 制冷 / GPU / CPU / DPU / NIC / Switch / Storage"]</code></pre>
+<p><img alt="图：0.2.2 系统架构" src="../../assets/diagrams/part-00-introduction-chapter-00-from-datacenter-to-ai-factory-01.svg" /></p>
 <h2 id="03">0.3 关键技术<a class="headerlink" href="#03" title="Permanent link">&para;</a></h2>
 <h3 id="031">0.3.1 云计算时代的数据中心<a class="headerlink" href="#031" title="Permanent link">&para;</a></h3>
 <p>云计算时代的数据中心主要生产通用计算资源。用户购买虚拟机、容器、负载均衡、数据库、对象存储和网络能力；平台团队把服务器、交换机、存储和机房能力抽象成资源池；SRE 关注可用区、故障隔离、弹性伸缩、自动化运维和成本摊销。这个阶段的核心抽象是“通用 workload”：Web 服务、批处理任务、数据库、缓存、消息队列和数据分析作业，都可以被放进相对统一的 CPU、内存、磁盘和网络模型中。</p>
@@ -3897,20 +3882,13 @@ NVLink / NVSwitch / InfiniBand / RoCE / Object Storage / PFS / Local NVMe"]
 <p>这条路径里，每个节点都有明确工程含义。Gateway 不是简单反向代理，它承载租户治理、路由策略和失败隔离。Prefill 不是普通函数调用，它会消耗大量计算并影响 TTFT。Decode 不是一次性响应，它持续占用 GPU、HBM 和 KV Cache。Streaming 不是附加功能，它改变连接保持、取消、重试和计费语义。Metering 也不是财务后处理，而是平台运营和成本归因的基础。</p>
 <p>从这条路径可以看出，应用体验会反向决定基础设施设计。长上下文提升模型能力，但增加 prefill 延迟和显存压力；更快首 token 要求更短队列、更合理路由和可能的 prefill/decode 分离；更低 cost per token 要求更高 GPU 利用率、更好的 batching 和更稳定缓存；更强租户隔离会带来资源碎片。推理系统不是“模型服务加 GPU”，而是一条从用户体验到物理资源的生产线。</p>
 <p>推理链路还要求每个阶段都能被观测。只记录总延迟没有诊断价值，因为同样的 E2E latency 可能来自完全不同原因。AI Gateway 要记录认证、限流、路由和上游耗时；模型服务要记录排队、batch、prefill、decode 和 streaming；运行时要记录 KV Cache、GPU 利用率、显存、kernel 和错误；平台要记录 token、租户、模型版本和费用。只有这些指标按 request id 串起来，团队才能判断是扩容、优化 prompt、调整路由、拆分资源池，还是修复底层节点。</p>
-<pre class="mermaid"><code>flowchart LR
-  User["用户请求"] --&gt; Gateway["AI Gateway"] --&gt; Auth["认证鉴权"] --&gt; Rate["租户限流"] --&gt; Router["模型路由"]
-  Router --&gt; Server["推理服务"] --&gt; Queue["请求队列 / batching"] --&gt; Prefill["prefill"] --&gt; Decode["decode"]
-  Decode --&gt; KV["KV Cache"] --&gt; Kernel["CUDA kernel"] --&gt; GPU["GPU / HBM"]
-  GPU --&gt; Stream["token streaming"] --&gt; Meter["token 计量"] --&gt; Obs["billing / observability"]</code></pre>
+<p><img alt="图：0.3.6 一次推理请求的完整路径" src="../../assets/diagrams/part-00-introduction-chapter-00-from-datacenter-to-ai-factory-02.svg" /></p>
 <h3 id="037">0.3.7 一次训练任务的完整路径<a class="headerlink" href="#037" title="Permanent link">&para;</a></h3>
 <p>训练任务的路径更接近云原生调度、HPC 批处理和机器学习流水线的组合。用户提交训练任务后，平台需要检查项目、租户、镜像、数据权限、模型配置、资源规格、队列、配额和优先级。分布式训练通常需要 gang scheduling，所有 worker、launcher 或 parameter server 在满足资源和拓扑条件后才应一起启动。否则部分 worker 占住 GPU，却无法进入训练循环。</p>
 <p>任务启动后，容器会加载镜像和依赖，读取数据集，初始化 NCCL 或其他通信库，执行 forward/backward，进行 gradient communication，周期性写 checkpoint，并在中断后从 checkpoint 恢复。训练完成或达到里程碑后，模型进入 evaluation，评测通过后进入 model registry，再通过模型服务系统上线。任何一步失败，都可能浪费大量 GPU 小时，因此训练链路比普通批任务更需要准入、观测和恢复能力。</p>
 <p>训练任务对基础设施的要求不是“能跑容器”这么简单。它要求调度器理解多副本同步启动、GPU 型号、NVLink、NUMA、RDMA rail 和机架拓扑；要求网络提供稳定低延迟通信；要求存储支撑数据读取和 checkpoint 高峰；要求节点健康状态能持续进入调度决策；要求失败后能定位是模型、数据、通信、硬件还是环境问题。训练链路最终产出模型，但它消耗的是整个 AI Factory 的系统能力。</p>
 <p>训练链路的另一个特点是反馈周期长、失败成本高。一个推理请求失败，影响可能是一次用户体验；一个训练任务在运行数小时后失败，损失的是大量 GPU 小时、排队时间和实验窗口。因此训练平台必须强调前置检查：镜像版本、数据可读性、配额、拓扑、NCCL、存储和 checkpoint 策略都应在任务真正占用大规模 GPU 前尽量验证。训练完成后也不能只保存模型文件，还要保存评测、数据版本、训练配置和运行环境，否则模型无法复现，也无法进入可靠服务化。</p>
-<pre class="mermaid"><code>flowchart LR
-  Submit["训练任务提交"] --&gt; Queue["队列"] --&gt; Quota["配额"] --&gt; Gang["gang scheduling"] --&gt; Alloc["GPU 分配"]
-  Alloc --&gt; Image["镜像启动"] --&gt; Data["数据读取"] --&gt; Init["NCCL 初始化"] --&gt; FB["forward / backward"]
-  FB --&gt; Comm["gradient communication"] --&gt; Ckpt["checkpoint"] --&gt; Eval["evaluation"] --&gt; Registry["model registry"] --&gt; Serving["model serving"]</code></pre>
+<p><img alt="图：0.3.7 一次训练任务的完整路径" src="../../assets/diagrams/part-00-introduction-chapter-00-from-datacenter-to-ai-factory-03.svg" /></p>
 <h3 id="038-ai-factory">0.3.8 为什么 AI Factory 是系统工程<a class="headerlink" href="#038-ai-factory" title="Permanent link">&para;</a></h3>
 <p>AI Factory 的难点在于局部正确不等于整体可用。模型可以在单机 notebook 中正确生成，但上线后可能被长上下文、并发、KV Cache 和 streaming 压垮。Kubernetes 集群可以正常调度 Pod，但分布式训练可能因为缺少 gang scheduling 而半启动。GPU 节点可以通过基础健康检查，但 NCCL test 暴露跨节点带宽异常。对象存储可用，但 checkpoint 高峰期写入抖动会让训练 step 周期性停顿。</p>
 <p>系统工程要求统一输入输出、依赖关系、故障域和度量口径。每一层都要回答四个问题：向上提供什么能力，向下依赖什么资源，如何被观测，如何被验收。Application 层要说明上下文和交互形态；Platform 层要说明租户、路由、限流和计量；Runtime 层要说明 prefill、decode、通信和 kernel；调度层要说明队列、配额、拓扑和抢占；基础设施层要说明 GPU、网络、存储、电力和制冷的真实状态。</p>
@@ -3928,27 +3906,27 @@ NVLink / NVSwitch / InfiniBand / RoCE / Object Storage / PFS / Local NVMe"]
 <p>落地时，可以先从两条主线建模：推理请求路径和训练任务路径。推理路径要记录网关、路由、模型服务、prefill、decode、KV Cache、token streaming、计量和 billing。训练路径要记录队列、配额、gang scheduling、镜像、数据、NCCL、checkpoint、评测和模型注册。再把两条路径共享的能力抽出来：身份权限、可观测性、准入基线、成本分摊、故障诊断和变更管理。</p>
 <p>这个模型不需要一次性做成复杂 CMDB，但必须能被工程流程使用。任务提交时应写入 workload 类型和资源需求；节点入池时应写入硬件、驱动、拓扑和验收结果；推理请求应写入模型、租户、token 和延迟；事故复盘应能按时间线串起应用、平台、运行时和基础设施事件。只有这些数据可追溯，AI Factory 才能从经验运行走向工程运行。</p>
 <p>落地时可以从三个最小闭环开始。第一是推理闭环：API Gateway、模型服务、token 计量、延迟指标和错误归因必须贯通。第二是训练闭环：作业提交、队列、配额、GPU 分配、NCCL、checkpoint、评测和模型注册必须贯通。第三是资源闭环：节点交付、准入测试、健康状态、调度标签、故障隔离和回池必须贯通。这三个闭环不要求一开始完美，但每个闭环都要能产生可审计数据，并能支撑一次真实事故复盘。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">ai_factory</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">request_path</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gateway</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">model_routing</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">inference_runtime</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">metering</span>
-<span class="w">  </span><span class="nt">training_path</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">queue</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">quota</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gang_scheduling</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">data_loading</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nccl</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">checkpoint</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">model_registry</span>
-<span class="w">  </span><span class="nt">shared_capabilities</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">observability</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">acceptance</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cost_accounting</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sre</span>
-</code></pre></div>
+<pre><code class="language-yaml">ai_factory:
+  request_path:
+    - gateway
+    - model_routing
+    - inference_runtime
+    - gpu
+    - metering
+  training_path:
+    - queue
+    - quota
+    - gang_scheduling
+    - data_loading
+    - nccl
+    - checkpoint
+    - model_registry
+  shared_capabilities:
+    - observability
+    - acceptance
+    - cost_accounting
+    - sre
+</code></pre>
 <h3 id="042">0.4.2 常见故障<a class="headerlink" href="#042" title="Permanent link">&para;</a></h3>
 <p>第一类故障是把 AI Factory 简化为 GPU 集群。机器能开机、驱动能加载、容器能启动，但没有模型服务、队列、配额、准入、计量和故障诊断。结果是用户只能拿到零散算力，平台无法保证服务等级。表现通常是训练任务互相抢资源，推理服务缺少灰度和回滚，GPU 看似忙碌却不知道产生了多少有效 token。</p>
 <p>第二类故障是只建设 MaaS API，而忽略底层资源约束。API 兼容 OpenAI 风格接口，但模型路由、限流、batching、KV Cache、冷启动、GPU 拓扑、网络和存储都没有进入设计。上线初期流量不大时看起来可用，一旦出现长上下文、Agent 多轮调用或大客户并发，TTFT、TPOT、错误率和成本就会同时恶化。</p>

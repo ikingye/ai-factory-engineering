@@ -1,0 +1,10 @@
+flowchart LR
+  Policy["gpu_device_plugin_policy"] --> Allocate["kubelet Allocate\nresource -> device ids"]
+  Allocate --> Strategy{"device_list_strategy"}
+  Strategy --> Env["envvar\nNVIDIA_VISIBLE_DEVICES"]
+  Strategy --> CDI["CDI device names\ncdi spec"]
+  Env --> Diff["oci_runtime_injection_diff"]
+  CDI --> Diff
+  Diff --> Recon["gpu_device_visibility_reconciliation"]
+  Recon --> Assignment["gpu_assignment_record"]
+  Assignment --> Telemetry["DCGM / billing / incident"]

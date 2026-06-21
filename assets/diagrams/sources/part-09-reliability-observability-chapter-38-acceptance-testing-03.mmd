@@ -1,0 +1,8 @@
+flowchart LR
+  Classes["GPU classes\nH100 / H200 / B200"] --> Matrix["heterogeneous_pool_acceptance_matrix"]
+  Slices["workload slices\nshort / long / batch / train / multimodal"] --> Matrix
+  Evidence["runtime + quality + energy + physical + communication evidence"] --> Matrix
+  Matrix --> Labels["schedulable labels\npass / limited / canary / block"]
+  Labels --> Pool["GPU resource pool"]
+  Labels --> Route["Gateway / Serving route policy"]
+  Matrix --> PRR["production_readiness_review evidence"]

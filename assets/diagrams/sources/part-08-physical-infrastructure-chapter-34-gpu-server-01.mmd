@@ -1,0 +1,14 @@
+flowchart TB
+  BMC["BMC / Redfish"] --> Health["Hardware Events / Health State"]
+  Power["Power Shelf / PSU"] --> Server["GPU Server"]
+  Cooling["Fan / Liquid Cooling"] --> Server
+  CPU["CPU / NUMA"] --- PCIe["PCIe Fabric"]
+  PCIe --- GPU["GPU + HBM"]
+  GPU --- NVLink["NVLink / NVSwitch Domain"]
+  PCIe --- NIC["NIC / DPU"]
+  PCIe --- NVMe["Local NVMe"]
+  Health --> Pool["GPU Resource Pool"]
+  Server --> Driver["Driver / Firmware"]
+  Driver --> Runtime["CUDA / NCCL / Container Runtime"]
+  Runtime --> Scheduler["Kubernetes / Slurm"]
+  Pool --> Scheduler

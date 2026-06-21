@@ -1,0 +1,12 @@
+flowchart TB
+  Alert["tokens/W drop or capacity drop"] --> Bundle["facility_capacity_evidence_bundle"]
+  Bundle --> Power["rack power / PDU / PSU"]
+  Bundle --> Cooling["cooling / liquid loop / thermal"]
+  Bundle --> Capacity["capacity_activation_record"]
+  Bundle --> Gate["workload_fit_capacity_gate"]
+  Bundle --> Energy["energy_ledger"]
+  Power --> Action["degrade / reroute / block reservation"]
+  Cooling --> Action
+  Gate --> Action
+  Energy --> Cost["capacity_activation_cost_record"]
+  Action --> PRR["PRR capacity gate update"]

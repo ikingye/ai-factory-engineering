@@ -1,0 +1,18 @@
+flowchart TB
+  subgraph NorthSouth["North-South Path"]
+    User["用户 / API Client"] --> Gateway["AI Gateway / LB"]
+    Gateway --> Serving["Model Serving"]
+  end
+
+  subgraph EastWest["East-West Path"]
+    W1["Training Worker A"] <--> W2["Training Worker B"]
+    W2 <--> W3["Training Worker C"]
+    Serving --> Cache["KV / Weight Cache"]
+  end
+
+  W1 --> Storage["Dataset / Checkpoint Storage"]
+  W2 --> Storage
+  Fabric["IB / RoCE / Ethernet Fabric"] --- EastWest
+  Fabric --- Storage
+  Telemetry["Port counters / RDMA / NCCL / Trace"] --> Fabric
+  Scheduler["Topology-aware Scheduler"] --> W1

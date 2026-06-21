@@ -3836,17 +3836,7 @@
 <p>架构还要支持模式演进。一个内部平台可能逐步走向 MaaS，一个云服务可能同时提供 GPU IaaS 和模型 API，一个私有化项目可能要求与中心平台同步升级。若早期完全忽略租户、计量、版本和验收，后续转型成本会很高；若早期过度建设所有商业能力，又会拖慢验证。正确做法是保留边界，分阶段实现。</p>
 <p>商业架构还应有统一事实源。客户、租户、项目、模型、资源池、合同、价格、SLO、成本和计量事件之间必须能关联。没有这个事实源，销售承诺、平台能力和基础设施成本会分裂：客户买的是一个产品，平台看到的是另一组资源，财务看到的是第三套数字。</p>
 <p>架构评审时，可以把每个商业模式都翻译成一张能力缺口表。若价值单位是 token，却没有 token 计量；若承诺高 SLA，却没有 error budget；若承诺私有化，却没有离线交付包，说明商业模式还没有工程基础。这个检查比讨论“平台是否先进”更有效。</p>
-<pre class="mermaid"><code>flowchart TB
-  Model["商业模式"] --&gt; Unit["价值单位: token / GPU hour / subscription / project / outcome"]
-  Unit --&gt; Metering["计量 / 计费 / 成本归因"]
-  Model --&gt; Promise["客户承诺: SLO / SLA / 验收 / 支持"]
-  Promise --&gt; Ops["SRE / 变更 / 升级 / 赔付"]
-  Model --&gt; Delivery["交付方式: 云服务 / 私有化 / 混合 / 边缘"]
-  Delivery --&gt; Infra["GPU IaaS / 网络 / 存储 / 隔离"]
-  Metering --&gt; Economics["毛利 / ROI / 预算"]
-  Infra --&gt; Economics
-  Ops --&gt; Economics
-  Economics --&gt; Roadmap["产品路线 / 扩容 / 优化"]</code></pre>
+<p><img alt="图：42.2.2 系统架构" src="../../assets/diagrams/part-10-economics-cases-chapter-42-business-models-01.svg" /></p>
 <h2 id="423">42.3 关键技术<a class="headerlink" href="#423" title="Permanent link">&para;</a></h2>
 <h3 id="4231-ai-factory">42.3.1 自用型 AI Factory<a class="headerlink" href="#4231-ai-factory" title="Permanent link">&para;</a></h3>
 <p>自用型 AI Factory 服务企业内部业务，例如办公 Copilot、代码助手、客服质检、数据分析 Agent、知识库问答和内部流程自动化。它的主要目标通常不是直接售卖 token，而是提升员工效率、降低人工成本、改善客户服务、增强产品能力或保护数据安全。价值单位可能是节省的人时、缩短的流程周期、降低的外部 API 成本或内部业务指标改善。</p>
@@ -3908,98 +3898,98 @@
 <p>工程实现的第一步，是为每种商业模式建立能力矩阵。矩阵至少包含服务对象、价值单位、计量事件、客户承诺、SLO/SLA、成本结构、交付方式、关键平台能力、关键基础设施能力和主要风险。没有矩阵，团队容易把某个模式的能力误用到另一个模式。</p>
 <p>第二步，是建立产品与资源的映射。产品计划要映射到模型、资源池、配额、限流、计费规则、支持等级和数据边界。客户购买 MaaS 套餐，系统应知道能调用哪些模型、每分钟多少 token、是否允许长上下文、是否有专属容量、失败如何计费。客户购买算力，系统应知道交付哪些 GPU、网络、存储和验收基线。</p>
 <p>第三步，是把商业模式纳入变更和上线流程。新增一个产品形态，不只是新增页面或价格表，还可能需要新的计量口径、账单规则、SLO、告警、容量池、合同条款和支持手册。工程评审应检查这些能力是否完整，避免销售先承诺、平台后补洞。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">business_model_profile</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">maas</span>
-<span class="w">  </span><span class="nt">customers</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">external_developers</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enterprise_projects</span>
-<span class="w">  </span><span class="nt">value_unit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">billable_token</span>
-<span class="w">  </span><span class="nt">required_capabilities</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">api_key_lifecycle</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tenant_quota</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">model_routing</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">token_metering</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">billing</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">inference_slo</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">abuse_control</span>
-<span class="w">  </span><span class="nt">economics</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">revenue_metric</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">revenue_per_token</span>
-<span class="w">    </span><span class="nt">cost_metric</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cost_per_token</span>
-<span class="w">    </span><span class="nt">guardrails</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">quality_gate</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">error_budget</span>
-</code></pre></div>
+<pre><code class="language-yaml">business_model_profile:
+  type: maas
+  customers:
+    - external_developers
+    - enterprise_projects
+  value_unit: billable_token
+  required_capabilities:
+    - api_key_lifecycle
+    - tenant_quota
+    - model_routing
+    - token_metering
+    - billing
+    - inference_slo
+    - abuse_control
+  economics:
+    revenue_metric: revenue_per_token
+    cost_metric: cost_per_token
+    guardrails:
+      - quality_gate
+      - error_budget
+</code></pre>
 <p>生产级 <code>business_model_profile</code> 还应明确客户承诺、交付边界、退出责任和证据来源。它和第 4 章的 <code>workload_profile</code> 不是重复关系：前者描述“如何把能力卖出或内部结算”，后者描述“应用如何消耗能力”。一个客服 RAG workload 可以服务内部自用、行业云或私有化交付；同一个 MaaS 商业模式也可以承载 Chat、embedding、rerank 和 batch inference。两者必须通过产品配置和成本账本显式关联。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">business_model_profile</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bmp-enterprise-maas-standard-v2</span>
-<span class="w">  </span><span class="nt">owner</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">product</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">maas-product</span>
-<span class="w">    </span><span class="nt">finance</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ai-business-ops</span>
-<span class="w">    </span><span class="nt">platform</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ai-platform</span>
-<span class="w">    </span><span class="nt">sre</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ai-sre</span>
-<span class="w">  </span><span class="nt">lifecycle</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">state</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">commercially_available</span>
-<span class="w">    </span><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
-<span class="w">    </span><span class="nt">review_cycle</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">quarterly</span>
-<span class="w">    </span><span class="nt">invalidation_triggers</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">new_model_pricing_tier</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sla_change</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">serving_cost_model_change</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">security_policy_change</span>
-<span class="w">  </span><span class="nt">customer_promise</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">customer_segments</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enterprise_developer</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">internal_application_team</span>
-<span class="w">    </span><span class="nt">service_boundary</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">hosted_model_api</span>
-<span class="w">    </span><span class="nt">excluded_responsibilities</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">customer_prompt_quality</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">downstream_business_decision</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">customer_side_network_failure</span>
-<span class="w">    </span><span class="nt">support_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">business_hours_plus_sev1_oncall</span>
-<span class="w">  </span><span class="nt">value_unit</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">primary</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">billable_token</span>
-<span class="w">    </span><span class="nt">secondary</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">provisioned_throughput</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dedicated_capacity</span>
-<span class="w">  </span><span class="nt">metering</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">billable_events</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">request_admitted</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">usage_delta</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">request_closed</span>
-<span class="w">    </span><span class="nt">non_billable_events</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_denied</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">provider_side_5xx_before_first_token</span>
-<span class="w">    </span><span class="nt">dispute_evidence</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">append_only_metering_event</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">request_trace_id</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">model_version</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tenant_policy_version</span>
-<span class="w">  </span><span class="nt">cost_ledger</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">direct_cost</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu_seconds</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">model_memory_residency</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gateway_and_observability</span>
-<span class="w">    </span><span class="nt">allocated_cost</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">reliability_reserve</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">security_audit</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">evaluation_pipeline</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">support</span>
-<span class="w">  </span><span class="nt">slo_sla</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">slo_class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">production</span>
-<span class="w">    </span><span class="nt">sla_contract</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">external_standard</span>
-<span class="w">    </span><span class="nt">error_budget_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">monthly</span>
-<span class="w">    </span><span class="nt">compensation_boundary</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">platform_responsible_failures</span>
-<span class="w">  </span><span class="nt">delivery</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">public_cloud_service</span>
-<span class="w">    </span><span class="nt">regions</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">primary_region</span>
-<span class="w">    </span><span class="nt">data_residency</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">configured_per_tenant</span>
-<span class="w">    </span><span class="nt">exit_plan</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">export_usage_records</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">revoke_api_keys</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">delete_or_retain_logs_by_contract</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">model_deprecation_notice</span>
-</code></pre></div>
+<pre><code class="language-yaml">business_model_profile:
+  id: bmp-enterprise-maas-standard-v2
+  owner:
+    product: maas-product
+    finance: ai-business-ops
+    platform: ai-platform
+    sre: ai-sre
+  lifecycle:
+    state: commercially_available
+    version: 2
+    review_cycle: quarterly
+    invalidation_triggers:
+      - new_model_pricing_tier
+      - sla_change
+      - serving_cost_model_change
+      - security_policy_change
+  customer_promise:
+    customer_segments:
+      - enterprise_developer
+      - internal_application_team
+    service_boundary: hosted_model_api
+    excluded_responsibilities:
+      - customer_prompt_quality
+      - downstream_business_decision
+      - customer_side_network_failure
+    support_model: business_hours_plus_sev1_oncall
+  value_unit:
+    primary: billable_token
+    secondary:
+      - provisioned_throughput
+      - dedicated_capacity
+  metering:
+    billable_events:
+      - request_admitted
+      - usage_delta
+      - request_closed
+    non_billable_events:
+      - policy_denied
+      - provider_side_5xx_before_first_token
+    dispute_evidence:
+      - append_only_metering_event
+      - request_trace_id
+      - model_version
+      - tenant_policy_version
+  cost_ledger:
+    direct_cost:
+      - gpu_seconds
+      - model_memory_residency
+      - gateway_and_observability
+    allocated_cost:
+      - reliability_reserve
+      - security_audit
+      - evaluation_pipeline
+      - support
+  slo_sla:
+    slo_class: production
+    sla_contract: external_standard
+    error_budget_policy: monthly
+    compensation_boundary: platform_responsible_failures
+  delivery:
+    mode: public_cloud_service
+    regions:
+      - primary_region
+    data_residency: configured_per_tenant
+    exit_plan:
+      - export_usage_records
+      - revoke_api_keys
+      - delete_or_retain_logs_by_contract
+      - model_deprecation_notice
+</code></pre>
 <p>这个对象要求商业承诺和平台事实一致。若 <code>service_boundary</code> 是 hosted model API，就不应把客户业务正确性写进 SLA；若 <code>value_unit.primary</code> 是 billable token，就必须有不可篡改的 token 事件；若承诺 dedicated capacity，就必须在资源池中有 reservation、健康状态和容量报告；若支持私有化退出，就必须能删除或导出客户数据。商业模式失败常常不是销售错了，而是承诺没有落成可验证对象。</p>
 <p>商业模式还需要 go/no-go 门禁。下面的 <code>commercial_readiness_matrix</code> 用于判断一个模式能否进入销售、试点或规模化。它不要求所有模式具备相同能力，但要求每个模式的价值单位、交付承诺、成本和支持边界可解释。</p>
 <table>
@@ -4063,103 +4053,85 @@
 </tbody>
 </table>
 <p>私有化交付还需要单独的 <code>private_deployment_acceptance_record</code>。公有云 MaaS 的上线证据主要来自平台内部控制面，而私有化交付的证据来自客户现场：离线镜像是否完整、版本矩阵是否受控、GPU/driver/runtime 是否匹配、客户网络和证书是否配置正确、RAG 数据导入是否尊重权限、升级和回滚是否演练、诊断包是否能在客户不开放生产数据的情况下导出。没有这个记录，私有化项目会把“验收通过”写成会议结论，后续升级和故障争议无法复盘。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">private_deployment_acceptance_record</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pdar-enterprise-a-ai-factory-202606</span>
-<span class="w">  </span><span class="nt">customer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enterprise-a</span>
-<span class="w">  </span><span class="nt">delivery_scope</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">deployment_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">on_prem_standard</span>
-<span class="w">    </span><span class="nt">components</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">maas_gateway</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">model_serving</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rag_pipeline</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">observability_agent</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">offline_registry</span>
-<span class="w">    </span><span class="nt">excluded</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">foundation_model_pretraining</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">customer_business_system_sla</span>
-<span class="w">  </span><span class="nt">version_matrix</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">os_baseline</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">approved</span>
-<span class="w">    </span><span class="nt">kernel</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">approved</span>
-<span class="w">    </span><span class="nt">nvidia_driver</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">approved</span>
-<span class="w">    </span><span class="nt">cuda</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">approved</span>
-<span class="w">    </span><span class="nt">nccl</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">approved</span>
-<span class="w">    </span><span class="nt">container_runtime</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">approved</span>
-<span class="w">    </span><span class="nt">gpu_operator_or_device_plugin</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">approved</span>
-<span class="w">    </span><span class="nt">model_images</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">signed_and_pinned</span>
-<span class="w">  </span><span class="nt">acceptance</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">offline_package_integrity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">gpu_runtime_smoke</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">model_load_and_streaming</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">rag_acl_regression</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">metering_export</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">backup_restore</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">upgrade_and_rollback_drill</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">diagnostic_bundle_export</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">  </span><span class="nt">responsibility_matrix</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">facility_power_cooling</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">customer</span>
-<span class="w">    </span><span class="nt">gpu_hardware_repair</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">agreed_party</span>
-<span class="w">    </span><span class="nt">platform_upgrade</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">supplier_with_customer_window</span>
-<span class="w">    </span><span class="nt">knowledge_base_quality</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">customer</span>
-<span class="w">    </span><span class="nt">model_serving_runtime</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">supplier</span>
-<span class="w">  </span><span class="nt">support_boundary</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">remote_access</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">customer_approved_session_only</span>
-<span class="w">    </span><span class="nt">data_export</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">redacted_diagnostic_bundle</span>
-<span class="w">    </span><span class="nt">emergency_patch_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">defined</span>
-</code></pre></div>
+<pre><code class="language-yaml">private_deployment_acceptance_record:
+  id: pdar-enterprise-a-ai-factory-202606
+  customer: enterprise-a
+  delivery_scope:
+    deployment_type: on_prem_standard
+    components:
+      - maas_gateway
+      - model_serving
+      - rag_pipeline
+      - observability_agent
+      - offline_registry
+    excluded:
+      - foundation_model_pretraining
+      - customer_business_system_sla
+  version_matrix:
+    os_baseline: approved
+    kernel: approved
+    nvidia_driver: approved
+    cuda: approved
+    nccl: approved
+    container_runtime: approved
+    gpu_operator_or_device_plugin: approved
+    model_images: signed_and_pinned
+  acceptance:
+    offline_package_integrity: pass
+    gpu_runtime_smoke: pass
+    model_load_and_streaming: pass
+    rag_acl_regression: pass
+    metering_export: pass
+    backup_restore: pass
+    upgrade_and_rollback_drill: pass
+    diagnostic_bundle_export: pass
+  responsibility_matrix:
+    facility_power_cooling: customer
+    gpu_hardware_repair: agreed_party
+    platform_upgrade: supplier_with_customer_window
+    knowledge_base_quality: customer
+    model_serving_runtime: supplier
+  support_boundary:
+    remote_access: customer_approved_session_only
+    data_export: redacted_diagnostic_bundle
+    emergency_patch_policy: defined
+</code></pre>
 <p>这个记录把私有化交付从一次项目变成可维护产品。它明确哪些环境差异被支持，哪些责任属于客户，哪些证据用于验收，哪些能力必须在升级前重测。对供应方来说，<code>private_deployment_acceptance_record</code> 能控制定制化蔓延：客户差异应优先进入配置、版本矩阵和集成适配层，而不是分叉代码；对客户来说，它提供可复核边界：若故障发生在已验收的 GPU runtime 或模型 serving，供应方需要响应；若故障来自未批准的客户网络变更或知识库错误，处理方式不同。</p>
 <p>私有化交付的商业模型还必须绑定 release train、LTS、诊断包 SLA 和 field patch 规则。客户买到的不只是一次安装，而是一条可升级、可诊断、可回滚、可退出的产品线。销售合同如果承诺“长期支持”，工程上就必须能回答：支持哪些 baseline，补丁是否 backport，离线升级如何演练，客户不允许远程登录时如何导出脱敏证据，紧急补丁是否会合回主干，EOL 前如何通知和迁移。否则私有化项目会在第二年变成大量不可复用现场分支。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">private_delivery_lifecycle_contract</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">contract_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pdlc-enterprise-a-202606</span>
-<span class="w">  </span><span class="nt">linked_acceptance</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pdar-enterprise-a-ai-factory-202606</span>
-<span class="w">  </span><span class="nt">release_policy</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">release_train_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-baseline-2026-06</span>
-<span class="w">    </span><span class="nt">lts_support_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ai-factory-gpu-node-lts</span>
-<span class="w">    </span><span class="nt">customer_rings</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">customer_staging</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">customer_production</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">eol_notice_required</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">support_policy</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">support_ticket_taxonomy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">support-taxonomy-ai-factory</span>
-<span class="w">    </span><span class="nt">diagnostic_bundle_sla</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dbsla-ai-factory-prod</span>
-<span class="w">    </span><span class="nt">remote_access</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">customer_approved_session_only</span>
-<span class="w">    </span><span class="nt">redacted_export</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">  </span><span class="nt">upgrade_policy</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">offline_release_bundle_manifest</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required_for_offline_or_restricted_egress</span>
-<span class="w">    </span><span class="nt">offline_import_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required_after_customer_import</span>
-<span class="w">    </span><span class="nt">offline_upgrade_rehearsal</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required_before_major_or_lts_migration</span>
-<span class="w">    </span><span class="nt">rollback_drill</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">    </span><span class="nt">storage_and_artifact_migration</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required_if_schema_or_model_change</span>
-<span class="w">  </span><span class="nt">patch_policy</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">field_patch_governance</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required_for_out_of_band_patch</span>
-<span class="w">    </span><span class="nt">merge_back_to_release_train</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">    </span><span class="nt">patch_expiry</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_defined</span>
-<span class="w">  </span><span class="nt">commercial_controls</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">support_cost_tagging</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">    </span><span class="nt">custom_delta_count_limit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_defined</span>
-<span class="w">    </span><span class="nt">unsupported_environment_clause</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">explicit</span>
-</code></pre></div>
+<pre><code class="language-yaml">private_delivery_lifecycle_contract:
+  contract_id: pdlc-enterprise-a-202606
+  linked_acceptance: pdar-enterprise-a-ai-factory-202606
+  release_policy:
+    release_train_record: gpu-baseline-2026-06
+    lts_support_policy: ai-factory-gpu-node-lts
+    customer_rings: [customer_staging, customer_production]
+    eol_notice_required: true
+  support_policy:
+    support_ticket_taxonomy: support-taxonomy-ai-factory
+    diagnostic_bundle_sla: dbsla-ai-factory-prod
+    remote_access: customer_approved_session_only
+    redacted_export: required
+  upgrade_policy:
+    offline_release_bundle_manifest: required_for_offline_or_restricted_egress
+    offline_import_record: required_after_customer_import
+    offline_upgrade_rehearsal: required_before_major_or_lts_migration
+    rollback_drill: required
+    storage_and_artifact_migration: required_if_schema_or_model_change
+  patch_policy:
+    field_patch_governance: required_for_out_of_band_patch
+    merge_back_to_release_train: required
+    patch_expiry: policy_defined
+  commercial_controls:
+    support_cost_tagging: required
+    custom_delta_count_limit: policy_defined
+    unsupported_environment_clause: explicit
+</code></pre>
 <p>这份 lifecycle contract 让商业承诺能被工程系统验证。它也给毛利分析提供输入：客户支持工单、离线升级演练、现场补丁、远程诊断审批和定制差异都不是免费动作，而是私有化收入中的真实成本。若这些对象缺失，私有化看起来可能毛利很高，实际被支持成本和版本分叉吞掉。成熟的 AI Factory 商业化不是拒绝私有化，而是把私有化做成受控产品，而不是无限项目制交付。</p>
 <p>私有化合同还应明确离线交付包的支持边界。<code>offline_release_bundle_manifest</code> 定义供应方交付的受支持内容，<code>offline_import_record</code> 定义客户现场实际导入的内容，二者必须能对账。若客户自行替换镜像、跳过签名校验、修改 chart、覆盖模型 artifact、把 RAG index 迁移脚本改成手工 SQL，供应方不应承担无限责任；但若导入记录证明现场按受支持包执行，故障发生在已验收的 GPU runtime、model serving、cache invalidation 或诊断导出路径，供应方就必须按支持 SLA 响应。商业模式的边界要落到这些证据对象上，不能只写在合同附件里。</p>
-<pre class="mermaid"><code>flowchart TB
-  Contract["private_delivery_lifecycle_contract"] --&gt; Bundle["offline_release_bundle_manifest\nwhat supplier supports"]
-  Bundle --&gt; Import["offline_import_record\nwhat customer imported"]
-  Import --&gt; Acceptance["private_deployment_acceptance_record\nwhat passed"]
-  Acceptance --&gt; Support["support_ticket_taxonomy + diagnostic_bundle_sla"]
-  Support --&gt; Patch["field_patch_governance / execution"]
-  Patch --&gt; LTS["merge back / LTS backport / EOL"]
-  Support --&gt; PNL["commercial_pnl_ledger\nsupport + delivery cost"]
-  LTS --&gt; Contract</code></pre>
+<p><img alt="图：42.4.1 工程实现" src="../../assets/diagrams/part-10-economics-cases-chapter-42-business-models-02.svg" /></p>
 <p>这张图说明私有化不是一次性交付，而是生命周期业务。交付包、导入记录、验收、支持、补丁、LTS 和 P&amp;L 要闭环。如果其中任一环缺失，商业风险会被延迟到第二次升级或第一次 Sev1 事故中爆发。产品化私有化的核心不是减少客户差异，而是让差异进入可计价、可支持、可退出的结构。</p>
 <p>商业能力也可以形成状态机。一个模式从 idea 到 scale，必须穿过 evidence、pilot、commercial 和 deprecation，而不是被一次发布会直接推入长期承诺。</p>
-<pre class="mermaid"><code>stateDiagram-v2
-  [*] --&gt; Idea
-  Idea --&gt; EvidenceReady: value unit / workload / cost model defined
-  EvidenceReady --&gt; Pilot: metering + support + SLO draft ready
-  Pilot --&gt; Commercial: readiness matrix passed
-  Commercial --&gt; Scale: margin + SLO + support cost stable
-  Scale --&gt; Revise: cost drift / SLA breach / customer segment change
-  Revise --&gt; Pilot: new profile requires validation
-  Commercial --&gt; Deprecating: strategy exit / unprofitable / unsupported
-  Deprecating --&gt; Retired: migration + data exit + contract closure
-  Pilot --&gt; Stopped: no value / no cost control / unacceptable risk</code></pre>
+<p><img alt="图：42.4.1 工程实现" src="../../assets/diagrams/part-10-economics-cases-chapter-42-business-models-03.svg" /></p>
 <p>这套状态机的重点是允许停止。很多 AI Factory 商业化问题来自“只会上线，不会下线”：某个私有化分支没有升级能力却继续售卖，某个 MaaS 模型成本明显倒挂却继续放量，某个 Agent 工具没有审计却被更多客户启用。状态机把停止条件写入产品治理，让技术团队有证据约束商业承诺。</p>
 <p><code>business_model_profile</code> 最终应和 Token Factory 账本连接。MaaS 关注 <code>revenue_per_token - cost_per_token</code>，但行业云可能关注 <code>revenue_per_resolved_case - cost_per_resolved_case</code>，Agent 平台可能关注 <code>revenue_per_successful_task - cost_per_successful_task</code>。如果只用 token 作为唯一收入单位，就会低估高价值低 token 的场景；如果完全不看 token，又会失去底层成本控制。商业模式成熟度就在于能同时看价值单位和生产单位。</p>
 <p>第四步，是定期复盘模式适配度。每季度检查收入、毛利、SLO、客户投诉、交付成本、定制化比例和运维负担。如果某个商业模式增长很快但平台能力跟不上，应优先补齐能力；如果某个模式毛利低且定制化重，应重新审视产品边界。</p>

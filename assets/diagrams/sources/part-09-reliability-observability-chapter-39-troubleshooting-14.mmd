@@ -1,0 +1,18 @@
+flowchart TB
+  Symptom["GPU idle / checkpoint slow / model load slow"] --> Kind{"path kind"}
+  Kind --> Dataset["dataset path"]
+  Kind --> Ckpt["checkpoint path"]
+  Kind --> Artifact["artifact path"]
+  Kind --> Cache["cache path"]
+  Dataset --> D1["dataset_manifest\nshard checksum / reader / sampling"]
+  Dataset --> D2["data_loader_wait\nsmall file / remote LIST / cache miss"]
+  Ckpt --> C1["checkpoint_commit_record\nrank write tail / manifest commit"]
+  Ckpt --> C2["metadata ops / backend throttle / network overlap"]
+  Artifact --> A1["model_artifact_distribution\ndigest / registry / pull"]
+  Artifact --> A2["cache_residency\ncold node / warmup / ready delay"]
+  Cache --> K1["local NVMe pressure\neviction / stale version / cleanup"]
+  D1 --> Evidence["storage_evidence"]
+  C1 --> Evidence
+  A1 --> Evidence
+  K1 --> Evidence
+  Evidence --> Action["reshard / prewarm / move path / throttle / repair"]

@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1604 810" width="1604" height="810">
+  <defs>
+    <marker id="arrowA" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#7c3aed"/>
+    </marker>
+    <marker id="arrowB" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#10b981"/>
+    </marker>
+    <marker id="arrowC" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2563eb"/>
+    </marker>
+    <marker id="arrowE" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#f97316"/>
+    </marker>
+    <marker id="arrowF" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#7c3aed"/>
+    </marker>
+    <marker id="arrowG" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#ef4444"/>
+    </marker>
+    <marker id="arrowH" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#6b7280"/>
+    </marker>
+    <filter id="shadowSoft" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="3" stdDeviation="6" flood-color="#0f172a" flood-opacity="0.12"/>
+    </filter>
+    <filter id="shadowGlass" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="10" stdDeviation="16" flood-color="#020617" flood-opacity="0.28"/>
+    </filter>
+    <style>
+    text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', 'Microsoft JhengHei', 'SimHei', sans-serif; }
+    .title { font-size: 30px; font-weight: 700; fill: #111827; }
+    .subtitle { font-size: 14px; font-weight: 500; fill: #6b7280; }
+    .section { font-size: 13px; font-weight: 700; fill: #2563eb; letter-spacing: 1.4px; }
+    .section-sub { font-size: 12px; font-weight: 500; fill: #94a3b8; }
+    .node-title { font-size: 18px; font-weight: 700; fill: #111827; }
+    .node-sub { font-size: 12px; font-weight: 500; fill: #6b7280; }
+    .node-type { font-size: 12px; font-weight: 700; fill: #9ca3af; letter-spacing: 0.08em; }
+    .arrow-label { font-size: 12px; font-weight: 600; fill: #6b7280; }
+    .legend { font-size: 12px; font-weight: 500; fill: #6b7280; }
+    .footnote { font-size: 12px; font-weight: 500; fill: #94a3b8; }
+    </style>
+  </defs>
+  <rect width="1604.0" height="810.0" fill="#ffffff"/>
+  <text x="802.0" y="56" text-anchor="middle" class="title">4.4.1 工程实现</text>
+  <text x="802.0" y="82" text-anchor="middle" class="subtitle">part-01-applications/chapter-04-industry-applications.md:341</text>
+  <path d="M 349.5,273.0 L 369.9,273.0 L 411.6,379.0 L 432.0,379.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 356.5,385.0 L 376.9,385.0 L 411.6,379.0 L 432.0,379.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 360.0,497.0 L 380.4,497.0 L 411.6,379.0 L 432.0,379.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 598.0,379.0 L 618.4,379.0 L 649.6,385.0 L 670.0,385.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 871.0,385.0 L 891.4,385.0 L 922.6,161.0 L 943.0,161.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 871.0,385.0 L 891.4,385.0 L 947.1,273.0 L 967.5,273.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 871.0,385.0 L 974.5,385.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 871.0,385.0 L 891.4,385.0 L 940.1,497.0 L 960.5,497.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 871.0,385.0 L 891.4,385.0 L 964.6,609.0 L 985.0,609.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 1242.0,161.0 L 1262.4,161.0 L 1293.6,379.0 L 1314.0,379.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 1217.5,273.0 L 1237.9,273.0 L 1293.6,379.0 L 1314.0,379.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 1210.5,385.0 L 1230.9,385.0 L 1293.6,379.0 L 1314.0,379.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 1224.5,497.0 L 1244.9,497.0 L 1293.6,379.0 L 1314.0,379.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 1200.0,609.0 L 1220.4,609.0 L 1293.6,379.0 L 1314.0,379.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 1411.0,408.0 L 1411.0,442.0 L 515.0,442.0 L 515.0,408.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <rect x="106.5" y="238.0" width="243.0" height="70.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
+  <text x="228.0" y="273.0" text-anchor="middle" class="node-title">真实样本</text>
+  <text x="228.0" y="295.0" text-anchor="middle" class="node-sub">prompt / documents / traces</text>
+  <rect x="99.5" y="350.0" width="257.0" height="70.0" rx="10.0" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.8"/>
+  <text x="228.0" y="385.0" text-anchor="middle" class="node-title">业务目标</text>
+  <text x="228.0" y="407.0" text-anchor="middle" class="node-sub">value metric / failure impact</text>
+  <rect x="96.0" y="462.0" width="264.0" height="70.0" rx="10.0" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.8"/>
+  <text x="228.0" y="497.0" text-anchor="middle" class="node-title">数据边界</text>
+  <text x="228.0" y="519.0" text-anchor="middle" class="node-sub">permission / retention / audit</text>
+  <rect x="432.0" y="350.0" width="166.0" height="58.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
+  <text x="515.0" y="379.0" text-anchor="middle" class="node-title">workload_profile</text>
+  <rect x="670.0" y="350.0" width="201.0" height="70.0" rx="10.0" fill="#f0fdfa" stroke="#99f6e4" stroke-width="1.8"/>
+  <text x="770.5" y="385.0" text-anchor="middle" class="node-title">application_readiness</text>
+  <text x="770.5" y="407.0" text-anchor="middle" class="node-sub">review</text>
+  <rect x="943.0" y="126.0" width="299.0" height="70.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8"/>
+  <text x="1092.5" y="161.0" text-anchor="middle" class="node-title">Gateway policy</text>
+  <text x="1092.5" y="183.0" text-anchor="middle" class="node-sub">rate limit / context budget / authz</text>
+  <rect x="967.5" y="238.0" width="250.0" height="70.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
+  <text x="1092.5" y="273.0" text-anchor="middle" class="node-title">Model routing</text>
+  <text x="1092.5" y="295.0" text-anchor="middle" class="node-sub">quality scorecard / fallback</text>
+  <rect x="974.5" y="350.0" width="236.0" height="70.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
+  <text x="1092.5" y="385.0" text-anchor="middle" class="node-title">Runtime policy</text>
+  <text x="1092.5" y="407.0" text-anchor="middle" class="node-sub">batching / cache / timeout</text>
+  <rect x="960.5" y="462.0" width="264.0" height="70.0" rx="10.0" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.8"/>
+  <text x="1092.5" y="497.0" text-anchor="middle" class="node-title">Resource pool</text>
+  <text x="1092.5" y="519.0" text-anchor="middle" class="node-sub">latency / topology / isolation</text>
+  <rect x="985.0" y="574.0" width="215.0" height="70.0" rx="10.0" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.8"/>
+  <text x="1092.5" y="609.0" text-anchor="middle" class="node-title">Cost ledger</text>
+  <text x="1092.5" y="631.0" text-anchor="middle" class="node-sub">value unit / chargeback</text>
+  <rect x="1314.0" y="350.0" width="194.0" height="58.0" rx="10.0" fill="#f0fdfa" stroke="#99f6e4" stroke-width="1.8"/>
+  <text x="1411.0" y="379.0" text-anchor="middle" class="node-title">production telemetry</text>
+  <rect x="812.5" y="428.0" width="301" height="20" rx="6" fill="#ffffff" opacity="0.94"/>
+  <text x="963.0" y="442.0" text-anchor="middle" class="arrow-label">profile drift / SLO breach / cost anomaly</text>
+  <text x="1324.0" y="794.0" class="footnote">Rendered with fireworks-tech-graph</text>
+</svg>

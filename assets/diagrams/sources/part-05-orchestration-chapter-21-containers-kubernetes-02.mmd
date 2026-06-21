@@ -1,0 +1,12 @@
+flowchart TB
+  Docker["docker / containerd / CRI-O"] --> Spec["OCI runtime spec<br/>config.json"]
+  Spec --> NVRuntime["nvidia-container-runtime"]
+  NVRuntime --> Patch["修改 spec<br/>加入 NVIDIA hook"]
+  Patch --> Runc["runc"]
+  Runc --> NS["创建 namespace / cgroup<br/>尚未启动用户进程"]
+  NS --> Hook["nvidia-container-runtime-hook<br/>prestart hook"]
+  Hook --> CLI["nvidia-container-cli"]
+  CLI --> Lib["libnvidia-container"]
+  Lib --> Mounts["bind mount GPU devices<br/>driver libs / binaries"]
+  Mounts --> Start["runc 启动容器进程"]
+  Start --> App["CUDA / NCCL / AI app"]

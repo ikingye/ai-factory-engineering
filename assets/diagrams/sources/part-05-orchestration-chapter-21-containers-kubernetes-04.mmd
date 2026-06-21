@@ -1,0 +1,9 @@
+flowchart TB
+  Symptom["Pod Running\nbut GPU wrong / unavailable"] --> Assign["gpu_assignment_record\nkubelet + device plugin"]
+  Assign --> Diff["oci_runtime_injection_diff\nOCI spec / CDI / hook"]
+  Diff --> Recon["gpu_device_visibility_reconciliation\ninside container facts"]
+  Recon --> Verdict{"facts match?"}
+  Verdict -->|yes| App["move upward\nCUDA / NCCL / app readiness"]
+  Verdict -->|no| Runtime["runtime investigation\nRuntimeClass / CDI / hook / env"]
+  Runtime --> Baseline["container_gpu_runtime_acceptance_matrix\nretest node pool"]
+  Baseline --> Pool["resource pool state\nallocatable / limited / quarantine"]

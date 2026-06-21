@@ -3816,16 +3816,7 @@
 <p>同样重要的是演进路径。许多 AI Factory 不是一次建成，而是从内部平台、GPU 集群、模型 API 或私有化项目逐步演进。分析案例时要问：它当前能力能否支持下一阶段？早期架构中哪些边界保留了扩展空间？哪些技术债会在规模化时爆发？</p>
 <p>这套架构也能用于反向诊断。若一个案例强调商业化，却缺少计量和 SLA，就说明目标层与运营层断裂；若强调大训练，却缺少网络、存储和准入基线，就说明生产层不完整；若强调行业落地，却缺少业务指标，就说明价值单位不清。</p>
 <p>案例图不是为了画出漂亮层级，而是为了强迫每个结论落到证据：它服务谁、跑什么 workload、依赖哪些平台能力、需要哪些基础设施、如何运营、如何证明价值。缺少证据的部分，应明确标注为假设。</p>
-<pre class="mermaid"><code>flowchart TB
-  Case["案例类型"] --&gt; Goal["目标 / 服务对象"]
-  Goal --&gt; Unit["价值单位"]
-  Unit --&gt; Workload["核心 workload"]
-  Workload --&gt; Platform["平台能力"]
-  Workload --&gt; Infra["基础设施能力"]
-  Platform --&gt; Ops["可靠性 / 安全 / 运维"]
-  Infra --&gt; Ops
-  Ops --&gt; Economics["成本 / 产能 / ROI"]
-  Economics --&gt; Lesson["可复用经验 / 风险"]</code></pre>
+<p><img alt="图：43.2.2 系统架构" src="../../assets/diagrams/part-10-economics-cases-chapter-43-case-studies-01.svg" /></p>
 <h2 id="433">43.3 关键技术<a class="headerlink" href="#433" title="Permanent link">&para;</a></h2>
 <h3 id="4331-nvidia-ai-factory">43.3.1 NVIDIA AI Factory<a class="headerlink" href="#4331-nvidia-ai-factory" title="Permanent link">&para;</a></h3>
 <p>NVIDIA AI Factory 更像一种系统叙事和参考架构：用 GPU、网络、系统软件、开发工具、训练推理框架、模型服务和生态组件，构成 AI 生产系统。它强调从芯片、服务器、scale-up/scale-out 网络到 CUDA、NCCL、推理引擎和模型工作流的垂直整合。这个叙事的价值在于提醒市场：GPU 不是孤立设备，AI 产能来自完整系统。</p>
@@ -3878,134 +3869,134 @@
 <p>工程上，可以把案例研究固化为标准评估模板。每次分析一个组织、项目或客户需求时，都按同一结构填写：服务对象、价值单位、核心 workload、模型策略、平台能力、基础设施能力、可靠性目标、计量方式、成本结构、主要风险、当前缺口和下一步。模板让讨论从主观印象变成可比较证据。</p>
 <p>第二步，是把案例模板用于自身诊断。团队可以选择最接近自己的类型，例如企业私有、MaaS、算力租赁或大模型公司内部平台，然后逐项检查能力缺口。如果价值单位是 token，但没有 token 计量；如果核心 workload 是训练，但没有 checkpoint 和 NCCL 基线；如果目标是私有化，但没有离线交付包，就说明架构与目标不匹配。</p>
 <p>第三步，是把案例研究转成 roadmap。缺口不应停留在文档里，而要变成阶段目标：先补准入和观测，再补计量和成本，再补 SRE 和升级，再补多租户和产品化。每个阶段都要有验收指标，避免“学习了案例”但没有改变系统。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">case_study</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enterprise-private-ai-factory</span>
-<span class="w">  </span><span class="nt">users</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">internal-copilot</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">customer-service</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">data-analysis-agent</span>
-<span class="w">  </span><span class="nt">value_unit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">business_outcome_and_internal_cost</span>
-<span class="w">  </span><span class="nt">critical_workloads</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rag</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">online_inference</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fine_tuning</span>
-<span class="w">  </span><span class="nt">required_capabilities</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tenant_quota</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rag_data_governance</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">inference_observability</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">private_model_serving</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cost_allocation</span>
-<span class="w">  </span><span class="nt">risks</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">unclear_ownership</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">no_acceptance_baseline</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">missing_internal_billing</span>
-</code></pre></div>
+<pre><code class="language-yaml">case_study:
+  type: enterprise-private-ai-factory
+  users:
+    - internal-copilot
+    - customer-service
+    - data-analysis-agent
+  value_unit: business_outcome_and_internal_cost
+  critical_workloads:
+    - rag
+    - online_inference
+    - fine_tuning
+  required_capabilities:
+    - tenant_quota
+    - rag_data_governance
+    - inference_observability
+    - private_model_serving
+    - cost_allocation
+  risks:
+    - unclear_ownership
+    - no_acceptance_baseline
+    - missing_internal_billing
+</code></pre>
 <p>更严谨的案例研究应生成 <code>case_study_evidence_pack</code>。它把公开事实、可验证证据、工程推断和待验证假设分开，避免把营销材料、媒体描述、供应商规格或二手传闻直接当成系统结论。这个对象也能帮助团队把案例研究转成自己的架构评审输入。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">case_study_evidence_pack</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">case-enterprise-private-ai-factory-reference</span>
-<span class="w">  </span><span class="nt">scope</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">case_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enterprise_private_ai_factory</span>
-<span class="w">    </span><span class="nt">purpose</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">internal_productivity_and_secure_rag</span>
-<span class="w">    </span><span class="nt">analysis_date</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;2026-06&quot;</span>
-<span class="w">  </span><span class="nt">evidence_layers</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">public_facts</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">source</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">product_documentation</span>
-<span class="w">        </span><span class="nt">claim</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">provides_private_model_serving</span>
-<span class="w">        </span><span class="nt">confidence</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">high</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">source</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">public_architecture_talk</span>
-<span class="w">        </span><span class="nt">claim</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">uses_kubernetes_for_serving</span>
-<span class="w">        </span><span class="nt">confidence</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">medium</span>
-<span class="w">    </span><span class="nt">observed_signals</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">source</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">acceptance_report</span>
-<span class="w">        </span><span class="nt">claim</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu_nodes_passed_container_gpu_smoke_test</span>
-<span class="w">        </span><span class="nt">confidence</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">high</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">source</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">incident_review</span>
-<span class="w">        </span><span class="nt">claim</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rag_acl_regression_caused_rollout_pause</span>
-<span class="w">        </span><span class="nt">confidence</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">high</span>
-<span class="w">    </span><span class="nt">engineering_inference</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">claim</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dedicated_inference_pool_needed_for_customer_service</span>
-<span class="w">        </span><span class="nt">basis</span><span class="p">:</span>
-<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">production_slo</span>
-<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">traffic_peak_pattern</span>
-<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">wrong_answer_impact</span>
-<span class="w">        </span><span class="nt">confidence</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">medium</span>
-<span class="w">    </span><span class="nt">assumptions_to_validate</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">claim</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">future_agent_tools_require_stronger_sandbox</span>
-<span class="w">        </span><span class="nt">validation_method</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">application_readiness_review</span>
-<span class="w">  </span><span class="nt">capability_map</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">target_layer</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">service_object</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">internal_business_users</span>
-<span class="w">      </span><span class="nt">value_unit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">resolved_task_and_cost_allocation</span>
-<span class="w">    </span><span class="nt">production_layer</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">workloads</span><span class="p">:</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rag</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">online_inference</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">evaluation</span>
-<span class="w">      </span><span class="nt">missing_capabilities</span><span class="p">:</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">token_metering_by_cost_center</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">model_release_quality_gate</span>
-<span class="w">    </span><span class="nt">operations_layer</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">strengths</span><span class="p">:</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">private_data_boundary</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">centralized_identity</span>
-<span class="w">      </span><span class="nt">gaps</span><span class="p">:</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">no_standard_upgrade_path</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">limited_remote_diagnostics</span>
-<span class="w">    </span><span class="nt">economics_layer</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">known_metrics</span><span class="p">:</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu_hour_cost</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">application_adoption</span>
-<span class="w">      </span><span class="nt">missing_metrics</span><span class="p">:</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cost_per_resolved_task</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">quality_adjusted_value</span>
-<span class="w">  </span><span class="nt">reusable_lessons</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">start_with_workload_profile_not_gpu_inventory</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">make_acl_regression_part_of_release_gate</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">treat_private_upgrade_path_as_product_feature</span>
-</code></pre></div>
+<pre><code class="language-yaml">case_study_evidence_pack:
+  id: case-enterprise-private-ai-factory-reference
+  scope:
+    case_type: enterprise_private_ai_factory
+    purpose: internal_productivity_and_secure_rag
+    analysis_date: &quot;2026-06&quot;
+  evidence_layers:
+    public_facts:
+      - source: product_documentation
+        claim: provides_private_model_serving
+        confidence: high
+      - source: public_architecture_talk
+        claim: uses_kubernetes_for_serving
+        confidence: medium
+    observed_signals:
+      - source: acceptance_report
+        claim: gpu_nodes_passed_container_gpu_smoke_test
+        confidence: high
+      - source: incident_review
+        claim: rag_acl_regression_caused_rollout_pause
+        confidence: high
+    engineering_inference:
+      - claim: dedicated_inference_pool_needed_for_customer_service
+        basis:
+          - production_slo
+          - traffic_peak_pattern
+          - wrong_answer_impact
+        confidence: medium
+    assumptions_to_validate:
+      - claim: future_agent_tools_require_stronger_sandbox
+        validation_method: application_readiness_review
+  capability_map:
+    target_layer:
+      service_object: internal_business_users
+      value_unit: resolved_task_and_cost_allocation
+    production_layer:
+      workloads:
+        - rag
+        - online_inference
+        - evaluation
+      missing_capabilities:
+        - token_metering_by_cost_center
+        - model_release_quality_gate
+    operations_layer:
+      strengths:
+        - private_data_boundary
+        - centralized_identity
+      gaps:
+        - no_standard_upgrade_path
+        - limited_remote_diagnostics
+    economics_layer:
+      known_metrics:
+        - gpu_hour_cost
+        - application_adoption
+      missing_metrics:
+        - cost_per_resolved_task
+        - quality_adjusted_value
+  reusable_lessons:
+    - start_with_workload_profile_not_gpu_inventory
+    - make_acl_regression_part_of_release_gate
+    - treat_private_upgrade_path_as_product_feature
+</code></pre>
 <p>成熟的 <code>case_study_evidence_pack</code> 还应给出证据质量评分和不可复用条件。很多案例失败不是因为分析者不努力，而是把不同可信度的材料混在一起：供应商规格、公开演讲、客户口述、内部监控、事故复盘和财务账本的可信度不同；“某公司这样做了”也不等于“我们的组织可以这样做”。证据包要明确哪些结论可以直接用于设计，哪些只能作为假设，哪些必须在本地 PoC、验收或商业试点中验证。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">case_study_evidence_pack</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">case-commercial-maas-reference-202606</span>
-<span class="w">  </span><span class="nt">evidence_quality</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">scoring_rubric</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">level_3</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">direct_measurement_or_contractual_record</span>
-<span class="w">      </span><span class="nt">level_2</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">customer_interview_or_public_technical_detail</span>
-<span class="w">      </span><span class="nt">level_1</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">public_marketing_or_inferred_architecture</span>
-<span class="w">      </span><span class="nt">level_0</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">unsupported_claim</span>
-<span class="w">    </span><span class="nt">minimum_for_architecture_decision</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">level_2_with_local_validation</span>
-<span class="w">    </span><span class="nt">minimum_for_commercial_commitment</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">level_3</span>
-<span class="w">  </span><span class="nt">claim_register</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">claim</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">premium_maas_requires_dedicated_capacity_and_sla_credit_model</span>
-<span class="w">      </span><span class="nt">evidence_level</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3</span>
-<span class="w">      </span><span class="nt">evidence_refs</span><span class="p">:</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sla_credit_model</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">commercial_pnl_ledger</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">customer_onboarding_evidence</span>
-<span class="w">      </span><span class="nt">reusable</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">claim</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">private_deployment_can_share_same_upgrade_path_as_public_cloud</span>
-<span class="w">      </span><span class="nt">evidence_level</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
-<span class="w">      </span><span class="nt">reusable</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-<span class="w">      </span><span class="nt">reason_not_reusable</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">customer_network_and_offline_registry_constraints_unknown</span>
-<span class="w">      </span><span class="nt">validation_required</span><span class="p">:</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">private_deployment_acceptance_record</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">upgrade_and_rollback_drill</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">claim</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">token_margin_will_improve_after_new_runtime</span>
-<span class="w">      </span><span class="nt">evidence_level</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
-<span class="w">      </span><span class="nt">reusable</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">conditional</span>
-<span class="w">      </span><span class="nt">validation_required</span><span class="p">:</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">inference_runtime_cost_ledger</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">quality_cost_ledger</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">online_experiment_guardrail</span>
-<span class="w">  </span><span class="nt">non_transferable_context</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">different_power_and_cooling_limit</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">different_customer_support_model</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">different_data_residency_requirement</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">missing_sre_oncall_maturity</span>
-<span class="w">  </span><span class="nt">commercial_evidence_gaps</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">no_customer_support_cost_measurement</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">no_sla_credit_history</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">no_private_delivery_cost_baseline</span>
-</code></pre></div>
+<pre><code class="language-yaml">case_study_evidence_pack:
+  id: case-commercial-maas-reference-202606
+  evidence_quality:
+    scoring_rubric:
+      level_3: direct_measurement_or_contractual_record
+      level_2: customer_interview_or_public_technical_detail
+      level_1: public_marketing_or_inferred_architecture
+      level_0: unsupported_claim
+    minimum_for_architecture_decision: level_2_with_local_validation
+    minimum_for_commercial_commitment: level_3
+  claim_register:
+    - claim: premium_maas_requires_dedicated_capacity_and_sla_credit_model
+      evidence_level: 3
+      evidence_refs:
+        - sla_credit_model
+        - commercial_pnl_ledger
+        - customer_onboarding_evidence
+      reusable: true
+    - claim: private_deployment_can_share_same_upgrade_path_as_public_cloud
+      evidence_level: 1
+      reusable: false
+      reason_not_reusable: customer_network_and_offline_registry_constraints_unknown
+      validation_required:
+        - private_deployment_acceptance_record
+        - upgrade_and_rollback_drill
+    - claim: token_margin_will_improve_after_new_runtime
+      evidence_level: 2
+      reusable: conditional
+      validation_required:
+        - inference_runtime_cost_ledger
+        - quality_cost_ledger
+        - online_experiment_guardrail
+  non_transferable_context:
+    - different_power_and_cooling_limit
+    - different_customer_support_model
+    - different_data_residency_requirement
+    - missing_sre_oncall_maturity
+  commercial_evidence_gaps:
+    - no_customer_support_cost_measurement
+    - no_sla_credit_history
+    - no_private_delivery_cost_baseline
+</code></pre>
 <p>这段结构让案例研究能直接进入第 44 章的建设评审。<code>minimum_for_commercial_commitment</code> 要求商业承诺必须有合同、账单、验收或生产证据，不能只靠公开叙事；<code>non_transferable_context</code> 防止团队照搬别人的规模、SLA 或交付方式；<code>commercial_evidence_gaps</code> 则把案例学习转成下一步数据采集。读者看到一个成功案例后，应能判断哪些能力是可学习的系统原则，哪些只是该组织在特定资源、客户和团队条件下成立。</p>
 <p>案例成熟度可以用四层矩阵诊断，而不是只按“先进/落后”评价。目标层看服务对象和价值单位是否清楚；生产层看应用、模型、调度和基础设施是否能闭环；运营层看验收、观测、SRE、安全和升级是否可重复；经济层看成本、收入、ROI 和机会成本是否可解释。一个系统可以在生产层很强、经济层很弱，也可以在目标层清楚但运营层不成熟。分层诊断比单一评分更有用。</p>
 <table>
@@ -4079,54 +4070,45 @@
 </tbody>
 </table>
 <p>失败案例也应按证据链诊断。下面的路径适合用在“GPU 买了但平台产出差”的复盘中。它从业务症状开始，逐层追到 profile、商业承诺、生产路径和运营证据，避免直接把问题归咎于“GPU 不够”或“模型不行”。</p>
-<pre class="mermaid"><code>flowchart TB
-  Symptom["症状\n任务 pending / 延迟长尾 / 成本失控 / 业务无价值"] --&gt; Target["目标层检查\n服务对象和价值单位是否清楚"]
-  Target --&gt;|不清楚| FixTarget["补 workload_profile\n补 business_model_profile\n收缩范围"]
-  Target --&gt;|清楚| Production["生产层检查\n应用-平台-模型-runtime-调度-资源是否闭环"]
-  Production --&gt;|断裂| FixProduction["补缺口\nGateway / serving / queue / resource pool / data path"]
-  Production --&gt;|闭环| Ops["运营层检查\n准入 / baseline / telemetry / runbook / change"]
-  Ops --&gt;|缺证据| FixOps["建立 acceptance baseline\n补观测标签和诊断包"]
-  Ops --&gt;|证据完整| Economics["经济层检查\ncost / value / margin / ROI"]
-  Economics --&gt;|倒挂| FixEconomics["调整路由、价格、容量或下线场景"]
-  Economics --&gt;|成立| Scale["进入规模化\n扩大资源或商业覆盖"]</code></pre>
+<p><img alt="图：43.4.1 工程实现" src="../../assets/diagrams/part-10-economics-cases-chapter-43-case-studies-02.svg" /></p>
 <p>这个诊断路径还要求区分事实和推断。比如“任务 pending 很久”是事实，“GPU 不够”只是可能推断；还需要检查 quota、gang、topology、image、data path、node baseline 和队列优先级。“推理毛利下降”是事实，“模型太贵”也只是可能推断；还需要检查 output token、cache miss、低质量重试、安全拦截、失败计费和支持成本。案例研究要训练这种证据纪律。</p>
 <p>在团队内部，可以把每个案例研究沉淀成 <code>ai_factory_maturity_assessment</code>。它给出当前级别、证据、短板和下一步，不追求一次性满分。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">ai_factory_maturity_assessment</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">target_system</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">internal-ai-platform</span>
-<span class="w">  </span><span class="nt">assessment_period</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2026q2</span>
-<span class="w">  </span><span class="nt">levels</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">target_layer</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">level</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3</span>
-<span class="w">      </span><span class="nt">evidence</span><span class="p">:</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">workload_profiles_for_top_5_apps</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">internal_chargeback_policy</span>
-<span class="w">      </span><span class="nt">gap</span><span class="p">:</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">no_external_customer_sla_boundary</span>
-<span class="w">    </span><span class="nt">production_layer</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">level</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
-<span class="w">      </span><span class="nt">evidence</span><span class="p">:</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">maas_api_available</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu_resource_pool_accepted</span>
-<span class="w">      </span><span class="nt">gap</span><span class="p">:</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">training_checkpoint_recovery_not_standardized</span>
-<span class="w">    </span><span class="nt">operations_layer</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">level</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
-<span class="w">      </span><span class="nt">evidence</span><span class="p">:</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">basic_gpu_and_inference_dashboard</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">incident_template</span>
-<span class="w">      </span><span class="nt">gap</span><span class="p">:</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">no_change_safety_case_for_driver_upgrade</span>
-<span class="w">    </span><span class="nt">economics_layer</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">level</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
-<span class="w">      </span><span class="nt">evidence</span><span class="p">:</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu_hour_cost_report</span>
-<span class="w">      </span><span class="nt">gap</span><span class="p">:</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">missing_cost_per_successful_task</span>
-<span class="w">  </span><span class="nt">next_actions</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">build_append_only_metering_ledger</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">add_acceptance_to_launch_pipeline</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">define_business_model_profile_before_external_maas</span>
-</code></pre></div>
+<pre><code class="language-yaml">ai_factory_maturity_assessment:
+  target_system: internal-ai-platform
+  assessment_period: 2026q2
+  levels:
+    target_layer:
+      level: 3
+      evidence:
+        - workload_profiles_for_top_5_apps
+        - internal_chargeback_policy
+      gap:
+        - no_external_customer_sla_boundary
+    production_layer:
+      level: 2
+      evidence:
+        - maas_api_available
+        - gpu_resource_pool_accepted
+      gap:
+        - training_checkpoint_recovery_not_standardized
+    operations_layer:
+      level: 2
+      evidence:
+        - basic_gpu_and_inference_dashboard
+        - incident_template
+      gap:
+        - no_change_safety_case_for_driver_upgrade
+    economics_layer:
+      level: 1
+      evidence:
+        - gpu_hour_cost_report
+      gap:
+        - missing_cost_per_successful_task
+  next_actions:
+    - build_append_only_metering_ledger
+    - add_acceptance_to_launch_pipeline
+    - define_business_model_profile_before_external_maas
+</code></pre>
 <p>成熟度诊断的价值在于排序。若目标层只有 1 级，不应急着采购更多 GPU；若生产层断裂，不应先做复杂毛利模型；若运营层没有准入和观测，规模化会放大事故；若经济层没有成本口径，商业增长可能只是亏损增长。案例研究最终要服务建设优先级。</p>
 <p>第四步，是定期更新案例库。行业技术和商业模式变化很快，案例不能写完就不动。每次项目复盘、客户交付、重大事故或成本优化，都应沉淀到案例库中。案例库的价值不是记录故事，而是帮助下一次架构决策更快、更准。</p>
 <p>第五步，是把案例库用于评审。新项目立项、重大采购、商业模式调整或私有化交付前，都可以选择相似案例做对照，检查能力缺口和风险。这样案例研究就从学习材料变成工程治理工具。</p>

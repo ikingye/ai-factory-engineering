@@ -1,0 +1,11 @@
+flowchart LR
+  Identity["tenant / app / user"] --> Perm["retrieval_permission_decision"]
+  Policy["tenant_boundary / data_boundary / ACL"] --> Perm
+  Query["query + rewrite"] --> Retrieve["vector + keyword retrieval"]
+  Perm --> Retrieve
+  Retrieve --> Rerank["rerank + diversity"]
+  Rerank --> Context["rag_context_snapshot"]
+  Budget["token budget / prompt template"] --> Context
+  Context --> LLM["LLM generation"]
+  LLM --> Feedback["quality_feedback_event"]
+  Feedback --> Regression["rag_quality_regression_record"]

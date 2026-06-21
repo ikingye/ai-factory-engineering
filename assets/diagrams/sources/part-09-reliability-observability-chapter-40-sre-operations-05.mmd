@@ -1,0 +1,12 @@
+flowchart TB
+  Evidence["reliability_evidence_bundle"] --> Incident["incident_record"]
+  Evidence --> Budget["slo_budget_ledger"]
+  Invalidation["baseline_invalidation_record"] --> Pool["resource pool limited state"]
+  Capacity["capacity_activation_record"] --> CapacityPolicy["capacity policy"]
+  Budget --> Policy["release / change / capacity policy"]
+  Incident --> Cost["reliability_cost_ledger"]
+  Cost --> Policy
+  Pool --> PRR["production_readiness_review"]
+  CapacityPolicy --> PRR
+  Policy --> PRR
+  PRR --> Action["approve canary / block / rollback / add capacity"]

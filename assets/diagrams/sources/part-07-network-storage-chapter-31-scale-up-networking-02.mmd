@@ -1,0 +1,19 @@
+flowchart LR
+  subgraph Healthy["完整 NVSwitch 域"]
+    H0["GPU0"] --- HSW["NVSwitch"]
+    H1["GPU1"] --- HSW
+    H2["GPU2"] --- HSW
+    H3["GPU3"] --- HSW
+    HSW --> HT["4-GPU tensor parallel 可调度"]
+  end
+
+  subgraph Fragmented["拓扑碎片"]
+    F0["GPU0 busy"] --- FSW["NVSwitch"]
+    F1["GPU1 free"] --- FSW
+    F2["GPU2 busy"] --- FSW
+    F3["GPU3 free"] --- FSW
+    FSW --> FT["剩余 2 张 GPU 不能满足 4-GPU 同域请求"]
+  end
+
+  Scheduler["资源池 / 调度器"] --> Healthy
+  Scheduler --> Fragmented

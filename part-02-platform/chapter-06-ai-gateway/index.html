@@ -3842,18 +3842,7 @@
 <p>并且要确认所有网关实例已同步。</p>
 <p>实例一致性应自动检查。</p>
 <p>检查失败应阻止继续放量。</p>
-<pre class="mermaid"><code>flowchart LR
-  Client["应用 / SDK"] --&gt; GW["AI Gateway"]
-  GW --&gt; Auth["认证鉴权"]
-  Auth --&gt; Quota["租户限流 / 配额"]
-  Quota --&gt; Policy["策略\n灰度 / fallback / 安全"]
-  Policy --&gt; Router["模型路由"]
-  Router --&gt; M1["Model Endpoint A"]
-  Router --&gt; M2["Model Endpoint B"]
-  Router --&gt; M3["Private Endpoint"]
-  GW --&gt; Meter["token 计量"]
-  GW --&gt; Trace["trace / logs / metrics"]
-  Meter --&gt; Billing["Billing"]</code></pre>
+<p><img alt="图：6.2.2 系统架构" src="../../assets/diagrams/part-02-platform-chapter-06-ai-gateway-01.svg" /></p>
 <h2 id="63">6.3 关键技术<a class="headerlink" href="#63" title="Permanent link">&para;</a></h2>
 <h3 id="631-ai-gateway">6.3.1 为什么需要 AI Gateway<a class="headerlink" href="#631-ai-gateway" title="Permanent link">&para;</a></h3>
 <p>AI Gateway 首先解决统一接入问题。一个 AI Factory 中可能同时存在自研模型、开源模型、第三方 API、租户私有模型、实验模型和不同推理引擎。应用不应直接依赖这些后端的地址、认证、参数和错误格式。Gateway 对上提供稳定 API，对下适配不同模型服务，使模型迁移、供应商切换、版本升级和资源池调整不必每次都改应用。</p>
@@ -3920,510 +3909,431 @@
 <h3 id="641">6.4.1 工程实现<a class="headerlink" href="#641" title="Permanent link">&para;</a></h3>
 <p>AI Gateway 工程实现应把路由、配额、fallback 和能力校验表达为版本化策略。策略既要能被控制面管理，也要能在数据面高效执行。一个请求进入 Gateway 后，应生成 trace id，解析租户和模型，校验权限和能力，检查 token 与并发预算，选择 upstream，并在响应结束时写入计量事件。对 streaming 请求，还要在首 token、每段输出、取消和结束时维护状态。</p>
 <p>生产 Gateway 的核心不是“路由规则多”，而是 admission chain 清楚。每个请求都应按稳定顺序经过 identity、capability、budget、policy、route、commit 六个阶段。identity 绑定租户和项目；capability 确认模型是否支持请求参数；budget 检查 token、并发和费用上限；policy 执行安全、灰度和 fallback 约束；route 选择 endpoint；commit 写入开始事件和 trace。顺序固定后，拒绝原因才稳定，指标才能按阶段解释。</p>
-<pre class="mermaid"><code>flowchart LR
-  Req["HTTP Chat Request"] --&gt; Id["1 identity\nkey / tenant / user"]
-  Id --&gt; Cap["2 capability\nmodel supports features"]
-  Cap --&gt; Budget["3 budget\ntoken / rpm / tpm / cost"]
-  Budget --&gt; Policy["4 policy\nsafety / canary / fallback"]
-  Policy --&gt; Route["5 route\nendpoint / pool / provider"]
-  Route --&gt; Commit["6 commit\ntrace / metering start"]
-  Commit --&gt; Upstream["Model Endpoint"]
-  Id --&gt;|deny| Err["typed error"]
-  Cap --&gt;|deny| Err
-  Budget --&gt;|deny| Err
-  Policy --&gt;|deny| Err</code></pre>
+<p><img alt="图：6.4.1 工程实现" src="../../assets/diagrams/part-02-platform-chapter-06-ai-gateway-02.svg" /></p>
 <p>Gateway 还应维护“可路由健康”而不是普通 upstream 健康。模型 endpoint 的 HTTP 端口可用，只说明进程活着；能否接收请求还要看模型是否 loaded、queue 是否过长、KV Cache 是否接近上限、TTFT/TPOT 是否越界、是否处于 draining、是否命中 canary 冻结。Gateway 不需要执行 runtime 调度，但必须消费这些摘要信号，否则路由会把压力推给已经拥塞的副本。</p>
 <p>可路由健康应来自 Model Serving 和推理引擎联合上报的 <code>engine_admission_health</code>。它不是细粒度 scheduler 状态，而是给 Gateway 的接入摘要：当前 endpoint 对某类请求是否还能在 SLO 内 admission，瓶颈是 queue、prefill、decode、KV block、engine canary 还是 drain。Gateway 根据它选择路由、fallback、拒绝或降级，而不是只看 Kubernetes readiness。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">engine_admission_health</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">endpoint</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-large-prod</span>
-<span class="w">  </span><span class="nt">engine_profile</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vllm-prod-h100-v7</span>
-<span class="w">  </span><span class="nt">state</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">routable_limited</span>
-<span class="w">  </span><span class="nt">observed</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">queue_p95_ms</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">prefill_queue_depth</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">decode_active_sequences</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">kv_block_pressure</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">high</span>
-<span class="w">    </span><span class="nt">kv_allocation_failures</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">zero</span>
-<span class="w">    </span><span class="nt">queue_deadline_miss_rate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">low</span>
-<span class="w">    </span><span class="nt">engine_restarts_5m</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span>
-<span class="w">  </span><span class="nt">admission_hints</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">short_context_interactive</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">allow</span>
-<span class="w">    </span><span class="nt">long_context_interactive</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">shed_or_route_elsewhere</span>
-<span class="w">    </span><span class="nt">batch_generation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">defer</span>
-<span class="w">  </span><span class="nt">guardrails</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">canary_frozen</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-<span class="w">    </span><span class="nt">draining</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-<span class="w">    </span><span class="nt">max_context_tokens_current</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">16000</span>
-<span class="w">  </span><span class="nt">freshness</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">observed_at</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recent</span>
-<span class="w">    </span><span class="nt">ttl_ms</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_defined</span>
-</code></pre></div>
+<pre><code class="language-yaml">engine_admission_health:
+  endpoint: af-chat-large-prod
+  engine_profile: vllm-prod-h100-v7
+  state: routable_limited
+  observed:
+    queue_p95_ms: measured
+    prefill_queue_depth: measured
+    decode_active_sequences: measured
+    kv_block_pressure: high
+    kv_allocation_failures: zero
+    queue_deadline_miss_rate: low
+    engine_restarts_5m: 0
+  admission_hints:
+    short_context_interactive: allow
+    long_context_interactive: shed_or_route_elsewhere
+    batch_generation: defer
+  guardrails:
+    canary_frozen: false
+    draining: false
+    max_context_tokens_current: 16000
+  freshness:
+    observed_at: recent
+    ttl_ms: policy_defined
+</code></pre>
 <p>这个对象让 Gateway 的路由从“后端活着”升级为“后端能否承诺这类请求”。如果 <code>kv_block_pressure</code> 高，Gateway 可以把长上下文流量路由到另一个 pool，同时继续让短请求进入当前 endpoint；如果 <code>canary_frozen</code> 为 true，Gateway 应停止扩大新 runtime 流量；如果健康信号过期，生产策略应保守处理。可路由健康的关键是摘要足够稳定，不能把每个 engine 内部指标都泄露到 Gateway，也不能只给一个模糊的 ready。</p>
 <p>一个简化路由规则可以这样表达。实际系统还应补充服务等级、数据驻留、模型 capability、灰度版本和观测标签。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">route</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">match</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-large</span>
-<span class="w">    </span><span class="nt">tenant</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enterprise-a</span>
-<span class="w">  </span><span class="nt">policy</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">max_input_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">32000</span>
-<span class="w">    </span><span class="nt">max_output_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">4096</span>
-<span class="w">    </span><span class="nt">rate_limit</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">rpm</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">600</span>
-<span class="w">      </span><span class="nt">tpm</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2000000</span>
-<span class="w">    </span><span class="nt">fallback</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">      </span><span class="nt">target</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-large-backup</span>
-<span class="w">      </span><span class="nt">on_errors</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">timeout</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">unavailable</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">upstreams</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">endpoint</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">inference-pool-a</span>
-<span class="w">      </span><span class="nt">weight</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">90</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">endpoint</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">inference-pool-b</span>
-<span class="w">      </span><span class="nt">weight</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
-</code></pre></div>
+<pre><code class="language-yaml">route:
+  match:
+    model: af-chat-large
+    tenant: enterprise-a
+  policy:
+    max_input_tokens: 32000
+    max_output_tokens: 4096
+    rate_limit:
+      rpm: 600
+      tpm: 2000000
+    fallback:
+      enabled: true
+      target: af-chat-large-backup
+      on_errors: [timeout, unavailable]
+  upstreams:
+    - endpoint: inference-pool-a
+      weight: 90
+    - endpoint: inference-pool-b
+      weight: 10
+</code></pre>
 <p>生产网关还应把每次接入判断写成 <code>endpoint_admission_decision</code>。<code>engine_admission_health</code> 告诉 Gateway 某个 endpoint 当前能接什么形态的流量；<code>endpoint_admission_decision</code> 则记录某个请求为什么被允许、拒绝、延后、降级或路由到另一个 endpoint。前者是可路由健康摘要，后者是请求级可回放证据。没有后者，事故复盘只能知道“当时 pool 压力高”，不能证明某个租户请求是否被正确处理。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">endpoint_admission_decision</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">decision_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ead-20260620-001</span>
-<span class="w">  </span><span class="nt">request_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">req-20260620-001</span>
-<span class="w">  </span><span class="nt">trace_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">trace-abc</span>
-<span class="w">  </span><span class="nt">tenant</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enterprise-a</span>
-<span class="w">  </span><span class="nt">service_tier</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">premium_interactive</span>
-<span class="w">  </span><span class="nt">request_shape</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">estimated_input_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8192</span>
-<span class="w">    </span><span class="nt">max_output_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1024</span>
-<span class="w">    </span><span class="nt">stream</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">workload_slice</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">long_context_streaming</span>
-<span class="w">    </span><span class="nt">deadline_ms</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30000</span>
-<span class="w">  </span><span class="nt">candidates</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">endpoint</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-large-prod</span>
-<span class="w">      </span><span class="nt">engine_admission_health</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">eah-af-chat-large-prod-1020</span>
-<span class="w">      </span><span class="nt">decision</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">shed</span>
-<span class="w">      </span><span class="nt">reason</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kv_block_pressure_high_for_long_context</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">endpoint</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-large-longctx</span>
-<span class="w">      </span><span class="nt">engine_admission_health</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">eah-af-chat-large-longctx-1020</span>
-<span class="w">      </span><span class="nt">decision</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">admit</span>
-<span class="w">      </span><span class="nt">reason</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">long_context_slots_available</span>
-<span class="w">  </span><span class="nt">policy_context</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">route_policy_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2026-06-20.3</span>
-<span class="w">    </span><span class="nt">budget_policy_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2026-06-20.1</span>
-<span class="w">    </span><span class="nt">canary_guardrail</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">no_block</span>
-<span class="w">    </span><span class="nt">fallback_allowed_before_first_token</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">result</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">route</span>
-<span class="w">    </span><span class="nt">selected_endpoint</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-large-longctx</span>
-<span class="w">    </span><span class="nt">metering_start_event</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">request_admitted</span>
-</code></pre></div>
+<pre><code class="language-yaml">endpoint_admission_decision:
+  decision_id: ead-20260620-001
+  request_id: req-20260620-001
+  trace_id: trace-abc
+  tenant: enterprise-a
+  service_tier: premium_interactive
+  request_shape:
+    estimated_input_tokens: 8192
+    max_output_tokens: 1024
+    stream: true
+    workload_slice: long_context_streaming
+    deadline_ms: 30000
+  candidates:
+    - endpoint: af-chat-large-prod
+      engine_admission_health: eah-af-chat-large-prod-1020
+      decision: shed
+      reason: kv_block_pressure_high_for_long_context
+    - endpoint: af-chat-large-longctx
+      engine_admission_health: eah-af-chat-large-longctx-1020
+      decision: admit
+      reason: long_context_slots_available
+  policy_context:
+    route_policy_version: 2026-06-20.3
+    budget_policy_version: 2026-06-20.1
+    canary_guardrail: no_block
+    fallback_allowed_before_first_token: true
+  result:
+    action: route
+    selected_endpoint: af-chat-large-longctx
+    metering_start_event: request_admitted
+</code></pre>
 <p>这个对象的价值在三类场景最明显。第一，用户投诉首 token 慢时，可以回放当时是否错误地把长上下文请求送进短上下文池。第二，runtime canary 出现 guardrail breach 时，可以证明 Gateway 是否停止扩大新 engine profile 的流量。第三，账单或 SLA 争议时，可以说明请求是被正常 admission、被 shed、被 fallback，还是在尚未产生 token 前被拒绝。它让 AI Gateway 的策略从“配置存在”变成“决策可审计”。</p>
 <p>模型服务进入生产后，Gateway 还必须把路由策略绑定到具体 release 组合，而不是只绑定到 endpoint 名称。<code>serving_route_release_contract</code> 描述一个模型名在某个租户、task slice 和服务等级下，哪些 release 可以作为 primary、canary、shadow、fallback 或 rollback 目标；每个目标必须满足 capability、质量门禁、数据边界、计量 schema、runtime baseline 和容量约束。没有这个合同，Gateway 看到的只是“af-chat-large-prod 可用”，无法判断这个 endpoint 背后是不是同一组 weights、tokenizer、template、engine config 和 usage 语义。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">serving_route_release_contract</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">contract_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">srrc-af-chat-large-20260620</span>
-<span class="w">  </span><span class="nt">gateway_policy_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2026-06-20.7</span>
-<span class="w">  </span><span class="nt">scope</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">model_alias</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-large</span>
-<span class="w">    </span><span class="nt">tenant</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enterprise-a</span>
-<span class="w">    </span><span class="nt">task_slices</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">support_chat</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">rag_citation</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">tool_call_json</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">service_tier</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">premium_interactive</span>
-<span class="w">  </span><span class="nt">primary</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">endpoint</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-large-prod</span>
-<span class="w">    </span><span class="nt">serving_release_bundle</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">srb-af-chat-large-20260619-r3</span>
-<span class="w">    </span><span class="nt">serving_quality_contract</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sqc-af-chat-20260619-r3</span>
-<span class="w">    </span><span class="nt">engine_admission_health_required</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">canary</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">endpoint</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-large-canary</span>
-<span class="w">    </span><span class="nt">serving_release_bundle</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">srb-af-chat-large-20260620-r1</span>
-<span class="w">    </span><span class="nt">max_traffic_percent</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5</span>
-<span class="w">    </span><span class="nt">required_guardrails</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">quality</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">protocol</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">token_drift</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">ttft_tpot</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">cost</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">fallback</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">allowed_before_first_token</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">targets</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">endpoint</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-large-prod-backup</span>
-<span class="w">        </span><span class="nt">serving_release_bundle</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">srb-af-chat-large-20260612-r9</span>
-<span class="w">        </span><span class="nt">require_same_capabilities</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">        </span><span class="nt">require_same_usage_schema</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">        </span><span class="nt">require_data_boundary_compatible</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">forbidden_after</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">first_token_streamed</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tool_side_effect_committed</span>
-<span class="w">  </span><span class="nt">rollback</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">route_restore_target</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-large-prod-backup</span>
-<span class="w">    </span><span class="nt">serving_rollback_drill</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">srd-af-chat-20260620</span>
-<span class="w">    </span><span class="nt">cache_residency_required</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">warm_or_prevalidated</span>
-<span class="w">  </span><span class="nt">observability</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">emit_contract_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">emit_release_bundle_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">emit_route_reason</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">emit_fallback_stage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-</code></pre></div>
+<pre><code class="language-yaml">serving_route_release_contract:
+  contract_id: srrc-af-chat-large-20260620
+  gateway_policy_version: 2026-06-20.7
+  scope:
+    model_alias: af-chat-large
+    tenant: enterprise-a
+    task_slices: [support_chat, rag_citation, tool_call_json]
+    service_tier: premium_interactive
+  primary:
+    endpoint: af-chat-large-prod
+    serving_release_bundle: srb-af-chat-large-20260619-r3
+    serving_quality_contract: sqc-af-chat-20260619-r3
+    engine_admission_health_required: true
+  canary:
+    endpoint: af-chat-large-canary
+    serving_release_bundle: srb-af-chat-large-20260620-r1
+    max_traffic_percent: 5
+    required_guardrails: [quality, protocol, token_drift, ttft_tpot, cost]
+  fallback:
+    allowed_before_first_token: true
+    targets:
+      - endpoint: af-chat-large-prod-backup
+        serving_release_bundle: srb-af-chat-large-20260612-r9
+        require_same_capabilities: true
+        require_same_usage_schema: true
+        require_data_boundary_compatible: true
+    forbidden_after:
+      - first_token_streamed
+      - tool_side_effect_committed
+  rollback:
+    route_restore_target: af-chat-large-prod-backup
+    serving_rollback_drill: srd-af-chat-20260620
+    cache_residency_required: warm_or_prevalidated
+  observability:
+    emit_contract_id: true
+    emit_release_bundle_id: true
+    emit_route_reason: true
+    emit_fallback_stage: true
+</code></pre>
 <p>这个合同把 fallback 从“后端失败时换一个服务”变成“在同一业务语义下换一个可证明等价或可接受降级的 release”。例如一个支持 tool calling 的请求，不能 fallback 到不支持同一 tool schema 的模型；一个已经开始 streaming 的请求，不能换模型继续输出；一个使用新 tokenizer 的 canary release，如果 usage schema 与稳定版不同，必须在计量系统完成兼容后才允许进商业流量。Gateway 的路由选择应引用合同，而不是把这些规则散落在代码分支里。</p>
-<pre class="mermaid"><code>flowchart LR
-  Req["request\nmodel alias + tenant + task slice"] --&gt; Contract["serving_route_release_contract"]
-  Contract --&gt; Primary["primary release bundle"]
-  Contract --&gt; Canary["canary release bundle"]
-  Contract --&gt; Fallback["fallback release bundle"]
-  Primary --&gt; Health["engine_admission_health"]
-  Canary --&gt; Guard["quality / protocol / cost guardrails"]
-  Fallback --&gt; Compat["capability + usage + data boundary compatibility"]
-  Health --&gt; Decision["endpoint_admission_decision"]
-  Guard --&gt; Decision
-  Compat --&gt; Decision
-  Decision --&gt; Trace["trace + metering + audit"]</code></pre>
+<p><img alt="图：6.4.1 工程实现" src="../../assets/diagrams/part-02-platform-chapter-06-ai-gateway-03.svg" /></p>
 <p>排障时，这个对象也能缩小范围。若 fallback 后质量下降，先检查 fallback release 是否通过同一 <code>serving_quality_contract</code> 和 capability gate；若回滚后仍未恢复，检查 route restore 是否真的指向 baseline release bundle，而不是只改了 Kubernetes Service；若账单争议出现在 canary 流量，检查 <code>require_same_usage_schema</code> 是否被豁免。Gateway 不应只回答“请求去了哪个 endpoint”，还应回答“它基于哪个 release 合同被允许去那里”。</p>
 <p>更完整的策略应把 capability 和 fallback 写成显式约束，避免“可用性提升”变成“能力降级”。下面的例子中，fallback 目标必须满足同样的 streaming 和 tool calling 能力，并且只允许在尚未产生 token 前触发。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">gateway_policy</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2026-06-19.1</span>
-<span class="w">  </span><span class="nt">match</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">tenant</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enterprise-a</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-large</span>
-<span class="w">  </span><span class="nt">required_capabilities</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">streaming</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tool_calling</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">json_schema_output</span>
-<span class="w">  </span><span class="nt">admission</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">max_context_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">32000</span>
-<span class="w">    </span><span class="nt">max_output_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">4096</span>
-<span class="w">    </span><span class="nt">max_concurrent_streams</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">200</span>
-<span class="w">    </span><span class="nt">token_rate_limit</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">input_tpm</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2000000</span>
-<span class="w">      </span><span class="nt">output_tpm</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">800000</span>
-<span class="w">  </span><span class="nt">routing</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">primary_pool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">inference-premium-a</span>
-<span class="w">    </span><span class="nt">health_inputs</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">endpoint_ready</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">queue_p95_ms</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kv_cache_pressure</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rolling_ttft_p95_ms</span>
-<span class="w">  </span><span class="nt">fallback</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">allowed_before_first_token</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">require_same_capabilities</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">targets</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">inference-premium-b</span>
-<span class="w">  </span><span class="nt">observability</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">emit_policy_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">emit_route_reason</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">emit_quota_rule_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-</code></pre></div>
+<pre><code class="language-yaml">gateway_policy:
+  version: 2026-06-19.1
+  match:
+    tenant: enterprise-a
+    model: af-chat-large
+  required_capabilities:
+    - streaming
+    - tool_calling
+    - json_schema_output
+  admission:
+    max_context_tokens: 32000
+    max_output_tokens: 4096
+    max_concurrent_streams: 200
+    token_rate_limit:
+      input_tpm: 2000000
+      output_tpm: 800000
+  routing:
+    primary_pool: inference-premium-a
+    health_inputs:
+      - endpoint_ready
+      - queue_p95_ms
+      - kv_cache_pressure
+      - rolling_ttft_p95_ms
+  fallback:
+    enabled: true
+    allowed_before_first_token: true
+    require_same_capabilities: true
+    targets:
+      - inference-premium-b
+  observability:
+    emit_policy_version: true
+    emit_route_reason: true
+    emit_quota_rule_id: true
+</code></pre>
 <p>上线前应测试关键路径：认证失败、权限拒绝、配额超限、长上下文拒绝、streaming 取消、fallback、灰度命中、后端超时、错误码映射和账单事件。AI Gateway 的正确性不是只看能否转发，而是看每种边界条件是否产生预期策略结果。入口层一旦出错，影响面往往覆盖所有模型和租户。</p>
 <p>工程实现还应提供策略审计和回放能力。给定一个历史请求，平台应能用当时的策略版本解释它为什么被允许、拒绝、路由或 fallback。策略回放能帮助事故复盘，也能在发布新策略前做 dry-run，评估会影响哪些租户和模型。没有回放能力，网关策略变更只能靠线上试错。</p>
 <p>对 RAG 和 Agent 请求，Gateway 还应生成 <code>rag_agent_admission_context</code>。它不是新的业务对象，而是把入口处已经确认的身份、权限、预算、数据边界、工具边界和观测要求传递给下游。RAG 服务用它生成 <code>retrieval_permission_decision</code>，Agent Orchestrator 用它选择 <code>tool_side_effect_policy</code> 和初始化 <code>agent_budget_ledger</code>，观测系统用它决定 trace 脱敏级别。没有这个上下文，下游服务只能各自查权限，最终一定会出现口径漂移。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">rag_agent_admission_context</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">context_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">raac-20260620-0001</span>
-<span class="w">  </span><span class="nt">request_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">req-support-0001</span>
-<span class="w">  </span><span class="nt">identity</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">tenant</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enterprise-a</span>
-<span class="w">    </span><span class="nt">project</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">support-copilot-prod</span>
-<span class="w">    </span><span class="nt">application_principal</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">svc-support-copilot</span>
-<span class="w">    </span><span class="nt">user_principal</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">user-42</span>
-<span class="w">    </span><span class="nt">delegation_mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">require_user_context_for_retrieval_and_tools</span>
-<span class="w">  </span><span class="nt">data_boundary</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dbp-20260610.3</span>
-<span class="w">    </span><span class="nt">prompt_logging</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">redacted</span>
-<span class="w">    </span><span class="nt">retrieval_text_logging</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">disabled</span>
-<span class="w">    </span><span class="nt">third_party_provider_allowed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-<span class="w">  </span><span class="nt">rag</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">allowed_knowledge_bases</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">support-kb</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">require_retrieval_permission_decision</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">require_rag_context_snapshot</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">agent</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">allowed_tool_scopes</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">read_customer_ticket</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">search_docs</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">create_draft_reply</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">side_effect_policy_selector</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">support-agent-prod</span>
-<span class="w">    </span><span class="nt">require_agent_budget_ledger</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">high_risk_tool_requires_approval</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">budgets</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">request_max_input_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_defined</span>
-<span class="w">    </span><span class="nt">run_max_total_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_defined_if_agent</span>
-<span class="w">    </span><span class="nt">run_max_tool_calls</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_defined_if_agent</span>
-</code></pre></div>
+<pre><code class="language-yaml">rag_agent_admission_context:
+  context_id: raac-20260620-0001
+  request_id: req-support-0001
+  identity:
+    tenant: enterprise-a
+    project: support-copilot-prod
+    application_principal: svc-support-copilot
+    user_principal: user-42
+    delegation_mode: require_user_context_for_retrieval_and_tools
+  data_boundary:
+    policy: dbp-20260610.3
+    prompt_logging: redacted
+    retrieval_text_logging: disabled
+    third_party_provider_allowed: false
+  rag:
+    allowed_knowledge_bases: [support-kb]
+    require_retrieval_permission_decision: true
+    require_rag_context_snapshot: true
+  agent:
+    allowed_tool_scopes: [read_customer_ticket, search_docs, create_draft_reply]
+    side_effect_policy_selector: support-agent-prod
+    require_agent_budget_ledger: true
+    high_risk_tool_requires_approval: true
+  budgets:
+    request_max_input_tokens: policy_defined
+    run_max_total_tokens: policy_defined_if_agent
+    run_max_tool_calls: policy_defined_if_agent
+</code></pre>
 <p>这个 admission context 应被写入 <code>policy_decision_record</code> 或与其关联。它能解释很多跨层事故：RAG 检索为什么没有看到某个文档，Agent 工具为什么被拒绝，为什么某个请求不能 fallback 到第三方 provider，为什么 trace 里没有明文 chunk，为什么 run 在预算未耗尽前就进入人工确认。Gateway 的职责不是执行检索或工具，而是把入口策略变成下游必须消费的事实。</p>
 <p>对 RAG 来说，Gateway 还应约束索引 release。<code>rag_agent_admission_context</code> 不应只写 allowed knowledge base，还应绑定允许使用的 <code>rag_index_release_contract</code> 或选择规则。这样下游不能随意使用刚构建但未通过权限和质量门禁的索引，也不能在 ACL snapshot 失效后继续服务旧 context cache。若 Gateway 只传 <code>knowledge_base=support-kb</code>，RAG 服务就会自行选择索引，入口策略和检索事实很容易漂移。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">rag_agent_admission_context</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">context_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">raac-20260620-0002</span>
-<span class="w">  </span><span class="nt">request_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">req-support-0002</span>
-<span class="w">  </span><span class="nt">rag</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">allowed_knowledge_bases</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">support-kb</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">required_index_contracts</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">support-kb</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rirc-support-kb-20260620</span>
-<span class="w">    </span><span class="nt">reject_if_retrieval_acl_invalidation_open</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">require_rag_context_replay_bundle_on_negative_feedback</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">agent</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">required_tool_policy_contract</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">atpc-support-agent-20260620</span>
-<span class="w">    </span><span class="nt">require_agent_trajectory_replay_bundle_on_failed_run</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-</code></pre></div>
+<pre><code class="language-yaml">rag_agent_admission_context:
+  context_id: raac-20260620-0002
+  request_id: req-support-0002
+  rag:
+    allowed_knowledge_bases: [support-kb]
+    required_index_contracts:
+      support-kb: rirc-support-kb-20260620
+    reject_if_retrieval_acl_invalidation_open: true
+    require_rag_context_replay_bundle_on_negative_feedback: true
+  agent:
+    required_tool_policy_contract: atpc-support-agent-20260620
+    require_agent_trajectory_replay_bundle_on_failed_run: true
+</code></pre>
 <p>这个约束让 Gateway 成为 RAG/Agent release 的入口门禁，而不是只做普通鉴权。RAG 索引、Agent 工具策略和模型 release 一样，都可能改变用户可见结果和安全边界。Gateway 不需要理解 chunk 细节或工具实现，但必须检查 contract 状态、失效事件和 PRR 阻断标记。若 <code>retrieval_acl_invalidation_event</code> 未完成，或者 <code>agent_tool_policy_contract</code> 的高风险工具演练未通过，Gateway 可以直接拒绝高风险流量、降级到只读模式或要求人工确认。</p>
-<pre class="mermaid"><code>flowchart TB
-  Req["RAG / Agent request"] --&gt; GW["AI Gateway"]
-  GW --&gt; RAAC["rag_agent_admission_context"]
-  RAAC --&gt; RIRC["rag_index_release_contract"]
-  RAAC --&gt; ATPC["agent_tool_policy_contract"]
-  RIRC --&gt; RAG["RAG retrieval service"]
-  ATPC --&gt; Agent["Agent Orchestrator"]
-  RAG --&gt; RPD["retrieval_permission_decision"]
-  RAG --&gt; RCS["rag_context_snapshot"]
-  Agent --&gt; ATER["agent_tool_execution_record"]
-  Agent --&gt; ABL["agent_budget_ledger"]
-  RPD --&gt; Trace["trace / evidence bundle"]
-  ATER --&gt; Trace</code></pre>
+<p><img alt="图：6.4.1 工程实现" src="../../assets/diagrams/part-02-platform-chapter-06-ai-gateway-04.svg" /></p>
 <p><code>policy_decision_record</code> 是 Gateway 最关键的安全证据对象。它记录一次请求在 identity、capability、budget、data boundary、safety、route 和 commit 阶段的输入事实、命中规则、决策结果和策略版本。它不应包含完整 prompt 或敏感响应，而应包含足够解释策略的引用和摘要。这样既能保护数据边界，又能回答“为什么这个请求被允许、拒绝、限流、fallback 或路由到某个资源池”。</p>
-<pre class="mermaid"><code>flowchart TB
-  Req["request"] --&gt; Identity["identity check"]
-  Identity --&gt; Boundary["tenant_boundary"]
-  Boundary --&gt; Credential["credential_lifecycle"]
-  Credential --&gt; DataPolicy["data_boundary_policy"]
-  DataPolicy --&gt; Budget["quota / budget"]
-  Budget --&gt; Capability["model capability"]
-  Capability --&gt; Route["route / fallback"]
-  Route --&gt; Decision["policy_decision_record"]
-  Decision --&gt; Audit["security_audit_event"]
-  Decision --&gt; Metering["metering event"]
-  Decision --&gt; Trace["trace context"]</code></pre>
+<p><img alt="图：6.4.1 工程实现" src="../../assets/diagrams/part-02-platform-chapter-06-ai-gateway-05.svg" /></p>
 <p>一个简化记录如下。注意这里使用 <code>prompt_ref</code> 和 <code>policy_inputs_hash</code>，避免把原始敏感内容复制到审计系统；使用 <code>matched_rules</code> 和 <code>effective_policy_versions</code>，保证策略能回放；使用 <code>owner_stage</code>，让拒绝或异常能进入正确团队的队列。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">policy_decision_record</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">decision_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pdr-20260619-0001</span>
-<span class="w">  </span><span class="nt">trace_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">trace-abc</span>
-<span class="w">  </span><span class="nt">request_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">req-123</span>
-<span class="w">  </span><span class="nt">time</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">  </span><span class="nt">subject</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">tenant_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enterprise-a</span>
-<span class="w">    </span><span class="nt">project_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">customer-service-prod</span>
-<span class="w">    </span><span class="nt">credential_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">key_6f2c_redacted</span>
-<span class="w">    </span><span class="nt">user_context</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">present</span>
-<span class="w">  </span><span class="nt">target</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">requested_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-large</span>
-<span class="w">    </span><span class="nt">operation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">chat.completions.create</span>
-<span class="w">    </span><span class="nt">requested_region</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cn-north</span>
-<span class="w">  </span><span class="nt">policy_inputs</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">prompt_ref</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">object://redacted-reference</span>
-<span class="w">    </span><span class="nt">policy_inputs_hash</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sha256:example</span>
-<span class="w">    </span><span class="nt">input_token_estimate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured_or_estimated</span>
-<span class="w">    </span><span class="nt">requested_capabilities</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">streaming</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">tool_calling</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">effective_policy_versions</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">tenant_boundary</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tb-20260619.1</span>
-<span class="w">    </span><span class="nt">credential_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cred-20260601.2</span>
-<span class="w">    </span><span class="nt">gateway_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gw-20260619.4</span>
-<span class="w">    </span><span class="nt">data_boundary_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dbp-20260610.3</span>
-<span class="w">  </span><span class="nt">matched_rules</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">allow_model_af_chat_large</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">deny_third_party_provider</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">require_same_region</span>
-<span class="w">  </span><span class="nt">result</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">allow_and_route</span>
-<span class="w">    </span><span class="nt">route_pool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">inference-premium-a</span>
-<span class="w">    </span><span class="nt">fallback_allowed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">owner_stage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy</span>
-</code></pre></div>
+<pre><code class="language-yaml">policy_decision_record:
+  decision_id: pdr-20260619-0001
+  trace_id: trace-abc
+  request_id: req-123
+  time: measured
+  subject:
+    tenant_id: enterprise-a
+    project_id: customer-service-prod
+    credential_id: key_6f2c_redacted
+    user_context: present
+  target:
+    requested_model: af-chat-large
+    operation: chat.completions.create
+    requested_region: cn-north
+  policy_inputs:
+    prompt_ref: object://redacted-reference
+    policy_inputs_hash: sha256:example
+    input_token_estimate: measured_or_estimated
+    requested_capabilities: [streaming, tool_calling]
+  effective_policy_versions:
+    tenant_boundary: tb-20260619.1
+    credential_policy: cred-20260601.2
+    gateway_policy: gw-20260619.4
+    data_boundary_policy: dbp-20260610.3
+  matched_rules:
+    - allow_model_af_chat_large
+    - deny_third_party_provider
+    - require_same_region
+  result:
+    action: allow_and_route
+    route_pool: inference-premium-a
+    fallback_allowed: true
+    owner_stage: policy
+</code></pre>
 <p><code>policy_decision_record</code> 还应支持 dry-run。发布新策略前，平台可以拿历史请求做回放，计算新增拒绝、路由变化、fallback 变化、成本变化和受影响租户。成熟 Gateway 的策略发布流程不应是“上线后观察”，而应先回答“如果这条策略昨天生效，会影响哪些请求”。这对安全策略尤其重要，因为过宽会放大风险，过严会中断业务。</p>
 <p>实现时还要关注性能路径。认证、配额和路由需要低延迟执行，复杂策略可以预编译或缓存；计量和日志可以异步写入，但不能丢失关键结束事件。尤其是 streaming 请求，开始、取消和结束都应可靠记录。工程实现要在入口延迟和治理完整性之间做明确设计，而不是把所有逻辑串行阻塞在请求路径上。</p>
 <p>关键路径失败时，应优先安全拒绝，而不是绕过策略继续转发。</p>
 <p>多模型聚合和第三方 provider 路由还需要 <code>egress_provider_decision</code>。它专门记录一次请求是否允许出站到外部 provider、跨区域 endpoint 或租户私有 provider。普通路由记录说明“选了谁”，egress decision 说明“为什么可以把数据发出去”。它应绑定 <code>data_boundary_policy</code>、tenant boundary、provider 合同、区域、日志策略、训练使用策略和计费口径。没有它，平台很难证明某个敏感请求没有被错误发往第三方。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">egress_provider_decision</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">decision_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">epd-20260620-001</span>
-<span class="w">  </span><span class="nt">trace_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">trace-abc</span>
-<span class="w">  </span><span class="nt">tenant_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enterprise-a</span>
-<span class="w">  </span><span class="nt">requested_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-large</span>
-<span class="w">  </span><span class="nt">candidate_provider</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">third-party-x</span>
-<span class="w">  </span><span class="nt">data_classification</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">prompt</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">confidential</span>
-<span class="w">    </span><span class="nt">attachments</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">none</span>
-<span class="w">    </span><span class="nt">rag_context</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">internal_only</span>
-<span class="w">  </span><span class="nt">policies</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">tenant_boundary</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tb-20260619.1</span>
-<span class="w">    </span><span class="nt">data_boundary_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dbp-20260610.3</span>
-<span class="w">    </span><span class="nt">provider_contract</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">provider-x-cn-no-training</span>
-<span class="w">  </span><span class="nt">checks</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">residency_allowed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-<span class="w">    </span><span class="nt">provider_training_disabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">verified</span>
-<span class="w">    </span><span class="nt">prompt_logging_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">redacted_only</span>
-<span class="w">    </span><span class="nt">billing_disclosure_required</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">result</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">deny_provider_route</span>
-<span class="w">    </span><span class="nt">fallback</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">internal_model_only</span>
-<span class="w">    </span><span class="nt">audit_event</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">security_audit_event_id</span>
-</code></pre></div>
+<pre><code class="language-yaml">egress_provider_decision:
+  decision_id: epd-20260620-001
+  trace_id: trace-abc
+  tenant_id: enterprise-a
+  requested_model: af-chat-large
+  candidate_provider: third-party-x
+  data_classification:
+    prompt: confidential
+    attachments: none
+    rag_context: internal_only
+  policies:
+    tenant_boundary: tb-20260619.1
+    data_boundary_policy: dbp-20260610.3
+    provider_contract: provider-x-cn-no-training
+  checks:
+    residency_allowed: false
+    provider_training_disabled: verified
+    prompt_logging_policy: redacted_only
+    billing_disclosure_required: true
+  result:
+    action: deny_provider_route
+    fallback: internal_model_only
+    audit_event: security_audit_event_id
+</code></pre>
 <p>这个对象把“数据边界”从抽象原则变成路由门禁。它也让 fallback 更安全：当内部模型不可用时，Gateway 不能只按可用性切到外部 provider，而必须先证明该租户、该数据等级、该区域和该合同允许外联。对商业平台来说，它还支撑账单解释：用户是否被路由到第三方、第三方价格如何计入、是否使用了合规折扣或禁训合同，都应可追溯。</p>
 <p><code>egress_provider_decision</code> 的判断不能只发生在最终 route 阶段。外联风险在 admission chain 中会逐步累积：identity 阶段确认调用主体，data boundary 阶段确认数据等级和驻留要求，budget 阶段确认第三方 provider 成本上限，capability 阶段确认内部模型是否能满足需求，route 阶段才选择候选 provider。若只在 route 阶段做一次开关判断，就会出现“安全上允许但经济上不可接受”或“经济上便宜但合同上禁止”的路线。成熟 Gateway 应把外联决策拆成安全、合同、区域、日志、训练使用、计费和止损多个子结论，并把每个子结论写入同一条 decision。</p>
 <p>外联决策还要能解释拒绝后的行为。一个 provider 被拒绝后，Gateway 可以选择内部模型、低风险小模型、异步批量队列、人工确认或直接失败；这些动作的用户体验和成本不同。比如高敏客服请求不能外发给第三方，但可以路由到内部模型；公开文档摘要可以外发，但需要低成本模型和 token 预算；跨区域请求可以失败并提示用户切换区域。<code>egress_provider_decision</code> 因此不只是审计日志，而是后续 fallback、计费、支持和客户沟通的事实来源。</p>
-<pre class="mermaid"><code>flowchart TB
-  Req["request"] --&gt; Id["identity / tenant"]
-  Id --&gt; Classify["data classification\nprompt / file / RAG context"]
-  Classify --&gt; Contract["provider contract\nregion / no training / logging"]
-  Contract --&gt; Cost["provider cost guard\nbudget / price / quota"]
-  Cost --&gt; Internal{internal model usable?}
-  Internal --&gt;|yes| RouteInternal["route internal endpoint"]
-  Internal --&gt;|no| Egress{egress allowed?}
-  Egress --&gt;|yes| RouteProvider["route provider endpoint"]
-  Egress --&gt;|no| DenyOrDegrade["deny / degrade / async / human approval"]
-  RouteInternal --&gt; EPD["egress_provider_decision"]
-  RouteProvider --&gt; EPD
-  DenyOrDegrade --&gt; EPD
-  EPD --&gt; PDR["policy_decision_record"]
-  EPD --&gt; Billing["metering / provider cost"]
-  EPD --&gt; Audit["security_audit_event"]</code></pre>
+<p><img alt="图：6.4.1 工程实现" src="../../assets/diagrams/part-02-platform-chapter-06-ai-gateway-06.svg" /></p>
 <p>公共 MaaS 或开放试用场景还必须把 denial-of-wallet 作为入口治理问题。Denial-of-wallet 指攻击者或误配置调用者通过合法 API 消耗大量昂贵资源，让平台、租户或受害 key 承担成本。它不一定表现为 5xx，也不一定让服务不可用：请求可能都是 2xx，只是每个请求都带超长 context、强制长输出、触发昂贵 provider、制造 Agent 循环或绕过缓存。若 Gateway 只看 QPS、可用性和鉴权，通过的流量仍可能在经济上构成事故。</p>
 <p>Gateway 对这类风险的防线应在 admission chain 中前置。第一层是 credential risk：新 key、长期未用 key、来源 ASN 突变、地理位置突变、同一 key 多地域并发、被禁用 key 持续重试。第二层是 request shape risk：input token 极长、max output 异常、工具调用上限异常、provider 强制路由、reasoning effort 过高。第三层是 spend velocity：每分钟成本、每小时预算、免费额度燃烧速度、第三方 provider 成本和专属容量被挤占。第四层是 business intent：该项目历史是否有这类任务，是否处于压测窗口，是否有审批或实验记录。只有把这些信号合并，才能区分真实增长、压测、客户 key 泄露和主动攻击。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">denial_of_wallet_admission_guard</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">guard_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dow-guard-maas-public-v1</span>
-<span class="w">  </span><span class="nt">scope</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">tenants</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">public_and_untrusted</span>
-<span class="w">    </span><span class="nt">endpoints</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">chat_completions</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">responses</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">agent_runs</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">signals</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">credential_risk</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">new_key_high_spend_window</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10m</span>
-<span class="w">      </span><span class="nt">source_asn_change</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">alert_or_step_up</span>
-<span class="w">      </span><span class="nt">disabled_key_retry</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">block</span>
-<span class="w">    </span><span class="nt">request_shape</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">input_token_p99_multiplier</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_defined</span>
-<span class="w">      </span><span class="nt">max_output_token_ceiling</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_defined</span>
-<span class="w">      </span><span class="nt">provider_forcing</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">require_egress_provider_decision</span>
-<span class="w">      </span><span class="nt">agent_step_ceiling</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_defined</span>
-<span class="w">    </span><span class="nt">spend_velocity</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">cost_per_minute_budget</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tenant_or_project_budget</span>
-<span class="w">      </span><span class="nt">free_quota_burn_rate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">alert_and_throttle</span>
-<span class="w">      </span><span class="nt">provider_cost_burst</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">hold_and_step_up</span>
-<span class="w">      </span><span class="nt">premium_capacity_displacement</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">block_if_untrusted</span>
-<span class="w">  </span><span class="nt">actions</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">soft</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">lower_max_output_tokens</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">require_async_batch_for_large_context</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">disable_external_provider_fallback</span>
-<span class="w">    </span><span class="nt">hard</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">revoke_or_freeze_credential</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mark_usage_under_billing_hold</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">emit_security_evidence_bundle</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">open_denial_of_wallet_incident_record</span>
-</code></pre></div>
+<pre><code class="language-yaml">denial_of_wallet_admission_guard:
+  guard_id: dow-guard-maas-public-v1
+  scope:
+    tenants: public_and_untrusted
+    endpoints: [chat_completions, responses, agent_runs]
+  signals:
+    credential_risk:
+      new_key_high_spend_window: 10m
+      source_asn_change: alert_or_step_up
+      disabled_key_retry: block
+    request_shape:
+      input_token_p99_multiplier: policy_defined
+      max_output_token_ceiling: policy_defined
+      provider_forcing: require_egress_provider_decision
+      agent_step_ceiling: policy_defined
+    spend_velocity:
+      cost_per_minute_budget: tenant_or_project_budget
+      free_quota_burn_rate: alert_and_throttle
+      provider_cost_burst: hold_and_step_up
+      premium_capacity_displacement: block_if_untrusted
+  actions:
+    soft:
+      - lower_max_output_tokens
+      - require_async_batch_for_large_context
+      - disable_external_provider_fallback
+    hard:
+      - revoke_or_freeze_credential
+      - mark_usage_under_billing_hold
+      - emit_security_evidence_bundle
+      - open_denial_of_wallet_incident_record
+</code></pre>
 <p>这个 guard 不应简单替代租户预算。预算回答“最多能花多少”，denial-of-wallet guard 回答“这笔花费是否符合身份、历史、数据边界和业务意图”。一个大客户在合同内做批量生成可能合法，免费试用 key 在 5 分钟内触发同样 provider 成本则应进入 hold。相反，不能因为预算未超就继续消耗昂贵 provider，也不能因为短期成本高就误伤已审批的生产批任务。Gateway 的作用是把风险信号变成 typed decision，而不是把所有异常都归为限流。</p>
 <p>当 guard 触发 hard action 时，Gateway 应同时写三类对象：<code>policy_decision_record</code> 说明为什么拒绝、降级或冻结；<code>security_evidence_bundle</code> 冻结 key、来源、请求形态、provider route、trace 脱敏和 metering 证据；<code>denial_of_wallet_incident_record</code> 进入事故与成本流程。这样安全团队可以处置凭据，计费团队可以对异常 usage 做 billing hold，SRE 可以判断是否挤占高价值容量，业务团队可以和客户确认是否真实流量。没有这三类对象，denial-of-wallet 会在安全、账单和 SRE 之间来回转交。</p>
 <p>质量路由需要 <code>routing_quality_scorecard</code>。普通路由回答“哪个后端可用”，质量路由回答“这个请求在质量、安全、延迟、成本和业务价值约束下，应该由哪个模型或资源池服务”。同一个模型不必服务所有任务：小模型可以处理低风险分类，大模型服务高价值复杂推理；某个模型在代码场景强，但在客服场景不稳定；某个 provider 便宜但数据边界不满足企业租户。Gateway 应把这些差异显式写入 scorecard，而不是隐藏在 if/else 路由规则里。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">routing_quality_scorecard</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">scorecard_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rqs-20260619-support</span>
-<span class="w">  </span><span class="nt">scope</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">tenant</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enterprise-a</span>
-<span class="w">    </span><span class="nt">application</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">support-chat</span>
-<span class="w">    </span><span class="nt">task_slices</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">policy_lookup</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">troubleshooting</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">complaint</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">candidates</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-large-202606</span>
-<span class="w">      </span><span class="nt">quality_score</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">offline_eval</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">        </span><span class="nt">citation_accuracy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">high</span>
-<span class="w">        </span><span class="nt">tool_call_success</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">high</span>
-<span class="w">        </span><span class="nt">safety_gate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">      </span><span class="nt">serving_score</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">ttft_p95</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">within_slo</span>
-<span class="w">        </span><span class="nt">tpot_p95</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">within_slo</span>
-<span class="w">        </span><span class="nt">availability</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">healthy</span>
-<span class="w">      </span><span class="nt">economic_score</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">cost_per_successful_answer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">acceptable</span>
-<span class="w">        </span><span class="nt">fallback_cost</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bounded</span>
-<span class="w">      </span><span class="nt">constraints</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">data_boundary</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">first_party_only</span>
-<span class="w">        </span><span class="nt">required_capabilities</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">streaming</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">tool_calling</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-small-202606</span>
-<span class="w">      </span><span class="nt">quality_score</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">offline_eval</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass_for_simple_cases</span>
-<span class="w">        </span><span class="nt">citation_accuracy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">medium</span>
-<span class="w">      </span><span class="nt">routing_use</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">simple_low_risk_only</span>
-<span class="w">  </span><span class="nt">decision_policy</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">primary</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">maximize_quality_under_slo_and_budget</span>
-<span class="w">    </span><span class="nt">fallback</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">require_same_capabilities_and_safety_gate</span>
-</code></pre></div>
+<pre><code class="language-yaml">routing_quality_scorecard:
+  scorecard_id: rqs-20260619-support
+  scope:
+    tenant: enterprise-a
+    application: support-chat
+    task_slices: [policy_lookup, troubleshooting, complaint]
+  candidates:
+    - model: af-chat-large-202606
+      quality_score:
+        offline_eval: pass
+        citation_accuracy: high
+        tool_call_success: high
+        safety_gate: pass
+      serving_score:
+        ttft_p95: within_slo
+        tpot_p95: within_slo
+        availability: healthy
+      economic_score:
+        cost_per_successful_answer: acceptable
+        fallback_cost: bounded
+      constraints:
+        data_boundary: first_party_only
+        required_capabilities: [streaming, tool_calling]
+    - model: af-chat-small-202606
+      quality_score:
+        offline_eval: pass_for_simple_cases
+        citation_accuracy: medium
+      routing_use: simple_low_risk_only
+  decision_policy:
+    primary: maximize_quality_under_slo_and_budget
+    fallback: require_same_capabilities_and_safety_gate
+</code></pre>
 <p>Scorecard 的输入来自多处：第 13 章的 eval report、第 14 章的 serving release、第 15 章的 runtime qualification、第 37 章的线上质量 telemetry、第 41 章的质量成本账本。Gateway 不应在请求路径上实时计算复杂质量模型，而应消费已发布、版本化、可回放的 scorecard。请求进入时，Gateway 根据任务特征、租户、能力要求和当前健康状态选择候选模型，并把命中的 scorecard id 写入 <code>policy_decision_record</code>。这样，线上质量争议可以追溯到当时采用的质量证据。</p>
-<pre class="mermaid"><code>flowchart LR
-  Req["request features\n任务 / 租户 / 风险 / 能力"] --&gt; Score["routing_quality_scorecard"]
-  Eval["offline eval"] --&gt; Score
-  Online["online quality telemetry"] --&gt; Score
-  Cost["quality_cost_ledger"] --&gt; Score
-  Health["serving health / SLO"] --&gt; Score
-  Score --&gt; Route["route model / pool / fallback"]
-  Route --&gt; PDR["policy_decision_record"]</code></pre>
+<p><img alt="图：6.4.1 工程实现" src="../../assets/diagrams/part-02-platform-chapter-06-ai-gateway-07.svg" /></p>
 <p>在高价值场景中，还应生成 <code>routing_quality_decision_record</code>。它比普通 <code>policy_decision_record</code> 更关注质量和业务结果：请求被识别成哪个 task slice，哪些候选模型被排除，最终模型为什么在质量、SLO、成本、数据边界和 capability 约束下胜出，fallback 是否仍满足同一质量门槛。没有这个记录，线上出现“为什么这个客户被路由到小模型”的争议时，团队只能查路由代码和当时的配置快照。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">routing_quality_decision_record</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">decision_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rqd-20260620-0001</span>
-<span class="w">  </span><span class="nt">trace_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">trace-abc</span>
-<span class="w">  </span><span class="nt">request_features</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">tenant</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enterprise-a</span>
-<span class="w">    </span><span class="nt">application</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">support-chat</span>
-<span class="w">    </span><span class="nt">task_slice</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_lookup</span>
-<span class="w">    </span><span class="nt">risk_level</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">medium</span>
-<span class="w">    </span><span class="nt">required_capabilities</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">streaming</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">tool_calling</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">citation</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">data_boundary</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">first_party_only</span>
-<span class="w">  </span><span class="nt">scorecard</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">scorecard_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rqs-20260619-support</span>
-<span class="w">    </span><span class="nt">quality_gate_execution</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qge-af-chat-20260620-001</span>
-<span class="w">    </span><span class="nt">quality_cost_ledger_window</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qcost-20260620-1000</span>
-<span class="w">  </span><span class="nt">candidates</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-large-202606</span>
-<span class="w">      </span><span class="nt">decision</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">selected</span>
-<span class="w">      </span><span class="nt">reason</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">best_quality_under_slo_and_budget</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-small-202606</span>
-<span class="w">      </span><span class="nt">decision</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rejected</span>
-<span class="w">      </span><span class="nt">reason</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">citation_accuracy_below_task_threshold</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">third_party-model-x</span>
-<span class="w">      </span><span class="nt">decision</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rejected</span>
-<span class="w">      </span><span class="nt">reason</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">data_boundary_not_allowed</span>
-<span class="w">  </span><span class="nt">fallback_policy</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">allowed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">require_same_capabilities</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">require_quality_gate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-</code></pre></div>
+<pre><code class="language-yaml">routing_quality_decision_record:
+  decision_id: rqd-20260620-0001
+  trace_id: trace-abc
+  request_features:
+    tenant: enterprise-a
+    application: support-chat
+    task_slice: policy_lookup
+    risk_level: medium
+    required_capabilities: [streaming, tool_calling, citation]
+    data_boundary: first_party_only
+  scorecard:
+    scorecard_id: rqs-20260619-support
+    quality_gate_execution: qge-af-chat-20260620-001
+    quality_cost_ledger_window: qcost-20260620-1000
+  candidates:
+    - model: af-chat-large-202606
+      decision: selected
+      reason: best_quality_under_slo_and_budget
+    - model: af-chat-small-202606
+      decision: rejected
+      reason: citation_accuracy_below_task_threshold
+    - model: third_party-model-x
+      decision: rejected
+      reason: data_boundary_not_allowed
+  fallback_policy:
+    allowed: true
+    require_same_capabilities: true
+    require_quality_gate: true
+</code></pre>
 <p>这个记录不应包含原始 prompt，但应包含足够回放路由决策的引用。它能连接四类事后分析：质量投诉时查 task slice 和候选模型；账单争议时查为什么选了更贵模型；SLO 事故时查是否因健康状态临时降级；安全审计时查第三方 provider 为何被排除。质量路由一旦进入结构化记录，Gateway 就不只是流量入口，而是模型能力与业务价值之间的决策执行点。</p>
 <p>AI Gateway 还要承载 <code>online_experiment_record</code>。A/B 和 canary 不是简单按比例分流，而是一个带假设、样本、随机化单元、护栏指标、统计窗口、停止条件和回滚动作的实验对象。模型上线实验尤其要防止污染：同一用户多轮会话不能在不同模型之间来回切换，Agent run 中途不能切模型，RAG 索引实验不能让同一个请求同时混用多个索引版本。实验记录必须能说明谁进入了实验、为什么进入、观察了哪些指标、何时停止。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">online_experiment_record</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">experiment_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">exp-support-model-20260619</span>
-<span class="w">  </span><span class="nt">hypothesis</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;new</span><span class="nv"> </span><span class="s">model</span><span class="nv"> </span><span class="s">improves</span><span class="nv"> </span><span class="s">citation</span><span class="nv"> </span><span class="s">correctness</span><span class="nv"> </span><span class="s">without</span><span class="nv"> </span><span class="s">increasing</span><span class="nv"> </span><span class="s">cost</span><span class="nv"> </span><span class="s">per</span><span class="nv"> </span><span class="s">successful</span><span class="nv"> </span><span class="s">answer&quot;</span>
-<span class="w">  </span><span class="nt">owner</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">maas-platform</span>
-<span class="w">  </span><span class="nt">randomization_unit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">user_id</span>
-<span class="w">  </span><span class="nt">eligibility</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">tenants</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">enterprise-a</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">task_slices</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">policy_lookup</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">exclude</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">high_risk_complaint</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">agent_runs</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">variants</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">control</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-large-202605</span>
-<span class="w">      </span><span class="nt">prompt_template</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">support-v17</span>
-<span class="w">    </span><span class="nt">treatment</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-large-202606</span>
-<span class="w">      </span><span class="nt">prompt_template</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">support-v18</span>
-<span class="w">  </span><span class="nt">guardrails</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ttft_p95_not_regress</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">safety_reject_rate_not_drop</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">complaint_rate_not_increase</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cost_per_successful_answer_not_increase</span>
-<span class="w">  </span><span class="nt">stop_conditions</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">rollback_on_severe_quality_feedback</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">freeze_on_guardrail_breach</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">sample_harvesting</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">feedback_to_eval_dataset</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enabled_with_review</span>
-</code></pre></div>
-<pre class="mermaid"><code>stateDiagram-v2
-  [*] --&gt; Designed
-  Designed --&gt; DryRun: policy replay
-  DryRun --&gt; Canary: eligibility and guardrails pass
-  Canary --&gt; Observe: collect quality / SLO / cost
-  Observe --&gt; Expand: guardrails pass
-  Observe --&gt; Freeze: weak signal or insufficient sample
-  Observe --&gt; Rollback: severe guardrail breach
-  Expand --&gt; RolledOut: decision approved
-  Freeze --&gt; Observe: extend window or adjust
-  Rollback --&gt; Harvest: collect regression samples
-  RolledOut --&gt; Harvest
-  Harvest --&gt; [*]</code></pre>
+<pre><code class="language-yaml">online_experiment_record:
+  experiment_id: exp-support-model-20260619
+  hypothesis: &quot;new model improves citation correctness without increasing cost per successful answer&quot;
+  owner: maas-platform
+  randomization_unit: user_id
+  eligibility:
+    tenants: [enterprise-a]
+    task_slices: [policy_lookup]
+    exclude: [high_risk_complaint, agent_runs]
+  variants:
+    control:
+      model: af-chat-large-202605
+      prompt_template: support-v17
+    treatment:
+      model: af-chat-large-202606
+      prompt_template: support-v18
+  guardrails:
+    - ttft_p95_not_regress
+    - safety_reject_rate_not_drop
+    - complaint_rate_not_increase
+    - cost_per_successful_answer_not_increase
+  stop_conditions:
+    rollback_on_severe_quality_feedback: true
+    freeze_on_guardrail_breach: true
+  sample_harvesting:
+    feedback_to_eval_dataset: enabled_with_review
+</code></pre>
+<p><img alt="图：6.4.1 工程实现" src="../../assets/diagrams/part-02-platform-chapter-06-ai-gateway-08.svg" /></p>
 <p>Gateway 的计量事件应采用 append-only 设计。请求开始、首 token、完成、取消和失败是不同事件，不应只在成功完成时写一条 usage。Append-only 事件能处理 streaming 中断、重试和补账，也便于审计。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">metering_events</span><span class="p">:</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">request_admitted</span>
-<span class="w">    </span><span class="nt">trace_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">trace-abc</span>
-<span class="w">    </span><span class="nt">policy_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2026-06-19.1</span>
-<span class="w">    </span><span class="nt">requested_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-large</span>
-<span class="w">    </span><span class="nt">route_pool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">inference-premium-a</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">first_token</span>
-<span class="w">    </span><span class="nt">ttft_ms</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">served_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-large-202606</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">usage_delta</span>
-<span class="w">    </span><span class="nt">input_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2380</span>
-<span class="w">    </span><span class="nt">output_tokens_generated</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">128</span>
-<span class="w">    </span><span class="nt">output_tokens_delivered</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">128</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">request_closed</span>
-<span class="w">    </span><span class="nt">close_reason</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">client_cancelled</span>
-<span class="w">    </span><span class="nt">billable_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">generated_or_delivered</span>
-</code></pre></div>
+<pre><code class="language-yaml">metering_events:
+  - type: request_admitted
+    trace_id: trace-abc
+    policy_version: 2026-06-19.1
+    requested_model: af-chat-large
+    route_pool: inference-premium-a
+  - type: first_token
+    ttft_ms: measured
+    served_model: af-chat-large-202606
+  - type: usage_delta
+    input_tokens: 2380
+    output_tokens_generated: 128
+    output_tokens_delivered: 128
+  - type: request_closed
+    close_reason: client_cancelled
+    billable_policy: generated_or_delivered
+</code></pre>
 <h3 id="642">6.4.2 常见故障<a class="headerlink" href="#642" title="Permanent link">&para;</a></h3>
 <p>第一类故障是网关只按 QPS 限流，无法限制超长上下文、长输出和 Agent 内部调用，导致后端推理服务被少量请求拖垮。第二类故障是 fallback 到能力不同的模型，HTTP 请求成功但工具调用、JSON 输出或安全策略失败。第三类故障是 streaming 沿用普通 HTTP 超时和缓冲配置，长回答被中断，或者客户端取消后服务端继续生成。</p>
 <p>第四类故障是灰度只看 5xx，不看质量和成本。模型升级后错误率不变，但回答风格、引用准确率或 token 消耗变化，业务已经受影响。第五类故障是错误码映射不统一，应用无法区分限流、配额、模型失败、安全拒绝和 provider 故障。第六类故障是策略分散在应用、网关和模型服务中，出现问题时没人知道最终生效规则是什么。</p>

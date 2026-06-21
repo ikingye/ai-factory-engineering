@@ -1,0 +1,14 @@
+flowchart TB
+  Manifest["media_artifact_manifest"] --> Slices["multimodal eval slices"]
+  Pipeline["media_processing_pipeline_record"] --> Slices
+  Slices --> OCR["OCR / ASR fidelity"]
+  Slices --> Layout["layout / table extraction"]
+  Slices --> Ground["visual grounding\nregion / frame / timestamp"]
+  Slices --> Safety["privacy / safety / redaction"]
+  OCR --> Gate["multimodal_quality_gate_execution"]
+  Layout --> Gate
+  Ground --> Gate
+  Safety --> Gate
+  Gate --> Serving["serving release / canary"]
+  Gate --> Cost["multimodal_cost_ledger"]
+  Gate --> Regression["quality_regression_record"]

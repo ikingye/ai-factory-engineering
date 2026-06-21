@@ -3814,91 +3814,76 @@
 <p>这类架构最怕“配置在脚本里、放置在调度器里、指标在监控里、checkpoint 在存储里”，彼此没有共同标识。一个可维护实现应为每次作业生成统一 run id，并把并行配置、镜像、节点、rank、通信组、checkpoint 和指标都挂到这个标识下。这样复盘才不是人工拼图。</p>
 <p>架构还应支持对照实验。同一个模型用不同并行策略运行时，平台应能并排比较吞吐、显存、通信、失败率和恢复时间。没有对照，所谓“优化”往往只是把瓶颈从一个地方转移到另一个地方。</p>
 <p>因此，架构设计要把“可比较”作为一等目标。</p>
-<pre class="mermaid"><code>flowchart TB
-  Model["模型结构"] --&gt; Split["并行切分策略"]
-  Split --&gt; DP["Data Parallel"]
-  Split --&gt; TP["Tensor Parallel"]
-  Split --&gt; PP["Pipeline Parallel"]
-  Split --&gt; EP["Expert Parallel"]
-  Split --&gt; SP["Sequence Parallel"]
-  DP --&gt; Comm["collective / P2P 通信"]
-  TP --&gt; Comm
-  PP --&gt; Comm
-  EP --&gt; Comm
-  SP --&gt; Comm
-  Comm --&gt; Placement["拓扑感知放置"]
-  Placement --&gt; Intra["节点内 NVLink / NVSwitch"]
-  Placement --&gt; Inter["跨节点 IB / RoCE / RDMA"]
-  Placement --&gt; Metrics["rank / group / topology metrics"]</code></pre>
+<p><img alt="图：17.2.2 系统架构" src="../../assets/diagrams/part-04-runtime-chapter-17-distributed-parallelism-01.svg" /></p>
 <p>进入生产前，并行策略应先落成 <code>parallelism_plan_record</code>。它回答的不是“用了几个并行维度”，而是“为什么这组维度适合这个模型、这个数据、这个 GPU 拓扑和这个训练目标”。一个合格计划要同时描述模型形态、batch 语义、显存预算、通信画像、checkpoint 约束、期望拓扑和回退策略。缺少这些信息，后续看到 tokens/s 不达预期时，很难判断是模型本身、并行策略、放置、网络还是框架配置的问题。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">parallelism_plan_record</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">plan_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ppr-llm-20260620-001</span>
-<span class="w">  </span><span class="nt">training_job_template</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pretrain-llm-h100-512</span>
-<span class="w">  </span><span class="nt">framework_runtime_matrix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">frm-h100-train-20260620</span>
-<span class="w">  </span><span class="nt">model_profile</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">architecture</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">transformer_dense_or_moe</span>
-<span class="w">    </span><span class="nt">parameter_scale</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded_bucket</span>
-<span class="w">    </span><span class="nt">context_length</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">sequence_length_distribution_ref</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dataset-length-profile-001</span>
-<span class="w">  </span><span class="nt">batch_semantics</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">micro_batch_size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">gradient_accumulation_steps</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">global_batch_size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">global_batch_change_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">requires_training_review</span>
-<span class="w">  </span><span class="nt">parallel_dimensions</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">tensor_parallel_size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8</span>
-<span class="w">    </span><span class="nt">pipeline_parallel_size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">4</span>
-<span class="w">    </span><span class="nt">data_parallel_size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">16</span>
-<span class="w">    </span><span class="nt">sequence_parallel</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">expert_parallel_size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
-<span class="w">  </span><span class="nt">resource_expectation</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">total_gpus</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">512</span>
-<span class="w">    </span><span class="nt">preferred_gpu_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">h100-class</span>
-<span class="w">    </span><span class="nt">tensor_group_topology</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">same_node_required</span>
-<span class="w">    </span><span class="nt">pipeline_adjacent_stage_topology</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">same_rack_preferred</span>
-<span class="w">    </span><span class="nt">data_parallel_fault_domain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">spread_preferred</span>
-<span class="w">  </span><span class="nt">predicted_pressure</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">hbm_peak_risk</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">medium</span>
-<span class="w">    </span><span class="nt">high_frequency_collectives</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">all_gather</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">reduce_scatter</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">checkpoint_format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sharded</span>
-<span class="w">    </span><span class="nt">checkpoint_restore_world_size_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fixed_or_converter_required</span>
-<span class="w">  </span><span class="nt">acceptance</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">required_baselines</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">single_node_tp</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">multi_node_dp</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">checkpoint_save_restore</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">short_training_loss_sanity</span>
-<span class="w">    </span><span class="nt">regression_gate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">communication_regression_record_required</span>
-</code></pre></div>
+<pre><code class="language-yaml">parallelism_plan_record:
+  plan_id: ppr-llm-20260620-001
+  training_job_template: pretrain-llm-h100-512
+  framework_runtime_matrix: frm-h100-train-20260620
+  model_profile:
+    architecture: transformer_dense_or_moe
+    parameter_scale: recorded_bucket
+    context_length: recorded
+    sequence_length_distribution_ref: dataset-length-profile-001
+  batch_semantics:
+    micro_batch_size: recorded
+    gradient_accumulation_steps: recorded
+    global_batch_size: recorded
+    global_batch_change_policy: requires_training_review
+  parallel_dimensions:
+    tensor_parallel_size: 8
+    pipeline_parallel_size: 4
+    data_parallel_size: 16
+    sequence_parallel: true
+    expert_parallel_size: 1
+  resource_expectation:
+    total_gpus: 512
+    preferred_gpu_type: h100-class
+    tensor_group_topology: same_node_required
+    pipeline_adjacent_stage_topology: same_rack_preferred
+    data_parallel_fault_domain: spread_preferred
+  predicted_pressure:
+    hbm_peak_risk: medium
+    high_frequency_collectives: [all_gather, reduce_scatter]
+    checkpoint_format: sharded
+    checkpoint_restore_world_size_policy: fixed_or_converter_required
+  acceptance:
+    required_baselines:
+      - single_node_tp
+      - multi_node_dp
+      - checkpoint_save_restore
+      - short_training_loss_sanity
+    regression_gate: communication_regression_record_required
+</code></pre>
 <p>这个对象让并行策略可以被评审。评审时应关注三个问题：第一，维度乘积是否只是数学正确，还是符合真实拓扑；第二，显存节省是否以过高通信、重算或 checkpoint 复杂度为代价；第三，若资源不足导致放置降级，用户是否接受吞吐、稳定性和成本后果。<code>parallelism_plan_record</code> 不替代训练专家判断，但它强迫判断留下证据。</p>
 <p>计划通过后，还需要 <code>rank_topology_contract</code>。<code>parallelism_plan_record</code> 是意图，<code>rank_mapping</code> 是一次运行的事实，<code>rank_topology_contract</code> 则定义哪些事实必须满足。它把“应该同节点”“尽量同 rack”“必须 rail 均衡”这类口头要求变成可机器检查的约束和违反动作。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">rank_topology_contract</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">contract_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rtc-llm-20260620-001</span>
-<span class="w">  </span><span class="nt">parallelism_plan_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ppr-llm-20260620-001</span>
-<span class="w">  </span><span class="nt">hard_constraints</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">tensor_parallel_group</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">gpu_distance</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">same_nvlink_or_nvswitch_domain</span>
-<span class="w">      </span><span class="nt">violation_action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">reject_placement</span>
-<span class="w">    </span><span class="nt">rdma_device</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">container_visible</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">      </span><span class="nt">gpu_nic_numa_affinity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">    </span><span class="nt">world_size</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">equals_product_of_parallel_dimensions</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">  </span><span class="nt">soft_constraints</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">pipeline_adjacent_stage</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">topology</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">same_rack</span>
-<span class="w">      </span><span class="nt">violation_action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">warn_and_require_user_acceptance</span>
-<span class="w">    </span><span class="nt">data_parallel_group</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">fault_domain_spread</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">preferred</span>
-<span class="w">      </span><span class="nt">violation_action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">record_degradation</span>
-<span class="w">    </span><span class="nt">rail_balance</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">max_skew_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">compare_with_baseline</span>
-<span class="w">      </span><span class="nt">violation_action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mark_for_network_review</span>
-<span class="w">  </span><span class="nt">evidence_refs</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">placement_commit_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required_after_scheduling</span>
-<span class="w">    </span><span class="nt">gpu_nic_topology_evidence</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required_if_rdma</span>
-<span class="w">    </span><span class="nt">rail_balance_report</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required_for_multi_rail</span>
-</code></pre></div>
+<pre><code class="language-yaml">rank_topology_contract:
+  contract_id: rtc-llm-20260620-001
+  parallelism_plan_record: ppr-llm-20260620-001
+  hard_constraints:
+    tensor_parallel_group:
+      gpu_distance: same_nvlink_or_nvswitch_domain
+      violation_action: reject_placement
+    rdma_device:
+      container_visible: required
+      gpu_nic_numa_affinity: required
+    world_size:
+      equals_product_of_parallel_dimensions: required
+  soft_constraints:
+    pipeline_adjacent_stage:
+      topology: same_rack
+      violation_action: warn_and_require_user_acceptance
+    data_parallel_group:
+      fault_domain_spread: preferred
+      violation_action: record_degradation
+    rail_balance:
+      max_skew_policy: compare_with_baseline
+      violation_action: mark_for_network_review
+  evidence_refs:
+    placement_commit_record: required_after_scheduling
+    gpu_nic_topology_evidence: required_if_rdma
+    rail_balance_report: required_for_multi_rail
+</code></pre>
 <p>这份 contract 可以被 Kubernetes 调度器、Slurm 插件、launcher 和验收系统共同使用。调度器用它选择资源，launcher 用它生成 rank 分组，验收系统用它判断 placement 是否合格，排障系统用它解释一次训练为什么偏离基线。它还能防止一种常见失误：作业申请的 GPU 数正确，但 Tensor Parallel group 被跨节点放置，训练仍能启动，却以不可接受的通信成本运行。生产系统应优先在启动前拒绝这类 placement，而不是让用户在几小时后发现吞吐异常。</p>
 <h2 id="173">17.3 关键技术<a class="headerlink" href="#173" title="Permanent link">&para;</a></h2>
 <h3 id="1731-data-parallel">17.3.1 Data Parallel<a class="headerlink" href="#1731-data-parallel" title="Permanent link">&para;</a></h3>
@@ -3954,76 +3939,76 @@
 <h3 id="1741">17.4.1 工程实现<a class="headerlink" href="#1741" title="Permanent link">&para;</a></h3>
 <p>工程实现应把并行配置拆成两类：训练语义和放置意图。训练语义包括 tensor_parallel_size、pipeline_parallel_size、data_parallel_size、expert_parallel_size、sequence_parallel、micro_batch、global_batch 和 gradient accumulation；放置意图包括 tensor group 是否同节点、pipeline stage 是否相邻、data parallel 是否跨故障域、通信是否需要同 rail。二者都必须进入作业元数据。</p>
 <p>示例配置如下：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">parallelism</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">tensor_parallel_size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8</span>
-<span class="w">  </span><span class="nt">pipeline_parallel_size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">4</span>
-<span class="w">  </span><span class="nt">data_parallel_size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">16</span>
-<span class="w">  </span><span class="nt">sequence_parallel</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="nt">placement</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">tensor_group</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">same_node</span>
-<span class="w">  </span><span class="nt">pipeline_group</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">same_rack_preferred</span>
-<span class="w">  </span><span class="nt">data_parallel</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">spread_across_nodes</span>
-<span class="nt">observability</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">record_rank_mapping</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">record_collective_metrics</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-</code></pre></div>
+<pre><code class="language-yaml">parallelism:
+  tensor_parallel_size: 8
+  pipeline_parallel_size: 4
+  data_parallel_size: 16
+  sequence_parallel: true
+placement:
+  tensor_group: same_node
+  pipeline_group: same_rack_preferred
+  data_parallel: spread_across_nodes
+observability:
+  record_rank_mapping: true
+  record_collective_metrics: true
+</code></pre>
 <p>并行配置最终必须落成 rank mapping。Rank mapping 是训练故障诊断的坐标系，记录每个 rank 属于哪些并行组，运行在哪个节点、哪张 GPU、哪个 NUMA 域、哪个 NIC 和哪个拓扑域。没有 rank mapping，NCCL 慢、stage imbalance、expert hotspot 和慢节点都无法可靠定位。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">rank_mapping</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">job_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">exp-20260619-001</span>
-<span class="w">  </span><span class="nt">world_size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">512</span>
-<span class="w">  </span><span class="nt">ranks</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">rank</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span>
-<span class="w">      </span><span class="nt">node</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-node-001</span>
-<span class="w">      </span><span class="nt">gpu_uuid</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">GPU-aaaa</span>
-<span class="w">      </span><span class="nt">local_rank</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span>
-<span class="w">      </span><span class="nt">numa</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span>
-<span class="w">      </span><span class="nt">nic</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mlx5_0</span>
-<span class="w">      </span><span class="nt">rack</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rack-12</span>
-<span class="w">      </span><span class="nt">rail</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rail-a</span>
-<span class="w">      </span><span class="nt">groups</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">data_parallel</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dp-0</span>
-<span class="w">        </span><span class="nt">tensor_parallel</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tp-0</span>
-<span class="w">        </span><span class="nt">pipeline_stage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pp-0</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">rank</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
-<span class="w">      </span><span class="nt">node</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-node-001</span>
-<span class="w">      </span><span class="nt">gpu_uuid</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">GPU-bbbb</span>
-<span class="w">      </span><span class="nt">local_rank</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
-<span class="w">      </span><span class="nt">numa</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span>
-<span class="w">      </span><span class="nt">nic</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mlx5_0</span>
-<span class="w">      </span><span class="nt">rack</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rack-12</span>
-<span class="w">      </span><span class="nt">rail</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rail-a</span>
-<span class="w">      </span><span class="nt">groups</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">data_parallel</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dp-0</span>
-<span class="w">        </span><span class="nt">tensor_parallel</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tp-0</span>
-<span class="w">        </span><span class="nt">pipeline_stage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pp-0</span>
-</code></pre></div>
+<pre><code class="language-yaml">rank_mapping:
+  job_id: exp-20260619-001
+  world_size: 512
+  ranks:
+    - rank: 0
+      node: gpu-node-001
+      gpu_uuid: GPU-aaaa
+      local_rank: 0
+      numa: 0
+      nic: mlx5_0
+      rack: rack-12
+      rail: rail-a
+      groups:
+        data_parallel: dp-0
+        tensor_parallel: tp-0
+        pipeline_stage: pp-0
+    - rank: 1
+      node: gpu-node-001
+      gpu_uuid: GPU-bbbb
+      local_rank: 1
+      numa: 0
+      nic: mlx5_0
+      rack: rack-12
+      rail: rail-a
+      groups:
+        data_parallel: dp-0
+        tensor_parallel: tp-0
+        pipeline_stage: pp-0
+</code></pre>
 <p>Rank mapping 还应有一致性校验。Tensor Parallel group 是否真的在 same_node，Pipeline 相邻 stage 是否跨越过多网络跳数，Data Parallel group 是否覆盖预期故障域，MoE expert group 是否集中在某个 rack，这些都可以在启动前或启动后自动检查。检查失败时，平台应明确提示“策略未满足”或“降级放置”，而不是让用户从性能下降中猜测。</p>
 <p>调度器还应产出 <code>placement_commit_record</code>。它把用户提交的并行放置意图、调度器实际分配、放置降级、rank mapping 和后续训练指标绑定起来。<code>rank_mapping</code> 是坐标系，<code>placement_commit_record</code> 是“这次放置为什么被接受”的审计记录。没有它，团队只能看到任务慢，却不知道是并行策略本身有问题，还是资源不足导致调度器放宽了拓扑约束。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">placement_commit_record</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">job_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">exp-20260619-001</span>
-<span class="w">  </span><span class="nt">parallelism_template</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">megatron-h100-512gpus-v3</span>
-<span class="w">  </span><span class="nt">parallelism_plan_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ppr-llm-20260620-001</span>
-<span class="w">  </span><span class="nt">rank_topology_contract</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rtc-llm-20260620-001</span>
-<span class="w">  </span><span class="nt">requested_intent</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">tensor_group</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">same_node_required</span>
-<span class="w">    </span><span class="nt">pipeline_adjacent_stage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">same_rack_preferred</span>
-<span class="w">    </span><span class="nt">data_parallel</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">spread_across_fault_domains</span>
-<span class="w">    </span><span class="nt">rail_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">balanced</span>
-<span class="w">  </span><span class="nt">committed_placement</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">nodes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">64</span>
-<span class="w">    </span><span class="nt">racks</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">rack-11</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">rack-12</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">rank_mapping_ref</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rank-mapping-exp-20260619-001</span>
-<span class="w">    </span><span class="nt">rail_balance_report</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rail-balance-exp-20260619-001</span>
-<span class="w">  </span><span class="nt">validation</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">tensor_group_intent</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">satisfied</span>
-<span class="w">    </span><span class="nt">pipeline_intent</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">degraded_with_reason</span>
-<span class="w">    </span><span class="nt">gpu_nic_affinity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed</span>
-<span class="w">    </span><span class="nt">fabric_baseline</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed</span>
-<span class="w">  </span><span class="nt">decision</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">accepted_by</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scheduler_policy_v12</span>
-<span class="w">    </span><span class="nt">degradation_reason</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">insufficient_same_rack_capacity</span>
-<span class="w">    </span><span class="nt">user_visible_warning</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-</code></pre></div>
+<pre><code class="language-yaml">placement_commit_record:
+  job_id: exp-20260619-001
+  parallelism_template: megatron-h100-512gpus-v3
+  parallelism_plan_record: ppr-llm-20260620-001
+  rank_topology_contract: rtc-llm-20260620-001
+  requested_intent:
+    tensor_group: same_node_required
+    pipeline_adjacent_stage: same_rack_preferred
+    data_parallel: spread_across_fault_domains
+    rail_policy: balanced
+  committed_placement:
+    nodes: 64
+    racks: [rack-11, rack-12]
+    rank_mapping_ref: rank-mapping-exp-20260619-001
+    rail_balance_report: rail-balance-exp-20260619-001
+  validation:
+    tensor_group_intent: satisfied
+    pipeline_intent: degraded_with_reason
+    gpu_nic_affinity: passed
+    fabric_baseline: passed
+  decision:
+    accepted_by: scheduler_policy_v12
+    degradation_reason: insufficient_same_rack_capacity
+    user_visible_warning: true
+</code></pre>
 <p>这个记录能把调度和 Runtime 指标连接起来。若训练 step time 比模板基线慢，SRE 可以先看 placement 是否降级；若 NCCL hang 只出现在跨 rack placement，平台可以把策略改成拒绝而不是降级；若用户接受了降级等待更短，就应在运行报告里看到它对 tokens/s 和通信占比的影响。放置不是一次内部决策，而是训练性能合同的一部分。</p>
 <p><code>placement_commit_record</code> 还应区分“允许降级”和“禁止降级”。Tensor Parallel group 跨越错误拓扑通常应 reject，因为它会改变关键路径通信；Pipeline 相邻 stage 跨 rack 可能允许 conditional accept，但必须把影响进入报告；Data Parallel 故障域分散不足可能不影响短期吞吐，却会影响维护和故障恢复。不同约束的违反动作不同，不能用一个通用 warning 处理。</p>
 <p>实现流程可以分为四步。第一步，模板根据模型和硬件给出推荐并行配置。第二步，调度器根据 placement 约束选择节点和 GPU，并返回 rank 到设备的映射。第三步，launcher 把映射写入环境变量或配置文件，框架据此初始化通信组。第四步，监控系统收集 step、rank、group 和 topology 维度指标。缺少任何一步，并行策略都无法闭环。生产平台还应在任务启动前做一致性校验，例如总 GPU 数是否等于各并行维度乘积，Tensor Parallel size 是否超过节点内 GPU 数。</p>

@@ -1,0 +1,10 @@
+flowchart LR
+  Intent["workload intent\nGPU class / HBM / isolation / SLO"] --> Contract["gpu_resource_claim_contract"]
+  Contract --> K8s["DeviceClass / ResourceClaim\nor extended resource"]
+  Contract --> Policy["entitlement / quota / model fit"]
+  K8s --> Assign["gpu_assignment_record"]
+  Policy --> Admission["resource_claim_admission_record"]
+  Admission --> Assign
+  Assign --> Runtime["OCI / CDI / NVIDIA runtime"]
+  Runtime --> Recon["gpu_device_visibility_reconciliation"]
+  Recon --> Meter["metering + cost labels"]

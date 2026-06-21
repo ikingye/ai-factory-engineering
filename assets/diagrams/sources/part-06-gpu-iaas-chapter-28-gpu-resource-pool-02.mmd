@@ -1,0 +1,11 @@
+flowchart LR
+  Inventory["inventory / asset"] --> State["health & maintenance state"]
+  Telemetry["DCGM / BMC / network"] --> State
+  State --> Pool["GPU resource pool"]
+  Pool --> Reservation["reservation"]
+  Pool --> Allocation["allocation"]
+  Allocation --> Scheduler["Kubernetes / Slurm"]
+  Scheduler --> Usage["usage / accounting"]
+  Usage --> Pool
+  Pool --> Capacity["capacity planning"]
+  Pool --> Ops["repair / reclaim / retire"]

@@ -1,0 +1,9 @@
+flowchart LR
+  Trigger["TTFT / TPOT / KV release / canary breach"] --> Bundle["inference_runtime_diagnostic_bundle"]
+  Bundle --> Admission["endpoint_admission_decision"]
+  Bundle --> KV["kv_block_leak_forensic_record"]
+  Bundle --> PD["pd_transfer_evidence"]
+  Bundle --> Spec["speculative_decoding_regression_record"]
+  Bundle --> Action["engine_canary_guardrail_action"]
+  Action --> Cost["inference_runtime_cost_ledger"]
+  Bundle --> Incident["incident_record / runbook"]

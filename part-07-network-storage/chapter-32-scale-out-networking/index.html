@@ -3843,47 +3843,9 @@
 <p>Scale-out 网络也要与存储路径协同。数据集读取、checkpoint 写入、模型权重加载和日志上报可能与训练通信共享网络。若存储流量没有限速、隔离或错峰，可能在训练通信阶段制造拥塞。架构上应明确训练 fabric、存储网络和管理网络是否共享，以及共享时的优先级和观测边界。</p>
 <p>Telemetry 是架构的一部分，而不是附加系统。端口利用率、错误包、ECN mark、PFC pause、RDMA 重传、NCCL 带宽、rank skew、flow logs 和 job 时间线应能关联。Scale-out 网络一旦规模变大，没有 telemetry 就无法运营。故障往往不是全局断网，而是局部路径退化。</p>
 <p>一个可落地的架构还需要定义控制面和数据面的边界。控制面负责拓扑发现、节点标签、配置审计、变更审批、准入结果和健康状态；数据面负责训练通信、存储访问、推理流量和管理流量。两者不能混在临时脚本里。控制面一旦缺失，平台无法解释为什么某个 job 被放到某组节点，也无法在网络 degraded 时自动停止新任务进入风险区域。</p>
-<pre class="mermaid"><code>flowchart TB
-  subgraph Rack1["Rack 1 / Rail-aware"]
-    N1["GPU Node 1"] --- L1["Leaf A"]
-    N2["GPU Node 2"] --- L1
-  end
-  subgraph Rack2["Rack 2 / Rail-aware"]
-    N3["GPU Node 3"] --- L2["Leaf B"]
-    N4["GPU Node 4"] --- L2
-  end
-  L1 --- S1["Spine 1"]
-  L1 --- S2["Spine 2"]
-  L2 --- S1
-  L2 --- S2
-  N1 --&gt; NCCL["NCCL / Collective Communication"]
-  Scheduler["Topology-aware Scheduler"] --&gt; N1
-  Scheduler --&gt; N3
-  Telemetry["RDMA / Port counters / NCCL logs"] --&gt; S1
-  Telemetry --&gt; S2</code></pre>
+<p><img alt="图：32.2.2 系统架构" src="../../assets/diagrams/part-07-network-storage-chapter-32-scale-out-networking-01.svg" /></p>
 <p>下面这张图强调多 rail 放置的证据链。设计上的 rail 只有在调度、容器、NCCL 和交换机端口计数都一致时才成立。某个环节漂移，都会让“多 rail 网络”退化成“看起来有多张网卡，实际流量集中在少数路径”。</p>
-<pre class="mermaid"><code>flowchart LR
-  subgraph Placement["Rank Placement"]
-    R0["rank 0"] --&gt; N0["node-a / GPU0"]
-    R1["rank 1"] --&gt; N1["node-b / GPU0"]
-    R2["rank 2"] --&gt; N2["node-c / GPU0"]
-    R3["rank 3"] --&gt; N3["node-d / GPU0"]
-  end
-
-  N0 --&gt; NIC00["mlx5_0 / rail0"]
-  N0 --&gt; NIC01["mlx5_1 / rail1"]
-  N1 --&gt; NIC10["mlx5_0 / rail0"]
-  N1 --&gt; NIC11["mlx5_1 / rail1"]
-
-  NIC00 --&gt; Leaf0["leaf group A"]
-  NIC10 --&gt; Leaf0
-  NIC01 --&gt; Leaf1["leaf group B"]
-  NIC11 --&gt; Leaf1
-
-  Leaf0 --&gt; Telemetry0["rail0 counters"]
-  Leaf1 --&gt; Telemetry1["rail1 counters"]
-  Telemetry0 --&gt; Diagnosis["rail balance / congestion / drift"]
-  Telemetry1 --&gt; Diagnosis</code></pre>
+<p><img alt="图：32.2.2 系统架构" src="../../assets/diagrams/part-07-network-storage-chapter-32-scale-out-networking-02.svg" /></p>
 <h2 id="323">32.3 关键技术<a class="headerlink" href="#323" title="Permanent link">&para;</a></h2>
 <h3 id="3231-infiniband">32.3.1 InfiniBand<a class="headerlink" href="#3231-infiniband" title="Permanent link">&para;</a></h3>
 <p>InfiniBand 是高性能计算和 AI 训练中常见的网络技术，强调低延迟、高吞吐和 RDMA 能力。它通常配套专用交换机、子网管理、fabric 管理工具和较完整的高性能通信生态。在大规模训练集群中，InfiniBand 常用于构建专用训练 fabric。</p>
@@ -3950,223 +3912,212 @@
 <h2 id="324">32.4 工程落地<a class="headerlink" href="#324" title="Permanent link">&para;</a></h2>
 <h3 id="3241">32.4.1 工程实现<a class="headerlink" href="#3241" title="Permanent link">&para;</a></h3>
 <p>Scale-out 网络上线前应建立 fabric 信息模型。它描述网络类型、拓扑、rail、节点接入、调度标签、拥塞控制、RDMA 参数和验收结果。示例：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">fabric</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">train-fabric-a</span>
-<span class="w">  </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">roce</span>
-<span class="w">  </span><span class="nt">topology</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">leaf-spine</span>
-<span class="w">  </span><span class="nt">rails</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">rail</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rail0</span>
-<span class="w">      </span><span class="nt">nic_selector</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mlx5_0</span>
-<span class="w">      </span><span class="nt">leaf_group</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">leaf-a</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">rail</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rail1</span>
-<span class="w">      </span><span class="nt">nic_selector</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mlx5_1</span>
-<span class="w">      </span><span class="nt">leaf_group</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">leaf-b</span>
-<span class="w">  </span><span class="nt">scheduling</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">expose_rack</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">expose_rail_count</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">prefer_same_leaf_for_small_jobs</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">validation</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">rdma</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">nccl_multi_node</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">congestion_baseline</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-</code></pre></div>
+<pre><code class="language-yaml">fabric:
+  name: train-fabric-a
+  type: roce
+  topology: leaf-spine
+  rails:
+    - rail: rail0
+      nic_selector: mlx5_0
+      leaf_group: leaf-a
+    - rail: rail1
+      nic_selector: mlx5_1
+      leaf_group: leaf-b
+  scheduling:
+    expose_rack: true
+    expose_rail_count: true
+    prefer_same_leaf_for_small_jobs: true
+  validation:
+    rdma: pass
+    nccl_multi_node: pass
+    congestion_baseline: pass
+</code></pre>
 <p>这个信息模型还应包含版本和生效范围。网络不是一次配置完成就永远不变，交换机 firmware、NIC firmware、OFED、CNI、NCCL、PFC/ECN、路由策略和调度标签都可能改变。示例：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">fabric_baseline</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">baseline_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">train-fabric-a-20260619</span>
-<span class="w">  </span><span class="nt">fabric</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">train-fabric-a</span>
-<span class="w">  </span><span class="nt">scope</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">racks</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">rack-11</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">rack-12</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">rack-13</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">rails</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">rail0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">rail1</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">rail2</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">rail3</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">versions</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">nic_firmware</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">switch_firmware</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">ofed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">cni</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">nccl</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">routing_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">roce_qos_profile</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">  </span><span class="nt">tests</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">host_rdma</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">container_rdma</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">nccl_cross_rack</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">rail_balance</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">checkpoint_plus_nccl_concurrency</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">  </span><span class="nt">state</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">schedulable_for</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">distributed_training</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">large_scale_evaluation</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">invalidated_by</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">switch_config_change</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">nic_replacement</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">ofed_upgrade</span><span class="p p-Indicator">]</span>
-</code></pre></div>
+<pre><code class="language-yaml">fabric_baseline:
+  baseline_id: train-fabric-a-20260619
+  fabric: train-fabric-a
+  scope:
+    racks: [rack-11, rack-12, rack-13]
+    rails: [rail0, rail1, rail2, rail3]
+  versions:
+    nic_firmware: recorded
+    switch_firmware: recorded
+    ofed: recorded
+    cni: recorded
+    nccl: recorded
+    routing_policy: recorded
+    roce_qos_profile: recorded
+  tests:
+    host_rdma: pass
+    container_rdma: pass
+    nccl_cross_rack: pass
+    rail_balance: pass
+    checkpoint_plus_nccl_concurrency: pass
+  state:
+    schedulable_for: [distributed_training, large_scale_evaluation]
+    invalidated_by: [switch_config_change, nic_replacement, ofed_upgrade]
+</code></pre>
 <p>这份 baseline 是调度事实源，不是网络团队内部文档。调度器可以拒绝把大训练放进 baseline 过期的 fabric，SRE 可以在事故中对比当前 counters 与 baseline，容量团队可以看到哪些 fabric 长期处于 limited 或 degraded。</p>
 <p>网络变更必须有 <code>fabric_change_record</code>。AI Fabric 的一次修改可能来自交换机 firmware、NIC firmware、OFED、CNI、NCCL 默认参数、PFC/ECN、MTU、routing policy、rail mapping 或调度标签。它们经常不是“网络团队内部变更”，而是会改变训练通信、容器 RDMA、checkpoint 并发和推理长尾的生产变更。记录应明确影响范围、失效基线、回归测试和停止条件：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">fabric_change_record</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">change_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fabric-chg-20260620-003</span>
-<span class="w">  </span><span class="nt">fabric</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">train-fabric-a</span>
-<span class="w">  </span><span class="nt">change_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">roce_qos_profile_update</span>
-<span class="w">  </span><span class="nt">scope</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">racks</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">rack-12</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">rack-13</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">rails</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">rail0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">rail1</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">resource_pools</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">training-prod-h100</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">changed_components</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">switch_config</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">changed</span>
-<span class="w">    </span><span class="nt">nic_firmware</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">unchanged</span>
-<span class="w">    </span><span class="nt">ofed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">unchanged</span>
-<span class="w">    </span><span class="nt">cni</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">unchanged</span>
-<span class="w">    </span><span class="nt">nccl_defaults</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">unchanged</span>
-<span class="w">    </span><span class="nt">scheduler_labels</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">unchanged</span>
-<span class="w">  </span><span class="nt">invalidates_baselines</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">train-fabric-a-20260619</span>
-<span class="w">  </span><span class="nt">required_regression</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">host_rdma</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">container_rdma</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nccl_cross_rack</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rail_balance</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">checkpoint_plus_nccl_concurrency</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">representative_training_collective_trace</span>
-<span class="w">  </span><span class="nt">stop_conditions</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rdma_retransmit_above_baseline</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rail_balance_ratio_below_policy</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">p99_step_time_regression</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">communication_regression_record_failed</span>
-<span class="w">  </span><span class="nt">rollback</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">method</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">restore_previous_qos_profile</span>
-<span class="w">    </span><span class="nt">verification</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rerun_same_topology_baseline</span>
-</code></pre></div>
+<pre><code class="language-yaml">fabric_change_record:
+  change_id: fabric-chg-20260620-003
+  fabric: train-fabric-a
+  change_type: roce_qos_profile_update
+  scope:
+    racks: [rack-12, rack-13]
+    rails: [rail0, rail1]
+    resource_pools: [training-prod-h100]
+  changed_components:
+    switch_config: changed
+    nic_firmware: unchanged
+    ofed: unchanged
+    cni: unchanged
+    nccl_defaults: unchanged
+    scheduler_labels: unchanged
+  invalidates_baselines:
+    - train-fabric-a-20260619
+  required_regression:
+    - host_rdma
+    - container_rdma
+    - nccl_cross_rack
+    - rail_balance
+    - checkpoint_plus_nccl_concurrency
+    - representative_training_collective_trace
+  stop_conditions:
+    - rdma_retransmit_above_baseline
+    - rail_balance_ratio_below_policy
+    - p99_step_time_regression
+    - communication_regression_record_failed
+  rollback:
+    method: restore_previous_qos_profile
+    verification: rerun_same_topology_baseline
+</code></pre>
 <p>这份记录的核心是把“网络参数改了”变成可审计的软件发布。它会告诉调度器哪些 baseline 失效，告诉 SRE 故障是否可能与近期变更相关，也告诉容量团队某个 fabric 在回归完成前是否只能 limited 使用。没有这类记录，网络事故常常只能靠人记忆“最近有没有动过交换机”。</p>
 <p>对训练 fabric 来说，<code>fabric_change_record</code> 的完成条件不应止于网络基线通过，还应产生第 18 章的 <code>communication_regression_record</code>。原因很简单：网络层看到的 RDMA、端口和 rail 结果，只能证明 fabric 自身没有明显退化；训练层的 collective trace 才能证明真实 workload 没有出现 step time、rank skew、checkpoint overlap 或 NCCL env 漂移。一次 RoCE QoS 调整可能让单流带宽正常，却让多任务并发下的尾部 rank 变慢；一次 OFED 升级可能让 host RDMA 正常，却让容器内接口选择改变。没有通信回归记录，变更门禁缺少最终使用者视角。</p>
 <p>因此，网络变更发布单应绑定两份事实：<code>fabric_baseline</code> 说明 fabric 在指定拓扑内具备什么能力，<code>communication_regression_record</code> 说明代表性训练在这次变更后是否仍满足 Runtime 合同。前者由网络和平台基础设施共同负责，后者由 Runtime、调度和训练平台共同负责。分工清楚后，事故中就不会把“网络连通”误认为“训练通信健康”。</p>
 <p>更进一步，fabric 变更应有独立的 <code>fabric_change_regression_gate</code>。它不是 <code>fabric_change_record</code> 的重复，而是把变更从“批准执行”推进到“允许恢复调度能力”的门禁。<code>fabric_change_record</code> 说明改了什么、为什么改、影响哪些资源；<code>fabric_change_regression_gate</code> 则说明哪些证据已经证明变更没有破坏 workload。二者的关系类似代码发布中的 change ticket 和 release gate：前者负责意图和审计，后者负责可生产性。</p>
 <p>这个门禁必须同时看五类事实。第一是配置事实：PFC/ECN/QoS/MTU、routing policy、switch firmware、NIC firmware、OFED、CNI 和 NCCL 默认值是否与期望版本一致。第二是路径事实：host、container 和 Kubernetes job 是否都走到预期 RDMA device、GID、NIC、rail 和 switch port。第三是 workload 事实：代表性 NCCL test、短训练、checkpoint overlap 和混部流量是否仍在基线范围内。第四是调度事实：scheduler label、taint、resource pool state 和 queue admission 是否与变更状态同步。第五是恢复事实：回滚或降级后能否恢复 baseline，而不是只把配置改回去。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">fabric_change_regression_gate</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">gate_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fcg-20260620-003</span>
-<span class="w">  </span><span class="nt">change_ref</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fabric-chg-20260620-003</span>
-<span class="w">  </span><span class="nt">fabric</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">train-fabric-a</span>
-<span class="w">  </span><span class="nt">affected_scope</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">racks</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">rack-12</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">rack-13</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">rails</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">rail0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">rail1</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">resource_pools</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">training-prod-h100</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">scheduler_labels</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">fabric.train-fabric-a/baseline</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">invalidated</span>
-<span class="w">      </span><span class="nt">fabric.train-fabric-a/state</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">limited</span>
-<span class="w">  </span><span class="nt">required_evidence</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">fabric_baseline_before</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">train-fabric-a-20260619</span>
-<span class="w">    </span><span class="nt">fabric_baseline_after</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">train-fabric-a-20260620-candidate</span>
-<span class="w">    </span><span class="nt">config_diff</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">switch_qos</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">attached</span>
-<span class="w">      </span><span class="nt">pfc_ecn</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">attached</span>
-<span class="w">      </span><span class="nt">mtu</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">attached</span>
-<span class="w">      </span><span class="nt">routing_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">attached</span>
-<span class="w">      </span><span class="nt">nic_firmware</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">attached</span>
-<span class="w">      </span><span class="nt">ofed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">attached</span>
-<span class="w">      </span><span class="nt">cni</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">attached</span>
-<span class="w">      </span><span class="nt">nccl_defaults</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">attached</span>
-<span class="w">    </span><span class="nt">path_validation</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">host_rdma</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">      </span><span class="nt">container_rdma</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">      </span><span class="nt">kubernetes_nccl_job</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">      </span><span class="nt">selected_nccl_interfaces</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">match_expected_rails</span>
-<span class="w">      </span><span class="nt">gpu_nic_topology_evidence</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">attached</span>
-<span class="w">    </span><span class="nt">workload_regression</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">nccl_cross_rack</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">within_baseline</span>
-<span class="w">      </span><span class="nt">rail_balance_report</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">within_policy</span>
-<span class="w">      </span><span class="nt">checkpoint_plus_nccl_concurrency</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">within_policy</span>
-<span class="w">      </span><span class="nt">representative_training_collective_trace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">within_policy</span>
-<span class="w">      </span><span class="nt">communication_regression_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">scheduler_integration</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">degraded_label_applied_before_gate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">      </span><span class="nt">large_training_denied_until_pass</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">      </span><span class="nt">restored_labels_after_pass</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">stop_conditions</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rdma_retransmit_above_baseline</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ecn_or_pfc_delta_unexplained</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rail_balance_ratio_below_policy</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">p99_step_time_regression</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">container_rdma_path_differs_from_host_path</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scheduler_restored_capacity_before_gate_pass</span>
-<span class="w">  </span><span class="nt">rollback_or_downgrade</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">rollback_config_ref</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">roce-qos-profile-20260619</span>
-<span class="w">    </span><span class="nt">downgrade_state</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fabric_limited_no_large_training</span>
-<span class="w">    </span><span class="nt">verification</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rerun_same_topology_gate</span>
-<span class="w">  </span><span class="nt">decision</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">state</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass_or_block_or_conditional</span>
-<span class="w">    </span><span class="nt">owner</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">network-platform-sre</span>
-<span class="w">    </span><span class="nt">expires_at</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2026-06-27T00:00:00Z</span>
-</code></pre></div>
+<pre><code class="language-yaml">fabric_change_regression_gate:
+  gate_id: fcg-20260620-003
+  change_ref: fabric-chg-20260620-003
+  fabric: train-fabric-a
+  affected_scope:
+    racks: [rack-12, rack-13]
+    rails: [rail0, rail1]
+    resource_pools: [training-prod-h100]
+    scheduler_labels:
+      fabric.train-fabric-a/baseline: invalidated
+      fabric.train-fabric-a/state: limited
+  required_evidence:
+    fabric_baseline_before: train-fabric-a-20260619
+    fabric_baseline_after: train-fabric-a-20260620-candidate
+    config_diff:
+      switch_qos: attached
+      pfc_ecn: attached
+      mtu: attached
+      routing_policy: attached
+      nic_firmware: attached
+      ofed: attached
+      cni: attached
+      nccl_defaults: attached
+    path_validation:
+      host_rdma: pass
+      container_rdma: pass
+      kubernetes_nccl_job: pass
+      selected_nccl_interfaces: match_expected_rails
+      gpu_nic_topology_evidence: attached
+    workload_regression:
+      nccl_cross_rack: within_baseline
+      rail_balance_report: within_policy
+      checkpoint_plus_nccl_concurrency: within_policy
+      representative_training_collective_trace: within_policy
+      communication_regression_record: pass
+    scheduler_integration:
+      degraded_label_applied_before_gate: true
+      large_training_denied_until_pass: true
+      restored_labels_after_pass: true
+  stop_conditions:
+    - rdma_retransmit_above_baseline
+    - ecn_or_pfc_delta_unexplained
+    - rail_balance_ratio_below_policy
+    - p99_step_time_regression
+    - container_rdma_path_differs_from_host_path
+    - scheduler_restored_capacity_before_gate_pass
+  rollback_or_downgrade:
+    rollback_config_ref: roce-qos-profile-20260619
+    downgrade_state: fabric_limited_no_large_training
+    verification: rerun_same_topology_gate
+  decision:
+    state: pass_or_block_or_conditional
+    owner: network-platform-sre
+    expires_at: 2026-06-27T00:00:00Z
+</code></pre>
 <p>这份 gate 的关键字段是 <code>scheduler_integration</code> 和 <code>expires_at</code>。许多网络变更事故并不是测试完全没跑，而是测试期间资源已经恢复为 fully schedulable，或者临时 conditional approve 永久存在。Gate 应先让资源降级，再证明可以恢复，最后写入新的 baseline；如果证据过期或回归未完成，调度器应继续拒绝大训练进入该 fabric。网络能力只有进入调度事实源，才能真正保护生产任务。</p>
-<pre class="mermaid"><code>flowchart LR
-  Change["fabric_change_record"] --&gt; Invalidate["invalidate fabric_baseline"]
-  Invalidate --&gt; Limit["resource pool state: limited"]
-  Limit --&gt; Evidence["collect config + path + workload evidence"]
-  Evidence --&gt; Gate["fabric_change_regression_gate"]
-  Gate --&gt;|pass| NewBase["publish new fabric_baseline"]
-  Gate --&gt;|block| Downgrade["keep limited / quarantine"]
-  Gate --&gt;|conditional| Canary["small topology canary only"]
-  NewBase --&gt; Scheduler["restore scheduler labels"]
-  Downgrade --&gt; FaultTree["congestion_fault_tree_execution if incident"]
-  Canary --&gt; Monitor["telemetry watch window"]
-  Monitor --&gt; Gate</code></pre>
+<p><img alt="图：32.4.1 工程实现" src="../../assets/diagrams/part-07-network-storage-chapter-32-scale-out-networking-03.svg" /></p>
 <p>在 RoCE 环境中，这个 gate 尤其重要。PFC、ECN 和 QoS 的配置漂移不会总是表现为立即失败，轻载 ping、iperf 或两节点 RDMA 可能全部通过；只有多 rack、多 rail、checkpoint 并发和真实 rank placement 叠加时，队列水位、pause storm 或重传才出现。把这些验证写进 gate，可以把“网络看起来正常”升级为“AI workload 证据正常”。</p>
 <p>第二步是接入调度和资源池。任务提交系统可以根据 fabric 信息提示用户：当前等待是 GPU 不足、rail 不满足、同 rack 不满足，还是 quota 限制。资源池可以标记某个 fabric degraded，调度器避免新任务进入受影响区域。网络状态必须能驱动资源动作。</p>
 <p>第三步是建立验收基线。基线应覆盖单节点、跨节点、跨 rack、多 rail、多任务并发、RDMA、NCCL、存储读写和拥塞控制。扩容、新增 rack、交换机升级、NIC firmware、OFED、CNI 或 NCCL 版本变化后，都要回归。验收不是上线前一次性动作，而是持续运营机制。</p>
 <p>最后，要标准化诊断包。训练网络诊断包应包含 rank placement、节点、NIC、rail、NCCL 日志、RDMA 计数、交换机端口、时间线和作业指标。诊断包能让网络、平台和模型团队围绕同一证据排障，而不是反复询问环境信息。</p>
 <p>诊断包建议做成结构化对象，而不是一组压缩日志：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">network_diagnostic_bundle</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">incident_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">inc-20260619-071</span>
-<span class="w">  </span><span class="nt">symptom</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">training_step_time_spike</span>
-<span class="w">  </span><span class="nt">workload</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">job_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">train-042</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">parallelism</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">data_tensor_pipeline</span>
-<span class="w">  </span><span class="nt">placement</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">rank_mapping</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">attached</span>
-<span class="w">    </span><span class="nt">rack_span</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">4</span>
-<span class="w">    </span><span class="nt">rails_used</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">rail0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">rail1</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">rail2</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">rail3</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">runtime</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">nccl_env</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">attached</span>
-<span class="w">    </span><span class="nt">selected_interfaces</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">attached</span>
-<span class="w">    </span><span class="nt">container_networks</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">attached</span>
-<span class="w">  </span><span class="nt">fabric</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">baseline_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">train-fabric-a-20260619</span>
-<span class="w">    </span><span class="nt">switch_ports</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">attached</span>
-<span class="w">    </span><span class="nt">rdma_counters</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">attached</span>
-<span class="w">    </span><span class="nt">pfc_ecn_counters</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">attached</span>
-<span class="w">  </span><span class="nt">verdict</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">likely_domain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">network_or_rank_placement</span>
-<span class="w">    </span><span class="nt">confidence</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">evidence_based</span>
-<span class="w">    </span><span class="nt">next_action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rerun_nccl_baseline_on_same_topology</span>
-</code></pre></div>
+<pre><code class="language-yaml">network_diagnostic_bundle:
+  incident_id: inc-20260619-071
+  symptom: training_step_time_spike
+  workload:
+    job_id: train-042
+    model: recorded
+    parallelism: data_tensor_pipeline
+  placement:
+    rank_mapping: attached
+    rack_span: 4
+    rails_used: [rail0, rail1, rail2, rail3]
+  runtime:
+    nccl_env: attached
+    selected_interfaces: attached
+    container_networks: attached
+  fabric:
+    baseline_id: train-fabric-a-20260619
+    switch_ports: attached
+    rdma_counters: attached
+    pfc_ecn_counters: attached
+  verdict:
+    likely_domain: network_or_rank_placement
+    confidence: evidence_based
+    next_action: rerun_nccl_baseline_on_same_topology
+</code></pre>
 <p>结构化诊断包能让事故处理变成可重复流程。它也适合沉淀为数据集，用于后续异常检测、容量规划和 runbook 更新。</p>
 <p>多 rail 集群还需要 <code>rail_balance_report</code>。设计上有四条 rail，不代表运行时流量真的均衡；节点命名、容器设备、NCCL interface 选择、rank placement、ECMP 哈希或某条链路降级，都可能让流量集中到少数 rail。报告应同时看“期望分布”和“实际分布”：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">rail_balance_report</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">report_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rail-balance-20260620-017</span>
-<span class="w">  </span><span class="nt">workload</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">job_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">train-042</span>
-<span class="w">    </span><span class="nt">phase</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">all_reduce</span>
-<span class="w">  </span><span class="nt">expected</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">rails</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">rail0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">rail1</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">rail2</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">rail3</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">balanced_by_rank_and_nic</span>
-<span class="w">  </span><span class="nt">observed</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">selected_interfaces</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">rail0</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">mlx5_0</span><span class="p p-Indicator">]</span>
-<span class="w">      </span><span class="nt">rail1</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">mlx5_1</span><span class="p p-Indicator">]</span>
-<span class="w">      </span><span class="nt">rail2</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">mlx5_2</span><span class="p p-Indicator">]</span>
-<span class="w">      </span><span class="nt">rail3</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">mlx5_3</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">traffic_share</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">rail0</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">      </span><span class="nt">rail1</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">      </span><span class="nt">rail2</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">      </span><span class="nt">rail3</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">pfc_ecn_by_rail</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">rail1</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">above_baseline</span>
-<span class="w">  </span><span class="nt">verdict</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">rail_balance_ratio</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">    </span><span class="nt">imbalance_detected</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">likely_causes</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rank_mapping_skew</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nccl_interface_selection</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rail1_congestion</span>
-<span class="w">  </span><span class="nt">action</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">scheduler</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">avoid_current_placement_shape</span>
-<span class="w">    </span><span class="nt">sre</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">run_same_topology_nccl_baseline</span>
-</code></pre></div>
+<pre><code class="language-yaml">rail_balance_report:
+  report_id: rail-balance-20260620-017
+  workload:
+    job_id: train-042
+    phase: all_reduce
+  expected:
+    rails: [rail0, rail1, rail2, rail3]
+    policy: balanced_by_rank_and_nic
+  observed:
+    selected_interfaces:
+      rail0: [mlx5_0]
+      rail1: [mlx5_1]
+      rail2: [mlx5_2]
+      rail3: [mlx5_3]
+    traffic_share:
+      rail0: measured
+      rail1: measured
+      rail2: measured
+      rail3: measured
+    pfc_ecn_by_rail:
+      rail1: above_baseline
+  verdict:
+    rail_balance_ratio: calculated
+    imbalance_detected: true
+    likely_causes:
+      - rank_mapping_skew
+      - nccl_interface_selection
+      - rail1_congestion
+  action:
+    scheduler: avoid_current_placement_shape
+    sre: run_same_topology_nccl_baseline
+</code></pre>
 <p>这个报告能让“多 rail 没吃满”变成可定位问题。若接口选择错误，修 runtime template；若 rank mapping 偏斜，修调度；若某条 rail 拥塞，修 fabric 或调度避让。不同根因对应不同 owner，不能只让用户手动设置一串 <code>NCCL_*</code> 环境变量。</p>
 <p>落地流程可以按四个检查点推进：新节点入池前跑主机和容器 RDMA 测试；新 rack 入池前跑跨 rack NCCL 和拥塞基线；新 job 类型上线前确认并行策略与拓扑需求；生产故障后把诊断包自动归档到 incident。这样做的目的不是制造流程负担，而是把网络知识从少数专家脑中沉淀到平台。规模越大，越不能依赖人工记住哪条线、哪个 rack、哪个参数特殊。</p>
 <p>配置也应以声明式方式管理。交换机参数、NIC firmware、OFED 版本、NCCL 默认参数、节点标签和调度策略都应能追踪到版本。生产环境中最难排的故障，常常来自“某次维护顺手改了一个参数”。声明式配置和漂移检测不能解决所有网络问题，但能把不确定性收敛到可审计范围。AI Factory 的网络工程要像软件工程一样管理变更。</p>

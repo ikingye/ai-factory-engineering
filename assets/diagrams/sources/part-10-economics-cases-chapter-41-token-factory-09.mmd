@@ -1,0 +1,9 @@
+flowchart LR
+  Invalidation["cache_invalidation_record"] --> Evidence["supply_chain_invalidation_evidence"]
+  Evidence --> Cost["supply_chain_incident_cost_record"]
+  Cost --> Storage["storage_cost_ledger"]
+  Cost --> Runtime["inference_runtime_cost_ledger"]
+  Cost --> Quality["quality_cost_ledger"]
+  Cost --> Security["security_cost_ledger"]
+  Cost --> Billing["billing hold / replay / credit"]
+  Cost --> PRR["PRR / supply chain gate update"]

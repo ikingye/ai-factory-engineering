@@ -1,0 +1,11 @@
+flowchart TB
+  Model["商业模式"] --> Unit["价值单位: token / GPU hour / subscription / project / outcome"]
+  Unit --> Metering["计量 / 计费 / 成本归因"]
+  Model --> Promise["客户承诺: SLO / SLA / 验收 / 支持"]
+  Promise --> Ops["SRE / 变更 / 升级 / 赔付"]
+  Model --> Delivery["交付方式: 云服务 / 私有化 / 混合 / 边缘"]
+  Delivery --> Infra["GPU IaaS / 网络 / 存储 / 隔离"]
+  Metering --> Economics["毛利 / ROI / 预算"]
+  Infra --> Economics
+  Ops --> Economics
+  Economics --> Roadmap["产品路线 / 扩容 / 优化"]

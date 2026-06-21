@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1456 904" width="1456" height="904">
+  <defs>
+    <marker id="arrowA" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#7c3aed"/>
+    </marker>
+    <marker id="arrowB" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#10b981"/>
+    </marker>
+    <marker id="arrowC" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2563eb"/>
+    </marker>
+    <marker id="arrowE" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#f97316"/>
+    </marker>
+    <marker id="arrowF" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#7c3aed"/>
+    </marker>
+    <marker id="arrowG" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#ef4444"/>
+    </marker>
+    <marker id="arrowH" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#6b7280"/>
+    </marker>
+    <filter id="shadowSoft" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="3" stdDeviation="6" flood-color="#0f172a" flood-opacity="0.12"/>
+    </filter>
+    <filter id="shadowGlass" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="10" stdDeviation="16" flood-color="#020617" flood-opacity="0.28"/>
+    </filter>
+    <style>
+    text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', 'Microsoft JhengHei', 'SimHei', sans-serif; }
+    .title { font-size: 30px; font-weight: 700; fill: #111827; }
+    .subtitle { font-size: 14px; font-weight: 500; fill: #6b7280; }
+    .section { font-size: 13px; font-weight: 700; fill: #2563eb; letter-spacing: 1.4px; }
+    .section-sub { font-size: 12px; font-weight: 500; fill: #94a3b8; }
+    .node-title { font-size: 18px; font-weight: 700; fill: #111827; }
+    .node-sub { font-size: 12px; font-weight: 500; fill: #6b7280; }
+    .node-type { font-size: 12px; font-weight: 700; fill: #9ca3af; letter-spacing: 0.08em; }
+    .arrow-label { font-size: 12px; font-weight: 600; fill: #6b7280; }
+    .legend { font-size: 12px; font-weight: 500; fill: #6b7280; }
+    .footnote { font-size: 12px; font-weight: 500; fill: #94a3b8; }
+    </style>
+  </defs>
+  <rect width="1456.0" height="904.0" fill="#ffffff"/>
+  <text x="728.0" y="56" text-anchor="middle" class="title">39.3.8 inference latency spike</text>
+  <text x="728.0" y="82" text-anchor="middle" class="subtitle">part-09-reliability-observability/chapter-39-troubleshooting.md:592</text>
+  <path d="M 728.0,224.0 L 728.0,296.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 728.0,366.0 L 728.0,386.4 L 597.5,417.6 L 597.5,438.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 728.0,366.0 L 728.0,386.4 L 851.5,417.6 L 851.5,438.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 851.5,496.0 L 851.5,516.4 L 178.0,547.6 L 178.0,568.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 851.5,496.0 L 851.5,516.4 L 449.5,547.6 L 449.5,568.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 851.5,496.0 L 851.5,516.4 L 738.5,547.6 L 738.5,568.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 851.5,496.0 L 851.5,516.4 L 1017.0,547.6 L 1017.0,568.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 851.5,496.0 L 851.5,516.4 L 1278.0,547.6 L 1278.0,568.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 597.5,496.0 L 597.5,516.4 L 728.0,689.6 L 728.0,710.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 178.0,638.0 L 178.0,658.4 L 728.0,689.6 L 728.0,710.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 449.5,638.0 L 449.5,658.4 L 728.0,689.6 L 728.0,710.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 738.5,638.0 L 738.5,658.4 L 728.0,689.6 L 728.0,710.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 1017.0,638.0 L 1017.0,658.4 L 728.0,689.6 L 728.0,710.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 1278.0,638.0 L 1278.0,658.4 L 728.0,689.6 L 728.0,710.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <rect x="646.0" y="154.0" width="164.0" height="70.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
+  <text x="728.0" y="189.0" text-anchor="middle" class="node-title">TTFT / TPOT</text>
+  <text x="728.0" y="211.0" text-anchor="middle" class="node-sub">streaming gap</text>
+  <rect x="606.5" y="296.0" width="243.0" height="70.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
+  <text x="728.0" y="331.0" text-anchor="middle" class="node-title">request shape</text>
+  <text x="728.0" y="353.0" text-anchor="middle" class="node-sub">input/output/context/tenant</text>
+  <rect x="497.0" y="438.0" width="201.0" height="58.0" rx="10.0" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.8"/>
+  <text x="597.5" y="467.0" text-anchor="middle" class="node-title">Gateway queue / route</text>
+  <rect x="744.0" y="438.0" width="215.0" height="58.0" rx="10.0" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.8"/>
+  <text x="851.5" y="467.0" text-anchor="middle" class="node-title">engine_admission_health</text>
+  <rect x="60.0" y="568.0" width="236.0" height="70.0" rx="10.0" fill="#f0fdfa" stroke="#99f6e4" stroke-width="1.8"/>
+  <text x="178.0" y="603.0" text-anchor="middle" class="node-title">prefill queue / cache miss</text>
+  <text x="178.0" y="625.0" text-anchor="middle" class="node-sub">cold load</text>
+  <rect x="342.0" y="568.0" width="215.0" height="70.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8"/>
+  <text x="449.5" y="603.0" text-anchor="middle" class="node-title">decode active sequences</text>
+  <text x="449.5" y="625.0" text-anchor="middle" class="node-sub">batch</text>
+  <rect x="603.0" y="568.0" width="271.0" height="70.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
+  <text x="738.5" y="603.0" text-anchor="middle" class="node-title">kv_block_ledger</text>
+  <text x="738.5" y="625.0" text-anchor="middle" class="node-sub">pressure / leak / fragmentation</text>
+  <rect x="920.0" y="568.0" width="194.0" height="70.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
+  <text x="1017.0" y="603.0" text-anchor="middle" class="node-title">engine_canary_record</text>
+  <text x="1017.0" y="625.0" text-anchor="middle" class="node-sub">runtime regression</text>
+  <rect x="1160.0" y="568.0" width="236.0" height="70.0" rx="10.0" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.8"/>
+  <text x="1278.0" y="603.0" text-anchor="middle" class="node-title">pd_disaggregation_contract</text>
+  <text x="1278.0" y="625.0" text-anchor="middle" class="node-sub">KV transfer / pool ratio</text>
+  <rect x="620.5" y="710.0" width="215.0" height="58.0" rx="10.0" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.8"/>
+  <text x="728.0" y="739.0" text-anchor="middle" class="node-title">route / shed / fallback</text>
+  <text x="1176.0" y="888.0" class="footnote">Rendered with fireworks-tech-graph</text>
+</svg>

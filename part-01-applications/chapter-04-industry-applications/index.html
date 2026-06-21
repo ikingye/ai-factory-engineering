@@ -3811,14 +3811,7 @@
 <p>这条链路的价值，是避免把所有应用压成同一种服务形态。代码补全可能需要小模型、低延迟资源池和更短上下文；长文档办公助手可能需要强文档解析、RAG 和更长 prefill 容忍度；客服可能需要稳定模型、引用约束、灰度发布和严格 SLO；数据分析 Agent 可能需要工具沙箱、SQL 审计和异步任务；多模态应用可能需要对象存储、预处理队列和多模型路由。架构应允许这些差异存在。</p>
 <p>行业应用架构还必须包含反馈闭环。用户采纳率、转人工率、任务完成率、错误回答、引用准确率、成本和延迟，都应回到应用画像和资源策略中。没有反馈，平台只能按静态假设配置模型和资源；有反馈，团队可以判断哪些应用值得使用更强模型，哪些应用需要更严格 RAG，哪些应用应转异步，哪些应用成本高但业务价值也高。</p>
 <p>在组织上，这条链路也能减少沟通误差。应用团队用业务指标描述需求，平台团队用 SLO、token 和资源池承接，基础设施团队用 GPU、网络、存储和隔离实现，财务团队用成本和收入判断可持续性。若缺少共同架构，行业应用会把复杂性分散到各团队的口头约定里；若架构明确，差异就能转化为配置、指标和验收。</p>
-<pre class="mermaid"><code>flowchart TB
-  App["行业应用"] --&gt; Pattern["交互模式\nChat / RAG / Agent / 补全 / 多模态"]
-  Pattern --&gt; Platform["平台需求\nGateway / 权限 / 计费 / 观测 / 接管"]
-  Platform --&gt; Model["模型需求\n质量 / 延迟 / 上下文 / 多模态 / 工具调用"]
-  Model --&gt; Runtime["运行时需求\nbatching / cache / engine / serving"]
-  Runtime --&gt; Infra["基础设施需求\nGPU / 网络 / 存储 / 隔离"]
-  Infra --&gt; Cost["成本 / SLA / 容量规划"]
-  Cost --&gt; App</code></pre>
+<p><img alt="图：4.2.2 系统架构" src="../../assets/diagrams/part-01-applications-chapter-04-industry-applications-01.svg" /></p>
 <h2 id="43">4.3 关键技术<a class="headerlink" href="#43" title="Permanent link">&para;</a></h2>
 <h3 id="431-copilot">4.3.1 办公 Copilot<a class="headerlink" href="#431-copilot" title="Permanent link">&para;</a></h3>
 <p>办公 Copilot 常见场景包括邮件总结、会议纪要、文档问答、PPT 生成、表格分析、组织知识检索和写作辅助。它的输入通常来自办公文档、日程、聊天记录、组织架构、权限系统和知识库。工程重点不是单纯生成流畅文字，而是正确处理企业数据权限、文档结构、引用来源、长上下文和用户低摩擦体验。用户希望它像办公工具的一部分，而不是一个需要反复调 prompt 的模型控制台。</p>
@@ -3846,79 +3839,69 @@
 <p>安全和合规也更复杂。医疗影像、金融文件、合同扫描件、企业截图和客户录音都可能包含敏感信息。平台需要处理文件权限、脱敏、保留周期、下载审计和模型训练使用边界。对于高价值场景，多模态模型能力固然重要，但更关键的是文件生命周期、预处理准确率、引用位置和人工复核流程。不能只验证模型“看懂图片”，还要验证系统是否能安全管理图片。</p>
 <p>多模态应用的基础设施应天然支持异步和分阶段处理。大文件上传、转码、抽帧、OCR、embedding 和推理可能耗时较长，用户需要任务状态而不是单次 HTTP 等待。失败也要定位到具体阶段：文件损坏、OCR 失败、帧提取失败、模型推理失败或权限拒绝。没有阶段化 trace，多模态故障会被笼统归为“模型没看懂”，实际根因可能在数据管线。</p>
 <p>多模态应用必须先建立 <code>multimodal_workload_profile</code>。纯文本 Chat 的 workload profile 主要描述 token、上下文、工具和 SLO；多模态 profile 还要描述媒体类型、文件大小、页数、音频时长、视频帧率、同步或异步边界、预处理链路、人工复核、保留策略和计量单位。没有这个对象，平台会把“上传一个 PDF 问问题”“上传一段会议录音生成纪要”“上传视频找违规片段”都看成普通 Chat 请求，最终在文件处理、成本、延迟和安全上全部失真。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">multimodal_workload_profile</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mwp-claims-document-review-202606</span>
-<span class="w">  </span><span class="nt">owner</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">application</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">insurance-claims-ai</span>
-<span class="w">    </span><span class="nt">platform</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ai-platform</span>
-<span class="w">    </span><span class="nt">data</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">document-ai-platform</span>
-<span class="w">  </span><span class="nt">interaction</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">async_then_streaming_answer</span>
-<span class="w">    </span><span class="nt">user_surface</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">claims_console</span>
-<span class="w">    </span><span class="nt">user_wait_boundary</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">upload_ack_and_task_status</span>
-<span class="w">    </span><span class="nt">final_answer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">streaming_after_preprocess_ready</span>
-<span class="w">  </span><span class="nt">media_inputs</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scanned_pdf</span>
-<span class="w">      </span><span class="nt">expected_pages</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_defined</span>
-<span class="w">      </span><span class="nt">max_file_size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_defined</span>
-<span class="w">      </span><span class="nt">preprocessing</span><span class="p">:</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">virus_scan</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">page_render</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ocr</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">layout_analysis</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">table_extraction</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">image</span>
-<span class="w">      </span><span class="nt">preprocessing</span><span class="p">:</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">exif_strip</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">resize_or_tile</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">visual_embedding</span>
-<span class="w">  </span><span class="nt">derived_artifacts</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">required</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">media_artifact_manifest</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ocr_text</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">page_images</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">layout_blocks</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">citations_to_page_region</span>
-<span class="w">    </span><span class="nt">retention</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_defined_by_data_classification</span>
-<span class="w">  </span><span class="nt">quality</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">task_slices</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ocr_fidelity</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">table_extraction</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">visual_grounding</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">citation_to_source_region</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sensitive_information_redaction</span>
-<span class="w">    </span><span class="nt">human_review_required_for</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">claim_denial_recommendation</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">low_ocr_confidence</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">conflicting_document_evidence</span>
-<span class="w">  </span><span class="nt">economics</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">value_metric</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">reviewed_claim_with_cited_evidence</span>
-<span class="w">    </span><span class="nt">metering_units</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">text_tokens</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">document_pages</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">image_tiles</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ocr_tokens</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">preprocessing_cpu_seconds</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">preprocessing_gpu_seconds</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">artifact_storage_gb_days</span>
-<span class="w">  </span><span class="nt">platform_bindings</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">gateway_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gwp-claims-doc-v2</span>
-<span class="w">    </span><span class="nt">media_pipeline</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mpp-claims-doc-v3</span>
-<span class="w">    </span><span class="nt">quality_gate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mm-qge-claims-202606</span>
-<span class="w">    </span><span class="nt">cost_ledger</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mm-cost-claims-202606</span>
-</code></pre></div>
+<pre><code class="language-yaml">multimodal_workload_profile:
+  id: mwp-claims-document-review-202606
+  owner:
+    application: insurance-claims-ai
+    platform: ai-platform
+    data: document-ai-platform
+  interaction:
+    mode: async_then_streaming_answer
+    user_surface: claims_console
+    user_wait_boundary: upload_ack_and_task_status
+    final_answer: streaming_after_preprocess_ready
+  media_inputs:
+    - type: scanned_pdf
+      expected_pages: policy_defined
+      max_file_size: policy_defined
+      preprocessing:
+        - virus_scan
+        - page_render
+        - ocr
+        - layout_analysis
+        - table_extraction
+    - type: image
+      preprocessing:
+        - exif_strip
+        - resize_or_tile
+        - visual_embedding
+  derived_artifacts:
+    required:
+      - media_artifact_manifest
+      - ocr_text
+      - page_images
+      - layout_blocks
+      - citations_to_page_region
+    retention: policy_defined_by_data_classification
+  quality:
+    task_slices:
+      - ocr_fidelity
+      - table_extraction
+      - visual_grounding
+      - citation_to_source_region
+      - sensitive_information_redaction
+    human_review_required_for:
+      - claim_denial_recommendation
+      - low_ocr_confidence
+      - conflicting_document_evidence
+  economics:
+    value_metric: reviewed_claim_with_cited_evidence
+    metering_units:
+      - text_tokens
+      - document_pages
+      - image_tiles
+      - ocr_tokens
+      - preprocessing_cpu_seconds
+      - preprocessing_gpu_seconds
+      - artifact_storage_gb_days
+  platform_bindings:
+    gateway_policy: gwp-claims-doc-v2
+    media_pipeline: mpp-claims-doc-v3
+    quality_gate: mm-qge-claims-202606
+    cost_ledger: mm-cost-claims-202606
+</code></pre>
 <p>这个 profile 的关键不是字段多，而是把媒体链路从“前端上传文件”提升为生产契约。<code>media_inputs</code> 决定对象存储、上传网关、病毒扫描、解码服务和预处理队列；<code>derived_artifacts</code> 决定第 33 章的 <code>media_artifact_manifest</code>；<code>quality.task_slices</code> 决定第 13 章的多模态门禁；<code>metering_units</code> 决定第 41 章的多模态成本账本。若某个业务后续从扫描 PDF 扩展到视频，profile 必须失效并重审，而不是在原有 Chat endpoint 上直接加一个上传按钮。</p>
-<pre class="mermaid"><code>flowchart TB
-  App["多模态应用\nPDF / image / audio / video"] --&gt; Profile["multimodal_workload_profile"]
-  Profile --&gt; Upload["upload policy\nsize / type / tenant / retention"]
-  Upload --&gt; Pipeline["media_processing_pipeline_record\nscan / decode / OCR / ASR / frames"]
-  Pipeline --&gt; Manifest["media_artifact_manifest\noriginal + derived artifacts"]
-  Manifest --&gt; Serving["model serving\nvision / audio / text fusion"]
-  Serving --&gt; Quality["multimodal_quality_gate_execution"]
-  Serving --&gt; Metering["multimodal_metering_event"]
-  Metering --&gt; Cost["multimodal_cost_ledger"]
-  Quality --&gt; PRR["multimodal_prr_drill"]
-  Cost --&gt; PRR</code></pre>
+<p><img alt="图：4.3.5 多模态应用" src="../../assets/diagrams/part-01-applications-chapter-04-industry-applications-02.svg" /></p>
 <p>多模态应用最容易被低估的是失败语义。文本请求失败，通常可以返回错误或重试；媒体请求失败，可能已经上传了原始文件、生成了部分 OCR、写入了 embedding、产生了临时帧、触发了人工复核，还可能已经被下游模型消费。工程上应把每个阶段的幂等键、输出 manifest、清理策略和计量状态定义清楚。否则一次 OCR 失败重试可能重复扣费，视频抽帧失败可能留下孤儿对象，扫描合同的中间图像可能越过保留策略长期留存。</p>
 <p>多模态应用还要避免把模型能力和证据能力混淆。模型能够描述图片，不代表系统能证明答案来自哪一页、哪一块表格或哪一段音频；模型能总结视频，不代表平台能按帧回放、定位违规片段、脱敏人脸或删除派生产物。面向企业和行业场景，多模态输出最好默认带 source region、time range、page number、confidence 和 preprocessing lineage。没有这些证据，用户只能相信模型文字，无法把结果用于审计、理赔、医疗、质检或合规流程。</p>
 <h3 id="436">4.3.6 企业私有化部署<a class="headerlink" href="#436" title="Permanent link">&para;</a></h3>
@@ -3938,176 +3921,161 @@
 <p>工程实现应把 profile 绑定到配置系统。应用画像确定后，应生成或更新网关策略、模型路由、资源池、限流、trace 字段、账单标签和告警规则。这样应用变更不会停留在文档中，而会影响真实运行。每次重大版本发布，也应重新审查 profile：功能增加了工具调用、上下文变长或转为多模态，都可能要求新的资源和安全策略。</p>
 <p>平台还应保留 profile 的历史版本。应用上线前、灰度中和规模化后，画像可能发生变化，例如从单轮 Chat 演进到 Agent，或从文本输入扩展到多模态文件。版本化 profile 可以解释策略为何变化，也能在事故复盘时对比“当初假设”和“真实流量”。这能把应用治理从口头协调变成可审计工程流程。</p>
 <p>下面的 YAML 是 workload profile 示例。字段值不追求精确数值，但必须能让平台团队做资源和风险判断。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">application</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">code-assistant</span>
-<span class="nt">interaction</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">streaming_completion</span>
-<span class="nt">slo</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">ttft</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">low</span>
-<span class="w">  </span><span class="nt">tpot</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">low</span>
-<span class="nt">context</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">average_input_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">medium</span>
-<span class="w">  </span><span class="nt">max_input_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">high</span>
-<span class="nt">risk</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">data_sensitivity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">source_code</span>
-<span class="w">  </span><span class="nt">side_effects</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">possible_via_agent_tools</span>
-<span class="nt">platform_requirements</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">rate_limit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">per_user_and_per_repo</span>
-<span class="w">  </span><span class="nt">tracing</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">task_level</span>
-<span class="w">  </span><span class="nt">billing</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">token_and_tool_cost</span>
-<span class="w">  </span><span class="nt">resource_pool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">low_latency</span>
-</code></pre></div>
+<pre><code class="language-yaml">application: code-assistant
+interaction: streaming_completion
+slo:
+  ttft: low
+  tpot: low
+context:
+  average_input_tokens: medium
+  max_input_tokens: high
+risk:
+  data_sensitivity: source_code
+  side_effects: possible_via_agent_tools
+platform_requirements:
+  rate_limit: per_user_and_per_repo
+  tracing: task_level
+  billing: token_and_tool_cost
+  resource_pool: low_latency
+</code></pre>
 <p>生产环境中的 <code>workload_profile</code> 应被当作一等对象，而不是接入表单。它需要有 owner、版本、证据来源、审批状态和失效条件。一个 profile 只有在绑定了真实样本、流量假设、权限边界、评测集和成本口径后，才足以驱动模型路由和资源池配置。若 profile 只是业务方口头描述，平台会把不确定性转嫁到默认策略中，最终在延迟、账单或安全事故中暴露。</p>
 <p>更完整的对象可以写成如下结构：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">workload_profile</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">wp-code-assistant-ide-completion-v3</span>
-<span class="w">  </span><span class="nt">owner</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">business</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">developer-product</span>
-<span class="w">    </span><span class="nt">platform</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ai-platform</span>
-<span class="w">    </span><span class="nt">sre</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ai-sre</span>
-<span class="w">  </span><span class="nt">lifecycle</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">state</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">production</span>
-<span class="w">    </span><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3</span>
-<span class="w">    </span><span class="nt">effective_from</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;2026-06-01&quot;</span>
-<span class="w">    </span><span class="nt">review_cycle</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">monthly</span>
-<span class="w">    </span><span class="nt">invalidation_triggers</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">new_agent_write_tool</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">context_window_expansion</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">model_family_change</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">p95_input_tokens_exceeds_profile</span>
-<span class="w">  </span><span class="nt">interaction</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">streaming_completion</span>
-<span class="w">    </span><span class="nt">user_surface</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ide</span>
-<span class="w">    </span><span class="nt">sync_boundary</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">first_token_required</span>
-<span class="w">    </span><span class="nt">cancellation_expected</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">traffic</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">peak_pattern</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">workday_diurnal</span>
-<span class="w">    </span><span class="nt">burst_source</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">repository_index_refresh</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">release_week</span>
-<span class="w">    </span><span class="nt">representative_samples</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">source</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">production_shadow_logs</span>
-<span class="w">      </span><span class="nt">retention</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">redacted_30d</span>
-<span class="w">  </span><span class="nt">context</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">sources</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">current_file</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">related_symbols</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recent_edits</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">retrieval_snippets</span>
-<span class="w">    </span><span class="nt">budget_policy</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">hard_cap</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">configured_by_gateway</span>
-<span class="w">      </span><span class="nt">truncation_order</span><span class="p">:</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">low_score_retrieval</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">old_chat_turns</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">non_imported_files</span>
-<span class="w">  </span><span class="nt">risk</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">data_classification</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">source_code</span>
-<span class="w">    </span><span class="nt">tool_side_effect</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">none_for_completion</span>
-<span class="w">    </span><span class="nt">audit_required</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">slo</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">ttft_class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">interactive</span>
-<span class="w">    </span><span class="nt">availability_class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">production_internal</span>
-<span class="w">    </span><span class="nt">degradation_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fallback_to_short_context_model</span>
-<span class="w">  </span><span class="nt">economics</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">value_metric</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">accepted_completion</span>
-<span class="w">    </span><span class="nt">cost_metric</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cost_per_accepted_completion</span>
-<span class="w">    </span><span class="nt">chargeback</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">project_cost_center</span>
-<span class="w">  </span><span class="nt">platform_bindings</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">gateway_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gwp-code-assistant-v3</span>
-<span class="w">    </span><span class="nt">routing_scorecard</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">route-code-low-latency-v2</span>
-<span class="w">    </span><span class="nt">eval_manifest</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">eval-code-completion-v5</span>
-<span class="w">    </span><span class="nt">resource_pool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-inference-low-latency</span>
-<span class="w">    </span><span class="nt">telemetry_schema</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">trace-ai-code-v2</span>
-</code></pre></div>
+<pre><code class="language-yaml">workload_profile:
+  id: wp-code-assistant-ide-completion-v3
+  owner:
+    business: developer-product
+    platform: ai-platform
+    sre: ai-sre
+  lifecycle:
+    state: production
+    version: 3
+    effective_from: &quot;2026-06-01&quot;
+    review_cycle: monthly
+    invalidation_triggers:
+      - new_agent_write_tool
+      - context_window_expansion
+      - model_family_change
+      - p95_input_tokens_exceeds_profile
+  interaction:
+    mode: streaming_completion
+    user_surface: ide
+    sync_boundary: first_token_required
+    cancellation_expected: true
+  traffic:
+    peak_pattern: workday_diurnal
+    burst_source:
+      - repository_index_refresh
+      - release_week
+    representative_samples:
+      source: production_shadow_logs
+      retention: redacted_30d
+  context:
+    sources:
+      - current_file
+      - related_symbols
+      - recent_edits
+      - retrieval_snippets
+    budget_policy:
+      hard_cap: configured_by_gateway
+      truncation_order:
+        - low_score_retrieval
+        - old_chat_turns
+        - non_imported_files
+  risk:
+    data_classification: source_code
+    tool_side_effect: none_for_completion
+    audit_required: true
+  slo:
+    ttft_class: interactive
+    availability_class: production_internal
+    degradation_policy: fallback_to_short_context_model
+  economics:
+    value_metric: accepted_completion
+    cost_metric: cost_per_accepted_completion
+    chargeback: project_cost_center
+  platform_bindings:
+    gateway_policy: gwp-code-assistant-v3
+    routing_scorecard: route-code-low-latency-v2
+    eval_manifest: eval-code-completion-v5
+    resource_pool: gpu-inference-low-latency
+    telemetry_schema: trace-ai-code-v2
+</code></pre>
 <p>这个对象把应用、平台、模型、资源和经济性连接起来。<code>invalidation_triggers</code> 很关键，因为行业应用会演进：代码助手增加写文件工具后，风险边界从只读补全变成可修改仓库；办公 Copilot 增加长文档批处理后，资源池从低延迟交互变成混合同步/异步；客服增加自动退款工具后，必须引入人工确认和审计。profile 一旦失效，平台应要求重新评审，而不是继续使用旧限流和旧评测。</p>
 <p><code>workload_profile</code> 到生产策略的链路可以画成下面的控制流。它的核心思想是：应用画像先进入评审和证据层，再生成平台策略；运行数据反过来更新画像。不要让业务需求直接改模型路由或资源池。</p>
-<pre class="mermaid"><code>flowchart LR
-  Sample["真实样本\nprompt / documents / traces"] --&gt; Profile["workload_profile"]
-  Business["业务目标\nvalue metric / failure impact"] --&gt; Profile
-  Data["数据边界\npermission / retention / audit"] --&gt; Profile
-  Profile --&gt; Review["application_readiness_review"]
-  Review --&gt; Gateway["Gateway policy\nrate limit / context budget / authz"]
-  Review --&gt; Model["Model routing\nquality scorecard / fallback"]
-  Review --&gt; Runtime["Runtime policy\nbatching / cache / timeout"]
-  Review --&gt; Pool["Resource pool\nlatency / topology / isolation"]
-  Review --&gt; Cost["Cost ledger\nvalue unit / chargeback"]
-  Gateway --&gt; Telemetry["production telemetry"]
-  Model --&gt; Telemetry
-  Runtime --&gt; Telemetry
-  Pool --&gt; Telemetry
-  Cost --&gt; Telemetry
-  Telemetry --&gt;|"profile drift / SLO breach / cost anomaly"| Profile</code></pre>
+<p><img alt="图：4.4.1 工程实现" src="../../assets/diagrams/part-01-applications-chapter-04-industry-applications-03.svg" /></p>
 <p>应用进入生产前应通过 <code>application_readiness_review</code>。它不是一次会议纪要，而是上线门禁记录。门禁至少检查八类证据：真实样本是否覆盖主路径和长尾，评测集是否覆盖业务失败，权限和数据保留是否清楚，模型路由和 fallback 是否可回滚，观测字段是否能串起 request、tenant、model、tool 和 cost，人工接管是否存在，成本是否有预算，退出条件是否可执行。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">application_readiness_review</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">arr-customer-service-rag-2026-06</span>
-<span class="w">  </span><span class="nt">workload_profile</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">wp-customer-service-rag-v4</span>
-<span class="w">  </span><span class="nt">decision</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">conditional_approve</span>
-<span class="w">  </span><span class="nt">scope</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">users</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vip_customer_service_team</span>
-<span class="w">    </span><span class="nt">channels</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">web_chat</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">agent_console_assist</span>
-<span class="w">    </span><span class="nt">excluded</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">automatic_refund</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">legal_dispute_response</span>
-<span class="w">  </span><span class="nt">evidence</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">eval_manifest</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">eval-cs-rag-v7</span>
-<span class="w">    </span><span class="nt">red_team_report</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">safety-cs-v2</span>
-<span class="w">    </span><span class="nt">permission_test</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rag-acl-regression-v4</span>
-<span class="w">    </span><span class="nt">cost_simulation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cost-cs-peak-week-v3</span>
-<span class="w">    </span><span class="nt">rollback_plan</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rb-cs-rag-v4</span>
-<span class="w">  </span><span class="nt">required_controls</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cite_knowledge_article</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">confidence_threshold_for_auto_answer</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">human_handoff_on_low_confidence</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">deny_when_acl_ambiguous</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">append_only_metering</span>
-<span class="w">  </span><span class="nt">guardrail_metrics</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">wrong_answer_rate</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">unsupported_claim_rate</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">handoff_rate</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">acl_denied_retrieval</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cost_per_resolved_session</span>
-<span class="w">  </span><span class="nt">stop_conditions</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">high_risk_wrong_answer_incident</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cost_per_resolved_session_exceeds_budget</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">permission_regression_detected</span>
-</code></pre></div>
+<pre><code class="language-yaml">application_readiness_review:
+  id: arr-customer-service-rag-2026-06
+  workload_profile: wp-customer-service-rag-v4
+  decision: conditional_approve
+  scope:
+    users: vip_customer_service_team
+    channels:
+      - web_chat
+      - agent_console_assist
+    excluded:
+      - automatic_refund
+      - legal_dispute_response
+  evidence:
+    eval_manifest: eval-cs-rag-v7
+    red_team_report: safety-cs-v2
+    permission_test: rag-acl-regression-v4
+    cost_simulation: cost-cs-peak-week-v3
+    rollback_plan: rb-cs-rag-v4
+  required_controls:
+    - cite_knowledge_article
+    - confidence_threshold_for_auto_answer
+    - human_handoff_on_low_confidence
+    - deny_when_acl_ambiguous
+    - append_only_metering
+  guardrail_metrics:
+    - wrong_answer_rate
+    - unsupported_claim_rate
+    - handoff_rate
+    - acl_denied_retrieval
+    - cost_per_resolved_session
+  stop_conditions:
+    - high_risk_wrong_answer_incident
+    - cost_per_resolved_session_exceeds_budget
+    - permission_regression_detected
+</code></pre>
 <p>当应用准备进入商业客户、内部关键业务或私有化交付时，<code>application_readiness_review</code> 还应生成 <code>customer_onboarding_evidence</code> 的输入。前者回答“这个应用能不能进入生产”，后者回答“这个客户或租户是否已经具备被承诺服务的条件”。两者不能混用：应用准备好了，不代表客户的租户、密钥、合同边界、预算、支持入口和数据授权都准备好了；客户合同签了，也不代表应用已通过权限、质量、成本和回滚门禁。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">customer_onboarding_evidence</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">onboarding_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">coe-enterprise-a-support-rag-202606</span>
-<span class="w">  </span><span class="nt">source_application_readiness_review</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">arr-customer-service-rag-2026-06</span>
-<span class="w">  </span><span class="nt">tenant_scope</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">tenant_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enterprise-a</span>
-<span class="w">    </span><span class="nt">projects</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">support-rag-prod</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">environments</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">production</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">customer_owner</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enterprise-a-ai-owner</span>
-<span class="w">    </span><span class="nt">platform_owner</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ai-platform-customer-success</span>
-<span class="w">  </span><span class="nt">contractual_boundary</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">business_model_profile</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bmp-enterprise-maas-standard-v2</span>
-<span class="w">    </span><span class="nt">service_boundary</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">hosted_rag_model_api</span>
-<span class="w">    </span><span class="nt">excluded_responsibilities</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">customer_knowledge_base_correctness</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">customer_network_failure</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">unapproved_prompt_or_tool_change</span>
-<span class="w">  </span><span class="nt">platform_readiness</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">tenant_boundary</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">api_key_lifecycle</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">issued_and_rotation_policy_defined</span>
-<span class="w">    </span><span class="nt">quota_and_budget</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">configured</span>
-<span class="w">    </span><span class="nt">model_access</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">approved</span>
-<span class="w">    </span><span class="nt">data_boundary_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">approved</span>
-<span class="w">    </span><span class="nt">billing_account</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mapped</span>
-<span class="w">    </span><span class="nt">support_channel</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">active</span>
-<span class="w">  </span><span class="nt">launch_controls</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">initial_traffic</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">limited_canary</span>
-<span class="w">    </span><span class="nt">guardrail_metrics</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">wrong_answer_rate</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">acl_denied_retrieval</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ttft_p99</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cost_per_resolved_session</span>
-<span class="w">    </span><span class="nt">stop_conditions</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">application_readiness_review_invalidated</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">customer_budget_exceeded_without_approval</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">unresolved_security_or_quality_incident</span>
-</code></pre></div>
+<pre><code class="language-yaml">customer_onboarding_evidence:
+  onboarding_id: coe-enterprise-a-support-rag-202606
+  source_application_readiness_review: arr-customer-service-rag-2026-06
+  tenant_scope:
+    tenant_id: enterprise-a
+    projects: [support-rag-prod]
+    environments: [production]
+    customer_owner: enterprise-a-ai-owner
+    platform_owner: ai-platform-customer-success
+  contractual_boundary:
+    business_model_profile: bmp-enterprise-maas-standard-v2
+    service_boundary: hosted_rag_model_api
+    excluded_responsibilities:
+      - customer_knowledge_base_correctness
+      - customer_network_failure
+      - unapproved_prompt_or_tool_change
+  platform_readiness:
+    tenant_boundary: pass
+    api_key_lifecycle: issued_and_rotation_policy_defined
+    quota_and_budget: configured
+    model_access: approved
+    data_boundary_policy: approved
+    billing_account: mapped
+    support_channel: active
+  launch_controls:
+    initial_traffic: limited_canary
+    guardrail_metrics:
+      - wrong_answer_rate
+      - acl_denied_retrieval
+      - ttft_p99
+      - cost_per_resolved_session
+    stop_conditions:
+      - application_readiness_review_invalidated
+      - customer_budget_exceeded_without_approval
+      - unresolved_security_or_quality_incident
+</code></pre>
 <p>这个对象的价值在于把客户上线从“开通一个 key”提升为“交付一组可被证明的生产承诺”。例如客服 RAG 应用已经通过权限回归，但客户尚未确认知识库 owner 和数据保留策略，就不能承诺生产 SLA；代码助手已经通过补全延迟门禁，但客户没有配置成本中心和预算，就不能进入商业计费；Agent 应用已经完成工具策略，但客户没有指定人工审批责任人，就不能开放写操作。客户接入证据把这些缺口提前暴露，避免上线后在 SLA、账单或事故中争论责任。</p>
 <p>行业应用还应有接入矩阵。矩阵用于快速判断某类应用是否已经具备生产条件，而不是把所有应用都塞进同一个审批流程。</p>
 <table>

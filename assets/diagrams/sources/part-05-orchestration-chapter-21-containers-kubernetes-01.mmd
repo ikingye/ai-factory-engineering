@@ -1,0 +1,15 @@
+flowchart TB
+  User["用户 / AI 平台 API"] --> API["Kubernetes API Server"]
+  API --> Controllers["Controllers<br/>Deployment / Job / StatefulSet"]
+  API --> Scheduler["Scheduler<br/>filter / score / bind"]
+  Scheduler --> Node["目标 Node"]
+  Controllers --> API
+  Node --> Kubelet["kubelet"]
+  Kubelet --> CRI["CRI<br/>containerd / CRI-O"]
+  Kubelet --> CNI["CNI<br/>Pod 网络"]
+  Kubelet --> CSI["CSI<br/>Volume 挂载"]
+  CRI --> Runtime["OCI Runtime<br/>runc / NVIDIA runtime"]
+  Runtime --> Pod["Pod containers"]
+  CNI --> Pod
+  CSI --> Pod
+  Pod --> App["AI workload<br/>inference / training / eval"]

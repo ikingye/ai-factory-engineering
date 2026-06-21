@@ -3839,19 +3839,7 @@
 <p>这张架构图不是安装手册，而是责任边界图。边界越清晰，升级和回滚越可控。</p>
 <p>边界模糊时，自动化只会更快地放大错误。</p>
 <p>因此架构图应随基线一起版本化。</p>
-<pre class="mermaid"><code>flowchart TB
-  App["训练 / 推理应用"] --&gt; Framework["PyTorch / vLLM / TensorRT-LLM"]
-  Framework --&gt; UserLibs["CUDA runtime / cuDNN / NCCL"]
-  UserLibs --&gt; Toolkit["NVIDIA Container Toolkit"]
-  Toolkit --&gt; Driver["NVIDIA Driver"]
-  Driver --&gt; GPU["GPU Hardware"]
-  Driver --&gt; DCGM["DCGM"]
-  K8s["Kubernetes"] --&gt; DevicePlugin["GPU Device Plugin"]
-  K8s --&gt; Operator["GPU Operator"]
-  Operator --&gt; Driver
-  Operator --&gt; Toolkit
-  Operator --&gt; DCGM
-  DevicePlugin --&gt; Toolkit</code></pre>
+<p><img alt="图：19.2.2 系统架构" src="../../assets/diagrams/part-04-runtime-chapter-19-gpu-software-stack-01.svg" /></p>
 <h2 id="193">19.3 关键技术<a class="headerlink" href="#193" title="Permanent link">&para;</a></h2>
 <h3 id="1931-nvidia-driver">19.3.1 NVIDIA Driver<a class="headerlink" href="#1931-nvidia-driver" title="Permanent link">&para;</a></h3>
 <p>NVIDIA Driver 是主机层组件，负责操作系统与 GPU 硬件之间的交互。它提供内核模块、设备管理能力和用户态接口，是 CUDA 应用访问 GPU 的基础。<code>nvidia-smi</code> 能正常显示 GPU，说明驱动和设备的基本通信可用，但不代表容器、CUDA runtime、NCCL、RDMA 或框架一定可用。驱动正常只是必要条件，不是完整验收。</p>
@@ -3901,27 +3889,27 @@
 <p>Toolkit 的验收应覆盖三类场景。第一类是最小容器，只运行 <code>nvidia-smi</code>、<code>nvidia-container-cli info</code> 和简单 CUDA sample，验证注入链路；第二类是真实基础镜像，加载 PyTorch、NCCL 或推理引擎并执行一次 GPU 计算，验证用户态依赖组合；第三类是 Kubernetes Pod，通过 device plugin 分配 GPU 后在容器内执行同样检查，验证 CRI、runtime、hook 和 Kubernetes 资源分配的组合路径。若只测 <code>nvidia-smi</code>，可能漏掉框架兼容问题；若只测业务镜像，问题又难以归因。</p>
 <p>此外，Toolkit 配置应纳入节点 drift 检测。container runtime 配置被手工修改、runtime handler 变化、hook 二进制被覆盖、<code>NVIDIA_VISIBLE_DEVICES</code> 默认行为变化，都应触发节点重新准入。生产平台应把 Toolkit 版本、runtime 配置 hash、GPU smoke test 结果写入资源池，而不是只保存在节点上。这样才能防止局部修复变成长期隐患，也能在容器 GPU 问题发生时快速判断是节点基线、镜像依赖还是 Kubernetes 分配出了问题。</p>
 <p>较新的集群还应把 CDI/NRI 能力纳入 Toolkit 基线。Toolkit 不只是“安装一个 nvidia runtime”，还可能负责生成 CDI spec、配置 containerd/CRI-O 的 CDI 支持、与 device plugin 的 <code>deviceListStrategy</code> 对齐，或通过 NRI 参与容器创建路径。基线记录应明确当前节点使用 legacy OCI hook、CDI，还是混合模式；混合模式只应出现在迁移窗口，并要有到期时间。否则同一个 GPU Pod 在不同节点上会走不同注入路径，故障表现和审计证据都不一致。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">container_toolkit_baseline</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">toolkit_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pinned</span>
-<span class="w">  </span><span class="nt">libnvidia_container_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pinned</span>
-<span class="w">  </span><span class="nt">container_runtime</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">containerd</span>
-<span class="w">  </span><span class="nt">runtime_handler</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nvidia</span>
-<span class="w">    </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">legacy_hook</span>
-<span class="w">  </span><span class="nt">cdi</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">spec_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/var/run/cdi/nvidia-gpu.yaml</span>
-<span class="w">    </span><span class="nt">spec_hash</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">  </span><span class="nt">nri</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_defined</span>
-<span class="w">  </span><span class="nt">device_plugin_strategy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cdi</span>
-<span class="w">  </span><span class="nt">validation</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nvidia_container_cli_info</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">legacy_hook_smoke_if_enabled</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cdi_device_resolution</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kubernetes_runtimeclass_smoke</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pod_device_visibility_reconciliation</span>
-</code></pre></div>
+<pre><code class="language-yaml">container_toolkit_baseline:
+  toolkit_version: pinned
+  libnvidia_container_version: pinned
+  container_runtime: containerd
+  runtime_handler:
+    name: nvidia
+    mode: legacy_hook
+  cdi:
+    enabled: true
+    spec_path: /var/run/cdi/nvidia-gpu.yaml
+    spec_hash: measured
+  nri:
+    enabled: policy_defined
+  device_plugin_strategy: cdi
+  validation:
+    - nvidia_container_cli_info
+    - legacy_hook_smoke_if_enabled
+    - cdi_device_resolution
+    - kubernetes_runtimeclass_smoke
+    - pod_device_visibility_reconciliation
+</code></pre>
 <p>这个 baseline 的价值在升级时最明显。containerd、CRI-O、runc、Toolkit、device plugin 任一组件升级，都可能改变设备注入路径。若 baseline 只记录版本，不记录注入模式和 spec hash，升级后即使版本看起来正确，也无法解释为什么容器内可见设备发生变化。AI Factory 应把“GPU 如何进入容器”视为可验收能力，而不是 runtime 的内部细节。</p>
 <h3 id="1937-gpu-operator">19.3.7 GPU Operator<a class="headerlink" href="#1937-gpu-operator" title="Permanent link">&para;</a></h3>
 <p>GPU Operator 使用 Kubernetes Operator 模式管理 GPU 软件栈，通常可以部署或管理 driver、NVIDIA Container Toolkit、GPU Device Plugin、DCGM exporter、MIG manager、Node Feature Discovery 等组件。它的价值是把 GPU 节点配置声明化、自动化，降低手工安装和漂移风险。对于 Kubernetes GPU 集群，GPU Operator 是常见管理方式。</p>
@@ -3947,26 +3935,26 @@
 <h3 id="1941">19.4.1 工程实现<a class="headerlink" href="#1941" title="Permanent link">&para;</a></h3>
 <p>工程实现应从 GPU node baseline 开始。基线至少包含 OS、kernel、driver、CUDA 支持范围、NCCL、cuDNN、OFED/RDMA、Container Toolkit、DCGM、GPU Operator 策略、container runtime 和验证用例。基线发布后，节点加入资源池、升级、维修返回、重装系统都要重新验证。没有基线，节点只是“装了驱动的机器”，不是 AI Factory 可交付资源。</p>
 <p>示例基线如下：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">gpu_node_baseline</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">os</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ubuntu-or-enterprise-linux</span>
-<span class="w">  </span><span class="nt">kernel</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pinned</span>
-<span class="w">  </span><span class="nt">nvidia_driver</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pinned</span>
-<span class="w">  </span><span class="nt">cuda_runtime</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">supported_range</span>
-<span class="w">  </span><span class="nt">nccl</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pinned</span>
-<span class="w">  </span><span class="nt">rdma_stack</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pinned</span>
-<span class="w">  </span><span class="nt">container_toolkit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pinned</span>
-<span class="w">  </span><span class="nt">container_toolkit_mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cdi_or_legacy_hook</span>
-<span class="w">  </span><span class="nt">device_plugin_strategy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pinned</span>
-<span class="w">  </span><span class="nt">cdi_spec_hash</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured_if_enabled</span>
-<span class="w">  </span><span class="nt">dcgm_exporter</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enabled</span>
-<span class="w">  </span><span class="nt">validation</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nvidia-smi</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cuda-sample</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">container-gpu-smoke-test</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cdi-or-runtimeclass-smoke-test</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nccl-test</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dcgm-metrics-check</span>
-</code></pre></div>
+<pre><code class="language-yaml">gpu_node_baseline:
+  os: ubuntu-or-enterprise-linux
+  kernel: pinned
+  nvidia_driver: pinned
+  cuda_runtime: supported_range
+  nccl: pinned
+  rdma_stack: pinned
+  container_toolkit: pinned
+  container_toolkit_mode: cdi_or_legacy_hook
+  device_plugin_strategy: pinned
+  cdi_spec_hash: measured_if_enabled
+  dcgm_exporter: enabled
+  validation:
+    - nvidia-smi
+    - cuda-sample
+    - container-gpu-smoke-test
+    - cdi-or-runtimeclass-smoke-test
+    - nccl-test
+    - dcgm-metrics-check
+</code></pre>
 <p>基线验收应分层执行。主机层验证驱动、GPU 健康、NVLink、ECC、Xid、RDMA；容器层验证 GPU 可见性、CUDA library、框架加载；通信层验证单节点和跨节点 NCCL；业务层验证短训练、推理 smoke test 和指标上报。每次验收产生报告，包含版本、节点、时间、测试结果和失败原因。这样软件栈才能被采购、交付、运维和用户共同信任。</p>
 <p>实现还应支持节点生命周期状态。新节点先进入 pending validation，通过后进入 serving；出现异常进入 quarantine；维修或升级后重新 validation；退役前保留故障和版本记录。状态机比人工备注可靠。对 GPU IaaS 来说，软件栈准入和硬件健康一样重要，二者共同决定节点是否能交付给训练和推理任务。</p>
 <p>平台还应把基线检查做成可重复命令或流水线，而不是依赖人工 runbook。每次运行输出结构化报告，报告可以被 CI、准入系统和审计系统消费。这样，节点规模扩大后，软件栈质量不会随人工操作能力下降。</p>

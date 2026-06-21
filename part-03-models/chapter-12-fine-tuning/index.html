@@ -3813,17 +3813,7 @@
 <p>架构上还要处理产物形态。Full fine-tuning 可能产出完整 checkpoint，LoRA/adapter 产出小型增量参数，prompt tuning 产出 soft prompt。不同产物的存储、加载、合并、版本兼容和服务方式不同。模型注册系统必须知道产物依赖哪个 base model、tokenizer、推理引擎版本和安全策略，否则上线时容易出现不兼容。</p>
 <p>微调架构还应内置比较基线。每个任务都应有 base model 表现、prompt/RAG 基线和微调后表现。若微调只比原始模型好，却不如简单 RAG 或更好的 prompt，就不应进入生产。平台需要帮助用户证明“训练值得做”，而不是只证明“训练成功完成”。</p>
 <p>架构还要支持失败闭环。数据未通过校验时返回可修复报告，训练失败时保留日志和资源快照，评测未通过时说明失败维度，发布失败时能回滚到上一版本。没有这些状态，用户只会看到“任务失败”，平台也无法改进流程。微调平台的体验来自全链路反馈。</p>
-<pre class="mermaid"><code>flowchart LR
-  Data["租户私有数据"] --&gt; Guard["校验 / 脱敏 / 权限"]
-  Guard --&gt; Split["训练集 / 验证集"]
-  Base["基础模型"] --&gt; Job["微调任务"]
-  Split --&gt; Job
-  Job --&gt; Artifact["checkpoint / LoRA / adapter"]
-  Artifact --&gt; Eval["质量 + 安全评测"]
-  Eval --&gt; Registry["模型注册"]
-  Registry --&gt; Serving["模型服务 / MaaS"]
-  Serving --&gt; Metrics["线上指标 / 反馈"]
-  Metrics --&gt; Guard</code></pre>
+<p><img alt="图：12.2.2 系统架构" src="../../assets/diagrams/part-03-models-chapter-12-fine-tuning-01.svg" /></p>
 <h2 id="123">12.3 关键技术<a class="headerlink" href="#123" title="Permanent link">&para;</a></h2>
 <h3 id="1231-full-fine-tuning">12.3.1 full fine-tuning<a class="headerlink" href="#1231-full-fine-tuning" title="Permanent link">&para;</a></h3>
 <p>Full fine-tuning 更新模型全部或大部分参数，适合需要深度改变模型行为、领域能力或任务模式的场景。它可以让模型充分吸收新数据，但代价是显存、计算、存储和评测成本较高。由于基础权重被改变，模型可能出现灾难性遗忘、安全能力退化或通用能力下降。它不是多租户自助定制的低风险默认选项。</p>
@@ -3873,21 +3863,21 @@
 <h3 id="1241">12.4.1 工程实现<a class="headerlink" href="#1241" title="Permanent link">&para;</a></h3>
 <p>微调任务模板应把数据、方法、资源、产物和门禁放在同一个声明中。模板既给平台调度使用，也给审计和复现使用。用户提交任务时，平台应校验租户权限、base model 是否允许微调、数据是否通过脱敏、资源是否在配额内、评测是否配置完整。缺少这些校验，微调很快会退化为不受控脚本集合。</p>
 <p>示例模板如下：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">fine_tuning_job</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">tenant</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enterprise-a</span>
-<span class="w">  </span><span class="nt">base_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-base</span>
-<span class="w">  </span><span class="nt">method</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">lora</span>
-<span class="w">  </span><span class="nt">dataset</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">customer-service-sft-v1</span>
-<span class="w">  </span><span class="nt">resources</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">gpu_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">allowed_by_platform</span>
-<span class="w">    </span><span class="nt">gpu_count</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
-<span class="w">  </span><span class="nt">output</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">artifact_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">adapter</span>
-<span class="w">    </span><span class="nt">registry_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enterprise-a-service-lora-v1</span>
-<span class="w">  </span><span class="nt">gates</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">require_eval</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">require_safety_check</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-</code></pre></div>
+<pre><code class="language-yaml">fine_tuning_job:
+  tenant: enterprise-a
+  base_model: af-chat-base
+  method: lora
+  dataset: customer-service-sft-v1
+  resources:
+    gpu_type: allowed_by_platform
+    gpu_count: 1
+  output:
+    artifact_type: adapter
+    registry_name: enterprise-a-service-lora-v1
+  gates:
+    require_eval: true
+    require_safety_check: true
+</code></pre>
 <p>实现流程可以拆成五步。第一步是数据准入，生成数据报告和版本；第二步是任务计划，估算资源和成本；第三步是训练执行，记录日志、指标和 checkpoint；第四步是评测门禁，执行质量、安全和回归测试；第五步是注册发布，写入 registry 并配置服务策略。每一步都应有状态和审计记录。</p>
 <p>微调产物还应进入模型产物供应链。LoRA、QLoRA、adapter、prompt tuning 权重和合并后的 full model 都应写入 <code>model_artifact_provenance</code>：记录 base model digest、微调数据 lineage、训练配置、adapter 格式、merge 脚本、tokenizer/template 版本、评测门禁和签名。它们同时要受 <code>storage_security_boundary</code> 管控，因为 adapter 往往携带企业私有数据分布和业务能力，不能被当作普通小文件在共享对象桶中复制。没有 provenance 和边界，微调平台很容易出现“线上加载了哪个 adapter 不清楚”“客户数据训练出的 adapter 被错误复用”“回滚只回滚 base model 未回滚 adapter”这类事故。</p>
 <p>平台还应提供自助能力和专家兜底。常见 LoRA 微调可以产品化为表单、API 和模板；复杂 full fine-tuning 或高风险数据需要专家审核。这样既能支持规模化，又能避免让普通用户接触过多底层训练细节。微调平台的目标是把正确流程默认化，而不是把所有开关暴露给用户。</p>

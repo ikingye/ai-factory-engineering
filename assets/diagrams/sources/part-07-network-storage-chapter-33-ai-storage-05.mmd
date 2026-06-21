@@ -1,0 +1,12 @@
+flowchart LR
+  Lineage["dataset_lineage_record"] --> Contract["supply_chain_release_contract"]
+  Manifest["dataset_manifest"] --> Contract
+  Restore["checkpoint_restore_drill"] --> Contract
+  Prov["model_artifact_provenance"] --> Contract
+  Dist["model_artifact_distribution"] --> Contract
+  Boundary["storage_security_boundary"] --> Contract
+  Contract --> Gateway["Gateway route eligibility"]
+  Contract --> Scheduler["scheduler cache eligibility"]
+  Contract --> Cache["cache prewarm / invalidation"]
+  Contract --> Billing["usage schema / billing hold"]
+  Contract --> PRR["production readiness review"]

@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1624 856" width="1624" height="856">
+  <defs>
+    <marker id="arrowA" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#7c3aed"/>
+    </marker>
+    <style>
+      text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; }
+      .title { font-size: 30px; font-weight: 700; fill: #111827; }
+      .subtitle { font-size: 14px; font-weight: 500; fill: #6b7280; }
+      .participant { font-size: 16px; font-weight: 700; fill: #111827; }
+      .message { font-size: 12px; font-weight: 600; fill: #4b5563; }
+      .footnote { font-size: 12px; font-weight: 500; fill: #94a3b8; }
+    </style>
+  </defs>
+  <rect width="1624" height="856" fill="#ffffff"/>
+  <text x="812.0" y="56" text-anchor="middle" class="title">22.2.2 系统架构</text>
+  <text x="812.0" y="82" text-anchor="middle" class="subtitle">part-05-orchestration/chapter-22-gpu-on-kubernetes.md:96</text>
+  <rect x="72.0" y="126" width="150" height="52" rx="8" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+  <text x="147.0" y="158" text-anchor="middle" class="participant">用户 / 平台</text>
+  <line x1="147.0" y1="178" x2="147.0" y2="798" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="6 5"/>
+  <rect x="262.0" y="126" width="150" height="52" rx="8" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.5"/>
+  <text x="337.0" y="158" text-anchor="middle" class="participant">API Server</text>
+  <line x1="337.0" y1="178" x2="337.0" y2="798" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="6 5"/>
+  <rect x="452.0" y="126" width="150" height="52" rx="8" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.5"/>
+  <text x="527.0" y="158" text-anchor="middle" class="participant">Scheduler</text>
+  <line x1="527.0" y1="178" x2="527.0" y2="798" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="6 5"/>
+  <rect x="642.0" y="126" width="150" height="52" rx="8" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.5"/>
+  <text x="717.0" y="158" text-anchor="middle" class="participant">kubelet</text>
+  <line x1="717.0" y1="178" x2="717.0" y2="798" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="6 5"/>
+  <rect x="832.0" y="126" width="150" height="52" rx="8" fill="#f0fdfa" stroke="#99f6e4" stroke-width="1.5"/>
+  <text x="907.0" y="158" text-anchor="middle" class="participant">GPU Device Plugin</text>
+  <line x1="907.0" y1="178" x2="907.0" y2="798" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="6 5"/>
+  <rect x="1022.0" y="126" width="150" height="52" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
+  <text x="1097.0" y="158" text-anchor="middle" class="participant">containerd / CRI-O</text>
+  <line x1="1097.0" y1="178" x2="1097.0" y2="798" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="6 5"/>
+  <rect x="1212.0" y="126" width="150" height="52" rx="8" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+  <text x="1287.0" y="158" text-anchor="middle" class="participant">NVIDIA Runtime / Hook</text>
+  <line x1="1287.0" y1="178" x2="1287.0" y2="798" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="6 5"/>
+  <rect x="1402.0" y="126" width="150" height="52" rx="8" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.5"/>
+  <text x="1477.0" y="158" text-anchor="middle" class="participant">Container</text>
+  <line x1="1477.0" y1="178" x2="1477.0" y2="798" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="6 5"/>
+  <line x1="163.0" y1="220" x2="321.0" y2="220" stroke="#7c3aed" stroke-width="2.2" marker-end="url(#arrowA)"/>
+  <rect x="119.0" y="190" width="246.0" height="22" rx="6" fill="#ffffff" opacity="0.96"/>
+  <text x="242.0" y="205" text-anchor="middle" class="message">提交 Pod, limits nvidia.com/gpu: 1</text>
+  <line x1="353.0" y1="276" x2="511.0" y2="276" stroke="#7c3aed" stroke-width="2.2" marker-end="url(#arrowA)"/>
+  <rect x="387.0" y="246" width="90.0" height="22" rx="6" fill="#ffffff" opacity="0.96"/>
+  <text x="432.0" y="261" text-anchor="middle" class="message">待调度 Pod</text>
+  <line x1="511.0" y1="332" x2="353.0" y2="332" stroke="#7c3aed" stroke-width="2.2" marker-end="url(#arrowA)"/>
+  <rect x="386.0" y="302" width="92.0" height="22" rx="6" fill="#ffffff" opacity="0.96"/>
+  <text x="432.0" y="317" text-anchor="middle" class="message">绑定到 GPU 节点</text>
+  <line x1="733.0" y1="388" x2="891.0" y2="388" stroke="#7c3aed" stroke-width="2.2" marker-end="url(#arrowA)"/>
+  <rect x="762.5" y="358" width="99.0" height="22" rx="6" fill="#ffffff" opacity="0.96"/>
+  <text x="812.0" y="373" text-anchor="middle" class="message">Allocate 请求</text>
+  <line x1="891.0" y1="444" x2="733.0" y2="444" stroke="#7c3aed" stroke-width="2.2" marker-end="url(#arrowA)" stroke-dasharray="7 5"/>
+  <rect x="685.5" y="414" width="253.0" height="22" rx="6" fill="#ffffff" opacity="0.96"/>
+  <text x="812.0" y="429" text-anchor="middle" class="message">返回 GPU device / env / annotations</text>
+  <line x1="733.0" y1="500" x2="1081.0" y2="500" stroke="#7c3aed" stroke-width="2.2" marker-end="url(#arrowA)"/>
+  <rect x="843.5" y="470" width="127.0" height="22" rx="6" fill="#ffffff" opacity="0.96"/>
+  <text x="907.0" y="485" text-anchor="middle" class="message">CreateContainer</text>
+  <line x1="1113.0" y1="556" x2="1271.0" y2="556" stroke="#7c3aed" stroke-width="2.2" marker-end="url(#arrowA)"/>
+  <rect x="1086.5" y="526" width="211.0" height="22" rx="6" fill="#ffffff" opacity="0.96"/>
+  <text x="1192.0" y="541" text-anchor="middle" class="message">处理 OCI spec / prestart hook</text>
+  <line x1="1303.0" y1="612" x2="1271.0" y2="612" stroke="#7c3aed" stroke-width="2.2" marker-end="url(#arrowA)"/>
+  <rect x="1232.0" y="582" width="110.0" height="22" rx="6" fill="#ffffff" opacity="0.96"/>
+  <text x="1287.0" y="597" text-anchor="middle" class="message">注入 /dev/nvidia* 与 driver libraries</text>
+  <line x1="1113.0" y1="668" x2="1461.0" y2="668" stroke="#7c3aed" stroke-width="2.2" marker-end="url(#arrowA)"/>
+  <rect x="1242.0" y="638" width="90.0" height="22" rx="6" fill="#ffffff" opacity="0.96"/>
+  <text x="1287.0" y="653" text-anchor="middle" class="message">启动容器进程</text>
+  <line x1="1461.0" y1="724" x2="163.0" y2="724" stroke="#7c3aed" stroke-width="2.2" marker-end="url(#arrowA)" stroke-dasharray="7 5"/>
+  <rect x="682.0" y="694" width="260.0" height="22" rx="6" fill="#ffffff" opacity="0.96"/>
+  <text x="812.0" y="709" text-anchor="middle" class="message">CUDA / nvidia-smi / AI workload 可用</text>
+  <text x="1596" y="830" text-anchor="end" class="footnote">Rendered with fireworks-tech-graph</text>
+</svg>

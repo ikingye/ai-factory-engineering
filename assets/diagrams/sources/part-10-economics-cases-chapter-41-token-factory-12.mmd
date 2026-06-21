@@ -1,0 +1,12 @@
+flowchart LR
+  Incident["training_incident_record"] --> Cost["training_incident_cost_record"]
+  FaultTree["training_fault_tree_execution"] --> Cost
+  Debug["training_debug_bundle"] --> Cost
+  Cost --> ROI["training_roi_ledger"]
+  Cost --> Queue["queue_fairness_ledger"]
+  Cost --> Reliability["reliability_cost_ledger"]
+  Cost --> Gate["acceptance / PRR gate update"]
+  ROI --> Decision["train / rerun / repair / pause / invest"]
+  Queue --> Decision
+  Reliability --> Decision
+  Gate --> Decision

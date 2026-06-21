@@ -1,0 +1,9 @@
+flowchart LR
+  Contract["gpu_resource_claim_contract"] --> Admission["resource_claim_admission_record"]
+  Admission --> Fault["resource_claim_fault_tree_execution"]
+  Fault --> Cost["resource_claim_incident_cost_record"]
+  Queue["queue_fairness_ledger"] --> Cost
+  Accept["resource_claim_acceptance_matrix"] --> Cost
+  Cost --> Reliability["reliability_cost_ledger"]
+  Cost --> Billing["billing hold / dispute replay"]
+  Cost --> PRR["resource claim PRR gate update"]

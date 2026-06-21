@@ -3865,32 +3865,9 @@
 <p>AI 数据中心还需要闭环 telemetry。电力、温度、液冷供回水、流量、漏液、风扇、BMC、PDU、端口、链路、rack、server、GPU 和 job 指标要能关联。SRE 排查一次训练变慢时，应能看到是否同一时间出现 rack 温度升高、电力告警、端口错误或存储拥塞。没有跨层 telemetry，物理问题会伪装成模型或平台问题。</p>
 <p>架构上还要定义状态流转。资源从 planned 到 installed，到 bootstrapped，到 accepted，到 allocatable，再到 degraded、maintenance 或 retired，每个状态都应有证据和责任人。没有状态机，扩容会变成一堆临时表格；有了状态机，平台可以明确哪些资源能卖、哪些只能测试、哪些必须维修。</p>
 <p>状态流转还要有门禁。比如 cabling 未验证不能进入 fabric 池，液冷未满载验收不能进入高优训练池，存储并发失败不能承载 checkpoint 密集任务。门禁把工程事实变成自动化规则，减少人工口头协调。</p>
-<pre class="mermaid"><code>flowchart TB
-  Facility["Facility: Space / Power / Cooling"] --&gt; Rack["Rack / PDU / CDU"]
-  Rack --&gt; Server["GPU Server / Compute Tray"]
-  Rack --&gt; Network["Switch / Cabling / Rail"]
-  Server --&gt; Provision["Bare Metal Provisioning"]
-  Network --&gt; Provision
-  Provision --&gt; Acceptance["Burn-in / NCCL / RDMA / Storage"]
-  Acceptance --&gt; Pool["GPU Resource Pool"]
-  Pool --&gt; Scheduler["Kubernetes / Slurm"]
-  Telemetry["Power / Thermal / Liquid / Link Telemetry"] --&gt; Facility
-  Telemetry --&gt; Rack
-  Telemetry --&gt; Pool</code></pre>
+<p><img alt="图：36.2.2 系统架构" src="../../assets/diagrams/part-08-physical-infrastructure-chapter-36-ai-datacenter-engineering-01.svg" /></p>
 <p>物理产能激活可以进一步表示为状态机：</p>
-<pre class="mermaid"><code>stateDiagram-v2
-  [*] --&gt; Planned
-  Planned --&gt; Installed: rack / power / cooling / cabling complete
-  Installed --&gt; Bootstrapped: BMC / PXE / OS / driver ready
-  Bootstrapped --&gt; Accepted: physical + network + storage + workload tests pass
-  Accepted --&gt; Allocatable: resource pool activation
-  Accepted --&gt; Limited: partial acceptance
-  Allocatable --&gt; Degraded: health or power/cooling/fabric signal
-  Degraded --&gt; Maintenance: repair or planned change
-  Limited --&gt; Maintenance: fix constraint
-  Maintenance --&gt; Bootstrapped: reinitialize
-  Allocatable --&gt; Retired: lifecycle end
-  Limited --&gt; Retired: not economical to repair</code></pre>
+<p><img alt="图：36.2.2 系统架构" src="../../assets/diagrams/part-08-physical-infrastructure-chapter-36-ai-datacenter-engineering-02.svg" /></p>
 <p>状态机的价值在于防止“半成品产能”进入生产承诺。<code>Installed</code> 只说明设备放好了，<code>Bootstrapped</code> 只说明软件能启动，<code>Accepted</code> 才说明关键路径通过验收，<code>Allocatable</code> 才说明调度器可使用。任何 power、cooling、fabric 或 storage 限制，都应落到 <code>Limited</code> 或 <code>Degraded</code>，而不是靠人记住。</p>
 <h2 id="363">36.3 关键技术<a class="headerlink" href="#363" title="Permanent link">&para;</a></h2>
 <h3 id="3631-rack">36.3.1 rack<a class="headerlink" href="#3631-rack" title="Permanent link">&para;</a></h3>
@@ -3901,33 +3878,33 @@
 <p>Rack 还适合作为容量复盘单位。一次训练变慢、一次推理故障或一次扩容失败，都应能按 rack 聚合影响：哪些 rack 的 GPU 小时损失最多，哪些 rack 的温度更高，哪些 rack 的线缆错误更多。长期看，rack 级数据能指导下一轮机房设计和供应商改进，而不仅是现场排障。</p>
 <p>Rack 标签还应贯穿日志、指标和成本。只有这样，平台才能知道某个 rack 贡献了多少有效产能，又消耗了多少维修和能耗成本。</p>
 <p>AI Factory 应把 rack 建模为 <code>rack_capacity_unit</code>。它不是“一个机柜里有多少 GPU”，而是一个由电力、制冷、网络、存储、服务器画像和准入结果共同决定的可承诺产能单元：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">rack_capacity_unit</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">rcu_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dc-a-rack-12</span>
-<span class="w">  </span><span class="nt">physical_scope</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">rack</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rack-12</span>
-<span class="w">    </span><span class="nt">row</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">row-b</span>
-<span class="w">    </span><span class="nt">room</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">room-3</span>
-<span class="w">  </span><span class="nt">capacity</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">gpu_count_installed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">gpu_count_allocatable</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">    </span><span class="nt">full_nvlink_domains</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">training_fabric_ready</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">storage_path_ready</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">constraints</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">power_envelope</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">power-thermal-rack12-a</span>
-<span class="w">    </span><span class="nt">cooling_domain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cdu-loop-2</span>
-<span class="w">    </span><span class="nt">pdu_capacity_margin</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">cabling_state</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">verified</span>
-<span class="w">  </span><span class="nt">workload_fit</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">large_distributed_training</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">allowed</span>
-<span class="w">    </span><span class="nt">premium_inference_spread</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">allowed_with_anti_affinity</span>
-<span class="w">    </span><span class="nt">checkpoint_heavy_training</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">limited_if_storage_concurrent_limited</span>
-<span class="w">  </span><span class="nt">economics</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">rack_power</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">effective_gpu_hours</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">    </span><span class="nt">tokens_per_watt</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated_if_inference</span>
-<span class="w">    </span><span class="nt">capacity_loss_reason</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">none_or_recorded</span>
-</code></pre></div>
+<pre><code class="language-yaml">rack_capacity_unit:
+  rcu_id: dc-a-rack-12
+  physical_scope:
+    rack: rack-12
+    row: row-b
+    room: room-3
+  capacity:
+    gpu_count_installed: recorded
+    gpu_count_allocatable: calculated
+    full_nvlink_domains: recorded
+    training_fabric_ready: true
+    storage_path_ready: true
+  constraints:
+    power_envelope: power-thermal-rack12-a
+    cooling_domain: cdu-loop-2
+    pdu_capacity_margin: measured
+    cabling_state: verified
+  workload_fit:
+    large_distributed_training: allowed
+    premium_inference_spread: allowed_with_anti_affinity
+    checkpoint_heavy_training: limited_if_storage_concurrent_limited
+  economics:
+    rack_power: measured
+    effective_gpu_hours: calculated
+    tokens_per_watt: calculated_if_inference
+    capacity_loss_reason: none_or_recorded
+</code></pre>
 <p>这个对象让容量讨论从“买了多少 GPU”变成“激活了多少可用产能”。一个 rack 可能服务器都安装完成，但因为 cooling_limited 或 fabric_limited 只能进入低优池；另一个 rack 可能 GPU 数少一些，但 power、cooling、fabric、storage 全部通过，能承载高优训练。容量运营必须使用 <code>gpu_count_allocatable</code> 和 workload fit，而不是采购清单。</p>
 <p>Rack capacity 还需要表达运行中降额。<code>rack_capacity_unit</code> 是容量单元，<code>capacity_derating_record</code> 是容量单元在某个时间窗口的能力折扣。两者结合后，调度器可以知道一个 rack “平时适合大训练，但当前只能跑低优批处理”；容量运营也可以把降额 GPU 数、降额时长和业务影响纳入复盘。没有降额对象，资源池只能在 allocatable 和 maintenance 之间二选一，既不准确，也不利于利用剩余安全产能。</p>
 <h3 id="3632-power">36.3.2 power<a class="headerlink" href="#3632-power" title="Permanent link">&para;</a></h3>
@@ -3944,33 +3921,33 @@
 <p>Cooling 设计还要考虑运维动作。更换风扇、调整挡板、清理过滤、维修 CDU 或改变 rack 布局，都可能影响热环境。每次变更后，应比较同一组 workload 的温度和降频基线。冷却系统不是一次设计完成后不再变化的背景设施，而是持续影响 GPU 产能的运行系统。</p>
 <p>冷却指标也要有季节和负载背景。同一温度在不同外部环境和不同 workload 下含义不同，基线需要随时间校准。</p>
 <p>冷却异常应落成 <code>cooling_degradation_record</code>。它比普通告警更结构化，记录退化发生在哪个 cooling domain、影响哪些 rack 和 workload、是否触发 GPU 降频、是否需要降额、恢复后需要哪些复测。这样 SRE 不必从设施告警、BMC 事件、GPU 温度和任务指标中手工拼现场。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">cooling_degradation_record</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">degradation_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cool-deg-20260620-002</span>
-<span class="w">  </span><span class="nt">scope</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">cooling_domain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cdu-loop-2</span>
-<span class="w">    </span><span class="nt">affected_rack_capacity_units</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">dc-a-rack-12</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">affected_nodes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">  </span><span class="nt">signals</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">coolant_supply_temperature</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">coolant_return_temperature</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">coolant_flow</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">below_policy</span>
-<span class="w">    </span><span class="nt">leak_alarm</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-<span class="w">    </span><span class="nt">gpu_thermal_throttle_events</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">fan_speed_or_pump_state</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">  </span><span class="nt">workload_impact</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">affected_jobs</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">optional</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">affected_endpoints</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">optional</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">tokens_per_watt_delta</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated_if_inference</span>
-<span class="w">    </span><span class="nt">step_time_delta</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated_if_training</span>
-<span class="w">  </span><span class="nt">action</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">capacity_derating_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">derate-rack12-20260620-001</span>
-<span class="w">    </span><span class="nt">drain_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">long_running_training</span>
-<span class="w">    </span><span class="nt">notification</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">capacity_and_sre</span>
-<span class="w">  </span><span class="nt">recovery</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">facility_fix_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">    </span><span class="nt">thermal_full_load_soak</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">    </span><span class="nt">baseline_invalidation_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">created_if_threshold_crossed</span>
-</code></pre></div>
+<pre><code class="language-yaml">cooling_degradation_record:
+  degradation_id: cool-deg-20260620-002
+  scope:
+    cooling_domain: cdu-loop-2
+    affected_rack_capacity_units: [dc-a-rack-12]
+    affected_nodes: recorded
+  signals:
+    coolant_supply_temperature: measured
+    coolant_return_temperature: measured
+    coolant_flow: below_policy
+    leak_alarm: false
+    gpu_thermal_throttle_events: measured
+    fan_speed_or_pump_state: measured
+  workload_impact:
+    affected_jobs: [optional]
+    affected_endpoints: [optional]
+    tokens_per_watt_delta: calculated_if_inference
+    step_time_delta: calculated_if_training
+  action:
+    capacity_derating_record: derate-rack12-20260620-001
+    drain_policy: long_running_training
+    notification: capacity_and_sre
+  recovery:
+    facility_fix_record: required
+    thermal_full_load_soak: required
+    baseline_invalidation_record: created_if_threshold_crossed
+</code></pre>
 <p>这个记录能把冷却问题从“设施层异常”翻译成 AI Factory 语言。若 GPU 没有明显报错但 tokens/W 下降，<code>cooling_degradation_record</code> 可以证明能效退化与冷却域相关；若 step time 抖动集中在某个 rack，它可以把排查路径从 NCCL 或模型转向热退化；若告警恢复但未完成 full-load soak，资源池仍应保持 limited，而不是立即恢复大训练调度。</p>
 <h3 id="3634-liquid-cooling">36.3.4 liquid cooling<a class="headerlink" href="#3634-liquid-cooling" title="Permanent link">&para;</a></h3>
 <p>Liquid cooling 用液体带走热量，适合高密度 GPU 系统。它可能涉及 CDU、冷板、快接头、管路、供回水温度、流量、压力、漏液检测、过滤、维护安全和备件流程。液冷让更高密度和更高功耗系统成为可能，但也把机房工程与服务器运行绑定得更紧。</p>
@@ -4001,36 +3978,36 @@
 <p>故障域设计还影响容量承诺。若一个租户的关键推理服务所有副本都落在同一 power domain，表面上有多副本，实际可用性并没有提高；若一个训练任务跨越过多故障域，通信可能变差。调度器应能根据 workload 目标选择“集中”或“打散”，而不是简单随机放置。</p>
 <p>故障域也应进入发布策略。模型服务灰度发布时，如果新旧版本落在同一故障域，灰度本身无法验证故障隔离能力。</p>
 <p>平台应维护 <code>fault_domain_map</code>，把物理和逻辑故障域变成可查询对象。示例：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">fault_domain_map</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">domain_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dc-a/rack-12</span>
-<span class="w">  </span><span class="nt">hierarchy</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">region</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dc-a</span>
-<span class="w">    </span><span class="nt">room</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">room-3</span>
-<span class="w">    </span><span class="nt">row</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">row-b</span>
-<span class="w">    </span><span class="nt">rack</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rack-12</span>
-<span class="w">  </span><span class="nt">shared_dependencies</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">power_domain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pdu-a-12</span>
-<span class="w">    </span><span class="nt">cooling_domain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cdu-loop-2</span>
-<span class="w">    </span><span class="nt">network_domains</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">leaf_pair</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">leaf-12-a-b</span>
-<span class="w">      </span><span class="nt">rail</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">rail-0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">rail-1</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">storage_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pfs-client-group-4</span>
-<span class="w">    </span><span class="nt">bmc_network</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bmc-segment-7</span>
-<span class="w">  </span><span class="nt">members</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">nodes</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">gpu-node-001</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">gpu-node-002</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">gpu_count</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">  </span><span class="nt">scheduling_semantics</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">colocate_for</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">low_latency_training</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">spread_for</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">premium_inference</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">control_plane</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">avoid_if_state</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">power_limited</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">cooling_limited</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">fabric_degraded</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">incident_queries</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">impact_lookup_keys</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">node</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">switch_port</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pdu</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cdu</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">delivery_batch</span>
-</code></pre></div>
+<pre><code class="language-yaml">fault_domain_map:
+  domain_id: dc-a/rack-12
+  hierarchy:
+    region: dc-a
+    room: room-3
+    row: row-b
+    rack: rack-12
+  shared_dependencies:
+    power_domain: pdu-a-12
+    cooling_domain: cdu-loop-2
+    network_domains:
+      leaf_pair: leaf-12-a-b
+      rail: [rail-0, rail-1]
+    storage_path: pfs-client-group-4
+    bmc_network: bmc-segment-7
+  members:
+    nodes: [gpu-node-001, gpu-node-002]
+    gpu_count: recorded
+  scheduling_semantics:
+    colocate_for: [low_latency_training]
+    spread_for: [premium_inference, control_plane]
+    avoid_if_state: [power_limited, cooling_limited, fabric_degraded]
+  incident_queries:
+    impact_lookup_keys:
+      - node
+      - switch_port
+      - pdu
+      - cdu
+      - delivery_batch
+</code></pre>
 <p>这张 map 的价值在事故中最明显。PDU 告警不是“设施事件”，而是会影响哪些 node、GPU、job、endpoint、tenant 和 reservation；leaf 维护不是“网络事件”，而是会影响哪些训练拓扑；某批线缆问题不是“现场问题”，而是能否继续把对应 rack 放入高优训练池。故障域 map 把物理世界翻译成调度、发布和 SRE 能消费的事实。</p>
 <h3 id="3638">36.3.8 交付验收<a class="headerlink" href="#3638" title="Permanent link">&para;</a></h3>
 <p>交付验收把机房建设结果转化为可用资源。它不仅包括服务器能开机，还包括电力、制冷、BMC、管理网、业务网、训练 fabric、存储路径、OS、driver、CUDA、NCCL、RDMA、GPU burn-in、nvbandwidth、storage benchmark 和真实 workload 压测。验收范围必须覆盖从物理到模型运行的关键路径。</p>
@@ -4051,150 +4028,141 @@
 <p>AI 数据中心工程实现的核心，是把物理交付状态变成平台可读状态。容量系统、资产系统、交付系统、准入系统、资源池和 SRE 看板应共享 batch、rack、power、cooling、network、storage、server 和 acceptance 信息。任何一批资源进入生产池，都应能追溯它的交付路径和验收结果。</p>
 <p>一个可落地流程包括六个阶段。第一，capacity design，确认电力、制冷、网络、存储和故障域。第二，physical delivery，完成 rack、power、cooling、cabling 和 server 安装。第三，management bootstrap，确认 BMC、PXE、IPAM、资产和远程控制。第四，software bootstrap，安装 OS、driver、CUDA、NCCL、OFED 和 agent。第五，acceptance，运行 GPU、网络、存储和 workload 基线。第六，pool activation，把通过验收的资源分级进入生产池。</p>
 <p>状态机要能表达受限资源。某批 rack 可能 power_ready 但 cooling_limited，某些节点可能 network_validated 但 storage_baseline_failed，某个 fabric 可能 available 但不适合大训练。把这些细粒度状态写入资源池，可以避免“半成品资源”被误调度。平台应允许资源以 degraded 或 limited 等级上线，但必须明确适用 workload 和风险。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">delivery_batch</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">batch_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dc-a-rack-12-2026-06</span>
-<span class="w">  </span><span class="nt">facility</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">power_ready</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">cooling_ready</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">cabling_verified</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">hardware</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">servers_installed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">16</span>
-<span class="w">    </span><span class="nt">bmc_reachable</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">network</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">fabric_validated</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">rail_mapping_checked</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">acceptance</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">gpu_burn_in</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">nccl</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">rdma</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">storage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">  </span><span class="nt">pool_state</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ready_for_allocation</span>
-</code></pre></div>
+<pre><code class="language-yaml">delivery_batch:
+  batch_id: dc-a-rack-12-2026-06
+  facility:
+    power_ready: true
+    cooling_ready: true
+    cabling_verified: true
+  hardware:
+    servers_installed: 16
+    bmc_reachable: true
+  network:
+    fabric_validated: true
+    rail_mapping_checked: true
+  acceptance:
+    gpu_burn_in: pass
+    nccl: pass
+    rdma: pass
+    storage: pass
+  pool_state: ready_for_allocation
+</code></pre>
 <p>交付系统还应生成 <code>capacity_activation_record</code>，记录计划产能、实际激活产能和受限原因：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">capacity_activation_record</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">batch_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dc-a-rack-12-2026-06</span>
-<span class="w">  </span><span class="nt">rack_capacity_unit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dc-a-rack-12</span>
-<span class="w">  </span><span class="nt">planned_capacity</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">gpu_count</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">target_workload</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">distributed_training</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">premium_inference</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">expected_activation_date</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">  </span><span class="nt">activation_status</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">state</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">allocatable</span>
-<span class="w">    </span><span class="nt">activated_gpu_count</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">    </span><span class="nt">limited_gpu_count</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">    </span><span class="nt">blocked_gpu_count</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">  </span><span class="nt">evidence</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">gpu_server_profiles</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">linked</span>
-<span class="w">    </span><span class="nt">power_thermal_envelope</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed</span>
-<span class="w">    </span><span class="nt">fabric_acceptance_matrix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed</span>
-<span class="w">    </span><span class="nt">storage_acceptance_matrix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed</span>
-<span class="w">    </span><span class="nt">physical_acceptance_matrix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed</span>
-<span class="w">  </span><span class="nt">deltas</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">capacity_shortfall_reason</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">none_or_power_or_cooling_or_fabric_or_storage</span>
-<span class="w">    </span><span class="nt">expected_vs_actual_tokens_per_watt</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured_if_available</span>
-<span class="w">  </span><span class="nt">next_action</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">owner</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">capacity-ops</span>
-<span class="w">    </span><span class="nt">due_date</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_defined</span>
-</code></pre></div>
+<pre><code class="language-yaml">capacity_activation_record:
+  batch_id: dc-a-rack-12-2026-06
+  rack_capacity_unit: dc-a-rack-12
+  planned_capacity:
+    gpu_count: recorded
+    target_workload: [distributed_training, premium_inference]
+    expected_activation_date: recorded
+  activation_status:
+    state: allocatable
+    activated_gpu_count: calculated
+    limited_gpu_count: calculated
+    blocked_gpu_count: calculated
+  evidence:
+    gpu_server_profiles: linked
+    power_thermal_envelope: passed
+    fabric_acceptance_matrix: passed
+    storage_acceptance_matrix: passed
+    physical_acceptance_matrix: passed
+  deltas:
+    capacity_shortfall_reason: none_or_power_or_cooling_or_fabric_or_storage
+    expected_vs_actual_tokens_per_watt: measured_if_available
+  next_action:
+    owner: capacity-ops
+    due_date: policy_defined
+</code></pre>
 <p>这个记录把扩容从项目管理语言转成平台事实。业务关心何时能用，平台关心能承载哪些 workload，设施关心哪些约束未解除，财务关心投产产能和折旧开始。一个 record 同时回答这些问题，才能避免“已经交付”和“还不能跑生产”之间的口径冲突。</p>
 <p><code>capacity_activation_record</code> 还应记录从 installed 到 workload-fit 的损耗链。很多扩容争议来自口径混用：采购合同看 planned GPU，设施看 installed GPU，平台看 accepted GPU，调度看 allocatable GPU，业务真正需要的是能跑某类 workload 的 GPU。下面这个版本把损耗原因写成结构化字段，方便进入容量运营和 Token Factory 经济模型：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">capacity_activation_record</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">batch_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dc-a-rack-12-2026-06</span>
-<span class="w">  </span><span class="nt">rack_capacity_unit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dc-a-rack-12</span>
-<span class="w">  </span><span class="nt">lifecycle</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">planned_at</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">installed_at</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">bootstrapped_at</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">accepted_at</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">allocatable_at</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded_if_ready</span>
-<span class="w">  </span><span class="nt">capacity_funnel</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">planned_gpu</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">128</span>
-<span class="w">    </span><span class="nt">installed_gpu</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">128</span>
-<span class="w">    </span><span class="nt">bootstrapped_gpu</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">    </span><span class="nt">accepted_gpu</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">    </span><span class="nt">allocatable_gpu</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">    </span><span class="nt">workload_fit_gpu</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">large_distributed_training</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">      </span><span class="nt">premium_inference</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">      </span><span class="nt">checkpoint_heavy_training</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">  </span><span class="nt">limiting_factors</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">power_limited_gpu</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">    </span><span class="nt">cooling_limited_gpu</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">    </span><span class="nt">derated_gpu</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">    </span><span class="nt">fabric_limited_gpu</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">    </span><span class="nt">storage_limited_gpu</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">    </span><span class="nt">baseline_invalid_gpu</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">    </span><span class="nt">maintenance_gpu</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">  </span><span class="nt">evidence</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">physical_acceptance_matrix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">physical-rack12-20260619</span>
-<span class="w">    </span><span class="nt">fabric_acceptance_matrix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">train-fabric-a-20260619</span>
-<span class="w">    </span><span class="nt">storage_acceptance_matrix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">storage-training-prod-20260619</span>
-<span class="w">    </span><span class="nt">capacity_derating_records</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">derate-rack12-20260620-001</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">cooling_degradation_records</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">cool-deg-20260620-002</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">baseline_invalidation_records</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded_if_any</span>
-<span class="w">  </span><span class="nt">economics</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">capital_committed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">activated_capacity_ratio</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">    </span><span class="nt">delayed_capacity_cost</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-</code></pre></div>
+<pre><code class="language-yaml">capacity_activation_record:
+  batch_id: dc-a-rack-12-2026-06
+  rack_capacity_unit: dc-a-rack-12
+  lifecycle:
+    planned_at: recorded
+    installed_at: recorded
+    bootstrapped_at: recorded
+    accepted_at: recorded
+    allocatable_at: recorded_if_ready
+  capacity_funnel:
+    planned_gpu: 128
+    installed_gpu: 128
+    bootstrapped_gpu: calculated
+    accepted_gpu: calculated
+    allocatable_gpu: calculated
+    workload_fit_gpu:
+      large_distributed_training: calculated
+      premium_inference: calculated
+      checkpoint_heavy_training: calculated
+  limiting_factors:
+    power_limited_gpu: calculated
+    cooling_limited_gpu: calculated
+    derated_gpu: calculated
+    fabric_limited_gpu: calculated
+    storage_limited_gpu: calculated
+    baseline_invalid_gpu: calculated
+    maintenance_gpu: calculated
+  evidence:
+    physical_acceptance_matrix: physical-rack12-20260619
+    fabric_acceptance_matrix: train-fabric-a-20260619
+    storage_acceptance_matrix: storage-training-prod-20260619
+    capacity_derating_records: [derate-rack12-20260620-001]
+    cooling_degradation_records: [cool-deg-20260620-002]
+    baseline_invalidation_records: recorded_if_any
+  economics:
+    capital_committed: recorded
+    activated_capacity_ratio: calculated
+    delayed_capacity_cost: calculated
+</code></pre>
 <p>这个漏斗能让扩容评审更具体。若 installed 到 accepted 损耗大，问题在交付或准入；若 accepted 到 allocatable 损耗大，问题可能在资源池、维护、健康或变更失效；若 allocatable 到 workload-fit 损耗大，问题多半是拓扑、power/cooling、fabric、storage 或租户 entitlement。不同损耗对应不同 owner，不能都归结为“GPU 没上线”。当 delayed_capacity_cost 进入第 41 章的账本，提前做准入、布线校验和液冷演练就不再是额外开销，而是降低投产延迟成本的工程手段。</p>
 <p>容量激活还需要一个最终门禁：<code>workload_fit_capacity_gate</code>。<code>capacity_activation_record</code> 说明投产漏斗发生了什么，gate 则决定某类业务能不能使用这批产能。它的输入不是 GPU 数，而是 workload slice：例如 premium inference、long-context inference、256 GPU training、checkpoint-heavy training、distributed evaluation。每个 slice 需要的 power、cooling、fabric、storage、runtime、SRE 和成本证据不同，不能用同一条“rack ready”结论覆盖。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">workload_fit_capacity_gate</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">gate_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">wfcg-dc-a-rack12-20260620</span>
-<span class="w">  </span><span class="nt">capacity_activation_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dc-a-rack-12-2026-06</span>
-<span class="w">  </span><span class="nt">rack_capacity_unit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dc-a-rack-12</span>
-<span class="w">  </span><span class="nt">workload_slices</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">premium_inference</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">required_capacity</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">gpu_count</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">64</span>
-<span class="w">        </span><span class="nt">redundancy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">n_plus_one_or_policy_defined</span>
-<span class="w">        </span><span class="nt">cold_start_budget</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">within_slo</span>
-<span class="w">      </span><span class="nt">required_evidence</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">physical_acceptance_matrix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">        </span><span class="nt">power_thermal_envelope</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass_for_inference_burst</span>
-<span class="w">        </span><span class="nt">energy_ledger_window</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">collected</span>
-<span class="w">        </span><span class="nt">model_artifact_distribution</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">        </span><span class="nt">serving_rollback_drill</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass_if_high_sla</span>
-<span class="w">      </span><span class="nt">decision</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">approve_canary_or_production_or_block</span>
-<span class="w">    </span><span class="nt">large_distributed_training</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">required_capacity</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">gpu_count</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">256</span>
-<span class="w">        </span><span class="nt">topology</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">same_fabric_with_complete_rails</span>
-<span class="w">        </span><span class="nt">duration</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sustained_multi_day</span>
-<span class="w">      </span><span class="nt">required_evidence</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">physical_acceptance_matrix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass_for_sustained_training</span>
-<span class="w">        </span><span class="nt">thermal_full_load_soak</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">        </span><span class="nt">fabric_change_acceptance_matrix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">        </span><span class="nt">training_communication_acceptance_matrix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">        </span><span class="nt">checkpoint_plus_nccl_concurrency</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">      </span><span class="nt">block_if</span><span class="p">:</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">open_capacity_derating_record</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">open_cooling_degradation_record</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pdu_redundancy_lost</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">liquid_loop_not_retested_after_maintenance</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fabric_or_storage_baseline_invalid</span>
-<span class="w">      </span><span class="nt">decision</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">approve_if_all_required_evidence_valid</span>
-<span class="w">  </span><span class="nt">output</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">resource_pool_labels</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">workload_fit/premium_inference</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true_or_false</span>
-<span class="w">      </span><span class="nt">workload_fit/large_distributed_training</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true_or_false</span>
-<span class="w">    </span><span class="nt">capacity_commitment</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">sellable_gpu</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">      </span><span class="nt">schedulable_gpu</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">      </span><span class="nt">reservation_allowed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_decision</span>
-<span class="w">    </span><span class="nt">expires_at</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2026-06-27T00:00:00Z</span>
-</code></pre></div>
+<pre><code class="language-yaml">workload_fit_capacity_gate:
+  gate_id: wfcg-dc-a-rack12-20260620
+  capacity_activation_record: dc-a-rack-12-2026-06
+  rack_capacity_unit: dc-a-rack-12
+  workload_slices:
+    premium_inference:
+      required_capacity:
+        gpu_count: 64
+        redundancy: n_plus_one_or_policy_defined
+        cold_start_budget: within_slo
+      required_evidence:
+        physical_acceptance_matrix: pass
+        power_thermal_envelope: pass_for_inference_burst
+        energy_ledger_window: collected
+        model_artifact_distribution: pass
+        serving_rollback_drill: pass_if_high_sla
+      decision: approve_canary_or_production_or_block
+    large_distributed_training:
+      required_capacity:
+        gpu_count: 256
+        topology: same_fabric_with_complete_rails
+        duration: sustained_multi_day
+      required_evidence:
+        physical_acceptance_matrix: pass_for_sustained_training
+        thermal_full_load_soak: pass
+        fabric_change_acceptance_matrix: pass
+        training_communication_acceptance_matrix: pass
+        checkpoint_plus_nccl_concurrency: pass
+      block_if:
+        - open_capacity_derating_record
+        - open_cooling_degradation_record
+        - pdu_redundancy_lost
+        - liquid_loop_not_retested_after_maintenance
+        - fabric_or_storage_baseline_invalid
+      decision: approve_if_all_required_evidence_valid
+  output:
+    resource_pool_labels:
+      workload_fit/premium_inference: true_or_false
+      workload_fit/large_distributed_training: true_or_false
+    capacity_commitment:
+      sellable_gpu: calculated
+      schedulable_gpu: calculated
+      reservation_allowed: policy_decision
+    expires_at: 2026-06-27T00:00:00Z
+</code></pre>
 <p>这个 gate 让“可用产能”变成按 workload 证明的事实。一个 rack 可以通过 premium inference，但因为 thermal soak 未完成而不能通过 large distributed training；也可以通过单节点推理，却因为 fabric baseline 失效不能承载跨 rack 训练。容量系统如果只输出一个 allocatable GPU 数，会把这些差异抹平，最终让业务承诺超过真实能力。</p>
-<pre class="mermaid"><code>flowchart LR
-  Planned["planned GPU"] --&gt; Installed["installed"]
-  Installed --&gt; Accepted["accepted baseline"]
-  Accepted --&gt; Allocatable["allocatable"]
-  Allocatable --&gt; Gate["workload_fit_capacity_gate"]
-  Gate --&gt;|premium inference pass| Inference["resource label\nworkload_fit/premium_inference"]
-  Gate --&gt;|large training pass| Training["resource label\nworkload_fit/large_distributed_training"]
-  Gate --&gt;|blocked| Limited["limited / no reservation"]
-  Limited --&gt; Evidence["close evidence gap\npower / cooling / fabric / storage"]
-  Evidence --&gt; Gate</code></pre>
+<p><img alt="图：36.4.1 工程实现" src="../../assets/diagrams/part-08-physical-infrastructure-chapter-36-ai-datacenter-engineering-03.svg" /></p>
 <p>实现还需要变更闭环。设施变更、线缆变更、交换机升级、液冷维护、PDU 维修、批量换卡和驱动升级，都应触发相应范围的复测。复测范围不必每次全量，但必须与变更影响面匹配。没有变更闭环，初次验收再严格，也会随着运行时间失效。</p>
 <p>工程实现还要给异常资源留出处理路径。验收失败的节点进入 quarantine，部分能力不足的 rack 进入 limited，等待供应商处理的批次进入 blocked。明确状态比隐藏问题更重要，因为平台可以基于状态做调度，而不能基于口头说明做自动化。</p>
 <p>状态命名应尽量少而清晰。planned、staging、allocatable、limited、degraded、maintenance、quarantine、retired 已足够覆盖多数流程；状态过多会让自动化难以维护。</p>

@@ -3591,14 +3591,14 @@
 <p>通过标准：读者不需要知道作者曾参考过哪些外部材料，也不需要把 GPU 容器知识集中到单一章节中记忆；只要沿第 19、21、22、29、38、39、44 章阅读，就应能从 driver、runtime、CRI、device plugin、CDI/NRI、RDMA、验收矩阵、故障树和成本账本拼出完整链路。</p>
 <h2 id="8">8. 审计命令<a class="headerlink" href="#8" title="Permanent link">&para;</a></h2>
 <p>每轮重构后运行：</p>
-<div class="highlight"><pre><span></span><code>python3<span class="w"> </span>tools/audit_doc_coauthoring.py
-python3<span class="w"> </span>tools/audit_heading_numbering.py
-python3<span class="w"> </span>tools/audit_consistency.py
-python3<span class="w"> </span>tools/audit_depth.py<span class="w"> </span>--limit<span class="w"> </span><span class="m">160</span>
-git<span class="w"> </span>diff<span class="w"> </span>--check
-python3<span class="w"> </span>tools/audit_placeholders.py
-mkdocs<span class="w"> </span>build<span class="w"> </span>--strict
-</code></pre></div>
+<pre><code class="language-bash">python3 tools/audit_doc_coauthoring.py
+python3 tools/audit_heading_numbering.py
+python3 tools/audit_consistency.py
+python3 tools/audit_depth.py --limit 160
+git diff --check
+python3 tools/audit_placeholders.py
+mkdocs build --strict
+</code></pre>
 <p>其中 <code>audit_doc_coauthoring.py</code> 负责检查章节是否具备 <code>读者测试</code> 模块，以及该模块是否覆盖机制、边界、路径和排障问题。<code>audit_consistency.py</code> 负责检查全书高风险口径漂移、旧结构规则残留、公开站点 URL 和精确重复长段落。它们不能替代人工审稿，但能防止全书退回“有正文、无读者测试”或“局部正确、全书矛盾”的状态。</p>
 <h2 id="9">9. 完成定义<a class="headerlink" href="#9" title="Permanent link">&para;</a></h2>
 <p>一章只有满足以下条件，才算符合本书的 doc-coauthoring 要求：</p>

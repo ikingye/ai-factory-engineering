@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1842 600" width="1842" height="600">
+  <defs>
+    <marker id="arrowA" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#7c3aed"/>
+    </marker>
+    <marker id="arrowB" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#10b981"/>
+    </marker>
+    <marker id="arrowC" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2563eb"/>
+    </marker>
+    <marker id="arrowE" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#f97316"/>
+    </marker>
+    <marker id="arrowF" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#7c3aed"/>
+    </marker>
+    <marker id="arrowG" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#ef4444"/>
+    </marker>
+    <marker id="arrowH" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#6b7280"/>
+    </marker>
+    <filter id="shadowSoft" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="3" stdDeviation="6" flood-color="#0f172a" flood-opacity="0.12"/>
+    </filter>
+    <filter id="shadowGlass" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="10" stdDeviation="16" flood-color="#020617" flood-opacity="0.28"/>
+    </filter>
+    <style>
+    text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', 'Microsoft JhengHei', 'SimHei', sans-serif; }
+    .title { font-size: 30px; font-weight: 700; fill: #111827; }
+    .subtitle { font-size: 14px; font-weight: 500; fill: #6b7280; }
+    .section { font-size: 13px; font-weight: 700; fill: #2563eb; letter-spacing: 1.4px; }
+    .section-sub { font-size: 12px; font-weight: 500; fill: #94a3b8; }
+    .node-title { font-size: 18px; font-weight: 700; fill: #111827; }
+    .node-sub { font-size: 12px; font-weight: 500; fill: #6b7280; }
+    .node-type { font-size: 12px; font-weight: 700; fill: #9ca3af; letter-spacing: 0.08em; }
+    .arrow-label { font-size: 12px; font-weight: 600; fill: #6b7280; }
+    .legend { font-size: 12px; font-weight: 500; fill: #6b7280; }
+    .footnote { font-size: 12px; font-weight: 500; fill: #94a3b8; }
+    </style>
+  </defs>
+  <rect width="1842.0" height="600.0" fill="#ffffff"/>
+  <text x="921.0" y="56" text-anchor="middle" class="title">32.2.2 系统架构</text>
+  <text x="921.0" y="82" text-anchor="middle" class="subtitle">part-07-network-storage/chapter-32-scale-out-networking.md:70</text>
+  <rect x="36.0" y="112.0" width="422.0" height="130.0" rx="16.0" fill="none" stroke="#dbe5f1" stroke-width="1.4" stroke-dasharray="6 5"/>
+  <text x="54.0" y="136.0" class="section">RACK 1 / RAIL-AWARE</text>
+  <rect x="456.0" y="112.0" width="422.0" height="130.0" rx="16.0" fill="none" stroke="#dbe5f1" stroke-width="1.4" stroke-dasharray="6 5"/>
+  <text x="474.0" y="136.0" class="section">RACK 2 / RAIL-AWARE</text>
+  <path d="M 142.0,218.0 L 142.0,238.4 L 711.0,275.6 L 711.0,296.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 1320.0,189.0 L 1299.6,189.0 L 1299.6,242.0 L 244.4,242.0 L 244.4,189.0 L 224.0,189.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 1320.0,189.0 L 1299.6,189.0 L 1299.6,242.0 L 664.4,242.0 L 664.4,189.0 L 644.0,189.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 1685.0,224.0 L 1685.0,244.4 L 950.0,281.6 L 950.0,302.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 1685.0,224.0 L 1685.0,244.4 L 1160.0,281.6 L 1160.0,302.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <rect x="60.0" y="160.0" width="164.0" height="58.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
+  <text x="142.0" y="189.0" text-anchor="middle" class="node-title">GPU Node 1</text>
+  <rect x="270.0" y="160.0" width="164.0" height="58.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
+  <text x="352.0" y="189.0" text-anchor="middle" class="node-title">GPU Node 2</text>
+  <rect x="480.0" y="160.0" width="164.0" height="58.0" rx="10.0" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.8"/>
+  <text x="562.0" y="189.0" text-anchor="middle" class="node-title">GPU Node 3</text>
+  <rect x="690.0" y="160.0" width="164.0" height="58.0" rx="10.0" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.8"/>
+  <text x="772.0" y="189.0" text-anchor="middle" class="node-title">GPU Node 4</text>
+  <rect x="900.0" y="160.0" width="164.0" height="58.0" rx="10.0" fill="#f0fdfa" stroke="#99f6e4" stroke-width="1.8"/>
+  <text x="982.0" y="189.0" text-anchor="middle" class="node-title">L1</text>
+  <rect x="1110.0" y="160.0" width="164.0" height="58.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8"/>
+  <text x="1192.0" y="189.0" text-anchor="middle" class="node-title">L2</text>
+  <rect x="1320.0" y="160.0" width="222.0" height="58.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
+  <text x="1431.0" y="189.0" text-anchor="middle" class="node-title">Topology-aware Scheduler</text>
+  <rect x="1588.0" y="154.0" width="194.0" height="70.0" rx="10.0" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.8"/>
+  <text x="1685.0" y="189.0" text-anchor="middle" class="node-title">RDMA / Port counters</text>
+  <text x="1685.0" y="211.0" text-anchor="middle" class="node-sub">NCCL logs</text>
+  <rect x="600.0" y="296.0" width="222.0" height="70.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
+  <text x="711.0" y="331.0" text-anchor="middle" class="node-title">NCCL</text>
+  <text x="711.0" y="353.0" text-anchor="middle" class="node-sub">Collective Communication</text>
+  <rect x="868.0" y="302.0" width="164.0" height="58.0" rx="10.0" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.8"/>
+  <text x="950.0" y="331.0" text-anchor="middle" class="node-title">S1</text>
+  <rect x="1078.0" y="302.0" width="164.0" height="58.0" rx="10.0" fill="#f0fdfa" stroke="#99f6e4" stroke-width="1.8"/>
+  <text x="1160.0" y="331.0" text-anchor="middle" class="node-title">S2</text>
+  <text x="1562.0" y="584.0" class="footnote">Rendered with fireworks-tech-graph</text>
+</svg>

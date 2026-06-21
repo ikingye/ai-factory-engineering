@@ -1,0 +1,9 @@
+flowchart TB
+  Contract["private_delivery_lifecycle_contract"] --> Bundle["offline_release_bundle_manifest\nwhat supplier supports"]
+  Bundle --> Import["offline_import_record\nwhat customer imported"]
+  Import --> Acceptance["private_deployment_acceptance_record\nwhat passed"]
+  Acceptance --> Support["support_ticket_taxonomy + diagnostic_bundle_sla"]
+  Support --> Patch["field_patch_governance / execution"]
+  Patch --> LTS["merge back / LTS backport / EOL"]
+  Support --> PNL["commercial_pnl_ledger\nsupport + delivery cost"]
+  LTS --> Contract

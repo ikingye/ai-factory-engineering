@@ -1,0 +1,10 @@
+flowchart TB
+  Case["案例类型"] --> Goal["目标 / 服务对象"]
+  Goal --> Unit["价值单位"]
+  Unit --> Workload["核心 workload"]
+  Workload --> Platform["平台能力"]
+  Workload --> Infra["基础设施能力"]
+  Platform --> Ops["可靠性 / 安全 / 运维"]
+  Infra --> Ops
+  Ops --> Economics["成本 / 产能 / ROI"]
+  Economics --> Lesson["可复用经验 / 风险"]

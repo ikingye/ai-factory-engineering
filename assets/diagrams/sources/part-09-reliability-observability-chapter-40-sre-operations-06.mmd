@@ -1,0 +1,16 @@
+flowchart TB
+  QAlert["quality SLO / feedback spike"] --> QEvidence["quality_evidence_bundle"]
+  QEvidence --> RAEB["rag_agent_evidence_bundle"]
+  QEvidence --> QIncident["quality_incident_record"]
+  QEvidence --> QBudget["quality error budget"]
+  RAEB --> QIncident
+  Gate["quality_gate_execution"] --> QIncident
+  Slice["eval_slice_contract / golden set governance"] --> QIncident
+  Guardrail["online_experiment_guardrail"] --> QIncident
+  Route["routing_quality_decision_record"] --> QIncident
+  QIncident --> Rollback["serving_rollback_record / route freeze"]
+  Drill["serving_rollback_drill"] --> Rollback
+  QIncident --> Cost["quality_cost_ledger"]
+  Cost --> Policy["release and routing policy"]
+  QBudget --> Policy
+  Policy --> PRR["production_readiness_review"]

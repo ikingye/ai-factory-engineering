@@ -1,0 +1,13 @@
+sequenceDiagram
+  participant Rank as Training Ranks
+  participant Tmp as Temporary Checkpoint Path
+  participant Validator as Checkpoint Validator
+  participant Manifest as Manifest Store
+  participant Index as Checkpoint Index
+
+  Rank->>Tmp: write sharded states
+  Rank->>Tmp: write local checksums
+  Validator->>Tmp: verify all shards and metadata
+  Validator->>Manifest: commit checkpoint_manifest
+  Manifest->>Index: mark latest_valid
+  Index-->>Rank: resume candidates available

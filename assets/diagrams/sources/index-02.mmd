@@ -1,0 +1,4 @@
+flowchart LR
+  U["用户请求"] --> GW["AI Gateway"] --> Auth["认证鉴权"] --> Limit["租户限流"] --> Route["模型路由"]
+  Route --> Serve["推理服务"] --> Prefill["prefill"] --> Decode["decode"] --> KV["KV Cache"]
+  KV --> Kernel["CUDA kernel"] --> GPU["GPU / HBM"] --> Stream["token streaming"] --> Meter["token 计量"] --> Bill["billing / observability"]

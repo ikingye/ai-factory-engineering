@@ -1,0 +1,12 @@
+flowchart TB
+  Drill["quality_evidence_prr_invalidation_drill"] --> Contam["eval_contamination_invalidation_record"]
+  Drill --> Judge["judge_drift_calibration_record"]
+  Drill --> Intake["quality_feedback_intake_pipeline health"]
+  Contam --> Validity["quality_evidence_validity"]
+  Judge --> Validity
+  Intake --> Validity
+  Validity --> Gate{"gate evidence usable?"}
+  Gate -->|yes| Ramp["continue canary / ramp"]
+  Gate -->|no| Block["block high-value release\nrerun gate / replace data"]
+  Block --> Cost["quality_cost_ledger\nprevention cost + avoided loss"]
+  Cost --> PRR["PRR gate update"]

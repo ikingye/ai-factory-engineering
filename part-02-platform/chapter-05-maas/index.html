@@ -3809,58 +3809,44 @@
 <p>对象模型也是跨团队接口。它决定应用、平台、模型、SRE、安全和财务是否在讨论同一件事。没有共同对象，租户边界、访问权限、成本归因和事故影响面都会在不同系统里各说各话。MaaS 的安全治理不是附加在 API 入口的一层校验，而是从 <code>tenant</code>、<code>project</code>、<code>api_key</code>、<code>model</code>、<code>endpoint</code>、<code>usage</code> 和 <code>audit_event</code> 这些对象开始。</p>
 <p><code>tenant_boundary</code> 是 MaaS 必须明确的安全对象。它描述一个租户在身份、项目、模型访问、数据驻留、日志可见性、资源池、预算、SLA 和支持流程上的边界。租户边界不是单个字段，而是一组约束：哪个身份能代表租户调用，哪些模型对它可见，请求数据能否出区域，日志是否可以被平台人员查看，是否允许使用共享资源池，账单和赔付如何归属。边界越清楚，平台越容易做自动化；边界模糊，多租户问题迟早会表现为安全事故或账单争议。</p>
 <p>一个可执行的 <code>tenant_boundary</code> 可以这样表达：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">tenant_boundary</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">tenant_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enterprise-a</span>
-<span class="w">  </span><span class="nt">projects</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">project_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">customer-service-prod</span>
-<span class="w">      </span><span class="nt">environment</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">production</span>
-<span class="w">      </span><span class="nt">owner</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">team-cs-platform</span>
-<span class="w">      </span><span class="nt">cost_center</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cc-llm-cs</span>
-<span class="w">  </span><span class="nt">identity</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">allowed_principals</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">service_account</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">svc-cs-prod</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">group</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cs-platform-admins</span>
-<span class="w">    </span><span class="nt">require_user_context_for_tools</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">model_access</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">allowed_models</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-large</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-rerank-base</span>
-<span class="w">    </span><span class="nt">denied_models</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">preview-unsafe-experimental</span>
-<span class="w">  </span><span class="nt">data_boundary</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">residency</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cn-north</span>
-<span class="w">    </span><span class="nt">allow_third_party_provider</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-<span class="w">    </span><span class="nt">prompt_logging</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">redacted</span>
-<span class="w">    </span><span class="nt">response_logging</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">redacted</span>
-<span class="w">  </span><span class="nt">resource_boundary</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">serving_pool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">inference-premium-a</span>
-<span class="w">    </span><span class="nt">training_pool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">none</span>
-<span class="w">    </span><span class="nt">allow_shared_gpu</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-<span class="w">  </span><span class="nt">billing_boundary</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">budget_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">monthly_budget_with_hard_stop</span>
-<span class="w">    </span><span class="nt">invoice_entity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enterprise-a</span>
-</code></pre></div>
+<pre><code class="language-yaml">tenant_boundary:
+  tenant_id: enterprise-a
+  projects:
+    - project_id: customer-service-prod
+      environment: production
+      owner: team-cs-platform
+      cost_center: cc-llm-cs
+  identity:
+    allowed_principals:
+      - service_account: svc-cs-prod
+      - group: cs-platform-admins
+    require_user_context_for_tools: true
+  model_access:
+    allowed_models:
+      - af-chat-large
+      - af-rerank-base
+    denied_models:
+      - preview-unsafe-experimental
+  data_boundary:
+    residency: cn-north
+    allow_third_party_provider: false
+    prompt_logging: redacted
+    response_logging: redacted
+  resource_boundary:
+    serving_pool: inference-premium-a
+    training_pool: none
+    allow_shared_gpu: false
+  billing_boundary:
+    budget_policy: monthly_budget_with_hard_stop
+    invoice_entity: enterprise-a
+</code></pre>
 <p>这个对象的价值在于让 Platform 层、Gateway、资源池、观测和计费使用同一份边界。Gateway 可以用它拒绝第三方 provider 路由；RAG 服务可以用它过滤文档；观测系统可以决定 trace 脱敏级别；资源池可以决定是否允许共享 GPU；计费系统可以按同一成本中心归账。多租户平台最怕“每层自己理解租户”，因为这种理解迟早会漂移。</p>
 <h3 id="522">5.2.2 系统架构<a class="headerlink" href="#522" title="Permanent link">&para;</a></h3>
 <p>MaaS 平台位于应用和模型服务之间。应用通过 OpenAI-compatible API、SDK 或控制台提交请求，平台先完成认证、租户识别、配额检查和模型能力校验，再根据模型目录、路由策略、SLA、健康状态和成本策略选择后端 endpoint。响应过程中，平台记录 token、延迟、错误、streaming 状态和账单事件。控制面负责管理模型目录、租户、配额、密钥、服务等级和路由策略；数据面负责处理实际请求。</p>
 <p>这套架构的重点是把开发者体验和平台治理放在同一条链路。开发者希望一个稳定 API 能访问多个模型，平台团队希望知道每个请求的身份、用量、成本和风险。模型团队希望灰度新版本不破坏业务，SRE 希望故障能按租户和模型隔离，财务希望成本能分摊到业务线。MaaS 架构要让这些诉求都能落到对象和指标中。</p>
 <p>MaaS 不应把所有逻辑都堆在网关里。模型目录、租户、配额、账单和评测属于控制面；请求鉴权、限流和路由属于数据面入口；推理队列、batching、KV Cache 和模型实例健康属于模型服务和运行时。边界清楚，平台才能演进：可以替换推理引擎，可以增加模型供应商，可以调整计费口径，而不需要应用重写。</p>
 <p>架构验收时，应检查控制面配置是否真的影响数据面行为。模型目录标记某模型 deprecated 后，调用是否告警或拒绝；租户配额调整后，网关是否立即生效；服务等级变更后，路由是否进入正确资源池；账单价格变更后，usage 是否按版本生效。若控制面只是管理页面，数据面仍靠手工配置，MaaS 很快会出现目录、路由和账单不一致。</p>
-<pre class="mermaid"><code>flowchart TB
-  Dev["开发者 / 应用"] --&gt; API["OpenAI-compatible API / SDK"]
-  API --&gt; Key["API Key / Auth"]
-  Key --&gt; Tenant["租户 / 项目 / 配额"]
-  Tenant --&gt; Catalog["模型目录"]
-  Tenant --&gt; Router["请求路由"]
-  Router --&gt; EndpointA["模型服务 A"]
-  Router --&gt; EndpointB["模型服务 B"]
-  Router --&gt; EndpointC["私有模型服务"]
-  Router --&gt; Meter["token 计量"]
-  Meter --&gt; Billing["计费 / 成本分摊"]
-  Router --&gt; Obs["日志 / 指标 / Trace"]
-  EndpointA --&gt; GPU["推理资源池"]
-  EndpointB --&gt; GPU
-  EndpointC --&gt; GPU</code></pre>
+<p><img alt="图：5.2.2 系统架构" src="../../assets/diagrams/part-02-platform-chapter-05-maas-01.svg" /></p>
 <h2 id="53">5.3 关键技术<a class="headerlink" href="#53" title="Permanent link">&para;</a></h2>
 <h3 id="531-maas">5.3.1 MaaS 是什么<a class="headerlink" href="#531-maas" title="Permanent link">&para;</a></h3>
 <p>MaaS 是模型能力的服务化交付层。对应用团队来说，它提供统一 API、SDK、模型目录、密钥和文档，让应用不必直接理解每个推理服务的部署细节。对平台团队来说，它提供租户、配额、路由、计量、计费、SLA 和可观测性，让模型消费可治理。对模型团队来说，它提供发布、灰度、下线和评测入口，让模型从实验能力变成可运营产品。三种视角合在一起，才构成 MaaS。</p>
@@ -3886,59 +3872,59 @@
 <p>密钥治理还要服务成本归因。若多个应用共享一个 key，账单只能归到粗粒度租户，无法定位成本异常；若个人 key 被生产服务长期使用，人员离职或权限变化会带来风险。实践中应要求生产应用使用项目级或服务账户 key，开发调试使用个人或短期 key，并通过标签把 key 与成本中心、负责人和应用画像绑定。API Key 是安全对象，也是运营对象。</p>
 <p>平台还应主动发现异常 key 行为。例如一个测试 key 突然在生产区域高频调用，某个 key 从异常 IP 访问，或一个长期不用的 key 在深夜消耗大量 token，都应触发告警。密钥轮换也要有平滑机制，允许新旧 key 短期并存并观察调用切换。没有这些能力，API Key 泄露会直接变成成本事故和数据风险。</p>
 <p>密钥策略应默认最小权限。<code>credential_lifecycle</code> 应像证书和云访问密钥一样被管理，而不是作为一次性字符串发给用户。一个 key 的生命周期至少包含 requested、approved、issued、active、rotating、suspended、revoked、expired 和 archived。每次状态变化都要记录操作者、原因、审批、影响范围和回滚方式。生产 key 不应永久有效；高风险模型、高预算项目和 Agent tool calling 场景应使用更短周期、更细 scope 或短期 token。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">credential_lifecycle</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">credential_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">key_6f2c_redacted</span>
-<span class="w">  </span><span class="nt">tenant_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enterprise-a</span>
-<span class="w">  </span><span class="nt">project_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">customer-service-prod</span>
-<span class="w">  </span><span class="nt">principal_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">service_account</span>
-<span class="w">  </span><span class="nt">scopes</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">models</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">af-chat-large</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">operations</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">chat.completions.create</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">embeddings.create</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">tools</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">search_docs</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">constraints</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">source_networks</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">corp-egress-prod</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">max_tpm</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2000000</span>
-<span class="w">    </span><span class="nt">max_monthly_budget</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_defined</span>
-<span class="w">    </span><span class="nt">expires_at</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_defined</span>
-<span class="w">  </span><span class="nt">lifecycle</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">state</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rotating</span>
-<span class="w">    </span><span class="nt">previous_key_valid_until</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_defined</span>
-<span class="w">    </span><span class="nt">last_used_at</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">abnormal_usage_state</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">none</span>
-<span class="w">  </span><span class="nt">audit</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">created_by</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">platform-admin</span>
-<span class="w">    </span><span class="nt">approved_by</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tenant-owner</span>
-<span class="w">    </span><span class="nt">rotation_reason</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scheduled</span>
-</code></pre></div>
+<pre><code class="language-yaml">credential_lifecycle:
+  credential_id: key_6f2c_redacted
+  tenant_id: enterprise-a
+  project_id: customer-service-prod
+  principal_type: service_account
+  scopes:
+    models: [af-chat-large]
+    operations: [chat.completions.create, embeddings.create]
+    tools: [search_docs]
+  constraints:
+    source_networks: [corp-egress-prod]
+    max_tpm: 2000000
+    max_monthly_budget: policy_defined
+    expires_at: policy_defined
+  lifecycle:
+    state: rotating
+    previous_key_valid_until: policy_defined
+    last_used_at: measured
+    abnormal_usage_state: none
+  audit:
+    created_by: platform-admin
+    approved_by: tenant-owner
+    rotation_reason: scheduled
+</code></pre>
 <p><code>api_key_audit_event</code> 应在每次关键动作时追加写入：创建、下载、首次使用、权限修改、来源异常、预算异常、轮换、禁用、恢复和删除。审计事件不能只记录“谁点了按钮”，还要记录生效策略和影响面，例如会影响哪些模型、哪些项目、哪些账单项和哪些正在运行的 Agent。密钥泄露事故中，最重要的问题通常不是“key 是谁创建的”，而是“泄露期间它能访问什么、消耗了多少、是否触碰了数据边界、哪些调用需要作废或追偿”。</p>
 <p>MaaS 还要定义 <code>data_boundary_policy</code>。大模型请求中可能包含用户输入、企业文档、代码、日志、图片、检索结果和工具返回。平台要明确哪些数据可以进入 prompt，哪些可以写入 trace，哪些可以用于评测，哪些可以进入缓存，哪些可以发送到第三方 provider，哪些只能以引用 ID 存储。缺少数据边界时，可观测性、调试、评测和缓存都会变成潜在泄露面。数据边界不是法律文档，而是 Gateway、RAG、Agent、观测和存储共同执行的技术策略。</p>
 <p>RAG 和 Agent 会把 MaaS 的租户边界传递到更深的执行链路。普通 Chat 请求只要确认调用者能否使用模型；RAG 还要把租户、用户、项目和数据边界传给 <code>retrieval_permission_decision</code>，否则检索层无法判断哪些 chunk 可见；Agent 还要把同一边界传给 <code>tool_side_effect_policy</code> 和 <code>agent_tool_execution_record</code>，否则工具层不知道某个写操作是代表应用、用户还是系统执行。MaaS 如果只在入口鉴权，下游就会用服务账户扩大权限面。</p>
 <p>因此，MaaS 的身份令牌不应只包含 <code>tenant_id</code> 和 <code>api_key_id</code>，还应能表达 <code>user_context</code>、<code>delegation_mode</code>、<code>project_scope</code>、<code>data_boundary_policy</code>、允许工具范围和审计要求。对于服务账户调用的企业应用，平台应明确哪些动作使用应用身份，哪些动作必须携带最终用户身份；对于高风险 Agent，平台应要求短期凭据、最小工具 scope 和每步策略决策。这个设计会增加接入复杂度，但它避免了最危险的失败模式：模型 API 变成绕过企业权限和审计的后门。</p>
 <p>租户边界还需要可验证的 <code>tenant_isolation_evidence</code>。<code>tenant_boundary</code> 描述“应该如何隔离”，evidence 描述“这次发布、这段时间或这个资源池实际如何隔离”。它要覆盖 identity、模型可见性、资源池、日志/trace、缓存、存储、计量和支持访问。没有 evidence，平台只能声称多租户隔离，而不能在审计、事故或客户质疑时证明隔离有效。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">tenant_isolation_evidence</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">evidence_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tie-20260620-001</span>
-<span class="w">  </span><span class="nt">tenant_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enterprise-a</span>
-<span class="w">  </span><span class="nt">scope</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">projects</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">customer-service-prod</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">endpoints</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">af-chat-large-prod</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">window</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2026-06-20T00:00Z/2026-06-20T24:00Z</span>
-<span class="w">  </span><span class="nt">controls_verified</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">identity_binding</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">model_catalog_visibility</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">gateway_policy_replay</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">resource_pool_boundary</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">prompt_trace_redaction</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">cache_namespace_isolation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">storage_security_boundary</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">metering_attribution</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">  </span><span class="nt">sampled_evidence</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">policy_decision_records</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sampled</span>
-<span class="w">    </span><span class="nt">endpoint_admission_decisions</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sampled</span>
-<span class="w">    </span><span class="nt">security_audit_events</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sampled</span>
-<span class="w">    </span><span class="nt">billing_events</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sampled</span>
-<span class="w">  </span><span class="nt">exceptions</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">open</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">none</span>
-</code></pre></div>
+<pre><code class="language-yaml">tenant_isolation_evidence:
+  evidence_id: tie-20260620-001
+  tenant_id: enterprise-a
+  scope:
+    projects: [customer-service-prod]
+    endpoints: [af-chat-large-prod]
+    window: 2026-06-20T00:00Z/2026-06-20T24:00Z
+  controls_verified:
+    identity_binding: pass
+    model_catalog_visibility: pass
+    gateway_policy_replay: pass
+    resource_pool_boundary: pass
+    prompt_trace_redaction: pass
+    cache_namespace_isolation: pass
+    storage_security_boundary: pass
+    metering_attribution: pass
+  sampled_evidence:
+    policy_decision_records: sampled
+    endpoint_admission_decisions: sampled
+    security_audit_events: sampled
+    billing_events: sampled
+  exceptions:
+    open: none
+</code></pre>
 <p>这个对象让安全评审从“配置看起来正确”变成“关键路径有证据”。例如某个租户禁止第三方 provider，evidence 要能抽样证明 Gateway 决策确实拒绝了外联；某个租户要求日志脱敏，evidence 要能证明 trace 中只有引用和 hash；某个租户使用专属资源池，evidence 要能证明请求没有进入共享池。它也是后续 PRR 的输入：高敏租户没有隔离证据，不应进入生产。</p>
 <h3 id="535">5.3.5 租户、项目、配额<a class="headerlink" href="#535" title="Permanent link">&para;</a></h3>
 <p>租户是资源、权限和账单的组织边界，项目是租户内部的应用或工作空间边界，配额是对模型能力消费的限制。一个企业租户可以包含多个项目，例如客服、办公、研发和数据分析；每个项目有不同模型权限、预算、SLA 和负责人。这个层次能让平台既支持组织级治理，又支持应用级成本归因。没有项目边界，MaaS 很快会变成“租户总账”，无法运营。</p>
@@ -3959,65 +3945,65 @@
 <p>服务等级还要有降级方案。高峰期若资源不足，Premium 租户是否优先保障，普通租户是否排队，批量任务是否延后，preview 模型是否暂停，都需要预先定义。没有降级策略，SLA 只能在正常情况下成立；一旦遇到模型故障、流量突增或资源池异常，平台会临时决策，既不公平也不可审计。</p>
 <p>SLA 还应配套客户通知机制。若平台进入降级、维护或模型迁移阶段，租户需要知道影响范围、持续时间和建议动作。对内部平台来说，这可能是状态页和群通知；对商业平台来说，可能是事件订阅和工单支持。服务等级不仅是技术指标，也是沟通承诺。</p>
 <p>商业化 MaaS 还需要把 SLA 写成可计算的 <code>sla_credit_model</code>。它不是合同附件的自然语言复述，而是把 SLI、SLO、SLA、排除项、赔付上限、证据来源和账单动作结构化。没有这个对象，事故后会出现三种争议：客户认为所有慢请求都应赔付，平台认为部分请求被限流或客户侧取消不应计入，财务无法判断账单 credit 应该落到哪个 invoice 和项目。SLA 赔付模型的目的，是让这些问题在上线前可计算。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">sla_credit_model</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scm-enterprise-maas-premium-v1</span>
-<span class="w">  </span><span class="nt">service_level</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">premium</span>
-<span class="w">  </span><span class="nt">applies_to</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">business_model_profile</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bmp-enterprise-maas-standard-v2</span>
-<span class="w">    </span><span class="nt">tenant_segments</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">enterprise</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">endpoints</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">chat_completions</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">embeddings</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">excluded_models</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">preview</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">experimental</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">sli_sources</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">availability</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gateway_and_serving_request_trace</span>
-<span class="w">    </span><span class="nt">ttft</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">first_token_trace</span>
-<span class="w">    </span><span class="nt">streaming_success</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">stream_close_event</span>
-<span class="w">    </span><span class="nt">metering_accuracy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">metering_reconciliation</span>
-<span class="w">  </span><span class="nt">exclusions</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">customer_network_failure</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">quota_or_budget_reject</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_denied_or_abuse_blocked</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">preview_model_usage</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">customer_prompt_exceeds_documented_limit</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">planned_maintenance_with_notice</span>
-<span class="w">  </span><span class="nt">credit_inputs</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">affected_window</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">    </span><span class="nt">affected_tenants</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">    </span><span class="nt">affected_billable_usage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">    </span><span class="nt">incident_records</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">    </span><span class="nt">reliability_evidence_bundle</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">    </span><span class="nt">billing_dispute_replay</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required_if_customer_disputes</span>
-<span class="w">  </span><span class="nt">credit_policy</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">method</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">percentage_of_affected_monthly_fee_or_usage</span>
-<span class="w">    </span><span class="nt">cap</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">contract_defined</span>
-<span class="w">    </span><span class="nt">issue_as</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">invoice_credit</span>
-<span class="w">    </span><span class="nt">require_approval</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">finance_and_service_owner</span>
-</code></pre></div>
+<pre><code class="language-yaml">sla_credit_model:
+  id: scm-enterprise-maas-premium-v1
+  service_level: premium
+  applies_to:
+    business_model_profile: bmp-enterprise-maas-standard-v2
+    tenant_segments: [enterprise]
+    endpoints: [chat_completions, embeddings]
+    excluded_models: [preview, experimental]
+  sli_sources:
+    availability: gateway_and_serving_request_trace
+    ttft: first_token_trace
+    streaming_success: stream_close_event
+    metering_accuracy: metering_reconciliation
+  exclusions:
+    - customer_network_failure
+    - quota_or_budget_reject
+    - policy_denied_or_abuse_blocked
+    - preview_model_usage
+    - customer_prompt_exceeds_documented_limit
+    - planned_maintenance_with_notice
+  credit_inputs:
+    affected_window: required
+    affected_tenants: required
+    affected_billable_usage: required
+    incident_records: required
+    reliability_evidence_bundle: required
+    billing_dispute_replay: required_if_customer_disputes
+  credit_policy:
+    method: percentage_of_affected_monthly_fee_or_usage
+    cap: contract_defined
+    issue_as: invoice_credit
+    require_approval: finance_and_service_owner
+</code></pre>
 <p>这个模型要和第 7 章的计量事件、第 37 章的证据包、第 40 章的 incident 和第 41 章的可靠性成本账本连接。SLA credit 不应只靠平均可用性曲线判断，而要能回放到具体租户、endpoint、时间窗口、请求阶段和账单项目。若 TTFT 违约来自平台资源池，赔付可能成立；若来自客户侧取消或超预算拒绝，通常不应计入；若来自 preview 模型，取决于产品是否明确排除。结构化模型能保护客户，也能保护平台不被不可控因素拖入赔付。</p>
 <p>MaaS 客户上线时，应把 <code>customer_onboarding_evidence</code>、<code>tenant_boundary</code>、<code>sla_credit_model</code> 和 <code>billing_dispute_replay</code> 串起来。一个可售的租户不是“能调用 API”，而是具备身份、权限、模型访问、配额、预算、SLA、支持、账单和争议处理证据。尤其是高价值客户，SLA 承诺必须对应实际服务等级：Premium 客户若没有 dedicated pool、error budget、oncall、状态通知和赔付模型，就不应写入 Premium SLA。</p>
 <h2 id="54">5.4 工程落地<a class="headerlink" href="#54" title="Permanent link">&para;</a></h2>
 <h3 id="541">5.4.1 工程实现<a class="headerlink" href="#541" title="Permanent link">&para;</a></h3>
 <p>MaaS 工程实现应围绕控制面对象建模。<code>model</code> 描述模型能力和版本，<code>endpoint</code> 描述实际服务位置和健康，<code>tenant</code> 与 <code>project</code> 描述组织边界，<code>api_key</code> 描述身份和权限，<code>quota</code> 描述资源契约，<code>route</code> 描述请求进入哪个后端，<code>usage</code> 描述实际消耗，<code>service_level</code> 描述承诺。数据面处理请求时，应把这些对象串起来，形成可审计链路。</p>
 <p>一个模型目录条目可以这样表达。它应被控制台、网关、路由、计费和告警共同使用，而不是只作为文档展示。实际系统还应把评测结果、价格、可用区域、模型状态和迁移建议纳入目录。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">model</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-large</span>
-<span class="w">  </span><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2026-06-18</span>
-<span class="w">  </span><span class="nt">status</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">available</span>
-<span class="w">  </span><span class="nt">modalities</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">text</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">context_window</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;documented_by_provider&quot;</span>
-<span class="w">  </span><span class="nt">api</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">chat_completions</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">embeddings</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-<span class="w">    </span><span class="nt">tool_calling</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">streaming</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">service_levels</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">standard</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">rate_limits</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tenant_default</span>
-<span class="w">    </span><span class="nt">premium</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">dedicated_pool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">billing</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">input_token_price</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">configured</span>
-<span class="w">    </span><span class="nt">output_token_price</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">configured</span>
-</code></pre></div>
+<pre><code class="language-yaml">model:
+  name: af-chat-large
+  version: 2026-06-18
+  status: available
+  modalities: [text]
+  context_window: &quot;documented_by_provider&quot;
+  api:
+    chat_completions: true
+    embeddings: false
+    tool_calling: true
+    streaming: true
+  service_levels:
+    standard:
+      rate_limits: tenant_default
+    premium:
+      dedicated_pool: true
+  billing:
+    input_token_price: configured
+    output_token_price: configured
+</code></pre>
 <p>上线前应做端到端验收：创建租户、创建项目、发放 key、调用模型、触发限流、切换模型版本、验证计量账单、禁用 key、下线模型和模拟后端故障。MaaS 的测试不是只验证模型会回答，而是验证平台对象是否一致。只有控制面和数据面都可验证，MaaS 才能承载多租户生产流量。</p>
 <p>工程实现还应提供运营后台和自动化 API。运营人员需要查看租户用量、模型状态、限流事件、账单和 SLA；平台自动化需要批量创建项目、调整配额、发布模型和导出报表。只提供手工控制台会拖慢规模化运营，只提供 API 又会降低日常可见性。MaaS 是面向开发者的产品，也是平台运营系统。</p>
 <p>实现时还要把配置变更纳入审计。谁提升了租户配额，谁把模型切到新版本，谁禁用了 key，谁调整了价格，都应有记录和回滚路径。配置错误是 MaaS 常见事故来源，尤其在多租户平台中，一个错误路由或配额可能影响大量应用。把配置当代码管理，可以降低这类风险。</p>

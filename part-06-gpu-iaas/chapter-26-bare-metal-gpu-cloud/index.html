@@ -3841,17 +3841,7 @@
 <p>准入测试位于资源池之前。节点通过 PXE 安装和初始化后，必须运行 GPU、NCCL、网络、存储和容器访问测试。测试结果写入资源池，影响节点是否可调度、进入哪个 pool、带什么 label 或 taint。若测试失败，节点进入维修或复测状态，而不是被平台“先用起来”。AI 训练中，一个坏节点可能浪费整个多节点作业的 GPU 小时。</p>
 <p>还要把裸金属云与上层调度解耦。GPU IaaS 负责提供经过验收的节点和资源事实，Kubernetes 或 Slurm 负责调度 workload。二者通过资源池、标签、健康状态和事件同步协作。IaaS 不应直接理解每个模型任务，但必须提供足够准确的硬件和软件事实，让上层调度能做正确决策。</p>
 <p>架构还应包含回收和维修路径。节点不是只从交付流向调度，也会从调度流回维护：任务结束、节点异常、驱动升级、硬件更换、退役迁移都会改变节点状态。没有反向路径，资源池会不断积累不可解释节点。</p>
-<pre class="mermaid"><code>flowchart LR
-  Asset["资产 / 上架"] --&gt; BMC["BMC / Redfish"]
-  BMC --&gt; PXE["PXE / 网络启动"]
-  PXE --&gt; OS["OS image / baseline"]
-  OS --&gt; Bootstrap["驱动 / RDMA / runtime"]
-  Bootstrap --&gt; Init["节点初始化"]
-  Init --&gt; Test["准入测试"]
-  Test --&gt; Pool["GPU 资源池"]
-  Pool --&gt; Scheduler["Kubernetes / Slurm"]
-  Pool --&gt; Ops["维修 / 回收 / 退役"]
-  Ops --&gt; BMC</code></pre>
+<p><img alt="图：26.2.2 系统架构" src="../../assets/diagrams/part-06-gpu-iaas-chapter-26-bare-metal-gpu-cloud-01.svg" /></p>
 <h2 id="263">26.3 关键技术<a class="headerlink" href="#263" title="Permanent link">&para;</a></h2>
 <h3 id="2631">26.3.1 为什么大模型训练偏好裸金属<a class="headerlink" href="#2631" title="Permanent link">&para;</a></h3>
 <p>大模型训练依赖多 GPU、多节点和高性能网络。训练框架需要理解 GPU 拓扑、NUMA、NIC、NVLink、PCIe、RDMA 和本地存储路径。裸金属减少虚拟化层带来的不确定性，让 NCCL、CUDA、RDMA 和拓扑感知调度更接近真实硬件。对长时间训练来说，性能稳定性往往比单次峰值更重要，裸金属在可解释性上有明显优势。</p>
@@ -3910,21 +3900,21 @@
 <h3 id="2641">26.4.1 工程实现<a class="headerlink" href="#2641" title="Permanent link">&para;</a></h3>
 <p>工程实现应围绕节点生命周期状态机建设，而不是堆叠脚本。状态机至少包含 discovered、bmc-ready、provisioning、provisioned、bootstrapping、initialized、validating、allocatable、allocated、draining、maintenance、retired。每个状态有进入条件、动作、超时、失败原因和下一步。这样平台可以批量交付，也可以精确定位卡在哪一步。</p>
 <p>节点交付状态示例：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">node_lifecycle</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">node</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-node-001</span>
-<span class="w">  </span><span class="nt">asset_state</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">discovered</span>
-<span class="w">  </span><span class="nt">bmc</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">reachable</span>
-<span class="w">  </span><span class="nt">os_image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-node-2026-06</span>
-<span class="w">  </span><span class="nt">driver_baseline</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nvidia-baseline-2026-06</span>
-<span class="w">  </span><span class="nt">bootstrap_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bootstrap-2026-06-18</span>
-<span class="w">  </span><span class="nt">initialized</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">acceptance</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">gpu_burn_in</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">nccl_test</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">rdma_test</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">storage_test</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">  </span><span class="nt">state</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">allocatable</span>
-</code></pre></div>
+<pre><code class="language-yaml">node_lifecycle:
+  node: gpu-node-001
+  asset_state: discovered
+  bmc: reachable
+  os_image: gpu-node-2026-06
+  driver_baseline: nvidia-baseline-2026-06
+  bootstrap_version: bootstrap-2026-06-18
+  initialized: true
+  acceptance:
+    gpu_burn_in: pass
+    nccl_test: pass
+    rdma_test: pass
+    storage_test: pass
+  state: allocatable
+</code></pre>
 <p>交付系统还应提供批次视图。一次到货、一批重装或一次驱动升级，都应形成 batch。平台需要看到 batch 成功率、失败节点、失败阶段和版本差异。若某个 batch 的 NCCL test 失败率异常，可能是网络布线、镜像版本或驱动 baseline 问题。批次视图能把零散节点故障上升为系统问题。</p>
 <p>最后，工程实现要与调度系统和资源池联动。节点进入 allocatable 前保持 drain 或 taint；进入 maintenance 时自动从调度器摘除；维修后重新验收；退役时移除凭据、标签、监控和资产状态。交付、调度、维修和退役必须共享同一状态，而不是每个系统维护一套节点事实。</p>
 <p>为了让这套流程可运营，平台还应提供节点详情页或 API，展示资产、BMC、image、driver、初始化版本、验收结果、调度状态、维修历史和最近一次任务。排障时，工程师不应在资产系统、监控系统、调度器和日志系统之间手工拼接事实。统一视图能显著降低跨团队沟通成本。</p>

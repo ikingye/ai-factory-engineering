@@ -1,0 +1,14 @@
+flowchart TB
+  Dataset["eval_dataset_lineage_record"] --> Gate["quality_gate_execution"]
+  Golden["golden_set_governance_record"] --> Gate
+  Judge["judge_drift_calibration_record"] --> Gate
+  Rubric["rubric / parser version"] --> Gate
+  Gate --> Fresh["quality_gate_freshness_contract"]
+  Fresh --> SQC["serving_quality_contract"]
+  SQC --> Route["serving_route_release_contract"]
+  Route --> Experiment["online_experiment_guardrail"]
+  Feedback["quality_feedback_intake_pipeline"] --> Experiment
+  Fresh --> PRR["production readiness review"]
+  Judge --> Dep["quality_evidence_dependency_graph"]
+  Dataset --> Dep
+  Dep --> Impact["affected gates / releases / experiments"]

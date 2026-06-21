@@ -3813,17 +3813,7 @@
 <p>后训练还需要与 MaaS 和模型服务连接。候选模型进入 registry 后，平台要支持灰度、A/B、回滚、能力标注和计费口径更新。一个后训练模型可能支持更好的 tool calling，也可能改变输出长度和成本；可能提升安全拒答，也可能影响用户满意度。发布系统必须把模型行为变化映射到产品和平台策略。</p>
 <p>因此，架构中应有明确上线门禁。模型不能只因为训练完成就进入生产，而要经过自动评测、人工评审、风险批准和灰度观察。不同风险等级的模型可以有不同门禁：内部实验模型轻量，面向外部客户的默认模型严格。门禁是把后训练从研究流程变成生产流程的关键。</p>
 <p>架构还应支持并行候选模型。后训练经常同时尝试多组数据和方法，平台需要比较候选，而不是覆盖旧结果。每个候选都应有独立谱系、评测和发布状态。这样团队才能基于证据选择模型，而不是只保留最后一次训练产物。</p>
-<pre class="mermaid"><code>flowchart LR
-  Base["基础模型"] --&gt; SFT["SFT\n指令/格式"]
-  SFT --&gt; Pref["偏好优化\nRLHF / DPO / RLAIF"]
-  Pref --&gt; Safety["安全与对齐"]
-  Safety --&gt; Eval["多维评测"]
-  Eval --&gt; Registry["模型注册"]
-  Registry --&gt; Serving["模型服务 / MaaS"]
-  Serving --&gt; Feedback["线上反馈 / 红队 / 工具失败"]
-  Feedback --&gt; Data["数据回流与治理"]
-  Data --&gt; SFT
-  Eval --&gt; Decision["灰度 / 回滚 / 继续迭代"]</code></pre>
+<p><img alt="图：11.2.2 系统架构" src="../../assets/diagrams/part-03-models-chapter-11-post-training-01.svg" /></p>
 <h2 id="113">11.3 关键技术<a class="headerlink" href="#113" title="Permanent link">&para;</a></h2>
 <h3 id="1131-sft">11.3.1 SFT<a class="headerlink" href="#1131-sft" title="Permanent link">&para;</a></h3>
 <p>SFT 即 Supervised Fine-Tuning，监督微调。它使用高质量指令-回答数据，让模型学习如何响应任务、组织答案、遵循格式、使用角色和处理常见场景。对于基础模型，SFT 往往是从“预测下一个 token”到“像助手一样回答”的关键步骤。它能显著改善对话风格、指令遵循和结构化输出，但其效果高度依赖数据质量。</p>
@@ -3871,19 +3861,19 @@
 <h3 id="1141">11.4.1 工程实现<a class="headerlink" href="#1141" title="Permanent link">&para;</a></h3>
 <p>后训练任务应记录完整谱系。最少包括 base model、训练方法、数据集版本、数据构造方式、评审来源、训练超参、代码版本、容器镜像、评测集、输出模型、灰度状态和回滚关系。谱系记录不是为了做漂亮表格，而是为了在模型行为变化时能解释原因。没有谱系，就无法判断某次拒答率上升来自安全数据、偏好优化还是模板变化。</p>
 <p>示例记录如下：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">post_training_run</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">base_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-base-v1</span>
-<span class="w">  </span><span class="nt">method</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dpo</span>
-<span class="w">  </span><span class="nt">datasets</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sft-instruction-v4</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">preference-chat-v2</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">safety-refusal-v3</span>
-<span class="w">  </span><span class="nt">eval_sets</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">general-chat</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tool-calling</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">safety-redteam</span>
-<span class="w">  </span><span class="nt">output_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-v2-candidate</span>
-</code></pre></div>
+<pre><code class="language-yaml">post_training_run:
+  base_model: af-base-v1
+  method: dpo
+  datasets:
+    - sft-instruction-v4
+    - preference-chat-v2
+    - safety-refusal-v3
+  eval_sets:
+    - general-chat
+    - tool-calling
+    - safety-redteam
+  output_model: af-chat-v2-candidate
+</code></pre>
 <p>工程流程应包含数据准入、训练、评测、注册、灰度和回滚。数据准入检查格式、去重、敏感内容和标注质量；训练阶段记录超参和指标；评测阶段执行通用、领域、安全和格式测试；注册阶段写入模型卡和能力元数据；灰度阶段观察线上指标；回滚阶段保留旧模型和路由策略。后训练的复杂度在流程，不只在算法。</p>
 <p>后训练平台还应支持比较视图。模型团队需要看到候选模型相对上一版本在哪些评测上提升、哪些退化；产品团队需要看到用户体验和业务指标；安全团队需要看到风险指标；平台团队需要看到延迟、token 长度和成本变化。一个候选模型只有在多方指标都可接受时，才应进入更大范围发布。</p>
 <p>实现上还要支持可回滚发布。后训练模型上线后如果出现质量或安全回归，MaaS 路由应能快速切回旧模型，并保留问题请求样本。回滚不是失败，而是模型迭代的安全机制。没有回滚能力，团队会因为害怕上线风险而放慢迭代，或者冒险扩大影响面。</p>

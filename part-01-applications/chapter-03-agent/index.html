@@ -3833,18 +3833,7 @@
 <p>架构中最关键的两条链路是策略链路和观测链路。策略链路在每次工具执行前检查用户身份、租户、工具权限、参数合法性、风险等级、预算和是否需要人工确认。观测链路把每个 step 记录到同一个 trace：模型输入输出 token、工具参数、工具结果、错误、重试、状态变化和费用。没有策略链路，Agent 容易越权或重复执行副作用；没有观测链路，Agent 成本和故障无法复盘。</p>
 <p>Agent 架构还要区分同步交互和长任务。轻量问答 Agent 可以在一次 HTTP streaming 中完成；代码修复、数据分析、运维诊断和工作流自动化可能需要数分钟甚至更久，适合异步 run、任务状态查询和通知。把长任务强行塞进一次普通 Chat 请求，会导致超时、取消语义不清、账单断裂和状态丢失。Agent 平台应从一开始就把 run 作为持久对象。</p>
 <p>架构上还应把工具执行环境隔离出来。代码执行、浏览器访问和内部 API 调用不应与模型服务运行在同一信任边界内；沙箱、网络策略、凭据注入和输出裁剪都应由工具层管理。这样即使模型生成了错误动作，策略层和工具环境仍有机会阻断。Agent 的安全不是靠模型“听话”，而是靠架构让不该执行的动作无法执行。</p>
-<pre class="mermaid"><code>flowchart TB
-  U["用户目标"] --&gt; Orchestrator["Agent Orchestrator"]
-  Orchestrator --&gt; Planner["planning / policy context"]
-  Planner --&gt; LLM["LLM"]
-  LLM --&gt; ToolCall["tool / function call"]
-  ToolCall --&gt; Policy["权限 / 预算 / 风险检查"]
-  Policy --&gt; Tools["外部工具 / API / 沙箱"]
-  Tools --&gt; Obs["observation"]
-  Obs --&gt; Memory["memory / state"]
-  Memory --&gt; Orchestrator
-  Orchestrator --&gt; Answer["最终回答 / 动作结果"]
-  Orchestrator --&gt; Trace["trace / metering / billing"]</code></pre>
+<p><img alt="图：3.2.2 系统架构" src="../../assets/diagrams/part-01-applications-chapter-03-agent-01.svg" /></p>
 <h2 id="33">3.3 关键技术<a class="headerlink" href="#33" title="Permanent link">&para;</a></h2>
 <h3 id="331-agent-chatbot">3.3.1 Agent 和 Chatbot 的区别<a class="headerlink" href="#331-agent-chatbot" title="Permanent link">&para;</a></h3>
 <p>Chatbot 的主要输出是自然语言回复，成功标准通常是回答是否正确、是否流畅、是否满足用户意图。Agent 的主要输出是任务结果，文本只是交互界面。一个报销 Agent 的目标不是解释报销流程，而是检查票据、填写表单、提交审批并返回状态；一个运维 Agent 的目标不是描述排障方法，而是收集日志、查询监控、构建故障树，并在允许范围内执行修复或提交工单。</p>
@@ -3882,23 +3871,7 @@
 <p>Token 放大还会影响延迟和容量。每次模型调用都可能经历排队、prefill 和 decode；每次工具调用都可能有外部服务延迟；多轮串行执行会让端到端时间远大于单次 LLM latency。并发 Agent 任务还会占用沙箱、浏览器、数据库连接和外部 API 配额。AI Factory 需要用任务级预算治理 Agent：每 run 最大模型调用数、最大工具调用数、最大总 token、最大耗时、最大费用和每工具速率限制。</p>
 <p>控制 token 放大不能只靠硬截断。更好的方式包括工具结果摘要、按需暴露工具、短期状态结构化、历史 observation 压缩、失败分类重试、任务分阶段预算和低风险步骤使用较小模型。预算耗尽时，Agent 应返回当前进展和未完成原因，而不是静默失败。这样用户能判断是否继续追加预算，平台也能把未完成任务纳入成本和质量分析。</p>
 <p>Token 放大还会改变容量隔离。少数复杂 Agent run 可能占用大量模型调用和工具资源，影响普通 Chat 或其他短任务。平台应把 Agent 流量与普通 Chat 分开观察，必要时用独立队列、独立模型路由和独立配额。否则平均 QPS 看起来不高，内部调用却已经把推理服务和工具服务压满。Agent 的入口流量小，并不代表系统负载小。</p>
-<pre class="mermaid"><code>sequenceDiagram
-  participant U as 用户
-  participant A as Agent
-  participant M as 模型
-  participant T as 工具
-  U-&gt;&gt;A: 提交目标
-  A-&gt;&gt;M: 规划 prompt
-  M--&gt;&gt;A: plan + tool call
-  A-&gt;&gt;T: 执行工具
-  T--&gt;&gt;A: observation
-  A-&gt;&gt;M: 带 observation 的下一轮 prompt
-  M--&gt;&gt;A: 下一步动作
-  A-&gt;&gt;T: 再次执行工具
-  T--&gt;&gt;A: 结果
-  A-&gt;&gt;M: 汇总 prompt
-  M--&gt;&gt;A: 最终回答
-  A--&gt;&gt;U: 任务结果</code></pre>
+<p><img alt="图：3.3.7 多轮调用带来的 token 放大" src="../../assets/diagrams/part-01-applications-chapter-03-agent-02.svg" /></p>
 <h3 id="338-agent">3.3.8 Agent 对网关、限流、计费和可观测性的要求<a class="headerlink" href="#338-agent" title="Permanent link">&para;</a></h3>
 <p>Agent 要求平台从 request 视角升级到 task/run 视角。AI Gateway 不能只对单次模型 API 限流，还要理解一个用户目标可能展开成多次内部调用。限流口径应包括每租户并发 run、每 run 最大步骤、每 run 最大 token、每工具调用速率、每外部系统配额和高风险工具审批。否则少量 Agent 任务就可能消耗大量模型和工具资源，挤压普通 Chat 请求。</p>
 <p>计费也要从单次模型请求扩展到任务成本。一个 Agent run 的成本包括模型 input/output token、embedding、检索、工具调用、代码执行、沙箱资源、外部 API、失败重试和人工接管。平台应区分用户可见输出和内部中间调用，并向产品团队提供预算预估、实时消耗和结束账单。对于企业客户，还要能按项目、用户、工具和任务类型分摊成本，而不是只给一个总 token 数。</p>
@@ -3912,277 +3885,261 @@
 <p>上线前应准备一组任务回放用例，包括成功路径、工具超时、权限拒绝、参数错误、用户取消、预算耗尽和人工接管。每个用例都要验证 run 状态、step 记录、计费、trace 和最终用户提示是否正确。Agent 的测试不能只问模型会不会完成任务，还要测试平台在异常路径下是否能安全收敛。异常路径覆盖越充分，生产事故越少依赖人工猜测。</p>
 <p>工程实现还应包含人工接管接口。当 run 进入 waiting_approval、blocked 或 failed 状态时，用户、运营或 SRE 应能查看当前步骤、已执行动作、剩余预算和建议下一步，并能选择继续、取消、回滚或转交人工。没有接管接口，Agent 一旦卡住就只能重启任务，既浪费 token，也可能重复执行已完成步骤。接管能力让 Agent 从黑盒自动化变成可协作系统。</p>
 <p>下面的 YAML 展示了一个简化 run 记录。它不要求所有系统照搬字段，但表达了生产 Agent 必须保存的语义：任务目标、预算、步骤、工具结果和成本。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">agent_run</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">run-20260618-001</span>
-<span class="w">  </span><span class="nt">tenant</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">team-a</span>
-<span class="w">  </span><span class="nt">user</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">user-42</span>
-<span class="w">  </span><span class="nt">goal</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;修复</span><span class="nv"> </span><span class="s">CI</span><span class="nv"> </span><span class="s">失败&quot;</span>
-<span class="w">  </span><span class="nt">status</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">running</span>
-<span class="w">  </span><span class="nt">budgets</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">max_model_calls</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">12</span>
-<span class="w">    </span><span class="nt">max_tool_calls</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">40</span>
-<span class="w">    </span><span class="nt">max_total_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">120000</span>
-<span class="w">    </span><span class="nt">timeout_seconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1800</span>
-<span class="w">  </span><span class="nt">steps</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">step-1</span>
-<span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">model_call</span>
-<span class="w">      </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">example-reasoning-model</span>
-<span class="w">      </span><span class="nt">input_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3200</span>
-<span class="w">      </span><span class="nt">output_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">900</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">step-2</span>
-<span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tool_call</span>
-<span class="w">      </span><span class="nt">tool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">read_file</span>
-<span class="w">      </span><span class="nt">status</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">success</span>
-<span class="w">      </span><span class="nt">duration_ms</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">120</span>
-</code></pre></div>
+<pre><code class="language-yaml">agent_run:
+  id: run-20260618-001
+  tenant: team-a
+  user: user-42
+  goal: &quot;修复 CI 失败&quot;
+  status: running
+  budgets:
+    max_model_calls: 12
+    max_tool_calls: 40
+    max_total_tokens: 120000
+    timeout_seconds: 1800
+  steps:
+    - id: step-1
+      type: model_call
+      model: example-reasoning-model
+      input_tokens: 3200
+      output_tokens: 900
+    - id: step-2
+      type: tool_call
+      tool: read_file
+      status: success
+      duration_ms: 120
+</code></pre>
 <p>Agent 也需要专门的 <code>eval_dataset_manifest</code>，但它和普通问答评测不同。一个 Agent case 的 label 不应只是“最终回答是否正确”，而应包含初始目标、允许工具、初始环境、权限上下文、期望状态变化、禁止动作、成功判据、可接受步骤数和安全边界。代码修复 Agent 的成功是测试通过且补丁最小；数据分析 Agent 的成功是 SQL 正确、扫描范围合规、解释与结果一致；运维 Agent 的成功是诊断证据充分、未越权执行修复、必要时正确转人工。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">eval_dataset_manifest</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">dataset_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">agent-codefix-202606</span>
-<span class="w">  </span><span class="nt">task_family</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">code_repair_agent</span>
-<span class="w">  </span><span class="nt">owner</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">developer-platform</span>
-<span class="w">  </span><span class="nt">environment</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">repo_snapshot_ref</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">object://repo-snapshot</span>
-<span class="w">    </span><span class="nt">ci_log_ref</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">object://ci-log</span>
-<span class="w">    </span><span class="nt">sandbox_profile</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">no_network_write</span>
-<span class="w">  </span><span class="nt">allowed_tools</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">read_file</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">search_code</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">apply_patch</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">run_tests</span>
-<span class="w">  </span><span class="nt">forbidden_actions</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">push_to_remote</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">delete_unrelated_files</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">modify_secrets</span>
-<span class="w">  </span><span class="nt">success_criteria</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">target_tests_pass</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">no_unrelated_diff</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">final_summary_matches_diff</span>
-<span class="w">  </span><span class="nt">safety_criteria</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tool_policy_respected</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">no_secret_exfiltration</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">no_unapproved_side_effect</span>
-<span class="w">  </span><span class="nt">budget</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">max_steps</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured_policy</span>
-<span class="w">    </span><span class="nt">max_tool_calls</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured_policy</span>
-<span class="w">    </span><span class="nt">max_total_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured_policy</span>
-</code></pre></div>
+<pre><code class="language-yaml">eval_dataset_manifest:
+  dataset_id: agent-codefix-202606
+  task_family: code_repair_agent
+  owner: developer-platform
+  environment:
+    repo_snapshot_ref: object://repo-snapshot
+    ci_log_ref: object://ci-log
+    sandbox_profile: no_network_write
+  allowed_tools:
+    - read_file
+    - search_code
+    - apply_patch
+    - run_tests
+  forbidden_actions:
+    - push_to_remote
+    - delete_unrelated_files
+    - modify_secrets
+  success_criteria:
+    - target_tests_pass
+    - no_unrelated_diff
+    - final_summary_matches_diff
+  safety_criteria:
+    - tool_policy_respected
+    - no_secret_exfiltration
+    - no_unapproved_side_effect
+  budget:
+    max_steps: measured_policy
+    max_tool_calls: measured_policy
+    max_total_tokens: measured_policy
+</code></pre>
 <p>Agent 评测要保留 <code>agent_trajectory_record</code>。它记录每个 step 的模型调用、工具调用、策略检查、observation、状态变化和成本，用来判断成功路径是否可接受。两个 Agent 最终都完成任务，其中一个用了 6 步、只读必要文件、一次测试通过；另一个用了 60 步、读取大量无关文件、反复运行昂贵测试，二者质量完全不同。轨迹质量决定生产可用性，因为成本、延迟、安全和用户信任都发生在中间步骤里。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">agent_trajectory_record</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">run_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">run-20260619-0001</span>
-<span class="w">  </span><span class="nt">case_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">agent-case-0042</span>
-<span class="w">  </span><span class="nt">model_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-agent-202606</span>
-<span class="w">  </span><span class="nt">orchestrator_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">agent-orch-v12</span>
-<span class="w">  </span><span class="nt">steps</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">step_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">s1</span>
-<span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">model_call</span>
-<span class="w">      </span><span class="nt">purpose</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">plan</span>
-<span class="w">      </span><span class="nt">input_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">      </span><span class="nt">output_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">step_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">s2</span>
-<span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tool_call</span>
-<span class="w">      </span><span class="nt">tool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">search_code</span>
-<span class="w">      </span><span class="nt">policy_decision</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">allow</span>
-<span class="w">      </span><span class="nt">result_class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">relevant_evidence_found</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">step_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">s3</span>
-<span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tool_call</span>
-<span class="w">      </span><span class="nt">tool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">run_tests</span>
-<span class="w">      </span><span class="nt">policy_decision</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">allow</span>
-<span class="w">      </span><span class="nt">result_class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">target_tests_passed</span>
-<span class="w">  </span><span class="nt">outcome</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">task_success</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">side_effects</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">approved_only</span>
-<span class="w">    </span><span class="nt">human_handoff</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-<span class="w">    </span><span class="nt">total_cost_ref</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cost-ledger-link</span>
-</code></pre></div>
+<pre><code class="language-yaml">agent_trajectory_record:
+  run_id: run-20260619-0001
+  case_id: agent-case-0042
+  model_version: af-agent-202606
+  orchestrator_version: agent-orch-v12
+  steps:
+    - step_id: s1
+      type: model_call
+      purpose: plan
+      input_tokens: measured
+      output_tokens: measured
+    - step_id: s2
+      type: tool_call
+      tool: search_code
+      policy_decision: allow
+      result_class: relevant_evidence_found
+    - step_id: s3
+      type: tool_call
+      tool: run_tests
+      policy_decision: allow
+      result_class: target_tests_passed
+  outcome:
+    task_success: true
+    side_effects: approved_only
+    human_handoff: false
+    total_cost_ref: cost-ledger-link
+</code></pre>
 <p>工具执行前必须先有 <code>tool_side_effect_policy</code>。它描述每个工具在特定租户、项目、用户身份和任务类型下是否只读、是否有副作用、是否幂等、是否需要 dry-run、是否需要人工确认、是否允许自动重试、失败后如何补偿、审计保留多久。没有这类策略，平台只能靠工具名字猜风险：<code>send_email</code>、<code>submit_ticket</code>、<code>apply_patch</code>、<code>run_sql</code>、<code>restart_service</code> 的风险完全不同，同一个工具在只读查询和生产写操作中的策略也不同。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">tool_side_effect_policy</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">policy_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tsep-20260620-codefix</span>
-<span class="w">  </span><span class="nt">scope</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">tenant</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enterprise-a</span>
-<span class="w">    </span><span class="nt">agent_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">code_repair_agent</span>
-<span class="w">    </span><span class="nt">environment</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">production</span>
-<span class="w">  </span><span class="nt">tools</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">read_file</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">side_effect</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">none</span>
-<span class="w">      </span><span class="nt">auto_execute</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">      </span><span class="nt">retry</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">safe_with_backoff</span>
-<span class="w">      </span><span class="nt">output_redaction</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">source_policy</span>
-<span class="w">    </span><span class="nt">apply_patch</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">side_effect</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">workspace_write</span>
-<span class="w">      </span><span class="nt">auto_execute</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">      </span><span class="nt">requires_diff_summary</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">      </span><span class="nt">idempotency_key_required</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">      </span><span class="nt">rollback</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">reverse_patch_required</span>
-<span class="w">    </span><span class="nt">run_tests</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">side_effect</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">compute_and_temp_files</span>
-<span class="w">      </span><span class="nt">auto_execute</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">      </span><span class="nt">max_duration_seconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_defined</span>
-<span class="w">      </span><span class="nt">retry</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bounded_by_error_class</span>
-<span class="w">    </span><span class="nt">push_to_remote</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">side_effect</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">external_write</span>
-<span class="w">      </span><span class="nt">auto_execute</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-<span class="w">      </span><span class="nt">requires_human_approval</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">      </span><span class="nt">default_decision</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">deny</span>
-<span class="w">  </span><span class="nt">global_guards</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">deny_secret_read_without_allowlist</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">deny_network_write_from_sandbox</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">require_policy_decision_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-</code></pre></div>
+<pre><code class="language-yaml">tool_side_effect_policy:
+  policy_id: tsep-20260620-codefix
+  scope:
+    tenant: enterprise-a
+    agent_type: code_repair_agent
+    environment: production
+  tools:
+    read_file:
+      side_effect: none
+      auto_execute: true
+      retry: safe_with_backoff
+      output_redaction: source_policy
+    apply_patch:
+      side_effect: workspace_write
+      auto_execute: true
+      requires_diff_summary: true
+      idempotency_key_required: true
+      rollback: reverse_patch_required
+    run_tests:
+      side_effect: compute_and_temp_files
+      auto_execute: true
+      max_duration_seconds: policy_defined
+      retry: bounded_by_error_class
+    push_to_remote:
+      side_effect: external_write
+      auto_execute: false
+      requires_human_approval: true
+      default_decision: deny
+  global_guards:
+    deny_secret_read_without_allowlist: true
+    deny_network_write_from_sandbox: true
+    require_policy_decision_record: true
+</code></pre>
 <p><code>tool_side_effect_policy</code> 适合描述单个工具的执行边界，但生产发布还需要 <code>agent_tool_policy_contract</code>。它把一组工具 schema、side effect policy、sandbox、credential scope、confirmation rule、idempotency rule、budget policy、memory policy 和观测要求绑定为 Agent release 的一部分。这样模型、orchestrator、工具层和 Gateway 才能使用同一个工具面。没有这个契约，常见事故是模型升级后看到新工具描述，策略层仍使用旧规则；或者工具 schema 改了，评测轨迹和线上执行不再可比。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">agent_tool_policy_contract</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">contract_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">atpc-codefix-20260620</span>
-<span class="w">  </span><span class="nt">agent_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">code_repair_agent</span>
-<span class="w">  </span><span class="nt">release_state</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">canary</span>
-<span class="w">  </span><span class="nt">binding</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">model_release</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-agent-code-20260620</span>
-<span class="w">    </span><span class="nt">orchestrator_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">agent-orch-v14</span>
-<span class="w">    </span><span class="nt">tool_registry_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tool-registry-20260620</span>
-<span class="w">    </span><span class="nt">rag_agent_admission_context_required</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">tools</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">read_file</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">schema_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">read-file-v4</span>
-<span class="w">      </span><span class="nt">side_effect_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tsep-20260620-codefix</span>
-<span class="w">      </span><span class="nt">credential_scope</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">workspace_read</span>
-<span class="w">      </span><span class="nt">output_budget</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bounded_summary_required</span>
-<span class="w">    </span><span class="nt">apply_patch</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">schema_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">apply-patch-v3</span>
-<span class="w">      </span><span class="nt">side_effect_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tsep-20260620-codefix</span>
-<span class="w">      </span><span class="nt">idempotency_key_required</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">      </span><span class="nt">rollback_ref_required</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">run_tests</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">schema_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">run-tests-v6</span>
-<span class="w">      </span><span class="nt">side_effect_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tsep-20260620-codefix</span>
-<span class="w">      </span><span class="nt">sandbox_profile</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">codefix-no-network-write</span>
-<span class="w">      </span><span class="nt">max_duration_seconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_defined</span>
-<span class="w">  </span><span class="nt">run_controls</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">budget_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">abl-policy-codefix-prod</span>
-<span class="w">    </span><span class="nt">max_consecutive_reflections</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_defined</span>
-<span class="w">    </span><span class="nt">loop_detection</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enabled</span>
-<span class="w">    </span><span class="nt">memory_scope</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">repo_snapshot_and_run_only</span>
-<span class="w">  </span><span class="nt">release_gates</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">trajectory_eval_dataset</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">agent-codefix-202606</span>
-<span class="w">    </span><span class="nt">unsafe_tool_call_rate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">below_policy</span>
-<span class="w">    </span><span class="nt">rollback_drill</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">human_approval_flow</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-</code></pre></div>
+<pre><code class="language-yaml">agent_tool_policy_contract:
+  contract_id: atpc-codefix-20260620
+  agent_type: code_repair_agent
+  release_state: canary
+  binding:
+    model_release: af-agent-code-20260620
+    orchestrator_version: agent-orch-v14
+    tool_registry_version: tool-registry-20260620
+    rag_agent_admission_context_required: true
+  tools:
+    read_file:
+      schema_version: read-file-v4
+      side_effect_policy: tsep-20260620-codefix
+      credential_scope: workspace_read
+      output_budget: bounded_summary_required
+    apply_patch:
+      schema_version: apply-patch-v3
+      side_effect_policy: tsep-20260620-codefix
+      idempotency_key_required: true
+      rollback_ref_required: true
+    run_tests:
+      schema_version: run-tests-v6
+      side_effect_policy: tsep-20260620-codefix
+      sandbox_profile: codefix-no-network-write
+      max_duration_seconds: policy_defined
+  run_controls:
+    budget_policy: abl-policy-codefix-prod
+    max_consecutive_reflections: policy_defined
+    loop_detection: enabled
+    memory_scope: repo_snapshot_and_run_only
+  release_gates:
+    trajectory_eval_dataset: agent-codefix-202606
+    unsafe_tool_call_rate: below_policy
+    rollback_drill: pass
+    human_approval_flow: pass
+</code></pre>
 <p>这个 contract 的价值是把工具策略从“运行时配置”提升为“发布资格”。Agent 不应只发布模型权重或 prompt，也要发布工具面。每次新增工具、修改 schema、改变 sandbox、调整确认规则或扩大凭据范围，都应触发契约变更、轨迹评测和 PRR。对企业来说，Agent 的风险通常不在最终一句话，而在工具边界和副作用边界；工具策略契约是把这个风险纳入工程流程的最小单元。</p>
 <p>每次实际调用工具，都应生成 <code>agent_tool_execution_record</code>。它把模型提出的 tool intent、策略决策、参数校验、凭据注入、执行环境、幂等键、输入输出摘要、错误类别、重试、成本、审计和副作用结果绑定在一起。这个记录不是为了保存所有原始输出，而是为了回答生产问题：模型为什么选这个工具，策略为什么放行，工具到底做了什么，是否修改了外部状态，失败后是否可重试或回滚，成本应该归到哪个 run。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">agent_tool_execution_record</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">execution_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ater-20260620-0001</span>
-<span class="w">  </span><span class="nt">run_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">run-20260619-0001</span>
-<span class="w">  </span><span class="nt">step_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">s7</span>
-<span class="w">  </span><span class="nt">tool</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">apply_patch</span>
-<span class="w">    </span><span class="nt">schema_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">apply-patch-v3</span>
-<span class="w">    </span><span class="nt">side_effect_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tsep-20260620-codefix</span>
-<span class="w">  </span><span class="nt">intent</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">model_call_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mc-s6</span>
-<span class="w">    </span><span class="nt">requested_action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">modify_workspace</span>
-<span class="w">    </span><span class="nt">argument_hash</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sha256:example</span>
-<span class="w">  </span><span class="nt">policy</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">decision</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">allow</span>
-<span class="w">    </span><span class="nt">policy_decision_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pdr-agent-20260620-0001</span>
-<span class="w">    </span><span class="nt">approval_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">not_required_for_workspace_write</span>
-<span class="w">    </span><span class="nt">idempotency_key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">run-20260619-0001:s7</span>
-<span class="w">  </span><span class="nt">execution</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">sandbox_profile</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">codefix-no-network-write</span>
-<span class="w">    </span><span class="nt">credential_mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scoped_ephemeral</span>
-<span class="w">    </span><span class="nt">started_at</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">completed_at</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">result_class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">patch_applied</span>
-<span class="w">    </span><span class="nt">output_ref</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">object://redacted-tool-output</span>
-<span class="w">  </span><span class="nt">side_effects</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">external_write</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-<span class="w">    </span><span class="nt">workspace_diff_ref</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">object://diff/run-20260619-0001/s7</span>
-<span class="w">    </span><span class="nt">rollback_ref</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">object://reverse-diff/run-20260619-0001/s7</span>
-<span class="w">  </span><span class="nt">accounting</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">tool_runtime_ms</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">sandbox_cost</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">    </span><span class="nt">emitted_tokens_to_next_step</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-</code></pre></div>
+<pre><code class="language-yaml">agent_tool_execution_record:
+  execution_id: ater-20260620-0001
+  run_id: run-20260619-0001
+  step_id: s7
+  tool:
+    name: apply_patch
+    schema_version: apply-patch-v3
+    side_effect_policy: tsep-20260620-codefix
+  intent:
+    model_call_id: mc-s6
+    requested_action: modify_workspace
+    argument_hash: sha256:example
+  policy:
+    decision: allow
+    policy_decision_record: pdr-agent-20260620-0001
+    approval_id: not_required_for_workspace_write
+    idempotency_key: run-20260619-0001:s7
+  execution:
+    sandbox_profile: codefix-no-network-write
+    credential_mode: scoped_ephemeral
+    started_at: recorded
+    completed_at: recorded
+    result_class: patch_applied
+    output_ref: object://redacted-tool-output
+  side_effects:
+    external_write: false
+    workspace_diff_ref: object://diff/run-20260619-0001/s7
+    rollback_ref: object://reverse-diff/run-20260619-0001/s7
+  accounting:
+    tool_runtime_ms: measured
+    sandbox_cost: calculated
+    emitted_tokens_to_next_step: measured
+</code></pre>
 <p><code>agent_tool_execution_record</code> 应成为 Agent trace 的主干，而不是调试日志的附属品。安全团队用它审计越权动作，SRE 用它定位工具超时和外部依赖故障，评测平台用它比较轨迹质量，账单系统用它计算工具和沙箱成本，用户界面用它展示“已执行”和“待确认”动作。若记录里没有幂等键和副作用摘要，自动重试就不可靠；若没有 policy decision，工具调用就无法证明合规；若没有 rollback ref，高风险任务就不能安全放量。</p>
 <p>Agent 的预算也应落成 <code>agent_budget_ledger</code>。它不是月底账单，而是 run 执行过程中的实时控制账本：每一步消耗了多少 input/output token、工具时间、沙箱资源、外部 API、检索和人工接管成本；预算阈值在何时被触发；是否因为预算不足改变了计划；最终成本是否与任务价值匹配。没有这个账本，Agent 成本只能事后粗略归因，orchestrator 也无法在执行中做理性停止。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">agent_budget_ledger</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">ledger_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">abl-20260620-0001</span>
-<span class="w">  </span><span class="nt">run_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">run-20260619-0001</span>
-<span class="w">  </span><span class="nt">tenant</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enterprise-a</span>
-<span class="w">  </span><span class="nt">project</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">developer-assistant</span>
-<span class="w">  </span><span class="nt">budget_policy</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">max_model_calls</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">12</span>
-<span class="w">    </span><span class="nt">max_tool_calls</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">40</span>
-<span class="w">    </span><span class="nt">max_total_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">120000</span>
-<span class="w">    </span><span class="nt">max_wall_time_seconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1800</span>
-<span class="w">    </span><span class="nt">max_estimated_cost</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_defined</span>
-<span class="w">  </span><span class="nt">consumption</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">model_calls</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">7</span>
-<span class="w">    </span><span class="nt">tool_calls</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">18</span>
-<span class="w">    </span><span class="nt">input_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">output_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">retrieval_cost</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">    </span><span class="nt">sandbox_runtime_cost</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">    </span><span class="nt">external_api_cost</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">    </span><span class="nt">human_handoff_cost</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">optional</span>
-<span class="w">  </span><span class="nt">control_actions</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">step_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">s8</span>
-<span class="w">      </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">compress_observations</span>
-<span class="w">      </span><span class="nt">reason</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">context_budget_pressure</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">step_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">s10</span>
-<span class="w">      </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">require_user_confirmation</span>
-<span class="w">      </span><span class="nt">reason</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cost_threshold_near_limit</span>
-<span class="w">  </span><span class="nt">outcome</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">task_success</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">cost_per_successful_task</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">    </span><span class="nt">failed_run_waste</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">none</span>
-</code></pre></div>
+<pre><code class="language-yaml">agent_budget_ledger:
+  ledger_id: abl-20260620-0001
+  run_id: run-20260619-0001
+  tenant: enterprise-a
+  project: developer-assistant
+  budget_policy:
+    max_model_calls: 12
+    max_tool_calls: 40
+    max_total_tokens: 120000
+    max_wall_time_seconds: 1800
+    max_estimated_cost: policy_defined
+  consumption:
+    model_calls: 7
+    tool_calls: 18
+    input_tokens: measured
+    output_tokens: measured
+    retrieval_cost: calculated
+    sandbox_runtime_cost: calculated
+    external_api_cost: calculated
+    human_handoff_cost: optional
+  control_actions:
+    - step_id: s8
+      action: compress_observations
+      reason: context_budget_pressure
+    - step_id: s10
+      action: require_user_confirmation
+      reason: cost_threshold_near_limit
+  outcome:
+    task_success: true
+    cost_per_successful_task: calculated
+    failed_run_waste: none
+</code></pre>
 <p>这个账本会把 Agent 从“不可预测的多轮调用”变成可运营 workload。Gateway 可以用它限制每租户并发 run 和任务预算，SRE 可以用它识别循环和外部依赖成本，评测平台可以比较新旧模型的轨迹效率，Token Factory 可以把 Agent 的内部 token、工具成本和人工接管折算成每成功任务成本。预算账本也能保护用户体验：预算耗尽时，Agent 应返回已完成步骤、剩余风险和继续所需预算，而不是直接失败或静默停止。</p>
 <p>线上失败应进入 <code>quality_feedback_event</code>，再归并成 <code>agent_regression_case</code>。Agent 的反馈来源比 Chat 更多：用户取消、人工接管、工具审批拒绝、预算耗尽、循环检测、测试失败、外部系统拒绝、审计告警和最终结果被用户撤销。Regression case 需要记录失败层级：planning、tool_selection、tool_schema、policy、tool_runtime、memory、reflection、budget、human_handoff 或 final_answer。没有层级，团队会把所有失败归因给“模型不够聪明”，忽略工具、权限和编排缺陷。</p>
-<pre class="mermaid"><code>flowchart TB
-  Feedback["用户取消 / 工具失败 / 人工接管 / 审计告警"] --&gt; QFE["quality_feedback_event"]
-  QFE --&gt; Replay["agent run replay\nstate + tools + policies"]
-  Replay --&gt; Traj["agent_trajectory_record"]
-  Traj --&gt; Classify["failure layer classification"]
-  Classify --&gt; Reg["agent_regression_case"]
-  Reg --&gt; Gate["agent quality gate"]
-  Gate --&gt; Release["model / orchestrator / tool schema release"]</code></pre>
+<p><img alt="图：3.4.1 工程实现" src="../../assets/diagrams/part-01-applications-chapter-03-agent-03.svg" /></p>
 <p>Agent 质量门禁至少应检查四类风险。第一是任务质量：完成率、结果正确性、是否满足业务判据。第二是轨迹效率：步骤数、工具调用数、token、耗时和无效动作。第三是安全边界：越权访问、未确认副作用、敏感数据外泄、工具参数越界。第四是恢复能力：工具失败、预算耗尽、用户取消和人工接管时是否安全收敛。只看最终成功率，会鼓励 Agent 用高成本、高风险路径完成任务；只看成本，又会让 Agent 过早放弃复杂任务。</p>
 <p>生产排障和评测还需要 <code>agent_trajectory_replay_bundle</code>。<code>agent_trajectory_record</code> 记录一次 run 的轨迹，replay bundle 则冻结重放所需的环境：目标、初始状态、工具策略契约、工具 schema、sandbox 镜像、凭据模式、RAG 上下文、memory snapshot、预算、外部 API mock 或录制结果、每步 observation 引用和最终副作用。它允许质量团队在不重新触发危险副作用的情况下复现 Agent 为什么选择某条路径，也允许安全团队验证当时的策略是否应当阻断。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">agent_trajectory_replay_bundle</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">bundle_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">atrb-20260620-0042</span>
-<span class="w">  </span><span class="nt">source</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">run_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">run-20260620-0042</span>
-<span class="w">    </span><span class="nt">agent_trajectory_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">atr-run-20260620-0042</span>
-<span class="w">    </span><span class="nt">quality_feedback_event</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qfe-agent-20260620-0042</span>
-<span class="w">  </span><span class="nt">replay_environment</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">agent_tool_policy_contract</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">atpc-codefix-20260620</span>
-<span class="w">    </span><span class="nt">orchestrator_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">agent-orch-v14</span>
-<span class="w">    </span><span class="nt">model_release</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-agent-code-20260620</span>
-<span class="w">    </span><span class="nt">sandbox_image_digest</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sha256:example</span>
-<span class="w">    </span><span class="nt">repo_snapshot_ref</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">object://repo-snapshot/sha256:example</span>
-<span class="w">    </span><span class="nt">memory_snapshot_ref</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">object://redacted-memory</span>
-<span class="w">    </span><span class="nt">budget_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">abl-policy-codefix-prod</span>
-<span class="w">  </span><span class="nt">step_replay</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">tool_outputs_mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded_or_mocked</span>
-<span class="w">    </span><span class="nt">external_side_effects_disabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">idempotency_keys_preserved</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">observations_ref</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">object://agent-observations/run-0042</span>
-<span class="w">    </span><span class="nt">policy_decision_records</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">    </span><span class="nt">agent_tool_execution_records</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">  </span><span class="nt">assertions</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">expected_final_state</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">target_tests_pass_or_known_failure</span>
-<span class="w">    </span><span class="nt">forbidden_side_effects</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">push_to_remote</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">secret_read</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">max_cost_delta</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_defined</span>
-<span class="w">    </span><span class="nt">trajectory_comparison</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">step_class_and_policy_and_outcome</span>
-</code></pre></div>
-<pre class="mermaid"><code>flowchart LR
-  Contract["agent_tool_policy_contract"] --&gt; Run["agent run"]
-  Gateway["rag_agent_admission_context"] --&gt; Run
-  Run --&gt; ToolExec["agent_tool_execution_record"]
-  Run --&gt; Budget["agent_budget_ledger"]
-  Run --&gt; Traj["agent_trajectory_record"]
-  ToolExec --&gt; Replay["agent_trajectory_replay_bundle"]
-  Budget --&gt; Replay
-  Traj --&gt; Replay
-  Replay --&gt; Gate["agent quality / safety gate"]</code></pre>
+<pre><code class="language-yaml">agent_trajectory_replay_bundle:
+  bundle_id: atrb-20260620-0042
+  source:
+    run_id: run-20260620-0042
+    agent_trajectory_record: atr-run-20260620-0042
+    quality_feedback_event: qfe-agent-20260620-0042
+  replay_environment:
+    agent_tool_policy_contract: atpc-codefix-20260620
+    orchestrator_version: agent-orch-v14
+    model_release: af-agent-code-20260620
+    sandbox_image_digest: sha256:example
+    repo_snapshot_ref: object://repo-snapshot/sha256:example
+    memory_snapshot_ref: object://redacted-memory
+    budget_policy: abl-policy-codefix-prod
+  step_replay:
+    tool_outputs_mode: recorded_or_mocked
+    external_side_effects_disabled: true
+    idempotency_keys_preserved: true
+    observations_ref: object://agent-observations/run-0042
+    policy_decision_records: required
+    agent_tool_execution_records: required
+  assertions:
+    expected_final_state: target_tests_pass_or_known_failure
+    forbidden_side_effects: [push_to_remote, secret_read]
+    max_cost_delta: policy_defined
+    trajectory_comparison: step_class_and_policy_and_outcome
+</code></pre>
+<p><img alt="图：3.4.1 工程实现" src="../../assets/diagrams/part-01-applications-chapter-03-agent-04.svg" /></p>
 <p>Replay bundle 的 stop rule 很明确：如果不能在禁用外部副作用的环境中复现轨迹，就不能把这个样本作为可靠回归；如果工具输出不可录制或不可 mock，就不能安全评估策略变更；如果 policy decision 缺失，就不能证明工具调用合规；如果预算账本缺失，就不能比较不同模型或 orchestrator 的轨迹效率。Agent 的工程深度，体现在能否把一次复杂任务拆成可重放的事实，而不是只保存一段漂亮的最终回答。</p>
 <h3 id="342">3.4.2 常见故障<a class="headerlink" href="#342" title="Permanent link">&para;</a></h3>
 <p>第一类故障是工具面过大。平台一次性把几十个工具暴露给模型，模型频繁选错工具或生成不合法参数。解决方向是按场景动态暴露工具，并用 schema 测试验证模型能否稳定调用。第二类故障是工具结果未裁剪。日志、搜索结果和测试输出原样进入 prompt，导致上下文膨胀、成本上升和关键信息被淹没。工具层应提供结构化摘要和分页，而不是把原始输出全部交给模型。</p>

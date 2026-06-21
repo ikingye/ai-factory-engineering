@@ -3846,21 +3846,7 @@
 <p>架构还要保留资源转换流程。节点可以从整卡池切到 MIG 池，也可以从共享池回到独占池，但转换前必须排空 workload、清理状态、重新配置并复验。资源模式变更本身就是高风险操作，不能像普通标签修改一样处理。</p>
 <p>因此，资源模式应进入节点生命周期状态。</p>
 <p>状态变化应同步到调度、监控和计费。</p>
-<pre class="mermaid"><code>flowchart TB
-  Tenant["租户 / workload"] --&gt; Class["GPU resource class"]
-  Class --&gt; BM["bare metal dedicated"]
-  Class --&gt; VM["VM + PCIe passthrough"]
-  Class --&gt; MIG["MIG instance"]
-  Class --&gt; VGPU["vGPU profile"]
-  Class --&gt; Container["container full-card / shared"]
-  Class --&gt; Remote["remote GPU access"]
-  BM --&gt; Policy["SLA / 安全 / 计费"]
-  VM --&gt; Policy
-  MIG --&gt; Policy
-  VGPU --&gt; Policy
-  Container --&gt; Policy
-  Remote --&gt; Policy
-  Policy --&gt; Monitor["监控 / 审计 / 成本"]</code></pre>
+<p><img alt="图：27.2.2 系统架构" src="../../assets/diagrams/part-06-gpu-iaas-chapter-27-gpu-virtualization-isolation-01.svg" /></p>
 <p>远程 GPU 访问是另一类资源池化架构。它可以通过本地 API proxy 拦截 CUDA/OpenCL 调用并转发到远端 GPU，也可以在本地模拟虚拟设备，由驱动或代理把命令、内存和状态同步到远端，还可以由上层分布式框架把任务拆分到远端 GPU。它的价值是突破单机 GPU 数量、提高集中资源利用和支持跨地域/跨池调用；代价是网络延迟、带宽、错误传播、状态一致性、安全审计和调试复杂度。对低延迟在线推理和强同步训练，远程 GPU 必须谨慎验证；对批处理、离线推理和弹性开发环境，远程访问可能有较好利用率收益。</p>
 <h2 id="273">27.3 关键技术<a class="headerlink" href="#273" title="Permanent link">&para;</a></h2>
 <h3 id="2731-vm-vs-bare-metal">27.3.1 VM vs bare metal<a class="headerlink" href="#2731-vm-vs-bare-metal" title="Permanent link">&para;</a></h3>
@@ -3925,30 +3911,30 @@
 <p>性能隔离也是安全和 SLA 的一部分。一个租户通过高负载 kernel、异常显存占用或 I/O 打满共享依赖，可能影响其它租户服务。在线推理尤其敏感，延迟抖动会直接影响用户体验。平台需要定义共置规则、资源上限、优先级、限流和隔离池，避免不兼容 workload 混放。</p>
 <p>管理面安全要求更高。谁能修改 MIG profile，谁能给 VM 透传 GPU，谁能访问宿主机，谁能查看 DCGM 指标或容器日志，都必须被审计。GPU 管理权限通常等价于高权限基础设施操作。多租户平台应使用最小权限、强审计和变更审批，不能让普通租户直接操作底层设备配置。</p>
 <p>管理面权限应落成 <code>bmc_driver_access_policy</code>。BMC、IPMI/Redfish、宿主 root、driver reload、kernel module、MIG profile、GPU reset、VF/SR-IOV 配置和资源池状态覆盖，都能改变租户边界或破坏运行中 workload。它们不应和普通 Kubernetes namespace 权限混在一起，而应由 IaaS/SRE 安全域管理，并要求审批、TTL、命令审计和事后复核。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">bmc_driver_access_policy</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">policy_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bda-prod-gpu-20260619</span>
-<span class="w">  </span><span class="nt">protected_operations</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bmc_power_cycle</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu_reset</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">driver_reload</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mig_profile_change</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sriov_vf_reconfigure</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">resource_state_override</span>
-<span class="w">  </span><span class="nt">allowed_roles</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-iaas-sre</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">hardware-oncall</span>
-<span class="w">  </span><span class="nt">require_change_or_incident</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">normal_change</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">emergency_break_glass</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">controls</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">ttl</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_defined_short</span>
-<span class="w">    </span><span class="nt">session_recording</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">    </span><span class="nt">command_audit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">    </span><span class="nt">affected_tenant_review</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">  </span><span class="nt">post_conditions</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">clean_to_reuse_required</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">acceptance_baseline_recheck</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required_if_driver_or_mig_changed</span>
-</code></pre></div>
+<pre><code class="language-yaml">bmc_driver_access_policy:
+  policy_id: bda-prod-gpu-20260619
+  protected_operations:
+    - bmc_power_cycle
+    - gpu_reset
+    - driver_reload
+    - mig_profile_change
+    - sriov_vf_reconfigure
+    - resource_state_override
+  allowed_roles:
+    - gpu-iaas-sre
+    - hardware-oncall
+  require_change_or_incident:
+    normal_change: true
+    emergency_break_glass: true
+  controls:
+    ttl: policy_defined_short
+    session_recording: required
+    command_audit: required
+    affected_tenant_review: required
+  post_conditions:
+    clean_to_reuse_required: true
+    acceptance_baseline_recheck: required_if_driver_or_mig_changed
+</code></pre>
 <p>这个策略的核心是把“能操作机器”与“能承诺租户边界”绑定起来。一次 BMC 重启可能中断多个租户，一次 MIG 重配可能改变资源形态，一次 driver reload 可能让准入基线失效。没有 <code>bmc_driver_access_policy</code>，管理面操作会绕过 MaaS、调度、计费和审计，最终在事故中无法解释影响面。</p>
 <p>安全边界还要包含租户退出。资源释放后，本地数据、缓存、日志、临时凭据和模型权重必须清理。共享资源最大的风险之一，是上一个租户的残留被下一个租户看到或影响。回收验证是隔离的一部分，不是运维附属动作。</p>
 <p>隔离能力应写成 <code>gpu_isolation_matrix</code>，而不是用“强隔离”“弱隔离”这种模糊描述。矩阵要同时覆盖 kernel、driver、GPU/HBM、local NVMe、NIC/RDMA、观测可见性、故障传播、性能噪声和回收要求。下面是工程口径示例，具体承诺要以硬件、驱动、虚拟化栈和平台实现为准。</p>
@@ -4032,72 +4018,62 @@
 <h2 id="274">27.4 工程落地<a class="headerlink" href="#274" title="Permanent link">&para;</a></h2>
 <h3 id="2741">27.4.1 工程实现<a class="headerlink" href="#2741" title="Permanent link">&para;</a></h3>
 <p>工程实现应从资源等级定义开始。每个等级明确隔离边界、适用 workload、调度策略、监控指标、计费口径和 SLA。资源等级示例：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">resource_classes</span><span class="p">:</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-baremetal-dedicated</span>
-<span class="w">    </span><span class="nt">isolation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">host</span>
-<span class="w">    </span><span class="nt">workload</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">training-production</span>
-<span class="w">    </span><span class="nt">sharing</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">none</span>
-<span class="w">    </span><span class="nt">sla</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">high</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-vm-passthrough</span>
-<span class="w">    </span><span class="nt">isolation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vm-and-device</span>
-<span class="w">    </span><span class="nt">workload</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enterprise-inference</span>
-<span class="w">    </span><span class="nt">sharing</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">full-gpu-per-vm</span>
-<span class="w">    </span><span class="nt">sla</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">medium-high</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-mig-shared</span>
-<span class="w">    </span><span class="nt">isolation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">hardware-slice</span>
-<span class="w">    </span><span class="nt">workload</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">small-inference</span>
-<span class="w">    </span><span class="nt">sharing</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mig-profile</span>
-<span class="w">    </span><span class="nt">sla</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">medium</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-container-shared</span>
-<span class="w">    </span><span class="nt">isolation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">process</span>
-<span class="w">    </span><span class="nt">workload</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dev-test</span>
-<span class="w">    </span><span class="nt">sharing</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">best-effort</span>
-<span class="w">    </span><span class="nt">sla</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">best-effort</span>
-</code></pre></div>
+<pre><code class="language-yaml">resource_classes:
+  - name: gpu-baremetal-dedicated
+    isolation: host
+    workload: training-production
+    sharing: none
+    sla: high
+  - name: gpu-vm-passthrough
+    isolation: vm-and-device
+    workload: enterprise-inference
+    sharing: full-gpu-per-vm
+    sla: medium-high
+  - name: gpu-mig-shared
+    isolation: hardware-slice
+    workload: small-inference
+    sharing: mig-profile
+    sla: medium
+  - name: gpu-container-shared
+    isolation: process
+    workload: dev-test
+    sharing: best-effort
+    sla: best-effort
+</code></pre>
 <p>调度系统应使用这些资源等级，而不是让用户直接拼装底层参数。裸金属等级进入独占节点池，VM passthrough 进入虚拟化资源池，MIG 等级由 device plugin 暴露 profile，容器共享等级使用明确的节点池和租户策略。资源等级还应映射到价格、quota 和告警。</p>
 <p>实现还要包括回收流程。VM 删除后检查 GPU reset，MIG 实例释放后确认 profile 状态，容器退出后清理 GPU 进程和临时文件，裸金属归还后擦除本地盘和凭据。多租户隔离的薄弱点经常在回收阶段，而不是分配阶段。资源复用前必须确认上一个租户的状态已清理。</p>
 <p><code>clean_to_reuse_record</code> 是资源从一个租户回到可分配池之前的证据对象。它不保证硬件不存在任何理论残留风险，但它能证明平台执行了约定清理和复验步骤。对于裸金属和高敏租户，它应包含本地盘擦除、BMC 访问回收、镜像重装和准入复测；对于容器和 MIG，它应包含进程、显存、MIG profile、临时卷、缓存、凭据和观测标签清理。</p>
-<pre class="mermaid"><code>stateDiagram-v2
-  [*] --&gt; Allocated
-  Allocated --&gt; Released: workload finished / lease ended
-  Released --&gt; Draining: stop traffic / checkpoint / terminate
-  Draining --&gt; Cleaning: kill residual process / revoke secret / wipe cache
-  Cleaning --&gt; Resetting: GPU reset / MIG restore / node reboot if needed
-  Resetting --&gt; Retesting: container GPU / NCCL / storage smoke test
-  Retesting --&gt; Allocatable: clean_to_reuse_record passed
-  Retesting --&gt; Quarantine: failed verification
-  Quarantine --&gt; Maintenance: investigation / repair
-  Maintenance --&gt; Retesting</code></pre>
-<div class="highlight"><pre><span></span><code><span class="nt">clean_to_reuse_record</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">record_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ctr-20260619-0001</span>
-<span class="w">  </span><span class="nt">resource</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">node</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-node-001</span>
-<span class="w">    </span><span class="nt">gpu_uuid</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">GPU-xxxx</span>
-<span class="w">    </span><span class="nt">mig_uuid</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">none</span>
-<span class="w">    </span><span class="nt">resource_class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-container-full-card</span>
-<span class="w">  </span><span class="nt">previous_allocation</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">tenant_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enterprise-a</span>
-<span class="w">    </span><span class="nt">workload_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pod/model-af-chat-large-7d8f9</span>
-<span class="w">    </span><span class="nt">assignment_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gar-20260619-0001</span>
-<span class="w">  </span><span class="nt">cleanup_checks</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">gpu_processes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">none_detected</span>
-<span class="w">    </span><span class="nt">gpu_memory_state</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">reset_or_verified</span>
-<span class="w">    </span><span class="nt">mig_profile</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">restored_to_pool_baseline</span>
-<span class="w">    </span><span class="nt">local_nvme_paths</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">wiped_or_policy_not_required</span>
-<span class="w">    </span><span class="nt">model_cache</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">evicted_if_cross_tenant</span>
-<span class="w">    </span><span class="nt">secrets_and_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">revoked_or_unmounted</span>
-<span class="w">    </span><span class="nt">rdma_vf_state</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">released</span>
-<span class="w">    </span><span class="nt">runtime_hooks</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">healthy</span>
-<span class="w">  </span><span class="nt">retest</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">nvidia_smi</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed</span>
-<span class="w">    </span><span class="nt">cuda_smoke</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed</span>
-<span class="w">    </span><span class="nt">nccl_or_rdma_smoke</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed_if_required</span>
-<span class="w">    </span><span class="nt">dcgm_health</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed</span>
-<span class="w">  </span><span class="nt">result</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">state</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">allocatable</span>
-<span class="w">    </span><span class="nt">approved_by</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">automated_policy</span>
-<span class="w">    </span><span class="nt">audit_event</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">security-audit-20260619-0001</span>
-</code></pre></div>
+<p><img alt="图：27.4.1 工程实现" src="../../assets/diagrams/part-06-gpu-iaas-chapter-27-gpu-virtualization-isolation-02.svg" /></p>
+<pre><code class="language-yaml">clean_to_reuse_record:
+  record_id: ctr-20260619-0001
+  resource:
+    node: gpu-node-001
+    gpu_uuid: GPU-xxxx
+    mig_uuid: none
+    resource_class: gpu-container-full-card
+  previous_allocation:
+    tenant_id: enterprise-a
+    workload_id: pod/model-af-chat-large-7d8f9
+    assignment_id: gar-20260619-0001
+  cleanup_checks:
+    gpu_processes: none_detected
+    gpu_memory_state: reset_or_verified
+    mig_profile: restored_to_pool_baseline
+    local_nvme_paths: wiped_or_policy_not_required
+    model_cache: evicted_if_cross_tenant
+    secrets_and_tokens: revoked_or_unmounted
+    rdma_vf_state: released
+    runtime_hooks: healthy
+  retest:
+    nvidia_smi: passed
+    cuda_smoke: passed
+    nccl_or_rdma_smoke: passed_if_required
+    dcgm_health: passed
+  result:
+    state: allocatable
+    approved_by: automated_policy
+    audit_event: security-audit-20260619-0001
+</code></pre>
 <p>回收复验必须进入资源池状态机。没有通过 <code>clean_to_reuse_record</code> 的资源，不能从 reclaim 直接回到 allocatable。这样做会牺牲一部分周转速度，但能显著降低跨租户残留、性能漂移和账单争议。对高敏资源池，清理步骤更严格；对 best-effort 共享池，可以简化但不能完全省略。</p>
 <p>最后，要把隔离模式写入观测标签和审计事件。每个 workload 使用哪种 GPU class，是否共享节点，是否发生抢占，是否有 Xid、显存争抢或性能抖动，都应可查询。只有这样，平台才能在故障、账单和安全审计时给出证据。</p>
 <p>工程实现还应提供准入规则。高敏感项目只能选择独占或 VM 等级，生产在线服务默认禁止 best-effort 共享，开发测试可以使用容器共享。把规则前置到提交阶段，比事故后解释资源等级更有效。准入规则应和租户标签、数据等级、SLA 和资源等级联动。</p>

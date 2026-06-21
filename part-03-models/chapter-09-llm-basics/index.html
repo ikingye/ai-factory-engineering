@@ -3813,19 +3813,7 @@
 <p>还要注意推理路径中的状态。普通 HTTP 请求通常是无状态的，而 LLM streaming 请求在 decode 期间会持续持有 KV Cache、连接和调度位置。一个客户端取消请求，可能释放连接但模型服务仍需正确释放缓存；一个长上下文会话，可能让服务实例在很长时间内承担高 HBM 压力。状态管理失败会表现为 OOM、吞吐下降或尾延迟变差。</p>
 <p>这条架构也说明观测点应放在哪里。Tokenizer 后要记录 input token，prefill 后要记录首 token 前的阶段耗时，decode 期间要记录 output token 和 TPOT，缓存管理要记录 KV Cache 使用和释放，streaming 结束要记录 finish reason 和取消原因。没有这些观测点，系统图只是一张逻辑图，无法支撑生产排障。</p>
 <p>同一架构还适用于训练理解，只是路径方向不同。训练时 token 序列进入模型后要计算 loss、保存 activation、执行 backward，并通过 optimizer 更新权重；推理时权重固定，系统主要围绕低延迟和高吞吐组织执行。二者共享 Transformer 和 tokenizer，但状态、显存和通信模型不同。后续章节会分别展开。</p>
-<pre class="mermaid"><code>flowchart LR
-  Text["文本 / prompt"] --&gt; Tok["Tokenizer"]
-  Tok --&gt; IDs["token ids"]
-  IDs --&gt; Prefill["prefill: 处理输入上下文"]
-  Prefill --&gt; KV["KV Cache"]
-  KV --&gt; Decode["decode loop"]
-  Decode --&gt; Next["next token"]
-  Next --&gt; Stream["token streaming"]
-  Decode --&gt; KV
-  Weights["模型权重"] --&gt; Prefill
-  Weights --&gt; Decode
-  Prefill --&gt; HBM["GPU HBM"]
-  Decode --&gt; HBM</code></pre>
+<p><img alt="图：9.2.2 系统架构" src="../../assets/diagrams/part-03-models-chapter-09-llm-basics-01.svg" /></p>
 <h2 id="93">9.3 关键技术<a class="headerlink" href="#93" title="Permanent link">&para;</a></h2>
 <h3 id="931-transformer">9.3.1 Transformer<a class="headerlink" href="#931-transformer" title="Permanent link">&para;</a></h3>
 <p>Transformer 是一种基于 attention 的神经网络架构。它的核心优势是能够在序列内部建立 token 之间的依赖关系，并且相比早期循环结构更适合大规模并行训练。一个典型 Transformer block 包含 attention、MLP、normalization 和 residual connection。LLM 通过堆叠很多 block，把 token embedding 逐层变换为能够预测下一个 token 的表示。</p>
@@ -3873,21 +3861,21 @@
 <h3 id="941">9.4.1 工程实现<a class="headerlink" href="#941" title="Permanent link">&para;</a></h3>
 <p>模型接入 AI Factory 前，应形成可执行的 model profile。它不是论文摘要，而是模型目录、推理服务、容量规划、验收和计费共同使用的工程合同。Profile 至少包括 architecture、model type、tokenizer、context window、数据类型、并行方式、支持的 API 能力、KV Cache 策略、推荐资源池和已知限制。没有 profile，模型上线就只能靠口头经验和临时压测。</p>
 <p>一个简化 profile 可以这样表达：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">model_profile</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-large</span>
-<span class="w">  </span><span class="nt">architecture</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">transformer</span>
-<span class="w">  </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dense</span>
-<span class="w">  </span><span class="nt">tokenizer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tokenizer-name</span>
-<span class="w">  </span><span class="nt">context_window</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">documented_by_model_owner</span>
-<span class="w">  </span><span class="nt">serving</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">supports_streaming</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">supports_tool_calling</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">kv_cache_required</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">infra_notes</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">weights_memory</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">estimate_required</span>
-<span class="w">    </span><span class="nt">kv_cache_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">paged</span>
-<span class="w">    </span><span class="nt">preferred_parallelism</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tensor_parallel</span>
-</code></pre></div>
+<pre><code class="language-yaml">model_profile:
+  name: af-chat-large
+  architecture: transformer
+  type: dense
+  tokenizer: tokenizer-name
+  context_window: documented_by_model_owner
+  serving:
+    supports_streaming: true
+    supports_tool_calling: true
+    kv_cache_required: true
+  infra_notes:
+    weights_memory: estimate_required
+    kv_cache_policy: paged
+    preferred_parallelism: tensor_parallel
+</code></pre>
 <p>Profile 还应包含测试结果。比如在标准输入分布、长上下文分布和压力场景下的 TTFT、TPOT、tokens/s、HBM 峰值、KV Cache 使用率和 OOM 边界。这里不需要把示例数值写成通用结论，但必须在平台内部保留可复现实验。模型上线不是复制权重文件，而是把模型行为登记为可运营对象。</p>
 <p>工程流程上，模型团队负责提供架构、tokenizer、能力和限制，推理团队负责验证服务参数，平台团队负责把 profile 接入模型目录、路由、计量和告警。任何变更，如 tokenizer、chat template、context window、量化方式或推理引擎版本，都应更新 profile 并触发必要验收。Profile 是模型变更管理的锚点。</p>
 <p>最小落地流程可以很简单：先登记 profile，再用标准 prompt 集和压力集跑基线，随后把结果写入模型目录，最后在灰度期间对比线上 TTFT、TPOT、错误率和 token 分布。关键不是文档多复杂，而是模型上线必须留下可复查的证据。没有证据的上线，后续所有排障都会回到猜测。</p>

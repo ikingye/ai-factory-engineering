@@ -3841,21 +3841,7 @@
 <p>架构上还要支持混部和隔离。在线推理、批量推理、训练和数据处理可以共享底层 GPU IaaS，但不应共享相同的调度策略。统一入口不等于统一执行语义。成熟平台会把 workload 分类、队列、配额、资源池和指标体系组合起来，让不同任务在同一 AI Factory 中按不同规则运行。</p>
 <p>这套架构最好形成闭环。分类规则影响调度，调度结果影响运行指标，指标再反向修正分类和资源画像。例如某类 batch inference 经常抢占后恢复失败，就不应继续放在可抢占池；某类在线模型冷启动过慢，就需要更高预留或模型缓存；某类数据处理导致训练等待，就要调整存储隔离。workload 架构不是静态目录，而是持续运营系统。</p>
 <p>因此，workload 分类应允许演进。新模型形态、新推理引擎或新业务流程出现后，平台可以增加子类型或资源画像，但不应破坏已有指标口径。</p>
-<pre class="mermaid"><code>flowchart TB
-  Submit["任务提交"] --&gt; Classify["Workload 分类"]
-  Classify --&gt; Online["Online Inference"]
-  Classify --&gt; Batch["Batch Inference"]
-  Classify --&gt; Train["Distributed Training"]
-  Classify --&gt; Tune["Fine-tuning"]
-  Classify --&gt; Eval["Evaluation"]
-  Classify --&gt; Data["Data Processing"]
-  Classify --&gt; HPC["HPC-style Job"]
-  Online --&gt; SLO["SLO / autoscaling / routing"]
-  Batch --&gt; Queue["queue / throughput / cost"]
-  Train --&gt; Gang["gang / topology / checkpoint"]
-  Tune --&gt; Tenant["tenant / data isolation / registry"]
-  Eval --&gt; Repro["versioned model / dataset / report"]
-  Data --&gt; Storage["storage / pipeline / freshness"]</code></pre>
+<p><img alt="图：20.2.2 系统架构" src="../../assets/diagrams/part-05-orchestration-chapter-20-ai-workloads-01.svg" /></p>
 <h2 id="203">20.3 关键技术<a class="headerlink" href="#203" title="Permanent link">&para;</a></h2>
 <h3 id="2031-online-inference">20.3.1 online inference<a class="headerlink" href="#2031-online-inference" title="Permanent link">&para;</a></h3>
 <p>Online inference 是面向用户实时请求的在线推理 workload。它通常承载 Chat Completion、Agent 调用、RAG 查询、多模态理解或企业应用请求。它关注 TTFT、TPOT、端到端延迟、错误率、可用性、token 计量和成本。在线推理需要常驻服务、健康检查、弹性扩缩容、灰度发布、模型路由、限流、熔断和请求级可观测性。</p>
@@ -3876,16 +3862,7 @@
 <p>训练 workload 还需要明确恢复策略。平台应记录 checkpoint 路径、保存频率、最近可恢复 step、训练镜像、框架版本、并行配置和数据版本。抢占或故障后，任务应能从最近 checkpoint 恢复，而不是从头运行。指标包括队列等待、准入时间、step time、tokens/s、NCCL 时间、checkpoint 时间、失败原因和恢复成功率。Distributed training 是 AI Factory 中最能暴露基础设施质量的 workload。</p>
 <p>训练还会放大集群中的局部缺陷。单张 GPU 降频、单条 RDMA 链路错误、一个存储挂载慢，都会让同步任务整体等待。普通服务可以绕开坏副本，分布式训练往往需要整个通信组一致前进。因此训练队列应与节点健康、准入测试和维护状态紧密联动。把训练任务调度到“看似可用但未验收”的节点，代价通常高于等待健康资源。</p>
 <p>训练队列宁可明确等待，也不应把大作业放到不可信资源上消耗时间。</p>
-<pre class="mermaid"><code>flowchart LR
-  Submit["训练提交"] --&gt; Queue["队列 / 配额"]
-  Queue --&gt; Gang["gang scheduling"]
-  Gang --&gt; Place["拓扑放置"]
-  Place --&gt; Start["多 worker 启动"]
-  Start --&gt; NCCL["NCCL 初始化"]
-  NCCL --&gt; Loop["forward / backward"]
-  Loop --&gt; Comm["gradient communication"]
-  Loop --&gt; Ckpt["checkpoint"]
-  Ckpt --&gt; Recover["failure recovery"]</code></pre>
+<p><img alt="图：20.3.3 distributed training" src="../../assets/diagrams/part-05-orchestration-chapter-20-ai-workloads-02.svg" /></p>
 <h3 id="2034-fine-tuning">20.3.4 fine-tuning<a class="headerlink" href="#2034-fine-tuning" title="Permanent link">&para;</a></h3>
 <p>Fine-tuning 的规模通常小于预训练，但平台复杂度并不低。它更接近多租户产品化 workload：用户提交私有数据、选择基础模型、设置 LoRA/QLoRA 或 full fine-tuning 参数、运行训练、评测结果、注册新模型版本。微调任务频率高、租户多、数据敏感，对权限、模板、产物管理和成本可见性要求更强。</p>
 <p>微调调度介于在线服务和大规模训练之间。单个任务可能只需要 1 到数张 GPU，也可能需要多卡；持续时间可能从几分钟到数小时；失败后通常可以重试，但必须保留数据、配置和 checkpoint。平台需要控制并发，防止大量小微调任务造成镜像拉取、模型下载和存储抖动。对企业场景，还要确保数据隔离、访问审计和产物权限。</p>
@@ -3907,77 +3884,66 @@
 <p>数据处理产物应像模型一样有版本和质量报告。</p>
 <p>否则下游训练无法解释数据变化。</p>
 <p>数据处理还应产出可消费 manifest。下游训练、评测和 RAG 构建不应扫描上游临时目录，而应读取被发布的数据集 manifest。Manifest 至少包含输入版本、处理代码版本、输出 shard、checksum、统计报告、权限标签和生命周期策略。这样，数据处理失败、部分输出、重复写入和误删都不会被下游任务误认为“数据已就绪”。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">data_processing_output</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">pipeline_run</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tokenize-corpus-v3.2-20260619</span>
-<span class="w">  </span><span class="nt">input_manifest</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">raw-corpus-v3.1</span>
-<span class="w">  </span><span class="nt">output_manifest</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">corpus-v3.2-tokenized</span>
-<span class="w">  </span><span class="nt">status</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">published</span>
-<span class="w">  </span><span class="nt">validation</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">shard_checksums</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">verified</span>
-<span class="w">    </span><span class="nt">sample_count</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">token_count</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">quality_report</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">attached</span>
-<span class="w">  </span><span class="nt">downstream_ready_for</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pretraining</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">evaluation</span>
-</code></pre></div>
+<pre><code class="language-yaml">data_processing_output:
+  pipeline_run: tokenize-corpus-v3.2-20260619
+  input_manifest: raw-corpus-v3.1
+  output_manifest: corpus-v3.2-tokenized
+  status: published
+  validation:
+    shard_checksums: verified
+    sample_count: measured
+    token_count: measured
+    quality_report: attached
+  downstream_ready_for:
+    - pretraining
+    - evaluation
+</code></pre>
 <p>这让 data processing 从普通离线任务变成 AI Factory 的数据供应链节点。任务完成状态由 manifest 发布和校验定义，而不是由容器 exit code 定义。</p>
 <p>多模态预处理应被单独建模为 media processing workload。它既像数据处理，又直接影响在线用户体验：用户上传文件后，系统需要扫描、解码、OCR、ASR、抽帧、切片、embedding、布局分析和安全检测；有些步骤可以异步排队，有些步骤决定用户是否能继续对话；有些步骤主要消耗 CPU，有些步骤需要 GPU 或专用加速库。把它隐藏在应用后端里，会让调度、成本、故障和清理都不可见。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">media_processing_workload</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">workload_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">media-proc-claims-20260620-017</span>
-<span class="w">  </span><span class="nt">source_profile</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">multimodal_workload_profile:mwp-claims-document-review-202606</span>
-<span class="w">  </span><span class="nt">tenant</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enterprise-a</span>
-<span class="w">  </span><span class="nt">priority</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">production_async</span>
-<span class="w">  </span><span class="nt">media</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">input_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scanned_pdf</span>
-<span class="w">    </span><span class="nt">object_ref</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">object://uploads/claims/redacted</span>
-<span class="w">    </span><span class="nt">data_classification</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">restricted</span>
-<span class="w">    </span><span class="nt">expected_derived_artifacts</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">page_images</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ocr_text</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">layout_blocks</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">table_cells</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">embeddings</span>
-<span class="w">  </span><span class="nt">stages</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">virus_scan</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">resource</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cpu</span>
-<span class="w">      </span><span class="nt">failure_semantics</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">reject_before_processing</span>
-<span class="w">    </span><span class="nt">page_render</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">resource</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cpu_or_gpu</span>
-<span class="w">      </span><span class="nt">retry</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">idempotent_by_page_digest</span>
-<span class="w">    </span><span class="nt">ocr</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">resource</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu_or_cpu_accelerated</span>
-<span class="w">      </span><span class="nt">output_manifest_required</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">layout_analysis</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">resource</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu_optional</span>
-<span class="w">      </span><span class="nt">output_manifest_required</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">embedding</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">resource</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">embedding_gpu_pool</span>
-<span class="w">      </span><span class="nt">output_manifest_required</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">scheduling</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">queue</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">media-processing-prod</span>
-<span class="w">    </span><span class="nt">max_concurrency_per_tenant</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_defined</span>
-<span class="w">    </span><span class="nt">preemption</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">allowed_before_model_inference_only</span>
-<span class="w">  </span><span class="nt">storage</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">media_artifact_manifest</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">    </span><span class="nt">cleanup_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tied_to_retention_and_task_state</span>
-<span class="w">  </span><span class="nt">observability</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">emit_media_processing_pipeline_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">emit_multimodal_metering_event</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-</code></pre></div>
+<pre><code class="language-yaml">media_processing_workload:
+  workload_id: media-proc-claims-20260620-017
+  source_profile: multimodal_workload_profile:mwp-claims-document-review-202606
+  tenant: enterprise-a
+  priority: production_async
+  media:
+    input_type: scanned_pdf
+    object_ref: object://uploads/claims/redacted
+    data_classification: restricted
+    expected_derived_artifacts:
+      - page_images
+      - ocr_text
+      - layout_blocks
+      - table_cells
+      - embeddings
+  stages:
+    virus_scan:
+      resource: cpu
+      failure_semantics: reject_before_processing
+    page_render:
+      resource: cpu_or_gpu
+      retry: idempotent_by_page_digest
+    ocr:
+      resource: gpu_or_cpu_accelerated
+      output_manifest_required: true
+    layout_analysis:
+      resource: gpu_optional
+      output_manifest_required: true
+    embedding:
+      resource: embedding_gpu_pool
+      output_manifest_required: true
+  scheduling:
+    queue: media-processing-prod
+    max_concurrency_per_tenant: policy_defined
+    preemption: allowed_before_model_inference_only
+  storage:
+    media_artifact_manifest: required
+    cleanup_policy: tied_to_retention_and_task_state
+  observability:
+    emit_media_processing_pipeline_record: true
+    emit_multimodal_metering_event: true
+</code></pre>
 <p>这个 spec 能解释为什么多模态不是普通 Job。第一，阶段资源不同，不能只申请一个固定 GPU；第二，阶段输出要进入 <code>media_artifact_manifest</code>，否则重试和清理不可控；第三，计量单位不是单一 token，而是页、帧、秒、tile、OCR token、embedding 和存储天数；第四，失败语义影响用户体验和账单，上传前拒绝、OCR 后失败、模型生成后失败，处理动作完全不同。调度层要理解这些阶段，才能给出 pending reason、重试策略和成本归因。</p>
-<pre class="mermaid"><code>flowchart LR
-  Upload["uploaded media object"] --&gt; Admit["media workload admission\nquota / type / retention"]
-  Admit --&gt; Scan["virus / policy scan"]
-  Scan --&gt; Decode["decode / render\npages / frames / audio chunks"]
-  Decode --&gt; Extract["OCR / ASR / layout / embedding"]
-  Extract --&gt; Manifest["media_artifact_manifest"]
-  Manifest --&gt; Model["multimodal model serving"]
-  Manifest --&gt; Index["RAG / vector index"]
-  Scan --&gt; Meter["multimodal_metering_event"]
-  Decode --&gt; Meter
-  Extract --&gt; Meter
-  Model --&gt; Meter</code></pre>
+<p><img alt="图：20.3.6 data processing" src="../../assets/diagrams/part-05-orchestration-chapter-20-ai-workloads-03.svg" /></p>
 <p>调度 media workload 时，还要避免它挤占关键推理和训练。OCR、ASR、视觉 embedding 和视频抽帧可能在峰值时消耗大量 GPU 或 CPU；如果它们和在线推理共池，用户会看到 TTFT 变差；如果它们和训练共用存储，checkpoint 会抖动。更稳妥的方式是把 media processing 放入独立队列和资源池，允许低风险任务使用可抢占资源，但要求每个 stage 有幂等输出和 manifest checkpoint。这样，预处理可以利用低峰资源，又不会把媒体链路变成生产 SLO 的黑洞。</p>
 <h3 id="2037-hpc-style-job">20.3.7 HPC-style job<a class="headerlink" href="#2037-hpc-style-job" title="Permanent link">&para;</a></h3>
 <p>HPC-style job 强调批式提交、队列、资源独占、拓扑、长时间运行、强通信和命令行工作流。大规模预训练与传统 HPC 有许多共同点：用户提交作业，申请多个节点，要求高性能网络，运行数小时到数周，依赖 checkpoint 和日志。Slurm 在这类场景中仍然重要，因为它长期服务于类似的调度模型。</p>
@@ -3998,58 +3964,58 @@
 <h3 id="2041">20.4.1 工程实现<a class="headerlink" href="#2041" title="Permanent link">&para;</a></h3>
 <p>平台应在任务提交时显式声明 workload 类型，并把类型传递给调度、观测、计费和故障处理系统。最小声明包括 type、tenant、priority、resource、data、model、runtime、recovery 和 observability。对于训练，要声明 gang 和 checkpoint；对于在线推理，要声明 SLO 和 autoscaling；对于批处理，要声明 shard、重试和输出位置。声明越清晰，平台越能给出可解释的调度结果。</p>
 <p>示例配置如下：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">workload</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">distributed-training</span>
-<span class="w">  </span><span class="nt">tenant</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">foundation-model-team</span>
-<span class="w">  </span><span class="nt">priority</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">production</span>
-<span class="w">  </span><span class="nt">gpu</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">count</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">64</span>
-<span class="w">    </span><span class="nt">topology</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">same-fabric</span>
-<span class="w">  </span><span class="nt">scheduling</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">gang</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">queue</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">training-prod</span>
-<span class="w">  </span><span class="nt">storage</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">dataset</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dataset-v3</span>
-<span class="w">    </span><span class="nt">checkpoint</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-</code></pre></div>
+<pre><code class="language-yaml">workload:
+  type: distributed-training
+  tenant: foundation-model-team
+  priority: production
+  gpu:
+    count: 64
+    topology: same-fabric
+  scheduling:
+    gang: true
+    queue: training-prod
+  storage:
+    dataset: dataset-v3
+    checkpoint: required
+</code></pre>
 <p>工程上还要提供 workload admission。提交后，平台应先检查 quota、资源池、镜像基线、数据权限、拓扑可用性和恢复策略，再决定进入队列或拒绝。Pending 状态必须有原因：quota 不足、GPU 型号不匹配、gang 不满足、拓扑不足、镜像不可用、数据无权限或存储不可达。用户看到原因，才可能调整任务；平台看到原因，才可能做容量规划。</p>
 <p>实现中应避免让 workload 类型只存在于前端表单。它应写入 Kubernetes label、CRD spec、Slurm job metadata、计费标签和 trace 属性中。这样同一个任务从提交、调度、运行、失败、恢复到结算，都可以被同一组字段串起来。平台后续扩展新策略时，也能基于这些字段做自动化，而不是依赖人工约定。</p>
 <p>还应提供策略 dry-run。用户提交 workload spec 后，平台返回将进入哪个队列、预计检查哪些约束、可能使用哪些资源池、是否可抢占、失败后如何恢复。dry-run 能在真正排队前暴露配置问题，也能帮助用户理解平台规则。</p>
 <p>此外，平台应把 workload spec 版本化。策略变化后，旧任务可以按旧语义解释，新任务使用新模板，审计时能知道一次调度决策依据的是哪一版规则。</p>
 <p>AI workload spec 还应显式声明 storage intent。训练、推理、评测和数据处理虽然都可能运行在容器里，但它们的数据路径完全不同：训练需要 dataset manifest、data loader 热路径和 checkpoint；推理需要 model artifact、权重 cache 和 rollback artifact；评测需要冻结的评测数据和输出归档；数据处理需要输入、输出、shuffle 和中间结果。若这些需求只写在脚本里，调度器无法做预热，准入系统无法验证路径，成本系统也无法归因。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">workload_storage_intent</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">workload_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">train-20260620-017</span>
-<span class="w">  </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">distributed_training</span>
-<span class="w">  </span><span class="nt">dataset</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">manifest</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dataset-manifest@sha256:example</span>
-<span class="w">    </span><span class="nt">cache_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prewarm_before_first_step</span>
-<span class="w">    </span><span class="nt">data_loader_slo</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">no_gpu_wait_after_warmup</span>
-<span class="w">  </span><span class="nt">checkpoint</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sharded_two_phase_commit</span>
-<span class="w">    </span><span class="nt">interval_steps</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1000</span>
-<span class="w">    </span><span class="nt">retention</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">last_5_best_milestone</span>
-<span class="w">    </span><span class="nt">restore_required</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">scratch</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">local_nvme_gb</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">requested</span>
-<span class="w">    </span><span class="nt">cleanup</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required_on_completion</span>
-<span class="w">  </span><span class="nt">observability</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">emit_data_path_evidence</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">chargeback_tags</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">tenant</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">project</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">dataset</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">checkpoint_policy</span><span class="p p-Indicator">]</span>
-</code></pre></div>
+<pre><code class="language-yaml">workload_storage_intent:
+  workload_id: train-20260620-017
+  type: distributed_training
+  dataset:
+    manifest: dataset-manifest@sha256:example
+    cache_policy: prewarm_before_first_step
+    data_loader_slo: no_gpu_wait_after_warmup
+  checkpoint:
+    policy: sharded_two_phase_commit
+    interval_steps: 1000
+    retention: last_5_best_milestone
+    restore_required: true
+  scratch:
+    local_nvme_gb: requested
+    cleanup: required_on_completion
+  observability:
+    emit_data_path_evidence: true
+    chargeback_tags: [tenant, project, dataset, checkpoint_policy]
+</code></pre>
 <p>对在线推理，storage intent 会换成 artifact 和 cache 语义：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">workload_storage_intent</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">workload_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">endpoint-af-chat-large-prod</span>
-<span class="w">  </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">online_inference</span>
-<span class="w">  </span><span class="nt">artifact</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">distribution</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">model_artifact_distribution</span>
-<span class="w">    </span><span class="nt">cache_residency_required</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true_for_premium_pool</span>
-<span class="w">    </span><span class="nt">warmup_probe</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">  </span><span class="nt">rollback</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">previous_release_cache</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">keep_hot_during_canary</span>
-<span class="w">  </span><span class="nt">observability</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">emit_model_load_time</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">emit_cache_miss_event</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-</code></pre></div>
+<pre><code class="language-yaml">workload_storage_intent:
+  workload_id: endpoint-af-chat-large-prod
+  type: online_inference
+  artifact:
+    distribution: model_artifact_distribution
+    cache_residency_required: true_for_premium_pool
+    warmup_probe: required
+  rollback:
+    previous_release_cache: keep_hot_during_canary
+  observability:
+    emit_model_load_time: true
+    emit_cache_miss_event: true
+</code></pre>
 <p>有了 storage intent，平台才能在 admission 阶段检查数据权限、manifest 完整性、checkpoint 路径、cache 空间和 artifact 可用性；在调度阶段优先选择已预热节点；在故障阶段从 workload 直接找到 <code>storage_evidence</code>；在经济模型中计算 cache miss、checkpoint 和孤儿 artifact 成本。AI workload 与普通微服务的差异，很大一部分就体现在这些数据路径语义上。</p>
 <p>最后，workload spec 应和权限系统联动。不同租户能提交哪些 workload、能使用哪些资源池、是否允许高优先级、是否允许可抢占，都应由策略控制。这样平台既能提供自助能力，也能避免用户通过错误类型绕过资源治理。</p>
 <h3 id="2042">20.4.2 常见故障<a class="headerlink" href="#2042" title="Permanent link">&para;</a></h3>

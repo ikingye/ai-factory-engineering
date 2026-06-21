@@ -1,0 +1,12 @@
+flowchart LR
+  Submit["Pod / Job / ModelService"] --> Namespace["namespace / tenant check"]
+  Namespace --> Image["image digest / vulnerability gate"]
+  Image --> Security["runtime_privilege_profile"]
+  Security --> Resource["GPU / RDMA resource request"]
+  Resource --> Labels["owner / cost / model labels"]
+  Labels --> Baseline["node pool acceptance baseline"]
+  Baseline --> Admit["admit"]
+  Namespace -->|deny| Reject["typed rejection"]
+  Image -->|deny| Reject
+  Security -->|deny| Reject
+  Resource -->|deny| Reject

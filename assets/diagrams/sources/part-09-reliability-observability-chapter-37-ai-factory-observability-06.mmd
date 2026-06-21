@@ -1,0 +1,13 @@
+flowchart TB
+  Source["contamination / judge drift / feedback gap / contract change"] --> Event["quality_evidence_invalidation_event"]
+  Event --> Graph["quality_evidence_dependency_graph"]
+  Graph --> Gates["affected quality_gate_execution"]
+  Graph --> Release["affected serving_quality_contract"]
+  Graph --> Exp["affected online_experiment_guardrail"]
+  Graph --> Route["affected routing_quality_scorecard"]
+  Gates --> Action["rerun / degrade / block"]
+  Release --> Action
+  Exp --> Action
+  Route --> Action
+  Action --> Cost["quality_evidence_validity_cost"]
+  Action --> PRR["PRR gate update"]

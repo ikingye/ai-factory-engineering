@@ -1,0 +1,11 @@
+flowchart TB
+  Drill["agent_tool_policy_prr_drill"] --> Gateway["rag_agent_admission_context"]
+  Gateway --> RAG["rag_index_release_contract\nretrieval_permission_decision"]
+  Gateway --> ToolPolicy["agent_tool_policy_contract"]
+  RAG --> RReplay["rag_context_replay_bundle"]
+  ToolPolicy --> ToolExec["agent_tool_execution_record"]
+  ToolExec --> Traj["agent_trajectory_replay_bundle"]
+  Traj --> Fault["rag_agent_fault_tree_execution"]
+  RReplay --> Fault
+  Fault --> Cost["rag_agent_incident_cost_record"]
+  Cost --> PRR["PRR RAG/Agent gate update"]

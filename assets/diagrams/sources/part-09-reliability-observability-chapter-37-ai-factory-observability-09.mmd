@@ -1,0 +1,9 @@
+flowchart TB
+  QTE["quality_telemetry_event"] --> QEB["quality_evidence_bundle"]
+  QEB --> RAEB["rag_agent_evidence_bundle"]
+  RAEB --> RAGReplay["rag_context_replay_bundle"]
+  RAEB --> AgentReplay["agent_trajectory_replay_bundle"]
+  RAEB --> Cost["rag_agent_cost_attribution"]
+  RAGReplay --> Fault["rag_agent_fault_tree_execution"]
+  AgentReplay --> Fault
+  Cost --> IncidentCost["rag_agent_incident_cost_record"]

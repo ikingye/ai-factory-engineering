@@ -1,0 +1,15 @@
+flowchart TB
+  Symptom["症状: 慢 / hang / 错误 / loss spike"] --> Scope["确定影响面"]
+  Scope --> Timeline["构建时间线"]
+  Timeline --> Evidence["自动采集证据"]
+  Evidence --> Branch{故障域}
+  Branch --> GPU["GPU / Xid / ECC / NVLink"]
+  Branch --> Net["RDMA / packet loss / NCCL"]
+  Branch --> Storage["数据读取 / checkpoint"]
+  Branch --> Runtime["框架 / kernel / engine"]
+  Branch --> Model["数据 / 超参 / 数值稳定性"]
+  GPU --> Action["隔离 / 修复 / 回归"]
+  Net --> Action
+  Storage --> Action
+  Runtime --> Action
+  Model --> Action

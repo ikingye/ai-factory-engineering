@@ -1,0 +1,17 @@
+flowchart TB
+  Symptom["GPU container symptom"] --> Change["recent container_runtime_change_record?"]
+  Change --> Evidence["collect runtime config / OCI diff / assignment / visibility"]
+  Evidence --> Handler["runtime handler / RuntimeClass"]
+  Evidence --> CDI["CDI spec / NVIDIA hook"]
+  Evidence --> DP["device plugin strategy / Allocate"]
+  Evidence --> Visible["container visibility reconciliation"]
+  Evidence --> RDMA["RDMA + GPU/NIC topology"]
+  Handler --> Verdict["fault domain + confidence"]
+  CDI --> Verdict
+  DP --> Verdict
+  Visible --> Verdict
+  RDMA --> Verdict
+  Verdict --> Action["cordon / rollback / regenerate CDI / retest"]
+  Action --> Baseline["baseline invalidation / refresh"]
+  Action --> Cost["reliability_cost_ledger"]
+  Baseline --> PRR["container runtime PRR gate"]

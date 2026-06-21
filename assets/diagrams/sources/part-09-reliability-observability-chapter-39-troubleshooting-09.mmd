@@ -1,0 +1,16 @@
+flowchart TB
+  Symptom["quality symptom"] --> QFT["quality_fault_tree_execution"]
+  QFT --> Valid["evidence validity"]
+  QFT --> Serving["serving combination"]
+  QFT --> Route["route / experiment / fallback"]
+  QFT --> RAG["RAG / Agent context"]
+  QFT --> Model["model / prompt behavior"]
+  QFT --> Econ["quality economics"]
+  Valid --> Action["block / rerun / recalibrate"]
+  Serving --> Rollback["full bundle rollback"]
+  Route --> Freeze["freeze experiment / route patch"]
+  RAG --> Fix["fix retrieval / tool / budget"]
+  Model --> Regression["quality_regression_record"]
+  Econ --> Cost["quality_incident_cost_record"]
+  Action --> PRR["PRR gate update"]
+  Cost --> PRR

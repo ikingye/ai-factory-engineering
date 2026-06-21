@@ -1,0 +1,22 @@
+flowchart LR
+  subgraph Placement["Rank Placement"]
+    R0["rank 0"] --> N0["node-a / GPU0"]
+    R1["rank 1"] --> N1["node-b / GPU0"]
+    R2["rank 2"] --> N2["node-c / GPU0"]
+    R3["rank 3"] --> N3["node-d / GPU0"]
+  end
+
+  N0 --> NIC00["mlx5_0 / rail0"]
+  N0 --> NIC01["mlx5_1 / rail1"]
+  N1 --> NIC10["mlx5_0 / rail0"]
+  N1 --> NIC11["mlx5_1 / rail1"]
+
+  NIC00 --> Leaf0["leaf group A"]
+  NIC10 --> Leaf0
+  NIC01 --> Leaf1["leaf group B"]
+  NIC11 --> Leaf1
+
+  Leaf0 --> Telemetry0["rail0 counters"]
+  Leaf1 --> Telemetry1["rail1 counters"]
+  Telemetry0 --> Diagnosis["rail balance / congestion / drift"]
+  Telemetry1 --> Diagnosis

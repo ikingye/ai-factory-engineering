@@ -1,0 +1,13 @@
+flowchart TB
+  Token["metering events\ninput / output / reasoning / cached"] --> Ledger["Token Factory ledger"]
+  Runtime["inference_runtime_cost_ledger\nKV / PD / speculative / cancel"] --> Ledger
+  Quality["quality_cost_ledger\nfeedback / handoff / rollback / eval"] --> Ledger
+  Reliability["reliability_cost_ledger\nincident / SLA / wasted GPU hours"] --> Ledger
+  Security["security_cost_ledger / abuse_cost_ledger\nkey leak / denial-of-wallet / audit"] --> Ledger
+  Storage["storage_cost_ledger\ncheckpoint / artifact / cache miss"] --> Ledger
+  Network["network_cost_ledger\ncongestion / wrong placement / idle"] --> Ledger
+  Energy["energy_ledger\ntokens/W / rack power / PUE"] --> Ledger
+  Revenue["business_model_profile\nprice / discount / credit"] --> PNL["commercial_pnl_ledger"]
+  Ledger --> Unit["unit economics\ncost per successful answer / task / token"]
+  Unit --> PNL
+  PNL --> Decision["route / price / scale / train / deprecate"]

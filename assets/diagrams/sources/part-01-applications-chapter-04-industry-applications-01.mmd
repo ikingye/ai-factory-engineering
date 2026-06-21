@@ -1,0 +1,8 @@
+flowchart TB
+  App["行业应用"] --> Pattern["交互模式\nChat / RAG / Agent / 补全 / 多模态"]
+  Pattern --> Platform["平台需求\nGateway / 权限 / 计费 / 观测 / 接管"]
+  Platform --> Model["模型需求\n质量 / 延迟 / 上下文 / 多模态 / 工具调用"]
+  Model --> Runtime["运行时需求\nbatching / cache / engine / serving"]
+  Runtime --> Infra["基础设施需求\nGPU / 网络 / 存储 / 隔离"]
+  Infra --> Cost["成本 / SLA / 容量规划"]
+  Cost --> App

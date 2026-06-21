@@ -1,0 +1,12 @@
+flowchart LR
+  Drill["container_runtime_prr_change_drill"] --> Change["container_runtime_change_record"]
+  Change --> Accept["container_runtime_change_acceptance"]
+  Accept --> Diff["oci_runtime_injection_diff"]
+  Accept --> Recon["gpu_device_visibility_reconciliation"]
+  Accept --> Fault["container_gpu_runtime_fault_tree_execution"]
+  Fault --> Cost["container_runtime_incident_cost_record"]
+  Diff --> Gate["PRR container runtime gate"]
+  Recon --> Gate
+  Cost --> Gate
+  Gate -->|pass| Rollout["rollout beyond canary"]
+  Gate -->|fail| Rollback["rollback / quarantine / retest"]

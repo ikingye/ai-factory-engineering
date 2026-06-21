@@ -1,0 +1,11 @@
+flowchart LR
+  Asset["资产 / 上架"] --> BMC["BMC / Redfish"]
+  BMC --> PXE["PXE / 网络启动"]
+  PXE --> OS["OS image / baseline"]
+  OS --> Bootstrap["驱动 / RDMA / runtime"]
+  Bootstrap --> Init["节点初始化"]
+  Init --> Test["准入测试"]
+  Test --> Pool["GPU 资源池"]
+  Pool --> Scheduler["Kubernetes / Slurm"]
+  Pool --> Ops["维修 / 回收 / 退役"]
+  Ops --> BMC

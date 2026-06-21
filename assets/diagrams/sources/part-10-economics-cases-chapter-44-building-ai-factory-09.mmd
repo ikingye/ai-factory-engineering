@@ -1,0 +1,9 @@
+flowchart LR
+  Drill["resource_claim_prr_drill"] --> Contract["gpu_resource_claim_contract"]
+  Contract --> Accept["resource_claim_acceptance_matrix"]
+  Accept --> Admission["resource_claim_admission_record"]
+  Admission --> Fault["resource_claim_fault_tree_execution"]
+  Fault --> Cost["resource_claim_incident_cost_record"]
+  Admission --> Assign["gpu_assignment_record"]
+  Assign --> Runtime["container runtime PRR\nif claim bound"]
+  Cost --> PRR["PRR resource claim gate"]

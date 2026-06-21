@@ -1,0 +1,13 @@
+flowchart TB
+  Model["模型代码"] --> Framework["训练框架"]
+  Data["DataLoader"] --> Framework
+  Framework --> Autograd["autograd / backward"]
+  Framework --> Dist["distributed runtime"]
+  Framework --> Optim["optimizer"]
+  Framework --> Ckpt["checkpoint"]
+  Dist --> NCCL["NCCL / collectives"]
+  Framework --> CUDA["CUDA kernels"]
+  NCCL --> GPU["GPU 集群"]
+  CUDA --> GPU
+  Ckpt --> Storage["checkpoint storage"]
+  Framework --> Metrics["training metrics"]

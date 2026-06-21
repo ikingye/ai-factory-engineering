@@ -1,0 +1,13 @@
+flowchart TB
+  Req["RAG / Agent request"] --> GW["AI Gateway"]
+  GW --> RAAC["rag_agent_admission_context"]
+  RAAC --> RIRC["rag_index_release_contract"]
+  RAAC --> ATPC["agent_tool_policy_contract"]
+  RIRC --> RAG["RAG retrieval service"]
+  ATPC --> Agent["Agent Orchestrator"]
+  RAG --> RPD["retrieval_permission_decision"]
+  RAG --> RCS["rag_context_snapshot"]
+  Agent --> ATER["agent_tool_execution_record"]
+  Agent --> ABL["agent_budget_ledger"]
+  RPD --> Trace["trace / evidence bundle"]
+  ATER --> Trace

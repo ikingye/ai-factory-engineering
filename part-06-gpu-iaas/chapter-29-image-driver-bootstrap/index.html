@@ -3843,28 +3843,9 @@
 <p>架构还要支持变更流水线。新 kernel、新 driver、新 OFED、新基础镜像或新推理引擎，应先进入构建环境，再进入验收集群，跑 GPU、NCCL、RDMA、存储、容器和典型 workload 测试，通过后灰度到生产资源池。生产节点不应直接从外部包源自动升级关键组件。每次变更都要能回滚到上一条稳定 baseline。</p>
 <p>节点初始化位于主机镜像和资源池之间。它完成节点身份配置、驱动验证、容器 runtime 配置、RDMA 配置、监控日志接入、拓扑采集、标签写入和 bootstrap validation。初始化成功后，节点进入准入测试；测试通过才进入资源池。环境一致性要在入池前验证，而不是等业务任务失败后再排查。</p>
 <p>架构还应包含漂移检测。节点运行一段时间后，包版本、内核、配置、驱动状态和 runtime 配置可能被手工操作或自动更新改变。周期性检测可以把漂移节点隔离或重新初始化，避免它们长期混在生产池中。</p>
-<pre class="mermaid"><code>flowchart TB
-  Golden["golden OS image"] --&gt; Host["host baseline"]
-  Host --&gt; Kernel["kernel / sysctl / security"]
-  Host --&gt; Driver["NVIDIA driver / DCGM"]
-  Host --&gt; RDMA["OFED / RDMA stack"]
-  Host --&gt; Runtime["container runtime / toolkit"]
-  Runtime --&gt; Image["AI container image"]
-  Image --&gt; Workload["training / inference workload"]
-  Host --&gt; Validate["bootstrap validation"]
-  Validate --&gt; Pool["resource pool"]
-  Matrix["compatibility matrix"] --&gt; Golden
-  Matrix --&gt; Image
-  Matrix --&gt; Validate</code></pre>
+<p><img alt="图：29.2.2 系统架构" src="../../assets/diagrams/part-06-gpu-iaas-chapter-29-image-driver-bootstrap-01.svg" /></p>
 <p>对 GPU IaaS 来说，container runtime 不是 Kubernetes 团队的“上层细节”，而是节点交付基线的一部分。节点如果只安装 driver，但没有正确配置 NVIDIA Container Toolkit、containerd runtime handler、device plugin 依赖和容器内 GPU smoke test，就不能算完成交付。因为大多数 AI workload 最终都在容器里运行，主机 <code>nvidia-smi</code> 通过只证明硬件和 driver 基础可用，不证明生产 workload 可用。</p>
-<pre class="mermaid"><code>flowchart LR
-  OS["OS / kernel baseline"] --&gt; Driver["NVIDIA Driver"]
-  Driver --&gt; Toolkit["NVIDIA Container Toolkit"]
-  Toolkit --&gt; Runtime["containerd / Docker runtime config"]
-  Runtime --&gt; Smoke["GPU container smoke test"]
-  Smoke --&gt; K8s["Kubernetes device plugin test"]
-  K8s --&gt; NCCL["containerized NCCL / RDMA test"]
-  NCCL --&gt; Pool["GPU resource pool"]</code></pre>
+<p><img alt="图：29.2.2 系统架构" src="../../assets/diagrams/part-06-gpu-iaas-chapter-29-image-driver-bootstrap-02.svg" /></p>
 <h2 id="293">29.3 关键技术<a class="headerlink" href="#293" title="Permanent link">&para;</a></h2>
 <h3 id="2931-os-baseline">29.3.1 OS baseline<a class="headerlink" href="#2931-os-baseline" title="Permanent link">&para;</a></h3>
 <p>OS baseline 定义系统版本、内核策略、包源、安全配置、用户和密钥、SSH、日志、审计、时间同步、基础 agent、磁盘布局、容器 runtime 依赖和系统参数。GPU 节点 baseline 还要考虑 IOMMU、PCIe、NUMA、hugepage、文件句柄、网络参数、本地 NVMe 和监控采集。它是节点行为一致性的起点。</p>
@@ -3928,246 +3909,225 @@
 <p>Golden image 还要支持差异审计。两个版本之间新增、删除和升级了哪些包，修改了哪些配置，应自动生成报告。没有差异审计，镜像升级影响面难以评估，也难以向平台和安全团队解释。</p>
 <p>Golden image 不是越通用越好。不同资源池可以有少量不同 image，但每个 image 都必须有清晰用途和支持窗口。无限分叉会让镜像治理失控。</p>
 <p>Golden image 还应进入 release train，而不是被临时打包。Release train 是固定节奏的发布列车，把 OS baseline、kernel、driver、OFED、container runtime、NVIDIA Container Toolkit、device plugin、GPU Operator、DCGM、基础容器镜像和验收脚本组合成一个可命名版本。它的目标不是追新，而是把“哪些组件一起升级、哪些资源池先试、哪些客户能用、哪些基线失效、哪些问题必须回滚”写成可执行发布事实。没有 release train，团队会在事故中才发现某个客户现场、某个训练池和某个推理池实际上运行着三套不同组合。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">release_train_record</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">train</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-baseline-2026-06</span>
-<span class="w">  </span><span class="nt">cadence</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">monthly_or_security_out_of_band</span>
-<span class="w">  </span><span class="nt">included_components</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">os_baseline</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-node-2026-06</span>
-<span class="w">    </span><span class="nt">kernel</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">approved</span>
-<span class="w">    </span><span class="nt">nvidia_driver</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">approved</span>
-<span class="w">    </span><span class="nt">ofed_rdma_stack</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">approved</span>
-<span class="w">    </span><span class="nt">container_runtime</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">containerd-approved</span>
-<span class="w">    </span><span class="nt">nvidia_container_toolkit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">approved</span>
-<span class="w">    </span><span class="nt">gpu_operator_or_device_plugin</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">approved</span>
-<span class="w">    </span><span class="nt">dcgm</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">approved</span>
-<span class="w">    </span><span class="nt">base_images</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ai-runtime-pytorch-2026-06</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ai-runtime-serving-2026-06</span>
-<span class="w">  </span><span class="nt">rollout_rings</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">lab</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">canary_pool</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">internal_low_sla</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">production_standard</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">premium_or_private_delivery</span>
-<span class="w">  </span><span class="nt">evidence_gates</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">compatibility_matrix</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bootstrap_validation</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu_container_runtime_report</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nccl_multi_node_baseline</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rdma_container_smoke</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">representative_training_job</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">representative_inference_endpoint</span>
-<span class="w">  </span><span class="nt">rollback_window</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_defined</span>
-<span class="w">  </span><span class="nt">baseline_invalidation_scope</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">driver_dependent_acceptance</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">container_gpu_runtime_baseline</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fabric_or_nccl_if_changed</span>
-</code></pre></div>
+<pre><code class="language-yaml">release_train_record:
+  train: gpu-baseline-2026-06
+  cadence: monthly_or_security_out_of_band
+  included_components:
+    os_baseline: gpu-node-2026-06
+    kernel: approved
+    nvidia_driver: approved
+    ofed_rdma_stack: approved
+    container_runtime: containerd-approved
+    nvidia_container_toolkit: approved
+    gpu_operator_or_device_plugin: approved
+    dcgm: approved
+    base_images:
+      - ai-runtime-pytorch-2026-06
+      - ai-runtime-serving-2026-06
+  rollout_rings:
+    - lab
+    - canary_pool
+    - internal_low_sla
+    - production_standard
+    - premium_or_private_delivery
+  evidence_gates:
+    - compatibility_matrix
+    - bootstrap_validation
+    - gpu_container_runtime_report
+    - nccl_multi_node_baseline
+    - rdma_container_smoke
+    - representative_training_job
+    - representative_inference_endpoint
+  rollback_window: policy_defined
+  baseline_invalidation_scope:
+    - driver_dependent_acceptance
+    - container_gpu_runtime_baseline
+    - fabric_or_nccl_if_changed
+</code></pre>
 <p>Release train 必须和 LTS 支持策略配套。LTS（Long-Term Support，长期支持）不是承诺所有旧版本永远可用，而是说明哪些 baseline 仍接受安全补丁，哪些问题只在新版本修复，哪些升级路径被支持，哪些客户或资源池已经接近 EOL（End of Life，生命周期结束）。AI Factory 的 LTS 策略要同时保护生产稳定性和工程可维护性：高 SLA 推理池不能频繁承受底层变更，但平台也不能为每个私有化客户无限维护独立 driver、runtime 和镜像组合。</p>
-<pre class="mermaid"><code>flowchart LR
-  Build["Release train\nbaseline + runtime + images"] --&gt; Lab["lab"]
-  Lab --&gt; Gate1["compatibility\nbootstrap\ncontainer GPU"]
-  Gate1 --&gt; Canary["canary pool"]
-  Canary --&gt; Gate2["NCCL / RDMA\ntraining / inference"]
-  Gate2 --&gt; Standard["production standard"]
-  Standard --&gt; Gate3["SLO / cost\nincident readiness"]
-  Gate3 --&gt; Premium["premium / private delivery"]
-  Gate1 -.fail.-&gt; Rollback["rollback\nprevious baseline"]
-  Gate2 -.fail.-&gt; Rollback
-  Gate3 -.fail.-&gt; Rollback
-  Rollback --&gt; Invalidate["baseline_invalidation_record"]
-  Premium --&gt; LTS["lts_support_policy\nEOL + backport + upgrade path"]</code></pre>
+<p><img alt="图：29.3.8 golden image" src="../../assets/diagrams/part-06-gpu-iaas-chapter-29-image-driver-bootstrap-03.svg" /></p>
 <p>这张图强调 release train 的推进单位不是“节点批次”，而是“证据门禁”。每个 ring 都要产生或刷新基线证据，失败后要生成 baseline invalidation，而不是继续把节点标成可调度。LTS 位于最后，是因为只有经过生产和私有化交付验证的组合，才值得承诺长期支持；未经充分验证的实验组合不应进入客户合同。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">lts_support_policy</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">product_line</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ai-factory-gpu-node</span>
-<span class="w">  </span><span class="nt">supported_baselines</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">baseline</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-node-2026-04-lts</span>
-<span class="w">      </span><span class="nt">support_state</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">security_and_critical_fix</span>
-<span class="w">      </span><span class="nt">supported_resource_pools</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">premium_inference</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">private_delivery</span><span class="p p-Indicator">]</span>
-<span class="w">      </span><span class="nt">allowed_upgrade_paths</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">gpu-node-2026-06-lts</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">baseline</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-node-2026-06</span>
-<span class="w">      </span><span class="nt">support_state</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">active</span>
-<span class="w">      </span><span class="nt">supported_resource_pools</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">training</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">inference</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">eval</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">backport_rules</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">security_fix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">allowed_after_validation</span>
-<span class="w">    </span><span class="nt">performance_feature</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">no_backport_by_default</span>
-<span class="w">    </span><span class="nt">customer_specific_patch</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">requires_field_patch_governance</span>
-<span class="w">  </span><span class="nt">eol_notice</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">minimum_customer_notice</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">contract_defined</span>
-<span class="w">    </span><span class="nt">migration_evidence_required</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">offline_upgrade_rehearsal_if_private</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">change_safety_case</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">acceptance_baseline_refresh</span>
-</code></pre></div>
+<pre><code class="language-yaml">lts_support_policy:
+  product_line: ai-factory-gpu-node
+  supported_baselines:
+    - baseline: gpu-node-2026-04-lts
+      support_state: security_and_critical_fix
+      supported_resource_pools: [premium_inference, private_delivery]
+      allowed_upgrade_paths: [gpu-node-2026-06-lts]
+    - baseline: gpu-node-2026-06
+      support_state: active
+      supported_resource_pools: [training, inference, eval]
+  backport_rules:
+    security_fix: allowed_after_validation
+    performance_feature: no_backport_by_default
+    customer_specific_patch: requires_field_patch_governance
+  eol_notice:
+    minimum_customer_notice: contract_defined
+    migration_evidence_required:
+      - offline_upgrade_rehearsal_if_private
+      - change_safety_case
+      - acceptance_baseline_refresh
+</code></pre>
 <p>这两个对象能把“升级要不要做”从口头争论变成工程决策。若 release train 没有覆盖 RDMA 容器 smoke，就不能把它用于分布式训练池；若 LTS 策略没有声明 backport 规则，就不能在客户现场随手修一个临时包；若 EOL 通知没有绑定可验证升级路径，销售合同和平台生命周期就会脱节。Golden image 的成熟度，最终体现在 release train、LTS、change safety 和 acceptance baseline 是否形成闭环。</p>
 <p>私有化或受限出网环境还需要 <code>offline_release_bundle_manifest</code>。它是 release train 的离线可交付形态，不是把镜像、Helm chart 和模型权重打成一个压缩包那么简单。Manifest 必须描述每个组件的 digest、签名、SBOM、兼容矩阵、导入顺序、依赖关系、迁移脚本、回滚包、验收脚本和诊断导出策略。客户现场通常不能临时访问公网 registry、对象存储、包源或模型仓库，因此所有依赖都要在发布前被封装、校验和演练；否则升级失败时，团队很难判断是包不完整、客户环境漂移、导入顺序错误、证书/KMS 失败，还是 GPU runtime baseline 不兼容。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">offline_release_bundle_manifest</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">bundle_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">orb-ai-factory-2026-06-enterprise-a</span>
-<span class="w">  </span><span class="nt">source_release_train</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-baseline-2026-06</span>
-<span class="w">  </span><span class="nt">target_contract</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">private_delivery_lifecycle_contract</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pdlc-enterprise-a-202606</span>
-<span class="w">    </span><span class="nt">supported_baseline</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-node-2026-06-lts</span>
-<span class="w">    </span><span class="nt">allowed_upgrade_paths</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">gpu-node-2026-04-lts</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">artifacts</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">os_or_node_image</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">digest</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sha256:example</span>
-<span class="w">      </span><span class="nt">signature</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">      </span><span class="nt">package_manifest</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">included</span>
-<span class="w">    </span><span class="nt">container_images</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">registry_layout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">oci_archive_or_private_registry_mirror</span>
-<span class="w">      </span><span class="nt">digests</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">      </span><span class="nt">sbom</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">included</span>
-<span class="w">      </span><span class="nt">vulnerability_exception_list</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">signed_if_any</span>
-<span class="w">    </span><span class="nt">helm_or_kustomize</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pinned</span>
-<span class="w">      </span><span class="nt">values_schema</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">included</span>
-<span class="w">      </span><span class="nt">customer_overlay_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">config_only</span>
-<span class="w">    </span><span class="nt">model_artifacts</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">weights</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">signed_and_digest_pinned</span>
-<span class="w">      </span><span class="nt">tokenizer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">signed_and_digest_pinned</span>
-<span class="w">      </span><span class="nt">chat_template</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">signed_and_digest_pinned</span>
-<span class="w">    </span><span class="nt">validation_scripts</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">bootstrap_validation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">included</span>
-<span class="w">      </span><span class="nt">gpu_container_runtime_report</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">      </span><span class="nt">nccl_rdma_smoke</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">included_if_training_supported</span>
-<span class="w">      </span><span class="nt">representative_endpoint_smoke</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">included</span>
-<span class="w">  </span><span class="nt">import_contract</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">import_order</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">registry</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">charts</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">models</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">configs</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">migration</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">validation</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">offline_registry_namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">customer_defined</span>
-<span class="w">    </span><span class="nt">signature_verification</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mandatory_before_import</span>
-<span class="w">    </span><span class="nt">rollback_bundle</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">included</span>
-<span class="w">    </span><span class="nt">diagnostic_bundle_export</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">supported_without_remote_access</span>
-</code></pre></div>
+<pre><code class="language-yaml">offline_release_bundle_manifest:
+  bundle_id: orb-ai-factory-2026-06-enterprise-a
+  source_release_train: gpu-baseline-2026-06
+  target_contract:
+    private_delivery_lifecycle_contract: pdlc-enterprise-a-202606
+    supported_baseline: gpu-node-2026-06-lts
+    allowed_upgrade_paths: [gpu-node-2026-04-lts]
+  artifacts:
+    os_or_node_image:
+      digest: sha256:example
+      signature: required
+      package_manifest: included
+    container_images:
+      registry_layout: oci_archive_or_private_registry_mirror
+      digests: required
+      sbom: included
+      vulnerability_exception_list: signed_if_any
+    helm_or_kustomize:
+      version: pinned
+      values_schema: included
+      customer_overlay_policy: config_only
+    model_artifacts:
+      weights: signed_and_digest_pinned
+      tokenizer: signed_and_digest_pinned
+      chat_template: signed_and_digest_pinned
+    validation_scripts:
+      bootstrap_validation: included
+      gpu_container_runtime_report: required
+      nccl_rdma_smoke: included_if_training_supported
+      representative_endpoint_smoke: included
+  import_contract:
+    import_order: [registry, charts, models, configs, migration, validation]
+    offline_registry_namespace: customer_defined
+    signature_verification: mandatory_before_import
+    rollback_bundle: included
+    diagnostic_bundle_export: supported_without_remote_access
+</code></pre>
 <p>这个 manifest 的关键价值是让现场交付可对账。供应方能证明“我交付了什么”，客户能证明“现场导入了什么”，SRE 能证明“运行中的版本来自哪个包”，商业团队能把支持边界和成本归因到具体交付物。若现场有人手工替换镜像、修改 chart、覆盖模型权重或跳过迁移脚本，下一次支持工单就不能只看版本号，而要比较 manifest、客户导入记录和运行时快照。对 AI Factory 来说，离线包是供应链、版本治理、客户支持和经济账本的共同对象。</p>
-<pre class="mermaid"><code>flowchart LR
-  Train["release_train_record"] --&gt; Bundle["offline_release_bundle_manifest"]
-  Bundle --&gt; Verify["signature / digest / SBOM verification"]
-  Verify --&gt; Import["offline import\nregistry / charts / models / configs"]
-  Import --&gt; Migrate["schema / artifact / cache migration"]
-  Migrate --&gt; Validate["bootstrap + GPU runtime + endpoint smoke"]
-  Validate --&gt; Rehearsal["offline_upgrade_rehearsal"]
-  Rehearsal --&gt; Acceptance["private_deployment_acceptance_record"]
-  Rehearsal --&gt; Rollback["rollback bundle verified"]
-  Rehearsal --&gt; Support["diagnostic_bundle_sla"]</code></pre>
+<p><img alt="图：29.3.8 golden image" src="../../assets/diagrams/part-06-gpu-iaas-chapter-29-image-driver-bootstrap-04.svg" /></p>
 <h2 id="294">29.4 工程落地<a class="headerlink" href="#294" title="Permanent link">&para;</a></h2>
 <h3 id="2941">29.4.1 工程实现<a class="headerlink" href="#2941" title="Permanent link">&para;</a></h3>
 <p>工程实现应从兼容矩阵开始。矩阵定义主机 baseline、kernel、driver、CUDA runtime、NCCL、OFED、container base image、训练框架和推理引擎之间的支持关系。示例：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">compatibility_matrix</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">baseline</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-node-2026-06</span>
-<span class="w">  </span><span class="nt">kernel</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pinned</span>
-<span class="w">  </span><span class="nt">nvidia_driver</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pinned</span>
-<span class="w">  </span><span class="nt">cuda_runtime_supported</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">approved-range</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">nccl</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pinned</span>
-<span class="w">  </span><span class="nt">ofed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pinned</span>
-<span class="w">  </span><span class="nt">container_base_images</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ai-runtime-pytorch-2026-06</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ai-runtime-vllm-2026-06</span>
-</code></pre></div>
+<pre><code class="language-yaml">compatibility_matrix:
+  baseline: gpu-node-2026-06
+  kernel: pinned
+  nvidia_driver: pinned
+  cuda_runtime_supported: [approved-range]
+  nccl: pinned
+  ofed: pinned
+  container_base_images:
+    - ai-runtime-pytorch-2026-06
+    - ai-runtime-vllm-2026-06
+</code></pre>
 <p>第二步是把矩阵接入 CI 和准入。基础镜像构建时检查依赖和安全扫描；节点初始化时检查 kernel、driver、OFED 和 runtime；容器镜像发布时声明兼容范围；任务提交时检查目标资源池是否满足要求。这样版本治理从文档变成系统规则。</p>
 <p>第三步是建立 bootstrap validation。节点初始化后，自动运行 driver、CUDA、容器 GPU、DCGM、RDMA、NCCL、存储和监控测试。测试结果写入资源池。失败节点不能进入生产池，而应进入维修或复测流程。Validation 应保留日志和版本，便于比较不同 baseline 的结果。</p>
 <p>Bootstrap validation 应显式覆盖 NVIDIA Container Toolkit 和 container runtime。最小检查包括 <code>nvidia-smi</code>、<code>nvidia-container-cli info</code>、runtime 配置文件 hash、Docker 或 containerd GPU smoke test、Kubernetes GPU Pod smoke test，以及容器内 CUDA/NCCL 检查。若平台使用 GPU Operator 管理 Toolkit 或 device plugin，还要记录 Operator 版本、组件 DaemonSet 状态和实际落到节点的二进制版本。这样才能把“主机 GPU 可用”和“容器 GPU 可用”区分开。</p>
-<div class="highlight"><pre><span></span><code>nvidia-smi
-nvidia-container-cli<span class="w"> </span>info
-containerd<span class="w"> </span>config<span class="w"> </span>dump<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span>nvidia
-crictl<span class="w"> </span>info<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span>runtime
-kubectl<span class="w"> </span>get<span class="w"> </span>runtimeclass
-ctr<span class="w"> </span>--namespace<span class="w"> </span>k8s.io<span class="w"> </span>images<span class="w"> </span>ls<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>nvidia<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
-</code></pre></div>
+<pre><code class="language-bash">nvidia-smi
+nvidia-container-cli info
+containerd config dump | grep -i nvidia
+crictl info | grep -i runtime
+kubectl get runtimeclass
+ctr --namespace k8s.io images ls | grep nvidia || true
+</code></pre>
 <p>对 Docker 运行时，可以使用：</p>
-<div class="highlight"><pre><span></span><code>nvidia-ctk<span class="w"> </span>runtime<span class="w"> </span>configure<span class="w"> </span>--runtime<span class="o">=</span>docker
-systemctl<span class="w"> </span>restart<span class="w"> </span>docker
-docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>--gpus<span class="w"> </span>all<span class="w"> </span>nvidia/cuda:12.2.0-base-ubuntu22.04<span class="w"> </span>nvidia-smi
-</code></pre></div>
+<pre><code class="language-bash">nvidia-ctk runtime configure --runtime=docker
+systemctl restart docker
+docker run --rm --gpus all nvidia/cuda:12.2.0-base-ubuntu22.04 nvidia-smi
+</code></pre>
 <p>对 Kubernetes 节点，最终准入必须以 Pod 方式验证：</p>
-<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>gpu-smoke.yaml
-kubectl<span class="w"> </span><span class="nb">wait</span><span class="w"> </span>--for<span class="o">=</span><span class="nv">condition</span><span class="o">=</span>Ready<span class="w"> </span>pod/gpu-smoke<span class="w"> </span>--timeout<span class="o">=</span>120s
-kubectl<span class="w"> </span>logs<span class="w"> </span>gpu-smoke
-</code></pre></div>
+<pre><code class="language-bash">kubectl apply -f gpu-smoke.yaml
+kubectl wait --for=condition=Ready pod/gpu-smoke --timeout=120s
+kubectl logs gpu-smoke
+</code></pre>
 <p>若平台启用 CDI，还要检查 CDI spec 和容器内可见设备是否与调度分配一致。检查点包括：CDI spec 文件是否存在，spec 中的 device name 是否能对应到 GPU UUID 或 MIG UUID，containerd/CRI-O 是否启用 CDI，device plugin 是否使用 CDI strategy，Pod allocated resources 是否与容器内 <code>nvidia-smi -L</code> 一致。这个检查不能只在节点上跑，因为 CDI spec 存在不代表 kubelet、CRI 和 runtime 会在真实 Pod 创建路径中消费它。</p>
-<div class="highlight"><pre><span></span><code>ls<span class="w"> </span>-l<span class="w"> </span>/var/run/cdi<span class="w"> </span>/etc/cdi<span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
-grep<span class="w"> </span>-R<span class="w"> </span><span class="s2">&quot;nvidia.com&quot;</span><span class="w"> </span>/var/run/cdi<span class="w"> </span>/etc/cdi<span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
-kubectl<span class="w"> </span>describe<span class="w"> </span>pod<span class="w"> </span>gpu-smoke<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span><span class="s2">&quot;allocated\\|runtime\\|nvidia\\|cdi&quot;</span>
-kubectl<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>gpu-smoke<span class="w"> </span>--<span class="w"> </span>nvidia-smi<span class="w"> </span>-L
-</code></pre></div>
+<pre><code class="language-bash">ls -l /var/run/cdi /etc/cdi 2&gt;/dev/null || true
+grep -R &quot;nvidia.com&quot; /var/run/cdi /etc/cdi 2&gt;/dev/null || true
+kubectl describe pod gpu-smoke | grep -i &quot;allocated\\|runtime\\|nvidia\\|cdi&quot;
+kubectl exec gpu-smoke -- nvidia-smi -L
+</code></pre>
 <p>Bootstrap validation 的输出应包含 <code>gpu_container_runtime_report</code>，把主机、runtime、Kubernetes 和容器内事实放在一起。它不是给人看的临时日志，而是节点进入资源池前的准入证据。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">gpu_container_runtime_report</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">node</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-node-001</span>
-<span class="w">  </span><span class="nt">baseline</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-node-2026-06</span>
-<span class="w">  </span><span class="nt">host</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">driver</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">gpu_uuids</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">nvidia_container_cli_info</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">  </span><span class="nt">runtime</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">cri_endpoint</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">unix:///run/containerd/containerd.sock</span>
-<span class="w">    </span><span class="nt">containerd_config_hash</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">runtime_handler</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nvidia</span>
-<span class="w">    </span><span class="nt">runtime_class_present</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">toolkit_mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cdi</span>
-<span class="w">    </span><span class="nt">cdi_spec_hash</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">  </span><span class="nt">kubernetes</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">device_plugin_registered</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">device_list_strategy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cdi</span>
-<span class="w">    </span><span class="nt">allocated_resource</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nvidia.com/gpu</span>
-<span class="w">  </span><span class="nt">container</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">nvidia_smi</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">cuda_sample</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">visible_gpu_uuids_match_assignment</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">rdma_visible_if_required</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">decision</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">container_gpu_runtime</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">schedulable_for</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">online_inference</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">distributed_training</span><span class="p p-Indicator">]</span>
-</code></pre></div>
+<pre><code class="language-yaml">gpu_container_runtime_report:
+  node: gpu-node-001
+  baseline: gpu-node-2026-06
+  host:
+    driver: measured
+    gpu_uuids: measured
+    nvidia_container_cli_info: pass
+  runtime:
+    cri_endpoint: unix:///run/containerd/containerd.sock
+    containerd_config_hash: measured
+    runtime_handler: nvidia
+    runtime_class_present: true
+    toolkit_mode: cdi
+    cdi_spec_hash: measured
+  kubernetes:
+    device_plugin_registered: true
+    device_list_strategy: cdi
+    allocated_resource: nvidia.com/gpu
+  container:
+    nvidia_smi: pass
+    cuda_sample: pass
+    visible_gpu_uuids_match_assignment: true
+    rdma_visible_if_required: true
+  decision:
+    container_gpu_runtime: pass
+    schedulable_for: [online_inference, distributed_training]
+</code></pre>
 <p>这份报告能解决几个高频争议：主机 <code>nvidia-smi</code> 正常但容器失败，Docker 成功但 Kubernetes 失败，device plugin 分配成功但容器看到全部 GPU，CDI spec 存在但 runtime 不消费，RuntimeClass 未匹配 handler。节点 bootstrap 如果不能输出这些事实，就不应进入生产 GPU 资源池。</p>
 <p>第四步是设计升级流水线。新 baseline 先进入实验池，跑基础测试和典型 workload；通过后进入小规模灰度；灰度期间观察训练、推理、NCCL、RDMA 和故障指标；最后批量推广。每一步都要有回滚条件。环境升级不应靠人工记忆，而应由流水线推动。</p>
 <p>对底层环境变更，应要求提交 <code>change_safety_case</code>。它不是额外审批文书，而是机器可读的变更安全论证：说明变更对象、风险假设、兼容矩阵、验证证据、灰度范围、停止条件、回滚路径和基线失效范围。示例：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">change_safety_case</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">change_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">chg-gpu-baseline-20260619</span>
-<span class="w">  </span><span class="nt">target</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">baseline_from</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-node-2026-05</span>
-<span class="w">    </span><span class="nt">baseline_to</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-node-2026-06</span>
-<span class="w">    </span><span class="nt">components</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">kernel</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">changed</span>
-<span class="w">      </span><span class="nt">nvidia_driver</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">changed</span>
-<span class="w">      </span><span class="nt">cuda_runtime</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">unchanged</span>
-<span class="w">      </span><span class="nt">nccl</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">changed</span>
-<span class="w">      </span><span class="nt">ofed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">unchanged</span>
-<span class="w">      </span><span class="nt">nvidia_container_toolkit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">changed</span>
-<span class="w">      </span><span class="nt">containerd_runtime_handler</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">changed</span>
-<span class="w">      </span><span class="nt">device_plugin_strategy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">changed</span>
-<span class="w">      </span><span class="nt">cdi_spec_generation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">changed</span>
-<span class="w">  </span><span class="nt">risk_hypotheses</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">driver_module_build_failure</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nccl_bandwidth_regression</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">container_gpu_runtime_hook_regression</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cdi_device_resolution_regression</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">runtimeclass_handler_mismatch</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rdma_in_container_visibility_regression</span>
-<span class="w">  </span><span class="nt">required_evidence</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">pre_change</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">current_acceptance_baseline</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">affected_workload_inventory</span>
-<span class="w">    </span><span class="nt">canary</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu_burn_in</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nvbandwidth</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nccl_multi_node</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kubernetes_gpu_pod_smoke</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cdi_or_runtimeclass_smoke</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">representative_training_job</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">representative_inference_endpoint</span>
-<span class="w">  </span><span class="nt">stop_conditions</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">new_xid_above_baseline</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nccl_regression_outside_allowed_band</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">container_smoke_failure</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu_assignment_visibility_mismatch</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ttft_or_step_time_regression</span>
-<span class="w">  </span><span class="nt">rollback</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">method</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">restore_previous_golden_image</span>
-<span class="w">    </span><span class="nt">validation_after_rollback</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bootstrap_validation</span>
-<span class="w">  </span><span class="nt">invalidates_baselines</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">driver_dependent_acceptance</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nccl_baseline</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">container_gpu_runtime_baseline</span>
-</code></pre></div>
+<pre><code class="language-yaml">change_safety_case:
+  change_id: chg-gpu-baseline-20260619
+  target:
+    baseline_from: gpu-node-2026-05
+    baseline_to: gpu-node-2026-06
+    components:
+      kernel: changed
+      nvidia_driver: changed
+      cuda_runtime: unchanged
+      nccl: changed
+      ofed: unchanged
+      nvidia_container_toolkit: changed
+      containerd_runtime_handler: changed
+      device_plugin_strategy: changed
+      cdi_spec_generation: changed
+  risk_hypotheses:
+    - driver_module_build_failure
+    - nccl_bandwidth_regression
+    - container_gpu_runtime_hook_regression
+    - cdi_device_resolution_regression
+    - runtimeclass_handler_mismatch
+    - rdma_in_container_visibility_regression
+  required_evidence:
+    pre_change:
+      - current_acceptance_baseline
+      - affected_workload_inventory
+    canary:
+      - gpu_burn_in
+      - nvbandwidth
+      - nccl_multi_node
+      - kubernetes_gpu_pod_smoke
+      - cdi_or_runtimeclass_smoke
+      - representative_training_job
+      - representative_inference_endpoint
+  stop_conditions:
+    - new_xid_above_baseline
+    - nccl_regression_outside_allowed_band
+    - container_smoke_failure
+    - gpu_assignment_visibility_mismatch
+    - ttft_or_step_time_regression
+  rollback:
+    method: restore_previous_golden_image
+    validation_after_rollback: bootstrap_validation
+  invalidates_baselines:
+    - driver_dependent_acceptance
+    - nccl_baseline
+    - container_gpu_runtime_baseline
+</code></pre>
 <p>这个对象把升级从“执行脚本”提升为“带证据的风险控制”。它要求团队在变更前说明担心什么，在灰度中证明什么，出问题时按什么条件停止。尤其是 driver、kernel、NCCL、OFED 和 NVIDIA Container Toolkit 这类底层组件，变更成功的定义必须是业务路径通过，而不是安装命令返回 0。</p>
 <p><code>change_safety_case</code> 的执行结果应自动落到第 38 章的 <code>baseline_invalidation_record</code>。如果 safety case 声明 driver 和 container runtime 变更会失效 <code>nccl_baseline</code> 与 <code>container_gpu_runtime_baseline</code>，那么变更进入窗口时，资源池就应把相关节点降级为 limited；只有 <code>bootstrap_validation</code>、容器 GPU smoke、NCCL/RDMA 和代表性 workload 复测通过后，能力标签才恢复。否则 safety case 只是审批材料，不会真正保护调度路径。上线前的 <code>production_readiness_review</code> 也应检查目标资源池是否存在未关闭的 baseline invalidation。</p>
 <p>第五步是建设漂移检测。节点定期上报 kernel、driver、OFED、runtime、关键配置和镜像版本，与期望 baseline 对比。发现漂移后，可以标记 degraded、阻止新任务、触发重新初始化或进入人工确认。漂移检测是长期运行的保障。</p>

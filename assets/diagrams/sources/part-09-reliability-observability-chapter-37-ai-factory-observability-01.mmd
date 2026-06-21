@@ -1,0 +1,17 @@
+flowchart TB
+  Request["Inference Request / Training Job"] --> App["App / Platform Metrics"]
+  App --> Runtime["Inference Engine / Training Framework"]
+  Runtime --> GPU["GPU / DCGM"]
+  Runtime --> Comm["NCCL / RDMA"]
+  Runtime --> Storage["Storage Metrics"]
+  GPU --> Node["node exporter / OS"]
+  Comm --> Network["Network Telemetry"]
+  Node --> Facility["BMC / Power / Cooling"]
+  Labels["Unified Labels: tenant / model / job / node / gpu / rack"] --> App
+  Labels --> Runtime
+  Labels --> GPU
+  Labels --> Network
+  Trace["Trace / Log / Event / Baseline"] --> Correlate["Correlation Layer"]
+  App --> Correlate
+  Network --> Correlate
+  Storage --> Correlate

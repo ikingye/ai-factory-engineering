@@ -1,0 +1,13 @@
+flowchart TB
+  Matrix["container_gpu_runtime_acceptance_matrix"] --> Evidence["evidence set\nruntime config + OCI diff + assignment + visibility"]
+  Evidence --> Classify{"failure class"}
+  Classify --> Runtime["runtime_handler_missing\nfix CRI/runtime baseline"]
+  Classify --> CDI["cdi_spec_missing_or_stale\nregenerate spec / retest"]
+  Classify --> Visible["visible_device_mismatch\ncordon + reconciliation"]
+  Classify --> RDMA["rdma_gpu_nic_topology_mismatch\nCNI/RDMA/topology repair"]
+  Runtime --> Retest["targeted retest"]
+  CDI --> Retest
+  Visible --> Retest
+  RDMA --> Retest
+  Retest --> Baseline["acceptance_baseline refresh"]
+  Baseline --> PRR["production_readiness_review"]

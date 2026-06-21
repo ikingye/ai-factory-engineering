@@ -3842,44 +3842,12 @@
 <p>存储系统与网络紧密耦合。对象存储、并行文件系统、缓存和本地盘之间的数据流会占用 scale-out 网络。checkpoint、权重加载和数据预热如果与训练通信重叠，会造成网络和存储双重压力。存储架构不能脱离网络拓扑和调度策略设计。</p>
 <p>观测层应按 job、tenant、model、dataset、checkpoint 和 path 打标签。只看存储集群总吞吐没有意义，因为瓶颈可能在单目录元数据、单客户端限速、某个租户突发、某个 rack 缓存未命中或某个模型权重加载。AI 存储必须支持从 GPU idle 反查到具体数据路径。</p>
 <p>控制面负责把这些路径产品化。训练平台应生成标准目录、注入数据集版本、创建 checkpoint manifest、设置 cache 策略，并把 storage policy 写入作业元数据；模型平台应把模型 artifact、tokenizer、配置和安全状态作为一个版本发布。数据面则负责实际读写和缓存。控制面和数据面分离后，用户仍然使用熟悉的路径或 API，但平台可以统一做审计、清理、迁移和回放。</p>
-<pre class="mermaid"><code>flowchart TB
-  Raw["Raw Dataset"] --&gt; Object["Object Storage"]
-  Object --&gt; Process["Data Processing / Tokenization"]
-  Process --&gt; Dataset["Processed Dataset / Shards"]
-  Dataset --&gt; Cache["Dataset Cache / Local NVMe"]
-  Cache --&gt; Train["Training Workers"]
-  Train --&gt; CKPT["Checkpoint Storage"]
-  CKPT --&gt; Eval["Evaluation"]
-  Eval --&gt; Registry["Model Registry"]
-  Registry --&gt; Serving["Model Serving"]
-  Serving --&gt; WeightCache["Weight Cache / Local NVMe"]
-  Metrics["Storage Metrics / Labels"] --&gt; Object
-  Metrics --&gt; CKPT
-  Metrics --&gt; WeightCache</code></pre>
+<p><img alt="图：33.2.2 系统架构" src="../../assets/diagrams/part-07-network-storage-chapter-33-ai-storage-01.svg" /></p>
 <p>AI 存储架构还需要一条证据链，把“GPU 在等”映射到具体数据路径。训练任务慢时，平台应能从 job id 找到 dataset manifest、shard、client node、cache state、storage backend、metadata service、network path 和 checkpoint 事件；推理冷启动慢时，平台应能从 endpoint 找到 model artifact、digest、registry、weight cache、节点本地 NVMe 和 replica readiness。没有这条链，存储团队看到的是系统吞吐，模型团队看到的是 GPU idle，平台团队只能猜测中间发生了什么。</p>
-<pre class="mermaid"><code>flowchart LR
-  Workload["job / endpoint / evaluation"] --&gt; Path["dataset / checkpoint / artifact path"]
-  Path --&gt; Manifest["manifest / digest / version"]
-  Manifest --&gt; Client["client node / pod / rank / replica"]
-  Client --&gt; Cache["local NVMe / rack cache / remote cache"]
-  Cache --&gt; Backend["PFS / Object Storage / Registry"]
-  Backend --&gt; Telemetry["latency / metadata ops / throttle / errors"]
-  Telemetry --&gt; Impact["GPU idle / TTFT / recovery time / cost"]
-  Impact --&gt; Action["prewarm / reshard / isolate / throttle / repair"]</code></pre>
+<p><img alt="图：33.2.2 系统架构" src="../../assets/diagrams/part-07-network-storage-chapter-33-ai-storage-02.svg" /></p>
 <p>这条链路的关键是 manifest。路径只是位置，manifest 才是契约：它说明哪些 shard、哪些对象、哪些 checkpoint 分片、哪个模型权重 digest、哪个 tokenizer、哪些 checksum 和生命周期策略构成一次可复现的数据访问。路径可以迁移，manifest 不应丢失。AI Factory 应尽量让训练、评测和服务都引用 manifest，而不是让脚本自由扫描目录。</p>
 <p>可以把 AI 存储理解成四类生产路径的组合，而不是一个统一文件系统。Dataset path 负责持续供给训练样本；checkpoint path 负责保存和恢复训练状态；artifact path 负责发布模型和扩容副本；cache path 负责把热数据靠近 GPU。每条路径都有不同 owner、指标、失败语义和成本口径。</p>
-<pre class="mermaid"><code>flowchart TB
-  Intent["workload_storage_intent"] --&gt; Dataset["dataset_manifest\nshards / lineage / permissions"]
-  Intent --&gt; Ckpt["checkpoint_manifest\ncommit / restore / retention"]
-  Intent --&gt; Artifact["model_artifact_distribution\ndigest / rollout / rollback"]
-  Intent --&gt; Cache["cache_residency\nnode / rack / pool state"]
-  Dataset --&gt; Evidence["storage_evidence"]
-  Ckpt --&gt; Evidence
-  Artifact --&gt; Evidence
-  Cache --&gt; Evidence
-  Evidence --&gt; Diagnose["storage diagnosis\nGPU idle / checkpoint slow / cold start"]
-  Evidence --&gt; Cost["storage_cost_ledger"]
-  Evidence --&gt; Admission["storage_acceptance_matrix"]</code></pre>
+<p><img alt="图：33.2.2 系统架构" src="../../assets/diagrams/part-07-network-storage-chapter-33-ai-storage-03.svg" /></p>
 <p>这张图的重点是 intent 和 evidence。Intent 让平台在任务启动前知道需要什么数据路径；evidence 让平台在任务运行后证明发生了什么。没有 intent，调度器无法预热和准入；没有 evidence，事故和成本只能靠存储后端平均指标解释。存储系统的工程深度，取决于这两类对象是否贯穿训练和推理生命周期。</p>
 <h2 id="333">33.3 关键技术<a class="headerlink" href="#333" title="Permanent link">&para;</a></h2>
 <h3 id="3331-dataset-storage">33.3.1 dataset storage<a class="headerlink" href="#3331-dataset-storage" title="Permanent link">&para;</a></h3>
@@ -3889,32 +3857,32 @@
 <p>工程上，应为数据集建立访问画像：文件数量、平均对象大小、总容量、读取并发、顺序读比例、缓存命中率、data loader wait time 和 GPU idle time。存储系统不是只管理数据，还要管理数据如何被训练任务消费。访问画像能指导 sharding、缓存和存储选型。</p>
 <p>数据集还要有质量和权限边界。训练数据往往来自多个来源，可能包含不同许可证、敏感字段、重复样本和质量标签。存储层不负责判断模型效果，但必须保存元数据，让上游治理和下游实验能追踪来源。企业场景还要区分公共数据、租户私有数据和受限数据，避免缓存或共享文件系统打破权限边界。Dataset storage 不是“文件堆”，而是训练证据链的一部分。</p>
 <p>生产级数据集应有 <code>dataset_manifest</code>。它把数据内容、处理版本、分片、统计、权限和缓存策略固定下来。示例：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">dataset_manifest</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">dataset_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">corpus-v3.2</span>
-<span class="w">  </span><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">immutable</span>
-<span class="w">  </span><span class="nt">tokenizer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tokenizer-v3</span>
-<span class="w">  </span><span class="nt">source</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">raw_inputs</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">cleaning_pipeline</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">clean-pipeline@sha256:example</span>
-<span class="w">    </span><span class="nt">dedup_profile</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dedup-v4</span>
-<span class="w">  </span><span class="nt">shards</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">indexed_binary</span>
-<span class="w">    </span><span class="nt">count</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8192</span>
-<span class="w">    </span><span class="nt">average_shard_size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">checksums</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">  </span><span class="nt">statistics</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">total_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">language_mix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">summarized</span>
-<span class="w">    </span><span class="nt">filtered_ratio</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">sequence_length_distribution</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">summarized</span>
-<span class="w">  </span><span class="nt">access</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">tenant_scope</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">foundation-model-team</span>
-<span class="w">    </span><span class="nt">pii_classification</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">restricted</span>
-<span class="w">    </span><span class="nt">cache_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prewarm_for_training_prod</span>
-<span class="w">  </span><span class="nt">lineage</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">parent_dataset</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">corpus-v3.1</span>
-<span class="w">    </span><span class="nt">generated_at</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-</code></pre></div>
+<pre><code class="language-yaml">dataset_manifest:
+  dataset_id: corpus-v3.2
+  version: immutable
+  tokenizer: tokenizer-v3
+  source:
+    raw_inputs: recorded
+    cleaning_pipeline: clean-pipeline@sha256:example
+    dedup_profile: dedup-v4
+  shards:
+    format: indexed_binary
+    count: 8192
+    average_shard_size: measured
+    checksums: required
+  statistics:
+    total_tokens: measured
+    language_mix: summarized
+    filtered_ratio: measured
+    sequence_length_distribution: summarized
+  access:
+    tenant_scope: foundation-model-team
+    pii_classification: restricted
+    cache_policy: prewarm_for_training_prod
+  lineage:
+    parent_dataset: corpus-v3.1
+    generated_at: recorded
+</code></pre>
 <p>有了 manifest，训练平台才能做三件事：启动前验证数据是否完整，运行中从 step 反查 shard，事故后比较数据版本和缓存状态。没有 manifest，数据集只是目录名，任何复制、清理、覆盖和权限变化都可能破坏复现。</p>
 <h3 id="3332-checkpoint-storage">33.3.2 checkpoint storage<a class="headerlink" href="#3332-checkpoint-storage" title="Permanent link">&para;</a></h3>
 <p>Checkpoint storage 保存训练中间状态，用于容错、恢复、评测和模型发布。Checkpoint 可能包含模型参数、优化器状态、训练 step、随机数状态、数据加载位置、并行切分信息和训练配置。大模型 checkpoint 规模巨大，写入和恢复都可能成为训练系统关键路径。</p>
@@ -3923,43 +3891,31 @@
 <p>工程上，checkpoint 写入应避免所有 rank 同时冲击同一目录或元数据服务。可以使用分片、分层写入、异步上传、临时目录原子提交、压缩、保留策略和写入错峰。Checkpoint 成功应有 manifest 和校验，恢复前应验证完整性。没有完整性校验，恢复失败会在最糟糕的时间暴露。</p>
 <p>Checkpoint 还承担组织协作语义。训练团队需要知道哪个 checkpoint 可恢复，评测团队需要知道哪个 checkpoint 可评估，服务团队需要知道哪个 artifact 可发布，平台团队需要知道哪些中间状态可以清理。把所有文件都叫 checkpoint 会造成混乱。更合理的做法是把恢复点、评测候选、发布候选和归档产物区分开，并用 manifest 描述来源 step、并行切分、依赖配置、校验和转换状态。</p>
 <p>Checkpoint 写入还应采用两阶段提交语义。第一阶段写入临时分片和局部 metadata，第二阶段校验所有 rank 分片并提交 manifest。只有 manifest 提交成功，checkpoint 才能被标记为 valid。训练恢复逻辑必须读取 latest valid，而不是最新目录。</p>
-<pre class="mermaid"><code>sequenceDiagram
-  participant Rank as Training Ranks
-  participant Tmp as Temporary Checkpoint Path
-  participant Validator as Checkpoint Validator
-  participant Manifest as Manifest Store
-  participant Index as Checkpoint Index
-
-  Rank-&gt;&gt;Tmp: write sharded states
-  Rank-&gt;&gt;Tmp: write local checksums
-  Validator-&gt;&gt;Tmp: verify all shards and metadata
-  Validator-&gt;&gt;Manifest: commit checkpoint_manifest
-  Manifest-&gt;&gt;Index: mark latest_valid
-  Index--&gt;&gt;Rank: resume candidates available</code></pre>
+<p><img alt="图：33.3.2 checkpoint storage" src="../../assets/diagrams/part-07-network-storage-chapter-33-ai-storage-04.svg" /></p>
 <p>这个协议能避免最常见的隐性事故：目录存在但分片不完整，最新 checkpoint 覆盖了旧健康版本，恢复时才发现 optimizer 或 scheduler state 缺失。Checkpoint 的可用性必须由 manifest 和校验定义，而不是由文件夹是否存在定义。</p>
 <p>生产实现还应记录 <code>checkpoint_commit_record</code>，把一次 checkpoint 的写入、校验、提交、latest 指针更新和恢复候选关系保留下来：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">checkpoint_commit_record</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">checkpoint_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ckpt-step-120000</span>
-<span class="w">  </span><span class="nt">workload_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">train-20260620-017</span>
-<span class="w">  </span><span class="nt">storage_backend</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">parallel_file_system</span>
-<span class="w">  </span><span class="nt">commit_protocol</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">two_phase_manifest_commit</span>
-<span class="w">  </span><span class="nt">writes</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">expected_rank_shards</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">512</span>
-<span class="w">    </span><span class="nt">completed_rank_shards</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">slowest_rank_write_ms</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">metadata_ops</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">  </span><span class="nt">validation</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">shard_checksums</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">verified</span>
-<span class="w">    </span><span class="nt">manifest_committed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">restore_smoke_test</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed</span>
-<span class="w">  </span><span class="nt">index_update</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">previous_latest_valid</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ckpt-step-119000</span>
-<span class="w">    </span><span class="nt">new_latest_valid</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ckpt-step-120000</span>
-<span class="w">    </span><span class="nt">update_time_ms</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">  </span><span class="nt">impact</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">checkpoint_pause_ms</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">gpu_idle_seconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-</code></pre></div>
+<pre><code class="language-yaml">checkpoint_commit_record:
+  checkpoint_id: ckpt-step-120000
+  workload_id: train-20260620-017
+  storage_backend: parallel_file_system
+  commit_protocol: two_phase_manifest_commit
+  writes:
+    expected_rank_shards: 512
+    completed_rank_shards: measured
+    slowest_rank_write_ms: measured
+    metadata_ops: measured
+  validation:
+    shard_checksums: verified
+    manifest_committed: true
+    restore_smoke_test: passed
+  index_update:
+    previous_latest_valid: ckpt-step-119000
+    new_latest_valid: ckpt-step-120000
+    update_time_ms: measured
+  impact:
+    checkpoint_pause_ms: measured
+    gpu_idle_seconds: calculated
+</code></pre>
 <p>这个记录让 checkpoint 从“周期性写文件”变成可运营对象。若 checkpoint 慢，平台能判断是 rank 写入长尾、metadata 服务、manifest 校验还是 index update；若恢复失败，平台能判断是否 latest 指针指向了未验证对象；若训练成本上升，Token Factory 可以把 checkpoint pause 和 GPU idle 计入训练 ROI。</p>
 <h3 id="3333-object-storage">33.3.3 object storage<a class="headerlink" href="#3333-object-storage" title="Permanent link">&para;</a></h3>
 <p>Object Storage 适合存放大规模数据集、模型 artifact、日志归档、评测结果和跨集群共享数据。它的优势是容量大、成本相对可控、接口通用、生命周期管理成熟、跨地域和多租户能力较强。AI Factory 通常把对象存储作为源数据、长期归档和模型制品分发的基础。</p>
@@ -3987,23 +3943,23 @@
 <p>工程上，cache 应有观测和控制面。平台需要知道哪些模型或数据已预热，缓存占用多少，命中率如何，淘汰了什么，冷启动耗时多少。用户不应在脚本里手工实现缓存逻辑。缓存如果不可见，就会在故障时变成隐藏状态。</p>
 <p>缓存策略还必须服务发布流程。模型权重缓存应以 model version、artifact digest 和 tokenizer version 为键，不能只按文件名或路径判断；数据缓存应绑定 dataset version 和 shard digest，不能被后续数据处理覆盖。预热也要有优先级：关键线上模型优先，高频数据集优先，低优临时实验可以接受 cache miss。缓存不是越多越好，而是要把有限的本地和近端容量给最能减少 GPU 等待和用户延迟的路径。</p>
 <p>缓存控制面应记录 <code>cache_residency</code>，也就是哪些节点、rack 或资源池已经具备某个数据或模型版本。调度器可以优先把任务放到已有缓存的位置，或者在任务启动前触发预热。示例：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">cache_residency</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">object</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">model_artifact</span>
-<span class="w">    </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-large@sha256:example</span>
-<span class="w">  </span><span class="nt">scope</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">resource_pool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">inference-prod-h100</span>
-<span class="w">    </span><span class="nt">nodes_ready</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">128</span>
-<span class="w">    </span><span class="nt">racks_ready</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">rack-11</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">rack-12</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">policy</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">priority</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">production</span>
-<span class="w">    </span><span class="nt">eviction</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">protect_while_endpoint_active</span>
-<span class="w">    </span><span class="nt">refresh_on_release</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">metrics</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">hit_ratio</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">cold_load_p95</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">prewarm_duration</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-</code></pre></div>
+<pre><code class="language-yaml">cache_residency:
+  object:
+    type: model_artifact
+    id: af-chat-large@sha256:example
+  scope:
+    resource_pool: inference-prod-h100
+    nodes_ready: 128
+    racks_ready: [rack-11, rack-12]
+  policy:
+    priority: production
+    eviction: protect_while_endpoint_active
+    refresh_on_release: true
+  metrics:
+    hit_ratio: measured
+    cold_load_p95: measured
+    prewarm_duration: measured
+</code></pre>
 <p>缓存一旦进入调度，就不再是临时优化，而是资源状态。它能解释为什么某些 replica ready 更快，也能解释为什么某个训练任务在 cache miss 后拖慢。</p>
 <h3 id="3337-bandwidth-vs-iops">33.3.7 bandwidth vs IOPS<a class="headerlink" href="#3337-bandwidth-vs-iops" title="Permanent link">&para;</a></h3>
 <p>Bandwidth 衡量吞吐，IOPS 衡量每秒 I/O 操作次数。AI workload 同时需要二者，但场景不同。大 shard 顺序读关注 bandwidth；大量小文件和元数据操作关注 IOPS 与 metadata ops；checkpoint 写入关注突发吞吐和并发写；模型权重加载关注启动窗口内的高吞吐读。</p>
@@ -4021,438 +3977,386 @@
 <h2 id="334">33.4 工程落地<a class="headerlink" href="#334" title="Permanent link">&para;</a></h2>
 <h3 id="3341">33.4.1 工程实现<a class="headerlink" href="#3341" title="Permanent link">&para;</a></h3>
 <p>工程实现应先定义存储策略，而不是让用户在脚本里临时拼路径。训练平台提交任务时，应声明数据集版本、checkpoint 路径、缓存策略、清理策略、权限和成本标签。示例：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">storage_policy</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">dataset</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">source</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">object-storage</span>
-<span class="w">    </span><span class="nt">hot_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">parallel-file-system</span>
-<span class="w">    </span><span class="nt">cache</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">local-nvme</span>
-<span class="w">  </span><span class="nt">checkpoint</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">write_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">parallel-file-system</span>
-<span class="w">    </span><span class="nt">retention</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">latest</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">keep</span>
-<span class="w">      </span><span class="nt">milestone</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">keep</span>
-<span class="w">      </span><span class="nt">intermediate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">expire</span>
-<span class="w">  </span><span class="nt">model_artifact</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">registry</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">model-registry</span>
-<span class="w">    </span><span class="nt">serving_cache</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">local-nvme</span>
-<span class="w">  </span><span class="nt">observability</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">metrics</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enabled</span>
-<span class="w">    </span><span class="nt">per_job_labels</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;tenant&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;job&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;model&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;dataset&quot;</span><span class="p p-Indicator">]</span>
-</code></pre></div>
+<pre><code class="language-yaml">storage_policy:
+  dataset:
+    source: object-storage
+    hot_path: parallel-file-system
+    cache: local-nvme
+  checkpoint:
+    write_path: parallel-file-system
+    retention:
+      latest: keep
+      milestone: keep
+      intermediate: expire
+  model_artifact:
+    registry: model-registry
+    serving_cache: local-nvme
+  observability:
+    metrics: enabled
+    per_job_labels: [&quot;tenant&quot;, &quot;job&quot;, &quot;model&quot;, &quot;dataset&quot;]
+</code></pre>
 <p>第二步是把存储策略接入调度和运行时。任务需要多大本地缓存、是否需要预热数据、checkpoint 写入路径是否可用、模型权重是否已在目标节点缓存，都应影响调度和启动。存储不是任务启动后的脚本细节，而是资源需求的一部分。</p>
 <p>第三步是建立生命周期规则。Raw data、processed dataset、checkpoint、artifact、cache、log 和 trace 的保留时间、权限、归档、清理和成本归属不同。没有生命周期规则，checkpoint 和缓存会无限增长，最终把存储成本和节点磁盘问题推给运维。</p>
 <p>第四步是建立真实验收。存储验收应覆盖 data loader、checkpoint、模型加载、cache miss、对象存储限流、小文件和多节点并发。验收结果要与资源池、训练平台和模型服务关联。只测单客户端吞吐，不能证明 AI 存储可用。</p>
 <p>第五步是建立 <code>data_path_evidence</code>。它把 workload 的每次关键 I/O 与路径、manifest、cache、client 和指标绑定。示例：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">data_path_evidence</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">workload</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">distributed_training</span>
-<span class="w">    </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">train-20260619-042</span>
-<span class="w">    </span><span class="nt">phase</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">checkpoint_write</span>
-<span class="w">  </span><span class="nt">path</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">checkpoint</span>
-<span class="w">    </span><span class="nt">manifest_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ckpt-step-120000</span>
-<span class="w">    </span><span class="nt">backend</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">parallel_file_system</span>
-<span class="w">    </span><span class="nt">directory</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">managed_path</span>
-<span class="w">  </span><span class="nt">clients</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">ranks</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">512</span>
-<span class="w">    </span><span class="nt">nodes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">attached</span>
-<span class="w">    </span><span class="nt">racks</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">attached</span>
-<span class="w">  </span><span class="nt">cache</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">local_nvme</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">not_applicable</span>
-<span class="w">    </span><span class="nt">pfs_client_cache</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">  </span><span class="nt">telemetry</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">write_p99</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">metadata_ops</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">throttling</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">network_overlap</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nccl_collective_window</span>
-<span class="w">  </span><span class="nt">impact</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">step_time_delta</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">gpu_idle_seconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">wasted_gpu_hours</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-</code></pre></div>
+<pre><code class="language-yaml">data_path_evidence:
+  workload:
+    type: distributed_training
+    id: train-20260619-042
+    phase: checkpoint_write
+  path:
+    kind: checkpoint
+    manifest_id: ckpt-step-120000
+    backend: parallel_file_system
+    directory: managed_path
+  clients:
+    ranks: 512
+    nodes: attached
+    racks: attached
+  cache:
+    local_nvme: not_applicable
+    pfs_client_cache: recorded
+  telemetry:
+    write_p99: measured
+    metadata_ops: measured
+    throttling: measured
+    network_overlap: nccl_collective_window
+  impact:
+    step_time_delta: measured
+    gpu_idle_seconds: measured
+    wasted_gpu_hours: calculated
+</code></pre>
 <p>这个对象让存储问题能进入统一诊断包。它回答的不是“存储系统慢不慢”，而是“哪个 workload 因为哪条数据路径慢，浪费了多少 GPU 时间，应该由谁处理”。</p>
 <p>更完整的 <code>storage_evidence</code> 应覆盖 dataset、checkpoint、artifact 和 cache 四种路径。它应包含 manifest、client、cache、backend、telemetry、网络重叠和业务影响。示例：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">storage_evidence</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">evidence_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">storage-ev-20260620-017</span>
-<span class="w">  </span><span class="nt">workload</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">train-20260620-017</span>
-<span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">distributed_training</span>
-<span class="w">    </span><span class="nt">phase</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">checkpoint_write</span>
-<span class="w">  </span><span class="nt">path</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">checkpoint</span>
-<span class="w">    </span><span class="nt">manifest</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ckpt-step-120000</span>
-<span class="w">    </span><span class="nt">backend</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">parallel_file_system</span>
-<span class="w">    </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">managed_training_checkpoint</span>
-<span class="w">  </span><span class="nt">clients</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">ranks</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">512</span>
-<span class="w">    </span><span class="nt">nodes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">racks</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">  </span><span class="nt">cache</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">state</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bypass_or_hit_or_miss</span>
-<span class="w">    </span><span class="nt">local_nvme_pressure</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured_if_applicable</span>
-<span class="w">  </span><span class="nt">telemetry</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">read_write_p99_ms</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">metadata_ops</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">throttle_events</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">backend_error_rate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">network_overlap</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nccl_or_artifact_or_none</span>
-<span class="w">  </span><span class="nt">impact</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">gpu_idle_seconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">    </span><span class="nt">checkpoint_pause_ms</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">model_ready_delay_ms</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated_if_artifact</span>
-<span class="w">    </span><span class="nt">affected_tenants</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">  </span><span class="nt">decision</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">likely_cause</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">metadata_hotspot_or_cache_miss_or_backend_throttle</span>
-<span class="w">    </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">reshard_prewarm_throttle_or_move_path</span>
-</code></pre></div>
+<pre><code class="language-yaml">storage_evidence:
+  evidence_id: storage-ev-20260620-017
+  workload:
+    id: train-20260620-017
+    type: distributed_training
+    phase: checkpoint_write
+  path:
+    kind: checkpoint
+    manifest: ckpt-step-120000
+    backend: parallel_file_system
+    namespace: managed_training_checkpoint
+  clients:
+    ranks: 512
+    nodes: measured
+    racks: measured
+  cache:
+    state: bypass_or_hit_or_miss
+    local_nvme_pressure: measured_if_applicable
+  telemetry:
+    read_write_p99_ms: measured
+    metadata_ops: measured
+    throttle_events: measured
+    backend_error_rate: measured
+    network_overlap: nccl_or_artifact_or_none
+  impact:
+    gpu_idle_seconds: calculated
+    checkpoint_pause_ms: measured
+    model_ready_delay_ms: calculated_if_artifact
+    affected_tenants: recorded
+  decision:
+    likely_cause: metadata_hotspot_or_cache_miss_or_backend_throttle
+    action: reshard_prewarm_throttle_or_move_path
+</code></pre>
 <p>这个对象是第 37 章观测、第 38 章准入、第 39 章故障树和第 41 章成本账本的交叉点。它不要求所有存储后端使用同一种实现，但要求它们用相同关联键表达事实。否则训练、推理、存储和财务团队会各自拥有一部分证据，却无法形成共同结论。</p>
 <p>在模型进入生产之前，存储层还应提供 <code>supply_chain_release_contract</code>。它不是发布单，也不是模型 registry 的一行记录，而是把 dataset lineage、checkpoint restore、artifact provenance、artifact distribution、cache residency、cache invalidation、storage security boundary 和 serving release gate 绑定在一起的机器可读契约。它回答的是：这个模型产物是否可以被这个租户、这个 endpoint、这个资源池和这个 cache 层消费；如果某个依赖被撤销，哪些 release、缓存和账单窗口必须同步失效。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">supply_chain_release_contract</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">contract_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scrc-af-chat-large-20260620-r3</span>
-<span class="w">  </span><span class="nt">scope</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">model_family</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-large</span>
-<span class="w">    </span><span class="nt">serving_release</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-large-20260619-r3</span>
-<span class="w">    </span><span class="nt">allowed_endpoints</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">af-chat-large-prod</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">af-chat-large-canary</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">allowed_tenants</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">enterprise-a</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">enterprise-b</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">resource_pools</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">inference-premium-a</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">training_inputs</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">dataset_lineage_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dlr-pretrain-202606</span>
-<span class="w">    </span><span class="nt">dataset_manifest</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dataset-manifest@sha256:example</span>
-<span class="w">    </span><span class="nt">deletion_requests_closed_before_training</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">tokenizer_training_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tok-train-202606</span>
-<span class="w">  </span><span class="nt">checkpoint</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">checkpoint_manifest</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ckpt-step-120000</span>
-<span class="w">    </span><span class="nt">checkpoint_commit_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ccr-ckpt-step-120000</span>
-<span class="w">    </span><span class="nt">checkpoint_restore_drill</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">crd-20260620-ckpt-120000</span>
-<span class="w">    </span><span class="nt">first_effective_step_after_restore</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">  </span><span class="nt">artifact</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">model_artifact_provenance</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">map-af-chat-large-20260619-r3</span>
-<span class="w">    </span><span class="nt">model_artifact_distribution</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mad-af-chat-large-20260619-r3</span>
-<span class="w">    </span><span class="nt">weights_digest</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sha256:weights</span>
-<span class="w">    </span><span class="nt">tokenizer_digest</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sha256:tokenizer</span>
-<span class="w">    </span><span class="nt">chat_template_digest</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sha256:template</span>
-<span class="w">    </span><span class="nt">signature_verification</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">  </span><span class="nt">cache_and_runtime</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">cache_residency_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">premium_hot_capacity_required</span>
-<span class="w">    </span><span class="nt">cache_invalidation_record_required_on_change</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">serving_runtime_profiles</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">vllm-h100-longctx-r2</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">incompatible_runtime_profiles</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">legacy-template-parser-r1</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">boundaries</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">storage_security_boundary</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ssb-model-and-training-prod</span>
-<span class="w">    </span><span class="nt">export_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">denied_without_release_approval</span>
-<span class="w">    </span><span class="nt">prompt_trace_redaction_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required_for_debug_export</span>
-<span class="w">  </span><span class="nt">release_gates</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">supply_chain_acceptance_matrix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">serving_quality_contract</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">serving_route_release_contract</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">billing_usage_schema</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">usage-openai-compatible-v6</span>
-<span class="w">  </span><span class="nt">invalidation_policy</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">revoke_if_any_digest_changes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">block_new_replica_until_replacement_cache_ready</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">billing_hold_if_tokenizer_or_template_changes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-</code></pre></div>
+<pre><code class="language-yaml">supply_chain_release_contract:
+  contract_id: scrc-af-chat-large-20260620-r3
+  scope:
+    model_family: af-chat-large
+    serving_release: af-chat-large-20260619-r3
+    allowed_endpoints: [af-chat-large-prod, af-chat-large-canary]
+    allowed_tenants: [enterprise-a, enterprise-b]
+    resource_pools: [inference-premium-a]
+  training_inputs:
+    dataset_lineage_record: dlr-pretrain-202606
+    dataset_manifest: dataset-manifest@sha256:example
+    deletion_requests_closed_before_training: true
+    tokenizer_training_version: tok-train-202606
+  checkpoint:
+    checkpoint_manifest: ckpt-step-120000
+    checkpoint_commit_record: ccr-ckpt-step-120000
+    checkpoint_restore_drill: crd-20260620-ckpt-120000
+    first_effective_step_after_restore: pass
+  artifact:
+    model_artifact_provenance: map-af-chat-large-20260619-r3
+    model_artifact_distribution: mad-af-chat-large-20260619-r3
+    weights_digest: sha256:weights
+    tokenizer_digest: sha256:tokenizer
+    chat_template_digest: sha256:template
+    signature_verification: pass
+  cache_and_runtime:
+    cache_residency_policy: premium_hot_capacity_required
+    cache_invalidation_record_required_on_change: true
+    serving_runtime_profiles: [vllm-h100-longctx-r2]
+    incompatible_runtime_profiles: [legacy-template-parser-r1]
+  boundaries:
+    storage_security_boundary: ssb-model-and-training-prod
+    export_policy: denied_without_release_approval
+    prompt_trace_redaction_record: required_for_debug_export
+  release_gates:
+    supply_chain_acceptance_matrix: pass
+    serving_quality_contract: pass
+    serving_route_release_contract: pass
+    billing_usage_schema: usage-openai-compatible-v6
+  invalidation_policy:
+    revoke_if_any_digest_changes: true
+    block_new_replica_until_replacement_cache_ready: true
+    billing_hold_if_tokenizer_or_template_changes: true
+</code></pre>
 <p>这个契约把“能加载”提升为“能生产”。模型服务只要能读到权重就能启动，但这不证明权重来自批准的 checkpoint，也不证明 tokenizer 和 template 与计量一致，更不证明 cache 可以被撤销。<code>supply_chain_release_contract</code> 应由 release control plane 生成，并被 Gateway、scheduler、model registry、cache prewarmer、billing replay 和 PRR 消费。若某个数据删除请求影响了训练 lineage，契约能列出受影响 checkpoint、artifact 和 release；若某个 tokenizer digest 需要撤销，契约能告诉调度器哪些热 cache 不能再作为 ready 条件。</p>
-<pre class="mermaid"><code>flowchart LR
-  Lineage["dataset_lineage_record"] --&gt; Contract["supply_chain_release_contract"]
-  Manifest["dataset_manifest"] --&gt; Contract
-  Restore["checkpoint_restore_drill"] --&gt; Contract
-  Prov["model_artifact_provenance"] --&gt; Contract
-  Dist["model_artifact_distribution"] --&gt; Contract
-  Boundary["storage_security_boundary"] --&gt; Contract
-  Contract --&gt; Gateway["Gateway route eligibility"]
-  Contract --&gt; Scheduler["scheduler cache eligibility"]
-  Contract --&gt; Cache["cache prewarm / invalidation"]
-  Contract --&gt; Billing["usage schema / billing hold"]
-  Contract --&gt; PRR["production readiness review"]</code></pre>
+<p><img alt="图：33.4.1 工程实现" src="../../assets/diagrams/part-07-network-storage-chapter-33-ai-storage-05.svg" /></p>
 <p>实现上，契约应尽量小而硬。它不需要复制完整训练日志，也不需要包含每个对象的全部元数据；它需要保存不可变引用、摘要、状态、适用范围和失效策略。这样做的好处是发布时可以快速验证契约是否闭合，事故时可以快速计算影响面，审计时可以证明“线上 release 为什么被允许”。如果契约只存在于人工发布说明中，后续 cache、billing、rollback 和安全撤销都会重新依赖人工记忆。</p>
 <p>数据和模型供应链事故还需要 <code>supply_chain_invalidation_evidence</code>。<code>cache_invalidation_record</code> 说明“应当失效什么”，但生产系统还要证明“失效动作是否已经到达所有会使用旧内容的地方”。这些地方包括 model registry 指针、节点本地 NVMe、rack cache、RAG index cache、训练 dataset cache、推理 replica 的已加载权重、autoscaler 的预热队列和调度器的节点可用状态。只改 registry 指针，不能证明旧权重、旧 tokenizer 或旧索引已经离开生产路径。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">supply_chain_invalidation_evidence</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">evidence_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scie-20260620-af-chat-large-r3</span>
-<span class="w">  </span><span class="nt">trigger</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">reason</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">artifact_recalled_or_tokenizer_bug_or_data_deletion_or_index_rebuild</span>
-<span class="w">    </span><span class="nt">cache_invalidation_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cir-af-chat-large-20260620-001</span>
-<span class="w">    </span><span class="nt">storage_security_boundary</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ssb-model-and-training-prod</span>
-<span class="w">  </span><span class="nt">affected_objects</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">model_artifact_provenance</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">map-af-chat-large-20260619-r3</span>
-<span class="w">    </span><span class="nt">model_artifact_distribution</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mad-af-chat-large-20260619-r3</span>
-<span class="w">    </span><span class="nt">tokenizer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tok-af-chat-large-20260619</span>
-<span class="w">    </span><span class="nt">rag_index</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">optional</span>
-<span class="w">    </span><span class="nt">dataset_manifest</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">optional_if_training_or_rag</span>
-<span class="w">  </span><span class="nt">propagation</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">registry_pointer_updated</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">scheduler_blocked_invalid_cache_nodes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">autoscaler_uses_replacement_cache_only</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">running_replicas_drained_or_verified</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">local_nvme_cache_invalidated</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">rack_cache_invalidated</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">  </span><span class="nt">verification</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">digest_replay</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">sampled_node_cache_scan</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">serving_release_trace_replay</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">rag_context_snapshot_replay</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass_if_rag</span>
-<span class="w">    </span><span class="nt">audit_log_immutable</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">residual_risk</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">nodes_unreachable</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[]</span>
-<span class="w">    </span><span class="nt">allowed_temporary_exemptions</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[]</span>
-<span class="w">    </span><span class="nt">block_prr_until_closed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-</code></pre></div>
+<pre><code class="language-yaml">supply_chain_invalidation_evidence:
+  evidence_id: scie-20260620-af-chat-large-r3
+  trigger:
+    reason: artifact_recalled_or_tokenizer_bug_or_data_deletion_or_index_rebuild
+    cache_invalidation_record: cir-af-chat-large-20260620-001
+    storage_security_boundary: ssb-model-and-training-prod
+  affected_objects:
+    model_artifact_provenance: map-af-chat-large-20260619-r3
+    model_artifact_distribution: mad-af-chat-large-20260619-r3
+    tokenizer: tok-af-chat-large-20260619
+    rag_index: optional
+    dataset_manifest: optional_if_training_or_rag
+  propagation:
+    registry_pointer_updated: true
+    scheduler_blocked_invalid_cache_nodes: true
+    autoscaler_uses_replacement_cache_only: true
+    running_replicas_drained_or_verified: measured
+    local_nvme_cache_invalidated: measured
+    rack_cache_invalidated: measured
+  verification:
+    digest_replay: pass
+    sampled_node_cache_scan: pass
+    serving_release_trace_replay: pass
+    rag_context_snapshot_replay: pass_if_rag
+    audit_log_immutable: true
+  residual_risk:
+    nodes_unreachable: []
+    allowed_temporary_exemptions: []
+    block_prr_until_closed: true
+</code></pre>
 <p>这个对象把“撤销”从控制面动作变成可验证事实。若某个 tokenizer 修复了 token count bug，旧 tokenizer cache 仍然被部分 replica 使用，账单和质量都会继续漂移；若某个模型 artifact 因签名或许可证问题被撤销，节点本地 cache 仍然 ready，调度器就可能把新 replica 放到不可信节点；若 RAG 索引因权限策略更新而重建，旧索引 cache 未撤销，敏感文档仍可能被检索。供应链撤销的验收标准不是“发布系统显示成功”，而是所有可能消费旧对象的路径都被阻断、替换或记录为豁免。</p>
 <p>多模态链路还需要 <code>media_artifact_manifest</code>。文本请求通常只需要 prompt、response 和 trace；多模态请求会产生原始文件、页面图、缩略图、OCR 文本、ASR 文本、抽帧、布局块、表格结构、视觉 embedding、检索索引、模型输出和人工复核记录。若这些产物没有统一 manifest，系统无法证明答案来自哪个源文件、哪个页码、哪一帧或哪一段音频，也无法执行删除、保留、审计和计费。多模态存储的第一原则是：原始媒体和派生产物都必须可追溯。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">media_artifact_manifest</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">manifest_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mam-claims-doc-20260620-001</span>
-<span class="w">  </span><span class="nt">source</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">tenant</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enterprise-a</span>
-<span class="w">    </span><span class="nt">application</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">claims-document-review</span>
-<span class="w">    </span><span class="nt">upload_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">upl-20260620-001</span>
-<span class="w">    </span><span class="nt">original_object</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">uri</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">object://media/enterprise-a/claims/redacted.pdf</span>
-<span class="w">      </span><span class="nt">digest</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sha256:original</span>
-<span class="w">      </span><span class="nt">media_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">application/pdf</span>
-<span class="w">      </span><span class="nt">data_classification</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">restricted</span>
-<span class="w">      </span><span class="nt">retention_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">claims_doc_retention_v3</span>
-<span class="w">      </span><span class="nt">permission_snapshot</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">acl-snap-20260620-001</span>
-<span class="w">  </span><span class="nt">derived_artifacts</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">page_images</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">count</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">      </span><span class="nt">uri_prefix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">object://media-derived/claims/page-images/</span>
-<span class="w">      </span><span class="nt">digest_manifest</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sha256:pages</span>
-<span class="w">    </span><span class="nt">ocr_text</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">uri</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">object://media-derived/claims/ocr.jsonl</span>
-<span class="w">      </span><span class="nt">engine_profile</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ocr-runtime-v6</span>
-<span class="w">      </span><span class="nt">language_hints</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">zh</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">en</span><span class="p p-Indicator">]</span>
-<span class="w">      </span><span class="nt">confidence_distribution</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">layout_blocks</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">uri</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">object://media-derived/claims/layout.json</span>
-<span class="w">      </span><span class="nt">includes_tables</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">      </span><span class="nt">coordinate_system</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">page_pixel_coordinates</span>
-<span class="w">    </span><span class="nt">visual_embeddings</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">uri</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">object://media-derived/claims/embeddings.parquet</span>
-<span class="w">      </span><span class="nt">embedding_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vision-embed-202606</span>
-<span class="w">      </span><span class="nt">index_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">optional_if_indexed</span>
-<span class="w">  </span><span class="nt">lineage</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">media_processing_pipeline_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mppr-claims-20260620-001</span>
-<span class="w">    </span><span class="nt">multimodal_workload_profile</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mwp-claims-document-review-202606</span>
-<span class="w">    </span><span class="nt">preprocessing_image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">registry/media-pipeline@sha256:example</span>
-<span class="w">    </span><span class="nt">security_scan</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">  </span><span class="nt">controls</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">encryption</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kms-key-enterprise-a</span>
-<span class="w">    </span><span class="nt">export_requires_approval</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">derived_artifact_delete_with_source</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">training_use</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">denied_by_default</span>
-<span class="w">  </span><span class="nt">usage</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">serving_requests</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">req-20260620-001</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">quality_gate_executions</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">mm-qge-claims-20260620</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">metering_events</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">mmme-20260620-001</span><span class="p p-Indicator">]</span>
-</code></pre></div>
+<pre><code class="language-yaml">media_artifact_manifest:
+  manifest_id: mam-claims-doc-20260620-001
+  source:
+    tenant: enterprise-a
+    application: claims-document-review
+    upload_id: upl-20260620-001
+    original_object:
+      uri: object://media/enterprise-a/claims/redacted.pdf
+      digest: sha256:original
+      media_type: application/pdf
+      data_classification: restricted
+      retention_policy: claims_doc_retention_v3
+      permission_snapshot: acl-snap-20260620-001
+  derived_artifacts:
+    page_images:
+      count: measured
+      uri_prefix: object://media-derived/claims/page-images/
+      digest_manifest: sha256:pages
+    ocr_text:
+      uri: object://media-derived/claims/ocr.jsonl
+      engine_profile: ocr-runtime-v6
+      language_hints: [zh, en]
+      confidence_distribution: measured
+    layout_blocks:
+      uri: object://media-derived/claims/layout.json
+      includes_tables: true
+      coordinate_system: page_pixel_coordinates
+    visual_embeddings:
+      uri: object://media-derived/claims/embeddings.parquet
+      embedding_model: vision-embed-202606
+      index_version: optional_if_indexed
+  lineage:
+    media_processing_pipeline_record: mppr-claims-20260620-001
+    multimodal_workload_profile: mwp-claims-document-review-202606
+    preprocessing_image: registry/media-pipeline@sha256:example
+    security_scan: pass
+  controls:
+    encryption: kms-key-enterprise-a
+    export_requires_approval: true
+    derived_artifact_delete_with_source: true
+    training_use: denied_by_default
+  usage:
+    serving_requests: [req-20260620-001]
+    quality_gate_executions: [mm-qge-claims-20260620]
+    metering_events: [mmme-20260620-001]
+</code></pre>
 <p>这个 manifest 让媒体文件不再是“对象存储里的一堆文件”。当用户质疑答案时，系统能从回答引用回到页码、布局块和 OCR 文本；当客户要求删除原始文件时，系统能找到所有派生对象和索引条目；当成本异常时，账本能知道某次请求消耗了多少页渲染、OCR、embedding、存储和模型推理；当评测失败时，第 13 章的多模态门禁能重放同一组派生产物，而不是依赖当时临时目录是否还存在。</p>
 <p><code>media_processing_pipeline_record</code> 则记录这次媒体流水线实际如何执行。Manifest 描述结果，pipeline record 描述过程：每个 stage 的输入、输出、runtime、耗时、失败、重试和资源消耗。很多多模态事故发生在模型之前，例如 PDF 解码库升级导致表格错位，OCR 语言识别错误导致关键字段缺失，视频抽帧策略改变导致漏掉目标帧。如果没有 pipeline record，团队会把所有问题归因给模型“看错了”，实际根因可能是派生产物已经错误。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">media_processing_pipeline_record</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">pipeline_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mppr-claims-20260620-001</span>
-<span class="w">  </span><span class="nt">manifest_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mam-claims-doc-20260620-001</span>
-<span class="w">  </span><span class="nt">stages</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">upload_admission</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">status</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">      </span><span class="nt">checks</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">content_type</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">size</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">tenant_quota</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">retention_policy</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">security_scan</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">status</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">      </span><span class="nt">scanner_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">media-scan-v4</span>
-<span class="w">    </span><span class="nt">page_render</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">status</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">      </span><span class="nt">runtime_image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pdf-renderer@sha256:example</span>
-<span class="w">      </span><span class="nt">pages_rendered</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">      </span><span class="nt">retries</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">ocr</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">status</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass_or_degraded</span>
-<span class="w">      </span><span class="nt">runtime_image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ocr-runtime@sha256:example</span>
-<span class="w">      </span><span class="nt">low_confidence_regions</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">      </span><span class="nt">output</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ocr_text</span>
-<span class="w">    </span><span class="nt">layout_analysis</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">status</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">      </span><span class="nt">tables_detected</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">      </span><span class="nt">output</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">layout_blocks</span>
-<span class="w">    </span><span class="nt">embedding</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">status</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">      </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vision-embed-202606</span>
-<span class="w">      </span><span class="nt">output</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">visual_embeddings</span>
-<span class="w">  </span><span class="nt">resource_usage</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">cpu_seconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">gpu_seconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured_if_used</span>
-<span class="w">    </span><span class="nt">storage_written_bytes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">queue_wait_ms_by_stage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">  </span><span class="nt">failure_semantics</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">partial_outputs_committed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true_or_false</span>
-<span class="w">    </span><span class="nt">safe_to_retry_from_stage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">cleanup_required</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true_or_false</span>
-</code></pre></div>
-<pre class="mermaid"><code>flowchart TB
-  Original["original media object"] --&gt; Manifest["media_artifact_manifest"]
-  Original --&gt; Pipeline["media_processing_pipeline_record"]
-  Pipeline --&gt; Pages["page images / frames"]
-  Pipeline --&gt; Text["OCR / ASR text"]
-  Pipeline --&gt; Layout["layout / tables / regions"]
-  Pipeline --&gt; Embed["visual/audio embeddings"]
-  Pages --&gt; Manifest
-  Text --&gt; Manifest
-  Layout --&gt; Manifest
-  Embed --&gt; Manifest
-  Manifest --&gt; Serving["multimodal serving"]
-  Manifest --&gt; Eval["multimodal_quality_gate_execution"]
-  Manifest --&gt; Meter["multimodal_metering_event"]
-  Manifest --&gt; Delete["retention / delete / audit"]</code></pre>
+<pre><code class="language-yaml">media_processing_pipeline_record:
+  pipeline_id: mppr-claims-20260620-001
+  manifest_id: mam-claims-doc-20260620-001
+  stages:
+    upload_admission:
+      status: pass
+      checks: [content_type, size, tenant_quota, retention_policy]
+    security_scan:
+      status: pass
+      scanner_version: media-scan-v4
+    page_render:
+      status: pass
+      runtime_image: pdf-renderer@sha256:example
+      pages_rendered: measured
+      retries: measured
+    ocr:
+      status: pass_or_degraded
+      runtime_image: ocr-runtime@sha256:example
+      low_confidence_regions: measured
+      output: ocr_text
+    layout_analysis:
+      status: pass
+      tables_detected: measured
+      output: layout_blocks
+    embedding:
+      status: pass
+      model: vision-embed-202606
+      output: visual_embeddings
+  resource_usage:
+    cpu_seconds: measured
+    gpu_seconds: measured_if_used
+    storage_written_bytes: measured
+    queue_wait_ms_by_stage: measured
+  failure_semantics:
+    partial_outputs_committed: true_or_false
+    safe_to_retry_from_stage: recorded
+    cleanup_required: true_or_false
+</code></pre>
+<p><img alt="图：33.4.1 工程实现" src="../../assets/diagrams/part-07-network-storage-chapter-33-ai-storage-06.svg" /></p>
 <p>媒体 manifest 还必须进入安全边界。原始文件和派生产物的敏感度不一定相同：缩略图可能暴露个人信息，OCR 文本可能比原 PDF 更容易被搜索和泄露，embedding 可能泄露语义信息，抽帧可能包含人脸或工牌。删除原始文件但保留 OCR、embedding 或帧索引，通常不满足真实删除要求。因此，<code>storage_security_boundary</code> 应要求 <code>derived_artifact_delete_with_source</code>、训练使用默认拒绝、导出审批、不可变审计和按租户 KMS key 加密。多模态系统最危险的地方，常常不是模型，而是派生产物被当成普通缓存长期留存。</p>
 <p>AI 存储还要提供 <code>storage_security_boundary</code>。训练数据、RAG 文档、checkpoint、模型权重、adapter、prompt log、trace 和 billing record 的敏感级别不同，访问者也不同。存储层不能只依赖上层应用“不要读错路径”，而要把命名空间、加密、KMS key、IAM/RBAC、审计、导出、保留和删除策略写成边界对象。尤其是 checkpoint 和模型 artifact，它们可能泄露训练数据特征或商业能力，不能被当作普通文件共享。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">storage_security_boundary</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">boundary_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ssb-model-and-training-prod</span>
-<span class="w">  </span><span class="nt">namespaces</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">dataset_raw</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">classification</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">restricted</span>
-<span class="w">      </span><span class="nt">allowed_principals</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">data-pipeline-prod</span><span class="p p-Indicator">]</span>
-<span class="w">      </span><span class="nt">export_requires_approval</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">checkpoint</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">classification</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">model_secret</span>
-<span class="w">      </span><span class="nt">allowed_principals</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">training-platform</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">model-release</span><span class="p p-Indicator">]</span>
-<span class="w">      </span><span class="nt">delete_requires_two_person_review</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">model_artifact</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">classification</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">model_secret</span>
-<span class="w">      </span><span class="nt">allowed_principals</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">model-registry</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">serving-control-plane</span><span class="p p-Indicator">]</span>
-<span class="w">      </span><span class="nt">signature_required</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">logs_and_trace</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">classification</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mixed_sensitive</span>
-<span class="w">      </span><span class="nt">redaction_required</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">controls</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">encryption_at_rest</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">    </span><span class="nt">kms_key_scope</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">per_tenant_or_per_domain</span>
-<span class="w">    </span><span class="nt">immutable_audit_log</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">    </span><span class="nt">lifecycle_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">versioned</span>
-<span class="w">    </span><span class="nt">break_glass_ttl</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_defined</span>
-</code></pre></div>
+<pre><code class="language-yaml">storage_security_boundary:
+  boundary_id: ssb-model-and-training-prod
+  namespaces:
+    dataset_raw:
+      classification: restricted
+      allowed_principals: [data-pipeline-prod]
+      export_requires_approval: true
+    checkpoint:
+      classification: model_secret
+      allowed_principals: [training-platform, model-release]
+      delete_requires_two_person_review: true
+    model_artifact:
+      classification: model_secret
+      allowed_principals: [model-registry, serving-control-plane]
+      signature_required: true
+    logs_and_trace:
+      classification: mixed_sensitive
+      redaction_required: true
+  controls:
+    encryption_at_rest: required
+    kms_key_scope: per_tenant_or_per_domain
+    immutable_audit_log: required
+    lifecycle_policy: versioned
+    break_glass_ttl: policy_defined
+</code></pre>
 <p>私有化和离线环境还需要 <code>offline_upgrade_rehearsal</code>。很多 AI Factory 产品在公有云环境里升级顺利，到了客户现场却失败，原因不是单个镜像坏了，而是离线 registry、模型 artifact、RAG 索引、缓存、数据库迁移、证书、KMS、对象存储路径和 GPU runtime baseline 没有作为一个整体演练。离线升级不能把“包能导入”当作成功标准，必须证明导入后服务能启动、旧数据能读、新旧模型能回滚、缓存不会复用过期内容、诊断包能导出。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">offline_upgrade_rehearsal</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">rehearsal_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">offline-upg-enterprise-a-202606</span>
-<span class="w">  </span><span class="nt">target_environment</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">deployment</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">private_ai_factory</span>
-<span class="w">    </span><span class="nt">network_mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">offline_or_restricted_egress</span>
-<span class="w">    </span><span class="nt">registry</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">customer_offline_registry</span>
-<span class="w">  </span><span class="nt">release_bundle</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">offline_release_bundle_manifest</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">orb-ai-factory-2026-06-enterprise-a</span>
-<span class="w">    </span><span class="nt">import_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">    </span><span class="nt">digest_reconciliation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">  </span><span class="nt">package_integrity</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">image_manifest</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">signed_and_digest_pinned</span>
-<span class="w">    </span><span class="nt">model_artifact_manifest</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">signed_and_digest_pinned</span>
-<span class="w">    </span><span class="nt">helm_or_kustomize_bundle</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">signed</span>
-<span class="w">    </span><span class="nt">sbom_and_vulnerability_report</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">included</span>
-<span class="w">  </span><span class="nt">storage_and_data_checks</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">dataset_manifest_compatibility</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass_if_training_or_rag</span>
-<span class="w">    </span><span class="nt">model_artifact_provenance</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">cache_invalidation_record_replay</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">rag_index_migration</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass_if_rag</span>
-<span class="w">    </span><span class="nt">database_migration_dry_run</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass_if_stateful</span>
-<span class="w">    </span><span class="nt">backup_restore_point</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">verified_before_upgrade</span>
-<span class="w">  </span><span class="nt">runtime_checks</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">compatibility_matrix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">gpu_container_runtime_report</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">representative_inference_endpoint</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">representative_training_or_finetuning_job</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass_if_supported</span>
-<span class="w">  </span><span class="nt">rollback_drill</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">service_version_rollback</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">artifact_pointer_rollback</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">cache_rewarm_after_rollback</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">data_migration_rollback_or_forward_fix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">documented</span>
-<span class="w">  </span><span class="nt">support_evidence</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">diagnostic_bundle_export</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">redaction_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">customer_approval_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">attached</span>
-</code></pre></div>
+<pre><code class="language-yaml">offline_upgrade_rehearsal:
+  rehearsal_id: offline-upg-enterprise-a-202606
+  target_environment:
+    deployment: private_ai_factory
+    network_mode: offline_or_restricted_egress
+    registry: customer_offline_registry
+  release_bundle:
+    offline_release_bundle_manifest: orb-ai-factory-2026-06-enterprise-a
+    import_record: required
+    digest_reconciliation: pass
+  package_integrity:
+    image_manifest: signed_and_digest_pinned
+    model_artifact_manifest: signed_and_digest_pinned
+    helm_or_kustomize_bundle: signed
+    sbom_and_vulnerability_report: included
+  storage_and_data_checks:
+    dataset_manifest_compatibility: pass_if_training_or_rag
+    model_artifact_provenance: pass
+    cache_invalidation_record_replay: pass
+    rag_index_migration: pass_if_rag
+    database_migration_dry_run: pass_if_stateful
+    backup_restore_point: verified_before_upgrade
+  runtime_checks:
+    compatibility_matrix: pass
+    gpu_container_runtime_report: pass
+    representative_inference_endpoint: pass
+    representative_training_or_finetuning_job: pass_if_supported
+  rollback_drill:
+    service_version_rollback: pass
+    artifact_pointer_rollback: pass
+    cache_rewarm_after_rollback: pass
+    data_migration_rollback_or_forward_fix: documented
+  support_evidence:
+    diagnostic_bundle_export: pass
+    redaction_policy: pass
+    customer_approval_record: attached
+</code></pre>
 <p>这个对象应归档到交付和 SRE 系统，而不是停留在项目群截图里。它回答三个关键问题：升级包是否完整可信，客户环境是否满足版本矩阵，失败时是否能回到可服务状态。对存储层来说，最重要的是 artifact 和 cache 的一致性：模型权重、tokenizer、chat template、RAG 索引和本地 NVMe cache 必须跟 release 指针一致；如果回滚只改控制面版本，却没有撤销旧 cache 或重新预热，就会出现“版本显示已回滚，实际仍加载旧权重或旧索引”的隐性故障。</p>
 <p>离线升级还要把“导入记录”作为一等证据。公有云发布时，平台可以查询中心 registry、对象存储和控制面；客户现场不一定允许远程访问，事后只能依赖现场导出的证据包。因此导入工具应在客户环境中生成 <code>offline_import_record</code>：记录离线包 manifest、目标 registry namespace、导入的镜像 digest、模型 artifact digest、chart 版本、配置 overlay、数据库 migration 版本、RAG index 版本、缓存预热结果和签名验证结果。它不是安装日志的替代品，而是用结构化字段证明现场状态可回放。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">offline_import_record</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">import_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">oir-enterprise-a-20260620-001</span>
-<span class="w">  </span><span class="nt">offline_release_bundle_manifest</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">orb-ai-factory-2026-06-enterprise-a</span>
-<span class="w">  </span><span class="nt">target</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">environment</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">customer_staging</span>
-<span class="w">    </span><span class="nt">registry_namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">customer-registry/ai-factory</span>
-<span class="w">    </span><span class="nt">storage_namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">customer-object/ai-factory</span>
-<span class="w">  </span><span class="nt">imported_artifacts</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">container_images</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">expected_digests</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">from_bundle_manifest</span>
-<span class="w">      </span><span class="nt">imported_digests</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">      </span><span class="nt">missing_or_extra</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">none</span>
-<span class="w">    </span><span class="nt">model_artifacts</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">weights_digest</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">verified</span>
-<span class="w">      </span><span class="nt">tokenizer_digest</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">verified</span>
-<span class="w">      </span><span class="nt">chat_template_digest</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">verified</span>
-<span class="w">    </span><span class="nt">rag_indices</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">index_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kb-index-202606</span>
-<span class="w">      </span><span class="nt">acl_snapshot_digest</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">verified_if_rag</span>
-<span class="w">    </span><span class="nt">database_migrations</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">planned</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">schema-202606-a</span><span class="p p-Indicator">]</span>
-<span class="w">      </span><span class="nt">executed</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">schema-202606-a</span><span class="p p-Indicator">]</span>
-<span class="w">      </span><span class="nt">rollback_plan</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">  </span><span class="nt">validation</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">signature_verification</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">cache_rewarm</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">representative_endpoint_smoke</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">diagnostic_bundle_export</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-</code></pre></div>
+<pre><code class="language-yaml">offline_import_record:
+  import_id: oir-enterprise-a-20260620-001
+  offline_release_bundle_manifest: orb-ai-factory-2026-06-enterprise-a
+  target:
+    environment: customer_staging
+    registry_namespace: customer-registry/ai-factory
+    storage_namespace: customer-object/ai-factory
+  imported_artifacts:
+    container_images:
+      expected_digests: from_bundle_manifest
+      imported_digests: measured
+      missing_or_extra: none
+    model_artifacts:
+      weights_digest: verified
+      tokenizer_digest: verified
+      chat_template_digest: verified
+    rag_indices:
+      index_version: kb-index-202606
+      acl_snapshot_digest: verified_if_rag
+    database_migrations:
+      planned: [schema-202606-a]
+      executed: [schema-202606-a]
+      rollback_plan: recorded
+  validation:
+    signature_verification: pass
+    cache_rewarm: pass
+    representative_endpoint_smoke: pass
+    diagnostic_bundle_export: pass
+</code></pre>
 <p>这个记录能把离线交付从“现场师傅装好了”变成可审计事实。若升级后出现模型加载旧权重，先对比 bundle manifest、import record、model registry pointer 和节点 cache residency；若 RAG 答案越权，先对比 RAG index digest、ACL snapshot 和导入时的迁移脚本；若回滚失败，先看 rollback plan 是否覆盖 schema、artifact pointer 和 cache rewarm。离线环境排障的第一原则是少猜，多对账。</p>
-<pre class="mermaid"><code>flowchart TB
-  Bundle["offline_release_bundle_manifest"] --&gt; Import["offline_import_record"]
-  Import --&gt; Registry["offline registry\nimage digests"]
-  Import --&gt; Artifact["model artifact store\nweights / tokenizer / template"]
-  Import --&gt; RAG["RAG index + ACL snapshot"]
-  Import --&gt; DB["database migration state"]
-  Registry --&gt; Smoke["runtime smoke"]
-  Artifact --&gt; Smoke
-  RAG --&gt; Smoke
-  DB --&gt; Smoke
-  Smoke --&gt; Rehearsal["offline_upgrade_rehearsal"]
-  Rehearsal --&gt; Cache["cache_residency / invalidation"]
-  Rehearsal --&gt; Rollback["rollback drill"]
-  Rehearsal --&gt; Support["redacted diagnostic export"]</code></pre>
+<p><img alt="图：33.4.1 工程实现" src="../../assets/diagrams/part-07-network-storage-chapter-33-ai-storage-07.svg" /></p>
 <p>这个边界对象能防止很多“存储便利性”演变成安全事故。研究人员不应直接从生产 checkpoint 目录复制权重到个人路径；推理节点不应加载未签名 artifact；RAG 索引构建不应把受限文档写进共享缓存；事故排查不应把未脱敏 trace 导出到普通对象桶。存储安全边界不是阻碍效率，而是让高价值数据的访问、复制、删除和导出可审计、可撤销、可解释。</p>
 <p>存储边界还应包含 <code>secret_boundary_evidence</code>。AI Factory 中的 secret 不只是 API key，也包括 KMS key、registry token、provider credential、model artifact signing key、object storage STS token、BMC/Redfish 凭据和临时 break-glass token。它们经常跨越 CI/CD、训练任务、推理服务、节点初始化和事故排查路径。如果 secret 边界只靠运维习惯维护，就会在镜像、日志、Notebook、对象存储或 trace 中泄露。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">secret_boundary_evidence</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">evidence_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sbe-20260620-001</span>
-<span class="w">  </span><span class="nt">scope</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">tenant</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enterprise-a</span>
-<span class="w">    </span><span class="nt">resource_pool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">inference-premium-a</span>
-<span class="w">    </span><span class="nt">release</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-large-202606</span>
-<span class="w">  </span><span class="nt">secrets</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">provider_api_key</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">storage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">secret_manager</span>
-<span class="w">      </span><span class="nt">mounted_as</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tmpfs_or_runtime_injection</span>
-<span class="w">      </span><span class="nt">logged</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prohibited</span>
-<span class="w">      </span><span class="nt">rotation_state</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">current</span>
-<span class="w">    </span><span class="nt">model_signing_key</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">storage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">hsm_or_kms</span>
-<span class="w">      </span><span class="nt">exportable</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-<span class="w">    </span><span class="nt">object_storage_token</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">ttl</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">short_lived</span>
-<span class="w">      </span><span class="nt">scope</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">read_model_artifact_only</span>
-<span class="w">  </span><span class="nt">checks</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">image_scan_for_secret</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">log_scan_for_secret</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">trace_redaction</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">break_glass_review</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass_if_used</span>
-</code></pre></div>
+<pre><code class="language-yaml">secret_boundary_evidence:
+  evidence_id: sbe-20260620-001
+  scope:
+    tenant: enterprise-a
+    resource_pool: inference-premium-a
+    release: af-chat-large-202606
+  secrets:
+    provider_api_key:
+      storage: secret_manager
+      mounted_as: tmpfs_or_runtime_injection
+      logged: prohibited
+      rotation_state: current
+    model_signing_key:
+      storage: hsm_or_kms
+      exportable: false
+    object_storage_token:
+      ttl: short_lived
+      scope: read_model_artifact_only
+  checks:
+    image_scan_for_secret: pass
+    log_scan_for_secret: pass
+    trace_redaction: pass
+    break_glass_review: pass_if_used
+</code></pre>
 <p>这个对象把 secret 从“配置项”提升为生产证据。模型服务能否访问第三方 provider、训练任务能否读取受限数据、推理节点能否拉取权重，都依赖 secret；同时这些 secret 一旦泄露，会直接变成数据、成本或供应链事故。准入和 PRR 应要求关键 secret 有边界证据，尤其是高敏租户、外部 provider 和模型签名链路。</p>
 <p>把数据和模型产物串起来，可以形成一条供应链图。它从 raw dataset 进入 dataset lineage 和 manifest，经过训练生成 checkpoint 和 restore drill，再经过转换、评测和签名生成 model artifact provenance，最终通过 artifact distribution、cache residency 和 cache invalidation 进入 serving。任何一个环节缺证据，模型发布就不可证明。</p>
-<pre class="mermaid"><code>flowchart LR
-  Raw["raw data / private data"] --&gt; Lineage["dataset_lineage_record"]
-  Lineage --&gt; Manifest["dataset_manifest"]
-  Manifest --&gt; Train["TrainingJob"]
-  Train --&gt; Ckpt["checkpoint_manifest"]
-  Ckpt --&gt; Drill["checkpoint_restore_drill"]
-  Drill --&gt; Prov["model_artifact_provenance"]
-  Prov --&gt; Dist["model_artifact_distribution"]
-  Dist --&gt; Cache["cache_residency"]
-  Cache --&gt; Serve["serving release"]
-  Dist --&gt; Invalid["cache_invalidation_record"]
-  Boundary["storage_security_boundary"] -. governs .-&gt; Lineage
-  Boundary -. governs .-&gt; Ckpt
-  Boundary -. governs .-&gt; Prov
-  Boundary -. governs .-&gt; Cache</code></pre>
+<p><img alt="图：33.4.1 工程实现" src="../../assets/diagrams/part-07-network-storage-chapter-33-ai-storage-08.svg" /></p>
 <p>这张图的读法是：存储层不是被动保存文件，而是保存供应链状态。训练异常、模型质量退化、安全撤销、缓存失效和成本归因，都沿这条链路查证。AI Factory 如果能让每个产物回答“来自哪里、谁批准、在哪里缓存、何时失效、能否恢复、成本归谁”，模型上线就从文件复制变成工程发布。</p>
 <p>第六步是把清理和成本做成自动化。平台应定期识别过期 checkpoint、孤儿缓存、无引用 artifact、超配额目录和异常增长租户，并在保留策略允许的范围内执行清理或发出审批。成本标签应从任务提交开始继承到存储路径，而不是月底人工追账。AI 存储的可持续性来自生命周期闭环：创建时有元数据，使用时有观测，结束后有清理，归档时有审计。</p>
 <p>实现时还要保留逃生通道。大型训练和紧急发布可能需要临时延长保留、固定缓存或提高配额，但这些例外必须有过期时间、审批记录和成本归属。没有例外机制，平台会被绕过；没有过期机制，例外会变成永久债务。好的存储平台不是禁止用户做特殊操作，而是让特殊操作可见、可审计、可回收。</p>

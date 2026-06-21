@@ -1,0 +1,11 @@
+stateDiagram-v2
+  [*] --> Detected
+  Detected --> Triaged: classify failure layer
+  Triaged --> Reproduced: replay with frozen artifacts
+  Reproduced --> Assigned: owner and fix layer selected
+  Assigned --> Fixed: model / prompt / RAG / tool / route / runtime
+  Fixed --> Retested: run regression suite
+  Retested --> GateUpdated: add or update gate case
+  GateUpdated --> Closed: pass and monitored
+  Retested --> Reopened: failure persists
+  Reopened --> Assigned

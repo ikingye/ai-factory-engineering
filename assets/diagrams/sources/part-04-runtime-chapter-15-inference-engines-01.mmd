@@ -1,0 +1,13 @@
+flowchart LR
+  Req["请求队列"] --> Scheduler["engine scheduler"]
+  Scheduler --> Batch["continuous batching"]
+  Batch --> Prefill["prefill executor"]
+  Batch --> Decode["decode executor"]
+  Prefill --> KV["KV Cache manager"]
+  Decode --> KV
+  Prefill --> Kernels["CUDA kernels"]
+  Decode --> Kernels
+  Kernels --> GPU["GPU / HBM"]
+  Decode --> Sampler["sampler"]
+  Sampler --> Stream["token streaming"]
+  Scheduler --> Metrics["metrics / traces"]

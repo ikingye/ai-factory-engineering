@@ -3839,30 +3839,9 @@
 <p>架构还应包含治理节奏。每日看告警和 incident，每周看变更和 error budget，每月看容量和成本，每季度看资源等级和架构债。没有固定节奏，SRE 会被突发事件牵着走，长期问题得不到处理。</p>
 <p>在实现上，SRE 架构需要统一事实源。SLO 平台、变更系统、incident 系统、容量系统和成本系统若各自维护对象名称，事故时就无法对齐同一个 model、tenant、cluster、node 或 GPU pool。统一事实源不一定是一个数据库，但必须有稳定的标识、事件时间线和关联规则。</p>
 <p>还要把人工流程转成机器可验证的门禁。例如变更申请写了“已验证”，系统应能看到具体基线结果；容量报告说“余量充足”，系统应能追溯使用的预测口径；事故复盘说“行动项完成”，系统应能关联到代码、配置或 runbook 更新。</p>
-<pre class="mermaid"><code>flowchart TB
-  SLO["SLO / SLA"] --&gt; ErrorBudget["Error Budget"]
-  ErrorBudget --&gt; Change["Change Management"]
-  Change --&gt; Deploy["升级 / 灰度 / 回滚"]
-  Observability["可观测性"] --&gt; Incident["Incident Response"]
-  Incident --&gt; Postmortem["复盘 / 行动项"]
-  Postmortem --&gt; Runbook["Runbook / 自动化"]
-  Capacity["容量运营"] --&gt; SLO
-  Cost["成本运营"] --&gt; Capacity
-  Runbook --&gt; Change
-  Cost --&gt; ErrorBudget</code></pre>
+<p><img alt="图：40.2.2 系统架构" src="../../assets/diagrams/part-09-reliability-observability-chapter-40-sre-operations-01.svg" /></p>
 <p>在 AI Factory 中，这个控制回路还要接入资源事实。SLO 违约不是单独的服务事件，可能来自 resource health、maintenance window、change safety、acceptance baseline 或 fault domain。更完整的可靠性回路如下：</p>
-<pre class="mermaid"><code>flowchart LR
-  SLOEvent["SLO / training failure / cost anomaly"] --&gt; Evidence["reliability_evidence"]
-  Evidence --&gt; Incident["incident_record"]
-  Evidence --&gt; Health["resource_health_record"]
-  Evidence --&gt; ChangeCase["change_safety_case"]
-  Evidence --&gt; Baseline["acceptance baseline"]
-  Evidence --&gt; FaultDomain["fault_domain_map"]
-  Incident --&gt; Budget["slo_budget_ledger"]
-  Budget --&gt; Policy["freeze / canary / isolate / reroute / add capacity"]
-  Policy --&gt; Scheduler["scheduler / gateway / resource pool"]
-  Scheduler --&gt; Metrics["observability and cost feedback"]
-  Metrics --&gt; SLOEvent</code></pre>
+<p><img alt="图：40.2.2 系统架构" src="../../assets/diagrams/part-09-reliability-observability-chapter-40-sre-operations-02.svg" /></p>
 <p>这张图表达的不是工具集成，而是治理顺序：先确认用户或生产能力是否受影响，再收集证据，再进入 incident、健康状态、变更安全、基线和故障域，最后由 error budget 和成本影响决定动作。缺少这个回路，SRE 很容易只处理告警，而不能改变调度、发布和资源治理。</p>
 <h2 id="403">40.3 关键技术<a class="headerlink" href="#403" title="Permanent link">&para;</a></h2>
 <h3 id="4031-slo">40.3.1 SLO<a class="headerlink" href="#4031-slo" title="Permanent link">&para;</a></h3>
@@ -3880,30 +3859,30 @@
 <p>对内 SLA 同样重要。平台团队可以向模型团队承诺资源池可用性，存储团队可以承诺 checkpoint 服务等级，网络团队可以承诺 fabric 基线。内部 SLA 能减少跨团队模糊地带，让依赖关系可管理。</p>
 <p>SLA 还要避免承诺无法控制的内容。若平台无法控制用户 prompt 长度、下游工具服务或客户侧网络，就不能把这些因素无条件纳入赔付口径。成熟的 SLA 会把可控范围、排除项、证据来源和争议处理写清楚，减少事故后的口径争夺。</p>
 <p>当 SLA 用于商业客户时，SRE 必须维护 <code>sla_credit_model</code> 的运行证据。它把第 5 章的服务等级承诺转成第 7 章可回放的赔付输入：哪些 SLI 参与计算，哪些请求排除，事故窗口如何界定，客户通知何时触发，credit 如何进入 invoice。SRE 不负责定价，但负责证明是否发生了平台责任范围内的违约。若没有这个证据，SLA 会退化成事故后的谈判。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">sla_operation_record</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">period</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2026-06</span>
-<span class="w">  </span><span class="nt">service_level</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">premium</span>
-<span class="w">  </span><span class="nt">sla_credit_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scm-enterprise-maas-premium-v1</span>
-<span class="w">  </span><span class="nt">observed_sli</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">availability</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">ttft_p99</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">streaming_success</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">metering_accuracy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">reconciled</span>
-<span class="w">  </span><span class="nt">events</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">incident_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">inc-20260620-ttft-001</span>
-<span class="w">      </span><span class="nt">reliability_evidence_bundle</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">reb-20260620-ttft-rack12</span>
-<span class="w">      </span><span class="nt">customer_visible</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">      </span><span class="nt">credit_evaluation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">      </span><span class="nt">sla_credit_replay</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scr-20260620-001</span>
-<span class="w">  </span><span class="nt">exclusions_reviewed</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">quota_reject</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">excluded</span>
-<span class="w">    </span><span class="nt">customer_cancel_before_first_token</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">excluded</span>
-<span class="w">    </span><span class="nt">planned_maintenance</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">no_impact</span>
-<span class="w">  </span><span class="nt">customer_communication</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">status_page_update</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">completed</span>
-<span class="w">    </span><span class="nt">tenant_notification</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">completed</span>
-<span class="w">    </span><span class="nt">billing_followup</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pending_or_completed</span>
-</code></pre></div>
+<pre><code class="language-yaml">sla_operation_record:
+  period: 2026-06
+  service_level: premium
+  sla_credit_model: scm-enterprise-maas-premium-v1
+  observed_sli:
+    availability: measured
+    ttft_p99: measured
+    streaming_success: measured
+    metering_accuracy: reconciled
+  events:
+    - incident_record: inc-20260620-ttft-001
+      reliability_evidence_bundle: reb-20260620-ttft-rack12
+      customer_visible: true
+      credit_evaluation: required
+      sla_credit_replay: scr-20260620-001
+  exclusions_reviewed:
+    quota_reject: excluded
+    customer_cancel_before_first_token: excluded
+    planned_maintenance: no_impact
+  customer_communication:
+    status_page_update: completed
+    tenant_notification: completed
+    billing_followup: pending_or_completed
+</code></pre>
 <p>这个对象让 SLA 运营和 incident 流程闭环。事故发生后，SRE 先止血和恢复，再通过 <code>sla_operation_record</code> 判断是否触发客户通知和 credit 评估；Billing 通过 <code>sla_credit_replay</code> 把 credit 落到账单；Token Factory 通过 <code>reliability_cost_ledger</code> 和 <code>commercial_pnl_ledger</code> 计算赔付对毛利的影响。这样 SLA 违约不会在 SRE、客服、财务之间反复转交，也不会被隐藏在“支持成本”里。</p>
 <h3 id="4033-error-budget">40.3.3 error budget<a class="headerlink" href="#4033-error-budget" title="Permanent link">&para;</a></h3>
 <p>Error budget 是允许系统在一定周期内消耗的错误预算。它把可靠性和迭代速度连接起来。如果预算充足，可以加快发布和优化；如果预算耗尽，应冻结高风险变更，优先修复稳定性。没有 error budget，团队很容易在“快发版”和“保稳定”之间用情绪争论。</p>
@@ -3920,108 +3899,101 @@
 <p>Incident 分级也很重要。影响核心推理、关键训练或大面积资源池的问题需要指挥体系和跨团队响应；低优任务失败可以走普通工单。分级不清会导致小事过度响应、大事响应不足。</p>
 <p>事故指挥应保持单一事实线。一个人负责时间线，一个人负责用户沟通，一个人负责技术协调，避免多个频道同时更新不同结论。AI Factory 事故跨团队多，若没有清晰角色，网络、平台、模型和硬件团队会各自行动，反而增加风险。</p>
 <p>Security incident 也应进入同一套 SRE 体系。AI Factory 常见安全事故包括 API Key 泄露、跨租户模型访问、第三方 provider 越权路由、prompt 或 response 日志泄露、RAG 文档权限绕过、Agent 工具越权、billing fraud、denial-of-wallet、GPU 隔离失败、观测系统越权查询、BMC/driver 管理面误操作。它们不一定表现为 5xx，却可能造成数据、成本和信任损失。</p>
-<pre class="mermaid"><code>flowchart LR
-  Detect["detect\nkey anomaly / policy deny spike / audit alert"] --&gt; Contain["contain\nrevoke / freeze / isolate / route block"]
-  Contain --&gt; Impact["tenant impact\nusage / data / model / resource"]
-  Impact --&gt; Evidence["freeze evidence\npolicy_decision / trace / audit"]
-  Evidence --&gt; Notify["notify\ntenant / security / legal / owner"]
-  Notify --&gt; Eradicate["eradicate\nfix policy / rotate / clean"]
-  Eradicate --&gt; Postmortem["postmortem\ncontrols / runbook / cost"]
-  Postmortem --&gt; Guardrail["new guardrail\nadmission / monitoring / budget"]</code></pre>
+<p><img alt="图：40.3.4 incident" src="../../assets/diagrams/part-09-reliability-observability-chapter-40-sre-operations-03.svg" /></p>
 <p>安全事故的止血动作和可靠性事故不同。Key 泄露要禁用凭据、冻结相关 usage、限制来源、提高审计采样；跨租户访问要立即阻断策略、冻结证据、评估数据暴露；GPU 隔离失败要隔离资源池、执行 clean-to-reuse、暂停共享调度；观测越权查询要撤销权限、保留查询记录、评估导出数据。安全 incident 的第一目标不是恢复吞吐，而是缩小暴露面和保全证据。</p>
 <p>安全 incident 也要计算成本。泄露 key 造成的 token、免费额度被刷、异常长上下文攻击、Agent 循环调用、隔离池停用、审计取证和客户赔付，都应进入 incident cost。这样安全治理才能和 Token Factory 经济模型连接，而不是只停留在合规报告。</p>
 <p>RAG 越权和 Agent 工具越权应使用专门的 <code>tool_security_incident_record</code> 或数据访问安全记录。它记录安全信号、涉及的身份、权限决策、工具执行、证据冻结、止血动作、影响评估和防复发门禁。这个对象的重点不是把所有事件都定性为严重事故，而是让高风险工具和检索链路有统一复盘格式。没有它，RAG 文档权限绕过会停留在知识库团队，Agent 工具越权会停留在应用团队，SRE 无法推动平台级控制面修复。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">tool_security_incident_record</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">incident_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tsi-20260620-0001</span>
-<span class="w">  </span><span class="nt">trigger</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">source</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">security_audit_event</span>
-<span class="w">    </span><span class="nt">symptom</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">high_risk_tool_policy_bypass_attempt</span>
-<span class="w">  </span><span class="nt">scope</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">tenant</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enterprise-a</span>
-<span class="w">    </span><span class="nt">application</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">support-copilot</span>
-<span class="w">    </span><span class="nt">agent_run</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">run-20260619-0001</span>
-<span class="w">    </span><span class="nt">affected_tools</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">create_refund_ticket</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">evidence</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">rag_agent_evidence_bundle</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">raeb-20260620-001</span>
-<span class="w">    </span><span class="nt">policy_decision_records</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sampled</span>
-<span class="w">    </span><span class="nt">agent_tool_execution_records</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">ater-20260620-0001</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">retrieval_permission_decisions</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">optional</span>
-<span class="w">    </span><span class="nt">tool_side_effect_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tsep-support-agent-prod</span>
-<span class="w">  </span><span class="nt">containment</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">actions</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">freeze_high_risk_tool</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">require_manual_approval</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">rotate_scoped_credential</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">route_or_model_change</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">optional</span>
-<span class="w">  </span><span class="nt">impact</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">data_exposure</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">none_or_under_review</span>
-<span class="w">    </span><span class="nt">external_side_effect</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prevented_or_executed</span>
-<span class="w">    </span><span class="nt">cost_impact</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">  </span><span class="nt">follow_up</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">policy_update_required</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">regression_case_required</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">prr_blocker_if_unresolved</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-</code></pre></div>
+<pre><code class="language-yaml">tool_security_incident_record:
+  incident_id: tsi-20260620-0001
+  trigger:
+    source: security_audit_event
+    symptom: high_risk_tool_policy_bypass_attempt
+  scope:
+    tenant: enterprise-a
+    application: support-copilot
+    agent_run: run-20260619-0001
+    affected_tools: [create_refund_ticket]
+  evidence:
+    rag_agent_evidence_bundle: raeb-20260620-001
+    policy_decision_records: sampled
+    agent_tool_execution_records: [ater-20260620-0001]
+    retrieval_permission_decisions: optional
+    tool_side_effect_policy: tsep-support-agent-prod
+  containment:
+    actions: [freeze_high_risk_tool, require_manual_approval, rotate_scoped_credential]
+    route_or_model_change: optional
+  impact:
+    data_exposure: none_or_under_review
+    external_side_effect: prevented_or_executed
+    cost_impact: calculated
+  follow_up:
+    policy_update_required: true
+    regression_case_required: true
+    prr_blocker_if_unresolved: true
+</code></pre>
 <p>安全复盘必须改变控制面。若事故来自 RAG 权限过滤缺失，应要求 <code>retrieval_permission_decision</code> 成为该知识库的强制证据；若来自工具副作用策略过宽，应更新 <code>tool_side_effect_policy</code> 并回放历史工具调用；若来自预算或 denial-of-wallet，应把 <code>agent_budget_ledger</code> 纳入 Gateway admission；若来自 trace 泄露，应修改 <code>data_boundary_policy</code> 和观测导出审批。安全 incident 的关闭条件不是“没有继续报警”，而是相关门禁已更新并通过回放验证。</p>
 <p>Denial-of-wallet 是 AI Factory 特有的成本型攻击或误用：攻击者不一定要拿到数据，只要用泄露 key、长上下文、长输出、Agent 循环、工具重试或昂贵 provider 路由快速消耗预算，就能造成经济损失和服务退化。它应像可用性事故一样进入 SRE 流程，因为它会烧掉 token、占用 GPU、触发限流并污染账单。平台应使用 <code>denial_of_wallet_incident_record</code> 记录攻击形态、预算消耗、止血动作和账单处理。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">denial_of_wallet_incident_record</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">incident_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dow-20260620-001</span>
-<span class="w">  </span><span class="nt">trigger</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">signal</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">abnormal_token_spend</span>
-<span class="w">    </span><span class="nt">detected_by</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">budget_anomaly_detector</span>
-<span class="w">  </span><span class="nt">scope</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">tenant</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enterprise-a</span>
-<span class="w">    </span><span class="nt">credentials</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">key_6f2c_redacted</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">models</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">af-chat-large</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">providers</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">internal</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">third_party_x_if_any</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">evidence</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">security_evidence_bundle</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">seb-20260620-001</span>
-<span class="w">    </span><span class="nt">policy_decision_records</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">    </span><span class="nt">metering_events</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">    </span><span class="nt">billing_hold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">hold-20260620-001</span>
-<span class="w">  </span><span class="nt">attack_or_misuse_pattern</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">long_context_amplification</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">observed</span>
-<span class="w">    </span><span class="nt">agent_loop</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">possible</span>
-<span class="w">    </span><span class="nt">provider_cost_amplification</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">denied_or_observed</span>
-<span class="w">  </span><span class="nt">containment</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">revoke_or_rotate_credentials</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">tighten_budget</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">disable_expensive_provider_route</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true_if_applicable</span>
-<span class="w">    </span><span class="nt">notify_tenant_owner</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">billing_resolution</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">disputed_usage_replay</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">billing_dispute_replay_id</span>
-<span class="w">    </span><span class="nt">cost_classification</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">malicious_or_user_error_or_platform_gap</span>
-</code></pre></div>
+<pre><code class="language-yaml">denial_of_wallet_incident_record:
+  incident_id: dow-20260620-001
+  trigger:
+    signal: abnormal_token_spend
+    detected_by: budget_anomaly_detector
+  scope:
+    tenant: enterprise-a
+    credentials: [key_6f2c_redacted]
+    models: [af-chat-large]
+    providers: [internal, third_party_x_if_any]
+  evidence:
+    security_evidence_bundle: seb-20260620-001
+    policy_decision_records: required
+    metering_events: required
+    billing_hold: hold-20260620-001
+  attack_or_misuse_pattern:
+    long_context_amplification: observed
+    agent_loop: possible
+    provider_cost_amplification: denied_or_observed
+  containment:
+    revoke_or_rotate_credentials: true
+    tighten_budget: true
+    disable_expensive_provider_route: true_if_applicable
+    notify_tenant_owner: true
+  billing_resolution:
+    disputed_usage_replay: billing_dispute_replay_id
+    cost_classification: malicious_or_user_error_or_platform_gap
+</code></pre>
 <p>这个记录把安全和成本治理连起来。若异常来自用户代码 bug，处理方式可能是预算和 SDK 保护；若来自 key 泄露，处理方式是凭据吊销、usage hold 和安全通知；若来自平台策略过宽，平台应承担部分损失并修复 Gateway admission。把 denial-of-wallet 写成 incident record，能避免它被误当成普通账单异常，也能把防护动作纳入 PRR。</p>
 <p>模型质量也会形成 incident。质量事故不一定有 5xx：新模型回答风格错误导致客服投诉，RAG 引用过期政策，Agent 工具轨迹反复失败，安全策略误拒核心业务，runtime 升级导致 JSON schema 失败率升高，都可能是生产事故。SRE 需要定义 <code>quality_incident_record</code>，把质量退化、影响面、回滚、样本沉淀和门禁更新纳入同一流程。否则质量问题会被当成“模型效果不好”的普通反馈，无法进入可靠性治理。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">quality_incident_record</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">incident_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qinc-20260619-0001</span>
-<span class="w">  </span><span class="nt">trigger</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">source</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">quality_telemetry_event</span>
-<span class="w">    </span><span class="nt">metric</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">citation_failure_rate</span>
-<span class="w">    </span><span class="nt">threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">guardrail_breach</span>
-<span class="w">  </span><span class="nt">scope</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">tenant</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enterprise-a</span>
-<span class="w">    </span><span class="nt">application</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">support-chat</span>
-<span class="w">    </span><span class="nt">model_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-large-202606</span>
-<span class="w">    </span><span class="nt">serving_quality_contract</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sqc-af-chat-20260619-r3</span>
-<span class="w">    </span><span class="nt">online_experiment</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">exp-support-model-20260619</span>
-<span class="w">    </span><span class="nt">online_experiment_guardrail</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">oeg-support-20260620</span>
-<span class="w">    </span><span class="nt">eval_slice_contract</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">esc-support-202606</span>
-<span class="w">  </span><span class="nt">impact</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">affected_requests</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">human_handoffs</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">low_quality_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">    </span><span class="nt">customer_visible</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">mitigation</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rollback_experiment_variant</span>
-<span class="w">    </span><span class="nt">route_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fallback_to_baseline_model</span>
-<span class="w">    </span><span class="nt">serving_rollback_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">srr-20260620-001</span>
-<span class="w">    </span><span class="nt">rollback_drill_status</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">valid</span>
-<span class="w">  </span><span class="nt">follow_up</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">quality_regression_records</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">qrr-20260619-0007</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">gate_update_required</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">golden_set_governance_review</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">    </span><span class="nt">human_feedback_evidence</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">hfe-support-20260620-001</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">owner_team</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">knowledge-platform</span>
-</code></pre></div>
+<pre><code class="language-yaml">quality_incident_record:
+  incident_id: qinc-20260619-0001
+  trigger:
+    source: quality_telemetry_event
+    metric: citation_failure_rate
+    threshold: guardrail_breach
+  scope:
+    tenant: enterprise-a
+    application: support-chat
+    model_version: af-chat-large-202606
+    serving_quality_contract: sqc-af-chat-20260619-r3
+    online_experiment: exp-support-model-20260619
+    online_experiment_guardrail: oeg-support-20260620
+    eval_slice_contract: esc-support-202606
+  impact:
+    affected_requests: measured
+    human_handoffs: measured
+    low_quality_tokens: calculated
+    customer_visible: true
+  mitigation:
+    action: rollback_experiment_variant
+    route_policy: fallback_to_baseline_model
+    serving_rollback_record: srr-20260620-001
+    rollback_drill_status: valid
+  follow_up:
+    quality_regression_records: [qrr-20260619-0007]
+    gate_update_required: true
+    golden_set_governance_review: required
+    human_feedback_evidence: [hfe-support-20260620-001]
+    owner_team: knowledge-platform
+</code></pre>
 <p>质量事故的止血动作包括冻结实验、回滚模型或 prompt、禁用某个路由 scorecard、把高风险任务切回基线模型、暂停 Agent 自动执行、临时提高人工接管、限制某类 RAG 索引或关闭 runtime 优化。质量事故的复盘输出必须进入 <code>quality_regression_record</code> 和 <code>quality_gate_record</code>，而不是只写“已优化 prompt”。关闭条件应包含复现、修复、复测、门禁更新和线上观察窗口。若事故发生在实验期间，还必须检查 <code>online_experiment_guardrail</code> 是否按规则冻结；若通过回滚止血，还必须检查 <code>serving_rollback_drill</code> 是否有效，避免事故后才发现回滚路径从未验证。</p>
 <h3 id="4035-change-management">40.3.5 change management<a class="headerlink" href="#4035-change-management" title="Permanent link">&para;</a></h3>
 <p>Change management 是变更管理。AI Factory 的高风险变更包括 driver、CUDA、NCCL、OFED、kernel、Kubernetes、GPU Operator、CNI、CSI、推理引擎、训练框架、模型版本、网关路由、网络配置、存储配置、镜像和调度策略。任何一个变化都可能影响训练、推理或资源池。</p>
@@ -4033,89 +4005,77 @@
 <p>安全相关变更应有专门门禁。Gateway auth/policy、RBAC、NetworkPolicy、KMS、日志保留、trace 脱敏、GPU Operator、MIG profile、RDMA/SR-IOV、runtime privilege profile、BMC/driver 管理权限，都可能改变租户边界。变更单必须说明受影响租户、数据等级、是否改变默认拒绝策略、是否需要回放历史请求、是否需要重新生成 entitlement 或 clean-to-reuse 基线。安全变更不能只按“功能发布”处理。</p>
 <p>质量相关变更也应有专门门禁。模型权重、prompt 模板、RAG 索引、rerank 模型、Agent 工具 schema、Gateway 路由 scorecard、serving quality contract、推理引擎配置和 safety policy 都可能改变用户可见质量。变更系统应要求绑定 <code>quality_gate_record</code>，灰度期间观察第 37 章的 <code>quality_telemetry_event</code>，并在护栏触发时自动冻结或回滚。质量变更不能只看错误率和延迟。</p>
 <p>容器 GPU runtime 变更应形成 <code>container_runtime_change_record</code>。它覆盖 containerd/CRI-O、runc、NVIDIA Container Toolkit、GPU device plugin <code>deviceListStrategy</code>、RuntimeClass、CDI spec 生成、NRI 插件、RDMA device plugin 和相关 admission 策略。这个记录的特殊性在于：它既可能导致容器完全起不来，也可能导致容器看到错误 GPU 或错误 NIC，后者比失败更危险。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">container_runtime_change_record</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">change_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">crc-gpu-runtime-20260620</span>
-<span class="w">  </span><span class="nt">scope</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">clusters</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">ai-prod-k8s</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">node_pools</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">h100-training</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">h100-inference</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">changed_components</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">containerd</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">unchanged</span>
-<span class="w">    </span><span class="nt">runc</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">changed</span>
-<span class="w">    </span><span class="nt">nvidia_container_toolkit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">changed</span>
-<span class="w">    </span><span class="nt">device_plugin_strategy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">envvar_to_cdi</span>
-<span class="w">    </span><span class="nt">runtimeclass_handler</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">unchanged</span>
-<span class="w">    </span><span class="nt">cdi_spec_generation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">changed</span>
-<span class="w">    </span><span class="nt">rdma_device_plugin</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">unchanged</span>
-<span class="w">  </span><span class="nt">required_evidence</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">oci_runtime_injection_diff</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu_device_visibility_reconciliation</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu_nic_topology_evidence_if_rdma</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">container_gpu_runtime_acceptance_matrix</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">representative_training_job</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">representative_inference_endpoint</span>
-<span class="w">  </span><span class="nt">stop_conditions</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">visible_device_mismatch</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">unassigned_gpu_visible</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cdi_resolution_failure</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rdma_in_container_failure</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nccl_or_ttft_regression</span>
-<span class="w">  </span><span class="nt">rollback</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">restore_previous_runtime_baseline</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">regenerate_previous_cdi_spec</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-</code></pre></div>
+<pre><code class="language-yaml">container_runtime_change_record:
+  change_id: crc-gpu-runtime-20260620
+  scope:
+    clusters: [ai-prod-k8s]
+    node_pools: [h100-training, h100-inference]
+  changed_components:
+    containerd: unchanged
+    runc: changed
+    nvidia_container_toolkit: changed
+    device_plugin_strategy: envvar_to_cdi
+    runtimeclass_handler: unchanged
+    cdi_spec_generation: changed
+    rdma_device_plugin: unchanged
+  required_evidence:
+    - oci_runtime_injection_diff
+    - gpu_device_visibility_reconciliation
+    - gpu_nic_topology_evidence_if_rdma
+    - container_gpu_runtime_acceptance_matrix
+    - representative_training_job
+    - representative_inference_endpoint
+  stop_conditions:
+    - visible_device_mismatch
+    - unassigned_gpu_visible
+    - cdi_resolution_failure
+    - rdma_in_container_failure
+    - nccl_or_ttft_regression
+  rollback:
+    restore_previous_runtime_baseline: true
+    regenerate_previous_cdi_spec: true
+</code></pre>
 <p>这个记录应自动失效第 38 章的 <code>container_gpu_runtime_baseline</code>。若变更从 envvar strategy 切到 CDI，所有相关节点至少要复测 device plugin 分配、OCI/CDI 注入、容器内 GPU UUID、RDMA 可见性和代表性 workload。SRE 不能只看 Pod 创建成功，因为错误设备可见性可能不会产生 5xx，却会破坏租户隔离、计费和性能归因。</p>
 <p>对客户可见的问题，还应先进入 <code>support_ticket_taxonomy</code>，再进入 incident、problem 或 change。很多平台把所有客户问题都叫工单，导致响应时钟、owner 路由、证据要求和赔付关系混在一起。AI Factory 的支持工单至少要区分 incident（服务中断或 SLO 违约）、request（配额、模型开通、交付咨询）、problem（反复出现但未根除的缺陷）、change（客户窗口内的升级或配置变更）、billing dispute（账单争议）和 security case（安全事件）。分类不是客服话术，而是控制后续证据链。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">support_ticket_taxonomy</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">taxonomy_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">support-taxonomy-ai-factory</span>
-<span class="w">  </span><span class="nt">categories</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">incident</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">examples</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">slo_breach</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">training_job_hang</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">private_endpoint_down</span><span class="p p-Indicator">]</span>
-<span class="w">      </span><span class="nt">required_evidence</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">reliability_evidence_bundle</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">diagnostic_bundle_sla</span><span class="p p-Indicator">]</span>
-<span class="w">      </span><span class="nt">owner_routing</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sre_or_product_oncall</span>
-<span class="w">    </span><span class="nt">request</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">examples</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">quota_increase</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">model_enablement</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">new_project</span><span class="p p-Indicator">]</span>
-<span class="w">      </span><span class="nt">required_evidence</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">customer_onboarding_evidence</span><span class="p p-Indicator">]</span>
-<span class="w">      </span><span class="nt">owner_routing</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">platform_ops_or_customer_success</span>
-<span class="w">    </span><span class="nt">problem</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">examples</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">repeated_nccl_hang</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">recurring_model_load_slow</span><span class="p p-Indicator">]</span>
-<span class="w">      </span><span class="nt">required_evidence</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">incident_records</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">baseline_history</span><span class="p p-Indicator">]</span>
-<span class="w">      </span><span class="nt">owner_routing</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">domain_owner</span>
-<span class="w">    </span><span class="nt">change</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">examples</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">private_upgrade_window</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">routing_policy_change</span><span class="p p-Indicator">]</span>
-<span class="w">      </span><span class="nt">required_evidence</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">change_safety_case</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">offline_upgrade_rehearsal_if_private</span><span class="p p-Indicator">]</span>
-<span class="w">      </span><span class="nt">owner_routing</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">release_manager</span>
-<span class="w">    </span><span class="nt">billing_dispute</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">examples</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">unexpected_token_charge</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">sla_credit_claim</span><span class="p p-Indicator">]</span>
-<span class="w">      </span><span class="nt">required_evidence</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">billing_dispute_replay</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">sla_credit_replay</span><span class="p p-Indicator">]</span>
-<span class="w">      </span><span class="nt">owner_routing</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">billing_ops</span>
-<span class="w">    </span><span class="nt">security_case</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">examples</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">api_key_leak</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">trace_export_concern</span><span class="p p-Indicator">]</span>
-<span class="w">      </span><span class="nt">required_evidence</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">security_evidence_bundle</span><span class="p p-Indicator">]</span>
-<span class="w">      </span><span class="nt">owner_routing</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">security_oncall</span>
-<span class="w">  </span><span class="nt">severity</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">sev1</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">customer_visible_outage_or_security_exposure</span>
-<span class="w">    </span><span class="nt">sev2</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">degraded_service_or_blocked_production_workload</span>
-<span class="w">    </span><span class="nt">sev3</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">workaround_available_or_limited_scope</span>
-<span class="w">    </span><span class="nt">sev4</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">question_or_planned_request</span>
-<span class="w">  </span><span class="nt">clocks</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">response</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">severity_defined</span>
-<span class="w">    </span><span class="nt">diagnostic_bundle_collection</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">diagnostic_bundle_sla</span>
-<span class="w">    </span><span class="nt">mitigation_update</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">severity_defined</span>
-</code></pre></div>
+<pre><code class="language-yaml">support_ticket_taxonomy:
+  taxonomy_id: support-taxonomy-ai-factory
+  categories:
+    incident:
+      examples: [slo_breach, training_job_hang, private_endpoint_down]
+      required_evidence: [reliability_evidence_bundle, diagnostic_bundle_sla]
+      owner_routing: sre_or_product_oncall
+    request:
+      examples: [quota_increase, model_enablement, new_project]
+      required_evidence: [customer_onboarding_evidence]
+      owner_routing: platform_ops_or_customer_success
+    problem:
+      examples: [repeated_nccl_hang, recurring_model_load_slow]
+      required_evidence: [incident_records, baseline_history]
+      owner_routing: domain_owner
+    change:
+      examples: [private_upgrade_window, routing_policy_change]
+      required_evidence: [change_safety_case, offline_upgrade_rehearsal_if_private]
+      owner_routing: release_manager
+    billing_dispute:
+      examples: [unexpected_token_charge, sla_credit_claim]
+      required_evidence: [billing_dispute_replay, sla_credit_replay]
+      owner_routing: billing_ops
+    security_case:
+      examples: [api_key_leak, trace_export_concern]
+      required_evidence: [security_evidence_bundle]
+      owner_routing: security_oncall
+  severity:
+    sev1: customer_visible_outage_or_security_exposure
+    sev2: degraded_service_or_blocked_production_workload
+    sev3: workaround_available_or_limited_scope
+    sev4: question_or_planned_request
+  clocks:
+    response: severity_defined
+    diagnostic_bundle_collection: diagnostic_bundle_sla
+    mitigation_update: severity_defined
+</code></pre>
 <p>分类后的工单应进入统一时间线。一个 Sev1 incident 需要 <code>reliability_evidence_bundle</code> 和客户沟通节奏；一个 billing dispute 需要冻结 metering event、policy decision 和 invoice line；一个 private upgrade change 需要引用 <code>release_train_record</code>、<code>lts_support_policy</code> 和 <code>offline_upgrade_rehearsal</code>。这样支持体系就不会只依赖“谁熟悉这个客户”，而是依赖可复用的证据对象。长期看，taxonomy 还能反向暴露产品问题：如果某类 request 经常升级成 incident，说明 onboarding、配额或文档能力不足；如果 field patch 工单过多，说明 release train 和 LTS 规则失控。</p>
-<pre class="mermaid"><code>flowchart TB
-  Ticket["customer ticket"] --&gt; Classify["support_ticket_taxonomy\ncategory + severity"]
-  Classify --&gt; Evidence["diagnostic_bundle_sla\nfreeze and redact evidence"]
-  Evidence --&gt; Incident["incident\nreliability evidence + mitigation"]
-  Evidence --&gt; Change["change\nrelease train + upgrade rehearsal"]
-  Evidence --&gt; Billing["billing dispute\nmetering replay + SLA credit"]
-  Evidence --&gt; Security["security case\nsecurity evidence bundle"]
-  Incident --&gt; Timeline["customer communication timeline"]
-  Change --&gt; Timeline
-  Billing --&gt; Timeline
-  Security --&gt; Timeline
-  Timeline --&gt; Review["postmortem / problem record\nproduct backlog"]
-  Review --&gt; Policy["release / LTS / support policy update"]</code></pre>
+<p><img alt="图：40.3.5 change management" src="../../assets/diagrams/part-09-reliability-observability-chapter-40-sre-operations-04.svg" /></p>
 <p>这条流程把客户支持从“接单响应”变成生产控制面的一部分。分类决定谁响应和什么时钟启动，诊断包 SLA 决定哪些证据先冻结，后续分支再进入 incident、change、billing 或 security 流程。最后的 policy update 很重要：如果同类工单反复出现，问题不应只停留在客服知识库，而要反馈到 release、LTS、onboarding、计费或产品门禁。</p>
 <h3 id="4036-upgrade">40.3.6 upgrade<a class="headerlink" href="#4036-upgrade" title="Permanent link">&para;</a></h3>
 <p>Upgrade 是升级过程。AI Factory 升级难在版本矩阵：driver、CUDA、NCCL、cuDNN、OFED、kernel、Kubernetes、GPU Operator、container runtime、training framework、inference engine、model image 和 CNI/CSI 都有兼容关系。升级一个组件，可能影响整条训练或推理路径。</p>
@@ -4126,69 +4086,69 @@
 <p>升级计划还要明确“谁被保护”。核心生产推理、长周期预训练、实验任务和空闲资源池的升级策略不应相同。越靠近业务承诺，越需要灰度、回滚和冗余；越靠近实验资源，越适合先暴露兼容问题。用资源等级安排升级顺序，比简单按节点编号滚动更可靠。</p>
 <p>对底层升级而言，最容易低估的是回滚成本。驱动、kernel、OFED 或 Kubernetes 组件回退后，节点状态、容器镜像、设备插件和缓存可能仍留有新版本痕迹。回滚演练必须验证业务路径，而不是只验证命令执行成功。</p>
 <p>升级还需要 <code>field_patch_governance</code>。Field patch 是对特定客户、特定资源池或特定事故窗口下发的紧急补丁，不是常规 release train。它的存在有合理场景，例如安全漏洞、阻断性 bug、私有化客户无法等待下一列车；但它也是长期运维最大的分叉来源。没有治理的 field patch 会让现场版本脱离 LTS 策略，后续升级、诊断和赔付都无法解释。因此补丁必须有准入条件、过期时间、客户审批、回归证据和合回 release train 的要求。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">field_patch_governance</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">patch_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fp-enterprise-a-runtime-20260620</span>
-<span class="w">  </span><span class="nt">eligibility</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">allowed_reasons</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">critical_security</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">sev1_blocker</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">data_loss_prevention</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">disallowed_reasons</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">feature_request</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">unvalidated_performance_tuning</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">scope</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">customers_or_pools</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">enterprise-a-private</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">components</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">model_serving_runtime</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">expires_at</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_defined</span>
-<span class="w">    </span><span class="nt">baseline_constraints</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">source_release_train</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-baseline-2026-06</span>
-<span class="w">      </span><span class="nt">offline_release_bundle_manifest</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">orb-ai-factory-2026-06-enterprise-a</span>
-<span class="w">      </span><span class="nt">supported_import_records</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">oir-enterprise-a-20260620-001</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">required_approvals</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">product_owner</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">    </span><span class="nt">sre_owner</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">    </span><span class="nt">security_owner</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required_if_security_or_data_boundary</span>
-<span class="w">    </span><span class="nt">customer_approval</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required_if_customer_environment</span>
-<span class="w">  </span><span class="nt">package</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">delta_manifest</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">signed</span>
-<span class="w">    </span><span class="nt">rollback_bundle</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">included</span>
-<span class="w">    </span><span class="nt">compatibility_matrix_delta</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">attached</span>
-<span class="w">    </span><span class="nt">install_precheck</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">included</span>
-<span class="w">    </span><span class="nt">post_install_validation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">included</span>
-<span class="w">  </span><span class="nt">validation</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">targeted_regression</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">diagnostic_bundle_export</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">offline_upgrade_rehearsal_update</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required_if_private</span>
-<span class="w">  </span><span class="nt">merge_back</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">release_train_target</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">next_eligible_train</span>
-<span class="w">    </span><span class="nt">lts_backport_decision</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">unsupported_after_expiry</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-</code></pre></div>
+<pre><code class="language-yaml">field_patch_governance:
+  patch_id: fp-enterprise-a-runtime-20260620
+  eligibility:
+    allowed_reasons: [critical_security, sev1_blocker, data_loss_prevention]
+    disallowed_reasons: [feature_request, unvalidated_performance_tuning]
+  scope:
+    customers_or_pools: [enterprise-a-private]
+    components: [model_serving_runtime]
+    expires_at: policy_defined
+    baseline_constraints:
+      source_release_train: gpu-baseline-2026-06
+      offline_release_bundle_manifest: orb-ai-factory-2026-06-enterprise-a
+      supported_import_records: [oir-enterprise-a-20260620-001]
+  required_approvals:
+    product_owner: required
+    sre_owner: required
+    security_owner: required_if_security_or_data_boundary
+    customer_approval: required_if_customer_environment
+  package:
+    delta_manifest: signed
+    rollback_bundle: included
+    compatibility_matrix_delta: attached
+    install_precheck: included
+    post_install_validation: included
+  validation:
+    targeted_regression: pass
+    diagnostic_bundle_export: pass
+    offline_upgrade_rehearsal_update: required_if_private
+  merge_back:
+    release_train_target: next_eligible_train
+    lts_backport_decision: recorded
+    unsupported_after_expiry: true
+</code></pre>
 <p>Field patch 的关键控制点是“临时性”。它可以用于止血，但不能成为新基线的隐式来源。每个 patch 都应自动创建后续任务：合回主干、进入下一列 release train、更新 LTS backport 决策、刷新客户现场验收记录，或在到期前迁移到受支持版本。如果补丁无法合回，SRE 和商业团队必须看到持续支持成本，并把它计入 <code>commercial_pnl_ledger</code>。这能防止私有化交付被无数一次性补丁拖垮。</p>
 <p>现场补丁还需要单独的执行记录。治理对象说明“能不能打补丁”，执行记录说明“补丁实际上怎么打、打到了哪里、验证结果是什么”。私有化环境尤其如此：客户可能先在 staging 导入，再在生产窗口导入；某些节点或服务可能因为维护窗口错过；补丁可能依赖某个离线包和导入状态。没有执行记录，后续排障只能看到“客户版本号包含 fp-xxx”，却不知道哪些 pod、镜像、chart、模型 artifact、数据库迁移和 cache 状态真实改变。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">field_patch_execution_record</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">execution_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fper-enterprise-a-runtime-20260620-001</span>
-<span class="w">  </span><span class="nt">field_patch_governance</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fp-enterprise-a-runtime-20260620</span>
-<span class="w">  </span><span class="nt">target</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">environment</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">customer_production</span>
-<span class="w">    </span><span class="nt">support_ticket</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">inc-enterprise-a-sev1-017</span>
-<span class="w">    </span><span class="nt">maintenance_window</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mw-enterprise-a-20260620</span>
-<span class="w">  </span><span class="nt">precheck</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">offline_import_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">oir-enterprise-a-20260620-001</span>
-<span class="w">    </span><span class="nt">running_digest_match</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">backup_or_restore_point</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">verified_if_stateful</span>
-<span class="w">    </span><span class="nt">affected_services_drained</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">  </span><span class="nt">applied_delta</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">container_images</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">model-serving-runtime@sha256</span><span class="p p-Indicator">:</span><span class="nv">patched</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">charts_or_configs</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">serving-runtime-values@sha256</span><span class="p p-Indicator">:</span><span class="nv">patched</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">database_migration</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">none_or_recorded</span>
-<span class="w">    </span><span class="nt">cache_invalidation_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">generated_if_artifact_or_template_changed</span>
-<span class="w">  </span><span class="nt">validation</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">representative_endpoint_smoke</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">gpu_container_runtime_report</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">unchanged_or_pass</span>
-<span class="w">    </span><span class="nt">diagnostic_bundle_export</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">rollback_test_in_staging</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">  </span><span class="nt">closure</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">customer_confirmation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">expiry_timer_started</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">merge_back_issue</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">linked</span>
-<span class="w">    </span><span class="nt">commercial_pnl_ledger</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">support_cost_append</span>
-</code></pre></div>
+<pre><code class="language-yaml">field_patch_execution_record:
+  execution_id: fper-enterprise-a-runtime-20260620-001
+  field_patch_governance: fp-enterprise-a-runtime-20260620
+  target:
+    environment: customer_production
+    support_ticket: inc-enterprise-a-sev1-017
+    maintenance_window: mw-enterprise-a-20260620
+  precheck:
+    offline_import_record: oir-enterprise-a-20260620-001
+    running_digest_match: pass
+    backup_or_restore_point: verified_if_stateful
+    affected_services_drained: pass
+  applied_delta:
+    container_images: [model-serving-runtime@sha256:patched]
+    charts_or_configs: [serving-runtime-values@sha256:patched]
+    database_migration: none_or_recorded
+    cache_invalidation_record: generated_if_artifact_or_template_changed
+  validation:
+    representative_endpoint_smoke: pass
+    gpu_container_runtime_report: unchanged_or_pass
+    diagnostic_bundle_export: pass
+    rollback_test_in_staging: pass
+  closure:
+    customer_confirmation: recorded
+    expiry_timer_started: true
+    merge_back_issue: linked
+    commercial_pnl_ledger: support_cost_append
+</code></pre>
 <p>这个记录把补丁从“某人修了一下”变成可审计变更。若补丁只修改控制面配置，不应假装覆盖了镜像和缓存；若补丁修改 tokenizer、template 或 runtime，必须同步生成 cache invalidation 和计量风险评估；若补丁无法在下一列 release train 合回，必须在到期前触发产品、SRE 和商业复审。现场补丁越多，越要依赖机器可读记录，而不是依赖微信群或会议纪要。</p>
 <h3 id="4037-capacity-operation">40.3.7 capacity operation<a class="headerlink" href="#4037-capacity-operation" title="Permanent link">&para;</a></h3>
 <p>Capacity operation 是容量运营。它回答未来需要多少 GPU、哪种 GPU、多少网络和存储、哪个集群先扩、资源如何在训练和推理之间分配、哪些资源要预留给故障和峰值。AI 容量运营不能只看 GPU utilization，因为高利用率可能伴随排队长、SLA 差和恢复能力不足。</p>
@@ -4198,57 +4158,57 @@
 <p>容量运营还要区分可用容量和可交付容量。库存里的 GPU、已安装的 GPU、通过准入的 GPU、满足拓扑的 GPU、可用于某租户的 GPU，并不是同一个数字。预测和承诺必须使用正确口径。</p>
 <p>容量运营也要关注碎片。GPU 总量充足不代表能启动 512 卡训练；某个模型副本需要同节点多卡，也不能由零散 GPU 满足。容量系统应同时展示总量、连续拓扑域、资源等级、租户配额和故障保留，否则“还有很多 GPU”会变成误导性结论。</p>
 <p>物理扩容还应进入容量运营例会。每批新资源都应有 <code>capacity_activation_record</code>，展示 planned、installed、accepted、allocatable 和 limited 的数量，以及限制来自 power、cooling、fabric、storage、BMC 还是准入。容量团队不应把采购到货当作产能上线，也不应把已安装服务器当作可售资源。AI Factory 的容量口径应以 workload-fit capacity 为准。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">capacity_activation_review</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">period</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">weekly</span>
-<span class="w">  </span><span class="nt">batches</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">capacity_activation_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dc-a-rack-12-2026-06</span>
-<span class="w">      </span><span class="nt">planned_gpu</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">      </span><span class="nt">installed_gpu</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">      </span><span class="nt">accepted_gpu</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">      </span><span class="nt">allocatable_gpu</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">      </span><span class="nt">limited_gpu</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">cooling_limited</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">        </span><span class="nt">power_limited</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">        </span><span class="nt">derated</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">        </span><span class="nt">fabric_limited</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">        </span><span class="nt">storage_limited</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">      </span><span class="nt">active_derating_records</span><span class="p">:</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">derate-rack12-20260620-001</span>
-<span class="w">      </span><span class="nt">active_cooling_degradation_records</span><span class="p">:</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cool-deg-20260620-002</span>
-<span class="w">      </span><span class="nt">business_commitment</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">can_sell_premium_inference</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">        </span><span class="nt">can_schedule_large_training</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">        </span><span class="nt">can_accept_new_reservation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_decision</span>
-</code></pre></div>
+<pre><code class="language-yaml">capacity_activation_review:
+  period: weekly
+  batches:
+    - capacity_activation_record: dc-a-rack-12-2026-06
+      planned_gpu: recorded
+      installed_gpu: recorded
+      accepted_gpu: calculated
+      allocatable_gpu: calculated
+      limited_gpu:
+        cooling_limited: calculated
+        power_limited: calculated
+        derated: calculated
+        fabric_limited: calculated
+        storage_limited: calculated
+      active_derating_records:
+        - derate-rack12-20260620-001
+      active_cooling_degradation_records:
+        - cool-deg-20260620-002
+      business_commitment:
+        can_sell_premium_inference: true
+        can_schedule_large_training: true
+        can_accept_new_reservation: policy_decision
+</code></pre>
 <p>这个 review 的价值是让交付、SRE、平台和业务使用同一口径。若某批 GPU 已安装但因为液冷 failover 未通过只能 limited，上线计划就应调整；若 rack 可跑推理但不适合大训练，销售或内部资源承诺也要相应限制。容量运营不是月底看利用率，而是持续把物理交付转成可用资源产品。</p>
 <p>Capacity review 还要区分“未激活”和“已激活但降额”。前者通常是交付、验收或资源池流程问题；后者是运行态 power/cooling/fabric/storage 约束。<code>capacity_derating_record</code> 和 <code>cooling_degradation_record</code> 应在例会上被逐项关闭：是否仍然影响 workload-fit capacity，是否需要延后销售承诺，是否造成训练重排，是否已经完成 thermal soak 和基线复测。若降额持续存在，容量计划必须用 limited capacity 重新计算，而不是继续引用安装 GPU 数。</p>
 <p>容量运营还应维护 <code>capacity_commitment_guard</code>。它把资源池事实转成能否对业务、销售或内部训练计划承诺的机器规则。很多组织的问题不是完全不知道容量受限，而是承诺流程没有消费这些限制：销售仍按 installed GPU 售卖，训练排期仍按 allocatable GPU 规划，SRE 却知道 open derating 和 cooling degradation 没关。Guard 的作用是让容量承诺必须引用 workload-fit 证据。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">capacity_commitment_guard</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">guard_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ccg-20260620-training-prod</span>
-<span class="w">  </span><span class="nt">scope</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">resource_pool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">training-prod-h100</span>
-<span class="w">    </span><span class="nt">workload_slices</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">large_distributed_training</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">checkpoint_heavy_training</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">required_inputs</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">capacity_activation_review</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">current</span>
-<span class="w">    </span><span class="nt">workload_fit_capacity_gate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass_for_required_slice</span>
-<span class="w">    </span><span class="nt">open_capacity_derating_records</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">none_for_required_capacity</span>
-<span class="w">    </span><span class="nt">open_cooling_degradation_records</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">none_for_required_capacity</span>
-<span class="w">    </span><span class="nt">physical_capacity_activation_matrix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">fabric_change_acceptance_matrix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass_if_recent_fabric_change</span>
-<span class="w">    </span><span class="nt">storage_composite_regression_gate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass_if_checkpoint_heavy</span>
-<span class="w">    </span><span class="nt">energy_ledger_window</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recent</span>
-<span class="w">  </span><span class="nt">decisions</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">accept_new_reservation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true_or_false</span>
-<span class="w">    </span><span class="nt">allow_large_training_queue_admission</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true_or_false</span>
-<span class="w">    </span><span class="nt">sell_premium_inference_capacity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true_or_false</span>
-<span class="w">    </span><span class="nt">require_capacity_risk_register</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true_if_conditional</span>
-<span class="w">  </span><span class="nt">stop_conditions</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">workload_fit_capacity_below_commitment</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">thermal_full_load_soak_expired</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">open_derating_record_for_target_rack</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">energy_ledger_tokens_w_regression_unexplained</span>
-</code></pre></div>
+<pre><code class="language-yaml">capacity_commitment_guard:
+  guard_id: ccg-20260620-training-prod
+  scope:
+    resource_pool: training-prod-h100
+    workload_slices: [large_distributed_training, checkpoint_heavy_training]
+  required_inputs:
+    capacity_activation_review: current
+    workload_fit_capacity_gate: pass_for_required_slice
+    open_capacity_derating_records: none_for_required_capacity
+    open_cooling_degradation_records: none_for_required_capacity
+    physical_capacity_activation_matrix: pass
+    fabric_change_acceptance_matrix: pass_if_recent_fabric_change
+    storage_composite_regression_gate: pass_if_checkpoint_heavy
+    energy_ledger_window: recent
+  decisions:
+    accept_new_reservation: true_or_false
+    allow_large_training_queue_admission: true_or_false
+    sell_premium_inference_capacity: true_or_false
+    require_capacity_risk_register: true_if_conditional
+  stop_conditions:
+    - workload_fit_capacity_below_commitment
+    - thermal_full_load_soak_expired
+    - open_derating_record_for_target_rack
+    - energy_ledger_tokens_w_regression_unexplained
+</code></pre>
 <p>这个 guard 能把容量会议从人肉协调变成可审计决策。若 guard 拒绝新 reservation，原因必须是具体证据缺口，例如 large training 的 workload-fit GPU 不足、thermal soak 过期、fabric baseline 失效或 cooling degradation 未关闭。业务可以选择降低承诺、接受 limited canary 或等待修复，但不能把“看起来还有 GPU”当作产能事实。</p>
 <h3 id="4038-cost-operation">40.3.8 cost operation<a class="headerlink" href="#4038-cost-operation" title="Permanent link">&para;</a></h3>
 <p>Cost operation 是成本运营。AI Factory 的成本包括 GPU 折旧或租赁、电力、制冷、网络、存储、软件、运维、机房、失败重跑和机会成本。推理服务最终关注 cost per token、revenue per token、tokens/W 和毛利；训练关注 GPU 小时、实验效率、失败率、checkpoint 成本和模型 ROI。</p>
@@ -4263,158 +4223,132 @@
 <p>工程实现可以从三类模板开始。第一类是 SLO 模板，定义服务、指标、窗口、目标、排除项、owner 和告警。第二类是 change request 模板，定义范围、风险、验证、灰度、停止条件和回滚。第三类是 incident 模板，定义影响面、时间线、止血、根因、行动项和复发防止。模板让 SRE 流程可重复。</p>
 <p>变更系统应接入观测和准入。高风险变更提交后，系统自动检查 error budget、最近 incident、目标资源池状态和必要验证项；灰度期间自动观察 SLO、GPU、NCCL、storage、model quality 和 cost；触发停止条件时自动阻止扩大范围。变更不是审批流，而是风险控制系统。</p>
 <p>SRE 还需要周/月度运营节奏。每周看 incident、error budget、变更、容量水位和高风险资源；每月看成本、利用率、SLO 趋势、模型增长、采购交付和技术债。AI Factory 的运营不能只在事故时发生，平时的节奏决定事故时的韧性。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">change_request</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">upgrade-nccl-baseline</span>
-<span class="w">  </span><span class="nt">scope</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">clusters</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;training-canary&quot;</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">nodes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">16</span>
-<span class="w">  </span><span class="nt">risk</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">level</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">high</span>
-<span class="w">    </span><span class="nt">components</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;driver&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;cuda&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;nccl&quot;</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">validation</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu_burn_in</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nccl_test</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">representative_training_job</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">checkpoint_restore</span>
-<span class="w">  </span><span class="nt">rollback</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">method</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">restore_previous_image</span>
-<span class="w">    </span><span class="nt">max_time</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2h</span>
-<span class="w">  </span><span class="nt">stop_conditions</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nccl_bandwidth_regression</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">training_failure_rate_increase</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu_xid_spike</span>
-<span class="w">  </span><span class="nt">linked_safety_case</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">chg-gpu-baseline-20260619</span>
-<span class="w">  </span><span class="nt">baseline_invalidation</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nccl_baseline</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">container_gpu_runtime_baseline</span>
-</code></pre></div>
+<pre><code class="language-yaml">change_request:
+  title: upgrade-nccl-baseline
+  scope:
+    clusters: [&quot;training-canary&quot;]
+    nodes: 16
+  risk:
+    level: high
+    components: [&quot;driver&quot;, &quot;cuda&quot;, &quot;nccl&quot;]
+  validation:
+    - gpu_burn_in
+    - nccl_test
+    - representative_training_job
+    - checkpoint_restore
+  rollback:
+    method: restore_previous_image
+    max_time: 2h
+  stop_conditions:
+    - nccl_bandwidth_regression
+    - training_failure_rate_increase
+    - gpu_xid_spike
+  linked_safety_case: chg-gpu-baseline-20260619
+  baseline_invalidation:
+    - nccl_baseline
+    - container_gpu_runtime_baseline
+</code></pre>
 <p>质量变更请求可以使用同一框架，但验证项不同：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">quality_change_request</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rollout-support-model-202606</span>
-<span class="w">  </span><span class="nt">scope</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">tenants</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">enterprise-a</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">applications</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">support-chat</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">task_slices</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">policy_lookup</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">rag_citation</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">linked_records</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">quality_gate_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qg-af-chat-20260619</span>
-<span class="w">    </span><span class="nt">quality_gate_execution</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qge-af-chat-20260620-001</span>
-<span class="w">    </span><span class="nt">eval_slice_contract</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">esc-support-202606</span>
-<span class="w">    </span><span class="nt">golden_set_governance_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gsg-support-202606</span>
-<span class="w">    </span><span class="nt">eval_contamination_invalidation_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">none_open</span>
-<span class="w">    </span><span class="nt">judge_drift_calibration_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">jdcr-support-20260620-001</span>
-<span class="w">    </span><span class="nt">quality_feedback_intake_pipeline</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qfip-support-202606</span>
-<span class="w">    </span><span class="nt">serving_quality_contract</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sqc-af-chat-20260619-r3</span>
-<span class="w">    </span><span class="nt">online_experiment_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">exp-support-model-20260619</span>
-<span class="w">    </span><span class="nt">online_experiment_guardrail</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">oeg-support-20260620</span>
-<span class="w">    </span><span class="nt">serving_rollback_drill</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">srd-af-chat-20260620</span>
-<span class="w">  </span><span class="nt">validation</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">offline_quality_gate</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">eval_slice_contract_coverage</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">golden_set_governance_valid</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">no_open_eval_contamination_invalidation</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">judge_drift_calibrated_or_gate_rerun</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">feedback_intake_correlation_healthy</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">protocol_contract_test</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">token_drift_test</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">canary_quality_telemetry</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rollback_drill_valid</span>
-<span class="w">  </span><span class="nt">stop_conditions</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">citation_failure_rate_increase</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">complaint_rate_increase</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">safety_false_allow</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cost_per_successful_answer_regression</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">feedback_replayability_drop</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gate_evidence_invalidated</span>
-<span class="w">  </span><span class="nt">rollback</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">model_or_route</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">baseline_model</span>
-<span class="w">    </span><span class="nt">prompt_template</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">previous_version</span>
-</code></pre></div>
+<pre><code class="language-yaml">quality_change_request:
+  title: rollout-support-model-202606
+  scope:
+    tenants: [enterprise-a]
+    applications: [support-chat]
+    task_slices: [policy_lookup, rag_citation]
+  linked_records:
+    quality_gate_record: qg-af-chat-20260619
+    quality_gate_execution: qge-af-chat-20260620-001
+    eval_slice_contract: esc-support-202606
+    golden_set_governance_record: gsg-support-202606
+    eval_contamination_invalidation_record: none_open
+    judge_drift_calibration_record: jdcr-support-20260620-001
+    quality_feedback_intake_pipeline: qfip-support-202606
+    serving_quality_contract: sqc-af-chat-20260619-r3
+    online_experiment_record: exp-support-model-20260619
+    online_experiment_guardrail: oeg-support-20260620
+    serving_rollback_drill: srd-af-chat-20260620
+  validation:
+    - offline_quality_gate
+    - eval_slice_contract_coverage
+    - golden_set_governance_valid
+    - no_open_eval_contamination_invalidation
+    - judge_drift_calibrated_or_gate_rerun
+    - feedback_intake_correlation_healthy
+    - protocol_contract_test
+    - token_drift_test
+    - canary_quality_telemetry
+    - rollback_drill_valid
+  stop_conditions:
+    - citation_failure_rate_increase
+    - complaint_rate_increase
+    - safety_false_allow
+    - cost_per_successful_answer_regression
+    - feedback_replayability_drop
+    - gate_evidence_invalidated
+  rollback:
+    model_or_route: baseline_model
+    prompt_template: previous_version
+</code></pre>
 <p>质量变更系统的责任是阻止“证据不充分的发布”。如果 <code>eval_slice_contract</code> 没覆盖目标任务，变更应退回评测设计；如果 <code>eval_contamination_invalidation_record</code> 仍 open，门禁结果不能用于高价值发布；如果 judge drift 未回放，自动评测阈值需要重标定或 gate 重跑；如果 <code>quality_feedback_intake_pipeline</code> 关联 trace 和 replay 的比例下降，线上灰度会失去学习能力；如果 online experiment guardrail 没有硬停止规则，灰度不应进入外部客户；如果 rollback drill 失效，发布只能进入低风险 shadow 或内部 canary。SRE 的角色不是重新评测模型，而是确认质量证据足以承担生产风险。</p>
 <p>工程实现还应把模板嵌入工具。变更系统自动生成验证项，incident 系统自动拉取诊断包，容量系统自动给出水位预测。模板如果只存在文档里，执行质量会随人波动。</p>
 <p>还要实现 <code>break_glass_access_record</code>。事故中 SRE 可能需要临时查看高敏 trace、登录节点、访问 BMC、解除资源隔离或修改 Gateway 策略。Break-glass 不是禁止，而是要求临时、最小、可审计、自动吊销和事后复核。没有 break-glass 机制，团队要么在事故中没有权限止血，要么长期保留过大权限。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">break_glass_access_record</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">record_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bga-20260619-0001</span>
-<span class="w">  </span><span class="nt">incident_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">inc-20260619-security-01</span>
-<span class="w">  </span><span class="nt">actor</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sre-oncall-a</span>
-<span class="w">  </span><span class="nt">requested_scope</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">systems</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">gateway-policy</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">observability-sensitive-trace</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">tenants</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">enterprise-a</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">resources</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">trace-abc</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">policy_decision_record</span><span class="p p-Indicator">:</span><span class="nv">pdr-20260619-0001</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">justification</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">contain suspected credential leak</span>
-<span class="w">  </span><span class="nt">approval</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">approver</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">security-incident-commander</span>
-<span class="w">    </span><span class="nt">expires_at</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_defined_short_ttl</span>
-<span class="w">  </span><span class="nt">controls</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">session_recording</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">    </span><span class="nt">command_audit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-<span class="w">    </span><span class="nt">export_disabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">auto_revoke</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">post_review</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">required</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">reviewer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">security-owner</span>
-<span class="w">    </span><span class="nt">outcome</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pending</span>
-</code></pre></div>
+<pre><code class="language-yaml">break_glass_access_record:
+  record_id: bga-20260619-0001
+  incident_id: inc-20260619-security-01
+  actor: sre-oncall-a
+  requested_scope:
+    systems: [gateway-policy, observability-sensitive-trace]
+    tenants: [enterprise-a]
+    resources: [trace-abc, policy_decision_record:pdr-20260619-0001]
+  justification: contain suspected credential leak
+  approval:
+    approver: security-incident-commander
+    expires_at: policy_defined_short_ttl
+  controls:
+    session_recording: required
+    command_audit: required
+    export_disabled: true
+    auto_revoke: true
+  post_review:
+    required: true
+    reviewer: security-owner
+    outcome: pending
+</code></pre>
 <p>Break-glass 记录应和 <code>security_audit_event</code> 关联。事后复盘不仅要看事故根因，还要看临时权限是否合理、是否超范围、是否按时吊销、是否需要把临时动作产品化为自动化工具。临时权限如果没有复核，会逐渐变成永久后门。</p>
 <p>SLO 和 error budget 也应落成账本，而不是只在 dashboard 上画曲线。<code>slo_budget_ledger</code> 记录预算被什么事件消耗、影响哪个资源池或模型、是否与变更或维护相关、消耗是否转化为成本：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">slo_budget_ledger</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">period</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2026-06</span>
-<span class="w">  </span><span class="nt">scope</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">service</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">maas-chat-completions</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-large</span>
-<span class="w">    </span><span class="nt">tier</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">premium</span>
-<span class="w">  </span><span class="nt">objective</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">metric</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ttft_p99</span>
-<span class="w">    </span><span class="nt">target</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_defined</span>
-<span class="w">    </span><span class="nt">allowed_error_budget</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">  </span><span class="nt">burn_events</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">incident_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">inc-20260619-ttft-rack12</span>
-<span class="w">      </span><span class="nt">budget_burn</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">      </span><span class="nt">cause_class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">change_regression</span>
-<span class="w">      </span><span class="nt">linked_change</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">chg-gpu-baseline-20260619</span>
-<span class="w">      </span><span class="nt">linked_fault_domain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dc-a/rack-12</span>
-<span class="w">      </span><span class="nt">customer_visible</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">      </span><span class="nt">reliability_cost</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">failed_or_slow_requests</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">        </span><span class="nt">wasted_gpu_hours</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">        </span><span class="nt">compensation_or_credit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated_if_applicable</span>
-<span class="w">  </span><span class="nt">policy_state</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">release_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">canary_only</span>
-<span class="w">    </span><span class="nt">infra_change_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">freeze_high_risk</span>
-<span class="w">    </span><span class="nt">capacity_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">add_hot_spare_or_reroute</span>
-</code></pre></div>
+<pre><code class="language-yaml">slo_budget_ledger:
+  period: 2026-06
+  scope:
+    service: maas-chat-completions
+    model: af-chat-large
+    tier: premium
+  objective:
+    metric: ttft_p99
+    target: policy_defined
+    allowed_error_budget: calculated
+  burn_events:
+    - incident_id: inc-20260619-ttft-rack12
+      budget_burn: calculated
+      cause_class: change_regression
+      linked_change: chg-gpu-baseline-20260619
+      linked_fault_domain: dc-a/rack-12
+      customer_visible: true
+      reliability_cost:
+        failed_or_slow_requests: measured
+        wasted_gpu_hours: calculated
+        compensation_or_credit: calculated_if_applicable
+  policy_state:
+    release_policy: canary_only
+    infra_change_policy: freeze_high_risk
+    capacity_policy: add_hot_spare_or_reroute
+</code></pre>
 <p>这个账本让 error budget 真正约束系统行为。预算消耗来自变更回归，就应收紧同类变更；来自容量不足，就应进入容量运营；来自 degraded 资源反复回流，就应修资源池和准入；来自模型版本回归，就应调整发布门禁。预算若不能改变策略，就只是事故统计。</p>
 <p>SRE 控制面应消费第 37、38、41、44 章的事实对象，而不是只消费告警。<code>reliability_evidence_bundle</code> 说明这次预算燃烧的现场证据，<code>baseline_invalidation_record</code> 说明哪些资源能力暂时不可信，<code>capacity_activation_record</code> 说明可用产能是否足够，<code>reliability_cost_ledger</code> 说明事故和预防成本的经济影响，<code>production_readiness_review</code> 决定能否继续扩大发布。把这些对象放在同一个控制回路里，SRE 才能对变更、容量和上线节奏施加真实约束。</p>
-<pre class="mermaid"><code>flowchart TB
-  Evidence["reliability_evidence_bundle"] --&gt; Incident["incident_record"]
-  Evidence --&gt; Budget["slo_budget_ledger"]
-  Invalidation["baseline_invalidation_record"] --&gt; Pool["resource pool limited state"]
-  Capacity["capacity_activation_record"] --&gt; CapacityPolicy["capacity policy"]
-  Budget --&gt; Policy["release / change / capacity policy"]
-  Incident --&gt; Cost["reliability_cost_ledger"]
-  Cost --&gt; Policy
-  Pool --&gt; PRR["production_readiness_review"]
-  CapacityPolicy --&gt; PRR
-  Policy --&gt; PRR
-  PRR --&gt; Action["approve canary / block / rollback / add capacity"]</code></pre>
+<p><img alt="图：40.4.1 工程实现" src="../../assets/diagrams/part-09-reliability-observability-chapter-40-sre-operations-05.svg" /></p>
 <p>这个控制回路的关键是自动化和可解释同时存在。自动化负责在 baseline 失效时限制高风险 workload，在 error budget 快速燃烧时冻结高风险变更，在 capacity activation 不足时阻止新增承诺；可解释性负责告诉业务为什么被限制、需要补哪项证据、恢复条件是什么。SRE 不应成为“最后签字的人”，而应让系统根据事实对象提前阻止错误动作。</p>
 <p>质量事故也应消耗 error budget，但口径要独立于可用性。一个模型持续返回低质量答案，HTTP 可用性可能仍然达标，却已经伤害用户任务成功率和客户信任。SRE 可以为核心应用定义 quality SLO，例如任务成功率、引用正确率、工具轨迹成功率、人工接管率或投诉率，并把严重质量回归写入 <code>slo_budget_ledger</code>。这样模型质量会影响发布节奏和变更策略，而不是只影响离线评测报告。</p>
 <p>质量事故的控制回路应和技术事故同级。<code>quality_evidence_bundle</code> 冻结线上质量现场，<code>rag_agent_evidence_bundle</code> 补充 RAG 权限、context、Agent 工具和预算证据，<code>quality_gate_execution</code> 说明发布前门禁依据，<code>eval_slice_contract</code> 和 <code>golden_set_governance_record</code> 说明评测覆盖和样本可信度，<code>online_experiment_guardrail</code> 说明实验止血规则，<code>routing_quality_decision_record</code> 说明 Gateway 为什么选择某个模型，<code>serving_rollback_record</code> 和 <code>serving_rollback_drill</code> 说明如何止血以及回滚能力是否被预演，<code>quality_cost_ledger</code> 说明低质量 token 的经济影响。SRE 不能只问“是否 5xx”，而要问“用户任务是否成功，质量预算是否被消耗，是否需要冻结模型或路由变更”。</p>
-<pre class="mermaid"><code>flowchart TB
-  QAlert["quality SLO / feedback spike"] --&gt; QEvidence["quality_evidence_bundle"]
-  QEvidence --&gt; RAEB["rag_agent_evidence_bundle"]
-  QEvidence --&gt; QIncident["quality_incident_record"]
-  QEvidence --&gt; QBudget["quality error budget"]
-  RAEB --&gt; QIncident
-  Gate["quality_gate_execution"] --&gt; QIncident
-  Slice["eval_slice_contract / golden set governance"] --&gt; QIncident
-  Guardrail["online_experiment_guardrail"] --&gt; QIncident
-  Route["routing_quality_decision_record"] --&gt; QIncident
-  QIncident --&gt; Rollback["serving_rollback_record / route freeze"]
-  Drill["serving_rollback_drill"] --&gt; Rollback
-  QIncident --&gt; Cost["quality_cost_ledger"]
-  Cost --&gt; Policy["release and routing policy"]
-  QBudget --&gt; Policy
-  Policy --&gt; PRR["production_readiness_review"]</code></pre>
+<p><img alt="图：40.4.1 工程实现" src="../../assets/diagrams/part-09-reliability-observability-chapter-40-sre-operations-06.svg" /></p>
 <p>这条回路让质量问题进入生产治理。若 canary 期间 citation failure 上升，系统应先冻结放量和收集 evidence bundle，再决定回滚 release、调整 Gateway 路由或打开 regression；若质量成本高于预期，路由 scorecard 应降低该模型在对应 task slice 的权重；若 quality gate execution 使用的评测集没有覆盖线上失败样本，评测集 lineage 和 regression record 必须更新。质量事故的结论必须改变门禁或路由，否则就会复发。</p>
 <p>第四类工程工作是建立运行例会的数据包。周报不应手工拼图，而应自动生成：本周 SLO、error budget、incident、变更、容量水位、成本异常、行动项状态和下周风险。SRE 会议讨论的是决策和风险，不是临时找数据。</p>
 <p>第五类工程工作是把 SRE 规则接入调度和发布。error budget 耗尽时限制高风险发布，资源池 degraded 时降低可调度等级，容量水位低时拒绝新增大任务承诺，成本异常时触发归因分析。规则只有进入控制面，才真正改变系统行为。</p>

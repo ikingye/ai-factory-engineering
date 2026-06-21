@@ -1,0 +1,15 @@
+flowchart TB
+  Dev["开发者 / 应用"] --> API["OpenAI-compatible API / SDK"]
+  API --> Key["API Key / Auth"]
+  Key --> Tenant["租户 / 项目 / 配额"]
+  Tenant --> Catalog["模型目录"]
+  Tenant --> Router["请求路由"]
+  Router --> EndpointA["模型服务 A"]
+  Router --> EndpointB["模型服务 B"]
+  Router --> EndpointC["私有模型服务"]
+  Router --> Meter["token 计量"]
+  Meter --> Billing["计费 / 成本分摊"]
+  Router --> Obs["日志 / 指标 / Trace"]
+  EndpointA --> GPU["推理资源池"]
+  EndpointB --> GPU
+  EndpointC --> GPU

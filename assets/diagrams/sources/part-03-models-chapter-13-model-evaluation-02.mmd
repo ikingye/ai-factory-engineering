@@ -1,0 +1,11 @@
+flowchart TB
+  Feedback["online feedback\n投诉 / 点踩 / 人工接管"] --> Triage["quality triage"]
+  Triage --> Regression["quality_regression_record"]
+  Regression --> Dataset["eval_dataset_manifest\n回归集 / 盲测集 / 任务切片"]
+  Dataset --> EvalRun["offline eval / judge / human review"]
+  EvalRun --> Gate["quality_gate_record"]
+  Gate --> Release["serving release / model registry"]
+  Release --> Experiment["online_experiment_record\ncanary / A-B"]
+  Experiment --> Routing["routing_quality_scorecard"]
+  Routing --> Cost["quality_cost_ledger"]
+  Cost --> Triage

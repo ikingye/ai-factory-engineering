@@ -1,0 +1,10 @@
+flowchart LR
+  Upload["upload / scan"] --> Ledger["multimodal_cost_ledger"]
+  OCR["OCR / ASR / layout / frames"] --> Ledger
+  Encode["vision/audio encoder\nembedding"] --> Ledger
+  LLM["LLM inference\ntext tokens"] --> Ledger
+  Store["artifact retention\nderived objects"] --> Ledger
+  Review["human review\nif required"] --> Ledger
+  Ledger --> Unit["unit economics\nper page / minute / successful task"]
+  Ledger --> Pricing["pricing / quota / product limits"]
+  Ledger --> PRR["multimodal PRR gate"]

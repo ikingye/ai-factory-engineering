@@ -1,0 +1,9 @@
+flowchart LR
+  Cong["congestion_fault_tree_execution"] --> Cost["network_incident_cost_record"]
+  Critical["communication_critical_path_record"] --> Cost
+  Rail["rail_balance_report"] --> Cost
+  Ckpt["checkpoint_overlap_evidence"] --> Cost
+  Cost --> NetworkLedger["network_cost_ledger"]
+  Cost --> Reliability["reliability_cost_ledger"]
+  Cost --> ROI["training_roi_ledger"]
+  Cost --> PRR["fabric_change_prr_drill update"]

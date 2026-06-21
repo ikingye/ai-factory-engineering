@@ -3811,19 +3811,7 @@
 <p>这套架构的关键不是组件数量，而是数据语义能否保真。文档解析如果丢失标题、表格、代码块和页面结构，后续 chunk 再合理也只能处理残缺文本；metadata 如果没有记录 ACL、更新时间和来源，检索结果就无法做权限过滤和引用审计；索引如果没有版本，embedding 模型升级后就无法判断新旧向量是否混用；在线 trace 如果没有记录召回候选和最终 context，就无法解释答案质量。RAG 的系统架构首先是证据链架构。</p>
 <p>部署时还要避免把所有能力压进同一个服务。文档处理和索引构建适合离线或准实时流水线；在线检索和 rerank 需要低延迟和稳定容量；context assembly 需要懂 token 预算和 prompt 模板；LLM 服务需要控制 prefill、decode 和 KV Cache。把这些职责拆清楚，才能分别扩容、验收和排障。小规模系统可以合并部署，但逻辑边界仍应保留。</p>
 <p>RAG 架构还要处理“证据变化速度”和“服务稳定性”的矛盾。企业文档随时可能更新，但索引重建、embedding 生成和缓存刷新需要时间；如果每次更新立即影响线上，系统可能不稳定；如果更新太慢，答案又会过期。常见做法是使用索引版本、灰度发布和回滚机制：新索引先在评测集和小流量上验证，再切换线上查询；出现质量回退时，可以回到旧索引。索引也应像模型版本一样被管理。</p>
-<pre class="mermaid"><code>flowchart LR
-  U["用户问题"] --&gt; Q["query rewrite / intent"]
-  Q --&gt; E["online embedding"]
-  E --&gt; VDB["vector database"]
-  Q --&gt; KW["keyword search"]
-  VDB --&gt; C["候选 chunks"]
-  KW --&gt; C
-  C --&gt; F["metadata / ACL filter"]
-  F --&gt; R["rerank"]
-  R --&gt; P["context assembly"]
-  P --&gt; LLM["LLM 推理"]
-  LLM --&gt; A["答案 + 引用"]
-  Docs["文档 / 网页 / PDF / 工单"] --&gt; Parse["解析清洗"] --&gt; Chunk["chunking"] --&gt; Embed["离线 embedding"] --&gt; VDB</code></pre>
+<p><img alt="图：2.2.2 系统架构" src="../../assets/diagrams/part-01-applications-chapter-02-rag-01.svg" /></p>
 <h2 id="23">2.3 关键技术<a class="headerlink" href="#23" title="Permanent link">&para;</a></h2>
 <h3 id="231-rag">2.3.1 RAG 的基本流程<a class="headerlink" href="#231-rag" title="Permanent link">&para;</a></h3>
 <p>RAG 的基本流程可以从数据接入开始。系统首先把文档、网页、PDF、数据库记录、工单、知识库页面和代码文件导入，解析成统一文本与结构化 metadata。随后进行清洗、去重、权限标注和版本记录，再把长文档切成 chunk。每个 chunk 会生成 embedding，并写入向量索引；关键词索引、对象存储和元数据存储也可能同时更新。这个阶段决定了 RAG 是否有高质量、可追溯、可权限过滤的知识底座。</p>
@@ -3867,277 +3855,253 @@
 <p>上线流程应包含索引发布和服务发布两类变更。索引发布要验证文档数量、chunk 数、embedding 版本、过滤字段、评测集召回率和回滚路径；服务发布要验证在线延迟、rerank 容量、prompt 模板、引用格式和账单字段。两类变更最好不要无控制地同时进行，否则质量波动时很难定位原因。对于高风险知识库，可以让新索引先服务内部用户或 shadow traffic，再逐步放量。</p>
 <p>工程实现还要明确降级策略。向量库不可用时，是返回无答案、退化到关键词检索，还是直接失败；rerank 超时时，是使用粗召回结果，还是拒绝请求；检索结果过多时，是截断、摘要，还是转为异步任务。这些策略应按应用风险配置，并写入 trace。没有降级语义，RAG 在依赖服务抖动时会表现成随机慢、随机错，很难被用户和平台接受。</p>
 <p>下面的 YAML 是简化示例，说明需要保留哪些语义。实际系统可把原文放在对象存储，把 metadata 放在数据库，把向量放在向量库，把 trace 写入可观测平台。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">document</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">doc-123</span>
-<span class="w">  </span><span class="nt">source</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">confluence</span>
-<span class="w">  </span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">GPU 集群准入流程</span>
-<span class="w">  </span><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2026-06-18</span>
-<span class="w">  </span><span class="nt">acl</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">team-ai-infra</span><span class="p p-Indicator">]</span>
+<pre><code class="language-yaml">document:
+  id: doc-123
+  source: confluence
+  title: GPU 集群准入流程
+  version: 2026-06-18
+  acl: [team-ai-infra]
 
-<span class="nt">chunk</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">chunk-123-05</span>
-<span class="w">  </span><span class="nt">document_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">doc-123</span>
-<span class="w">  </span><span class="nt">heading_path</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;运维&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;准入&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;NCCL</span><span class="nv"> </span><span class="s">test&quot;</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">text_hash</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sha256-example</span>
-<span class="w">  </span><span class="nt">embedding_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">text-embedding-example</span>
-<span class="w">  </span><span class="nt">metadata</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">page</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">4</span>
-<span class="w">    </span><span class="nt">source_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">doc-123</span>
+chunk:
+  id: chunk-123-05
+  document_id: doc-123
+  heading_path: [&quot;运维&quot;, &quot;准入&quot;, &quot;NCCL test&quot;]
+  text_hash: sha256-example
+  embedding_model: text-embedding-example
+  metadata:
+    page: 4
+    source_id: doc-123
 
-<span class="nt">retrieval_trace</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">query_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">q-001</span>
-<span class="w">  </span><span class="nt">vector_candidates</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">50</span>
-<span class="w">  </span><span class="nt">keyword_candidates</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">20</span>
-<span class="w">  </span><span class="nt">filtered_by_acl</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">12</span>
-<span class="w">  </span><span class="nt">rerank_input</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30</span>
-<span class="w">  </span><span class="nt">context_chunks</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">chunk-123-05</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">chunk-456-02</span><span class="p p-Indicator">]</span>
-</code></pre></div>
+retrieval_trace:
+  query_id: q-001
+  vector_candidates: 50
+  keyword_candidates: 20
+  filtered_by_acl: 12
+  rerank_input: 30
+  context_chunks: [chunk-123-05, chunk-456-02]
+</code></pre>
 <p>企业 RAG 必须把权限过滤从“代码里做了”提升为 <code>retrieval_permission_decision</code>。它记录本次检索使用了谁的身份、哪些权限策略版本、哪些索引和数据域、候选证据为何被允许或拒绝、缓存是否可用、结果是否允许进入日志和 prompt。这个对象不应保存明文文档，但要保存 chunk id、策略版本、ACL snapshot、过滤统计和拒绝原因。没有它，RAG 权限事故通常只能靠重放线上请求，而重放时权限、索引和文档状态往往已经变化。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">retrieval_permission_decision</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">decision_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rpd-20260620-0001</span>
-<span class="w">  </span><span class="nt">request_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">req-support-0001</span>
-<span class="w">  </span><span class="nt">tenant_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enterprise-a</span>
-<span class="w">  </span><span class="nt">effective_principal</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">application</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">support-copilot</span>
-<span class="w">    </span><span class="nt">user</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">user-42</span>
-<span class="w">    </span><span class="nt">delegation_mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">user_context_required</span>
-<span class="w">  </span><span class="nt">policy_versions</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">tenant_boundary</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tb-enterprise-a-202606</span>
-<span class="w">    </span><span class="nt">data_boundary_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dbp-20260610.3</span>
-<span class="w">    </span><span class="nt">document_acl_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">acl-v8</span>
-<span class="w">  </span><span class="nt">retrieval_scope</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">knowledge_base</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">support-kb</span>
-<span class="w">    </span><span class="nt">index_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kb-index-20260618.3</span>
-<span class="w">    </span><span class="nt">allowed_domains</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">published_policy</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">troubleshooting</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">denied_domains</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">draft</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">legal_hold</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">candidate_summary</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">vector_candidates</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">50</span>
-<span class="w">    </span><span class="nt">keyword_candidates</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">20</span>
-<span class="w">    </span><span class="nt">allowed_after_acl</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">37</span>
-<span class="w">    </span><span class="nt">denied_by_acl</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">12</span>
-<span class="w">    </span><span class="nt">denied_by_data_boundary</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
-<span class="w">  </span><span class="nt">cache_and_logging</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">cache_key_includes_acl_snapshot</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">prompt_logging</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">redacted</span>
-<span class="w">    </span><span class="nt">chunk_text_logging</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">disabled</span>
-<span class="w">  </span><span class="nt">decision</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">result</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">allow_with_filtered_candidates</span>
-<span class="w">    </span><span class="nt">deny_reasons_sampled</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">document_not_visible_to_user</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">draft_domain_blocked</span><span class="p p-Indicator">]</span>
-</code></pre></div>
+<pre><code class="language-yaml">retrieval_permission_decision:
+  decision_id: rpd-20260620-0001
+  request_id: req-support-0001
+  tenant_id: enterprise-a
+  effective_principal:
+    application: support-copilot
+    user: user-42
+    delegation_mode: user_context_required
+  policy_versions:
+    tenant_boundary: tb-enterprise-a-202606
+    data_boundary_policy: dbp-20260610.3
+    document_acl_policy: acl-v8
+  retrieval_scope:
+    knowledge_base: support-kb
+    index_version: kb-index-20260618.3
+    allowed_domains: [published_policy, troubleshooting]
+    denied_domains: [draft, legal_hold]
+  candidate_summary:
+    vector_candidates: 50
+    keyword_candidates: 20
+    allowed_after_acl: 37
+    denied_by_acl: 12
+    denied_by_data_boundary: 1
+  cache_and_logging:
+    cache_key_includes_acl_snapshot: true
+    prompt_logging: redacted
+    chunk_text_logging: disabled
+  decision:
+    result: allow_with_filtered_candidates
+    deny_reasons_sampled: [document_not_visible_to_user, draft_domain_blocked]
+</code></pre>
 <p><code>retrieval_permission_decision</code> 的关键价值是让权限成为可回放的检索事实。RAG 的危险不只在最终答案泄露，还在中间链路泄露：向量库候选、rerank 输入、debug trace、缓存、告警通知和评测样本都可能携带无权限片段。权限决策记录应贯穿这些阶段，说明哪些片段可以进入模型，哪些只能进入计数指标，哪些连中间服务都不应看到。这样第 5 章的 <code>tenant_boundary</code>、第 6 章的 Gateway 策略、第 37 章的观测脱敏和第 40 章的安全事故复盘才能使用同一证据。</p>
 <p>最终进入模型的证据还应冻结成 <code>rag_context_snapshot</code>。它不是完整 prompt 备份，而是上下文构造的可审计摘要：用户问题引用、权限快照、索引版本、检索与 rerank 版本、入选 chunk、证据角色、token 预算、截断原因、引用映射、冲突处理和无答案策略。线上用户投诉“引用不对”时，团队不应猜测模型当时看到了什么；应能直接打开 snapshot，看到哪些证据被放入 prompt、哪些证据被截断、哪些旧文档或冲突文档参与了生成。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">rag_context_snapshot</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">snapshot_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rcs-20260620-0001</span>
-<span class="w">  </span><span class="nt">request_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">req-support-0001</span>
-<span class="w">  </span><span class="nt">query_ref</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">object://redacted-query/sha256:example</span>
-<span class="w">  </span><span class="nt">permission_decision</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rpd-20260620-0001</span>
-<span class="w">  </span><span class="nt">retrieval_pipeline</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">query_rewrite_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qr-v5</span>
-<span class="w">    </span><span class="nt">embedding_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">embed-domain-202606</span>
-<span class="w">    </span><span class="nt">rerank_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rerank-support-202606</span>
-<span class="w">    </span><span class="nt">index_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kb-index-20260618.3</span>
-<span class="w">  </span><span class="nt">token_budget</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">max_context_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_defined</span>
-<span class="w">    </span><span class="nt">reserved_output_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_defined</span>
-<span class="w">    </span><span class="nt">selected_evidence_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">truncated_evidence_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">  </span><span class="nt">selected_evidence</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">chunk_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">chunk-123-05</span>
-<span class="w">      </span><span class="nt">document_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">doc-123@20260618</span>
-<span class="w">      </span><span class="nt">evidence_role</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">primary_answer</span>
-<span class="w">      </span><span class="nt">citation_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">C1</span>
-<span class="w">      </span><span class="nt">token_count</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">chunk_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">chunk-456-02</span>
-<span class="w">      </span><span class="nt">document_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">doc-456@20260617</span>
-<span class="w">      </span><span class="nt">evidence_role</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">constraint_or_exception</span>
-<span class="w">      </span><span class="nt">citation_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">C2</span>
-<span class="w">      </span><span class="nt">token_count</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">  </span><span class="nt">excluded_after_rerank</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">reason</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">duplicate_semantic_evidence</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">reason</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">lower_freshness_than_selected</span>
-<span class="w">  </span><span class="nt">answer_policy</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">require_citation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">no_answer_when_no_primary_evidence</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">conflict_behavior</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cite_conflict_and_refuse_if_unresolved</span>
-</code></pre></div>
+<pre><code class="language-yaml">rag_context_snapshot:
+  snapshot_id: rcs-20260620-0001
+  request_id: req-support-0001
+  query_ref: object://redacted-query/sha256:example
+  permission_decision: rpd-20260620-0001
+  retrieval_pipeline:
+    query_rewrite_version: qr-v5
+    embedding_model: embed-domain-202606
+    rerank_model: rerank-support-202606
+    index_version: kb-index-20260618.3
+  token_budget:
+    max_context_tokens: policy_defined
+    reserved_output_tokens: policy_defined
+    selected_evidence_tokens: measured
+    truncated_evidence_tokens: measured
+  selected_evidence:
+    - chunk_id: chunk-123-05
+      document_version: doc-123@20260618
+      evidence_role: primary_answer
+      citation_id: C1
+      token_count: measured
+    - chunk_id: chunk-456-02
+      document_version: doc-456@20260617
+      evidence_role: constraint_or_exception
+      citation_id: C2
+      token_count: measured
+  excluded_after_rerank:
+    - reason: duplicate_semantic_evidence
+    - reason: lower_freshness_than_selected
+  answer_policy:
+    require_citation: true
+    no_answer_when_no_primary_evidence: true
+    conflict_behavior: cite_conflict_and_refuse_if_unresolved
+</code></pre>
 <p>这个 snapshot 会改变 RAG 排障方式。若正确证据没有出现在 snapshot，问题在召回、权限、rerank 或 token budget；若正确证据在 snapshot 中但答案仍错，问题可能在 prompt、模型或引用格式；若 snapshot 引用了用户无权访问的 chunk，问题在权限链路；若 snapshot 中只剩约束片段而缺少主证据，问题在 context assembly。它把“RAG 不准”拆成一组可定位的工程事实，也让线上失败样本可以稳定进入第 13 章的评测门禁。</p>
-<pre class="mermaid"><code>flowchart LR
-  Identity["tenant / app / user"] --&gt; Perm["retrieval_permission_decision"]
-  Policy["tenant_boundary / data_boundary / ACL"] --&gt; Perm
-  Query["query + rewrite"] --&gt; Retrieve["vector + keyword retrieval"]
-  Perm --&gt; Retrieve
-  Retrieve --&gt; Rerank["rerank + diversity"]
-  Rerank --&gt; Context["rag_context_snapshot"]
-  Budget["token budget / prompt template"] --&gt; Context
-  Context --&gt; LLM["LLM generation"]
-  LLM --&gt; Feedback["quality_feedback_event"]
-  Feedback --&gt; Regression["rag_quality_regression_record"]</code></pre>
+<p><img alt="图：2.4.1 工程实现" src="../../assets/diagrams/part-01-applications-chapter-02-rag-02.svg" /></p>
 <p>RAG 质量要用专门的 <code>eval_dataset_manifest</code> 管理，而不是把几百个问答样本放进表格。Manifest 需要说明样本来源、知识库版本、任务切片、证据标注、权限边界、无答案样本、污染控制、标注规则和评测方式。RAG 的评测样本不只是 question/answer pair，至少还应包含 <code>golden_evidence</code>：哪些文档、chunk、段落或表格单元支持答案；哪些相似文档是干扰项；用户在什么权限下应该看到哪些证据。没有证据级标注，就无法区分“模型不会答”和“系统没检到”。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">eval_dataset_manifest</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">dataset_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rag-support-202606</span>
-<span class="w">  </span><span class="nt">owner</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">knowledge-platform</span>
-<span class="w">  </span><span class="nt">task_family</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enterprise_rag_qa</span>
-<span class="w">  </span><span class="nt">source</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">online_feedback_events</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">qfe-20260619-0001</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">human_curated_cases</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">object://rag-cases-202606</span>
-<span class="w">    </span><span class="nt">synthetic_cases</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">disabled_for_gate</span>
-<span class="w">  </span><span class="nt">corpus_binding</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">knowledge_base</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">support-kb</span>
-<span class="w">    </span><span class="nt">index_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kb-index-20260618.3</span>
-<span class="w">    </span><span class="nt">embedding_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">embed-domain-202606</span>
-<span class="w">    </span><span class="nt">chunking_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">heading-aware-v12</span>
-<span class="w">  </span><span class="nt">slices</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_lookup</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">table_fact</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">multi_document_conflict</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">no_answer</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">permission_denied</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">stale_document</span>
-<span class="w">  </span><span class="nt">labels</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">golden_evidence_required</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">answer_rubric_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rag-rubric-v4</span>
-<span class="w">    </span><span class="nt">citation_required</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">acl_context_required</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">contamination_control</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">blind_split</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">holdout-202606</span>
-<span class="w">    </span><span class="nt">exclude_from_prompt_examples</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">reviewer_separation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
-</code></pre></div>
+<pre><code class="language-yaml">eval_dataset_manifest:
+  dataset_id: rag-support-202606
+  owner: knowledge-platform
+  task_family: enterprise_rag_qa
+  source:
+    online_feedback_events: [qfe-20260619-0001]
+    human_curated_cases: object://rag-cases-202606
+    synthetic_cases: disabled_for_gate
+  corpus_binding:
+    knowledge_base: support-kb
+    index_version: kb-index-20260618.3
+    embedding_model: embed-domain-202606
+    chunking_policy: heading-aware-v12
+  slices:
+    - policy_lookup
+    - table_fact
+    - multi_document_conflict
+    - no_answer
+    - permission_denied
+    - stale_document
+  labels:
+    golden_evidence_required: true
+    answer_rubric_version: rag-rubric-v4
+    citation_required: true
+    acl_context_required: true
+  contamination_control:
+    blind_split: holdout-202606
+    exclude_from_prompt_examples: true
+    reviewer_separation: required
+</code></pre>
 <p>RAG 的质量门禁应分层计算。第一层是 retrieval gate：正确证据是否进入 top-k，越权证据是否被过滤，无答案问题是否没有强行召回。第二层是 context gate：正确证据是否进入最终 prompt，证据是否被截断，引用 id 是否保留。第三层是 generation gate：答案是否与证据一致，是否引用正确来源，证据不足时是否拒答。把三层混成一个“回答正确率”，会隐藏根因：召回失败要修索引或 query，context 失败要修拼接和 token budget，generation 失败才更可能需要换模型或 prompt。</p>
-<pre class="mermaid"><code>flowchart LR
-  Case["eval case\nquestion + acl + golden evidence"] --&gt; Retrieval["retrieval gate\nrecall / ACL / no-answer"]
-  Retrieval --&gt; Context["context gate\nselected chunks / truncation / citations"]
-  Context --&gt; Generation["generation gate\nfaithfulness / answer / refusal"]
-  Generation --&gt; Regression["rag_regression_case"]
-  Regression --&gt; Index["chunking / embedding / rerank / prompt update"]</code></pre>
+<p><img alt="图：2.4.1 工程实现" src="../../assets/diagrams/part-01-applications-chapter-02-rag-03.svg" /></p>
 <p>线上 <code>quality_feedback_event</code> 进入 RAG 后，也要变成可复现的 <code>rag_quality_regression_record</code>。这个对象需要保存当时的 query 引用、用户权限决策、索引版本、召回候选摘要、被过滤候选统计、rerank 排序、最终 context 快照和答案引用。它还要记录修复层级：是文档缺失、ACL 错误、chunk 破碎、embedding 召回差、rerank 误排、context 截断、prompt 指令弱，还是模型没有遵守证据。只有修复层级明确，回归样本才不会每次都被推给模型团队。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">rag_quality_regression_record</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">regression_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rqr-20260619-0007</span>
-<span class="w">  </span><span class="nt">discovered_by</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">quality_feedback_event</span>
-<span class="w">  </span><span class="nt">feedback_event</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qfe-20260619-0001</span>
-<span class="w">  </span><span class="nt">replay_binding</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">query_ref</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">object://redacted-query</span>
-<span class="w">    </span><span class="nt">permission_decision</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rpd-20260620-0001</span>
-<span class="w">    </span><span class="nt">context_snapshot</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rcs-20260620-0001</span>
-<span class="w">    </span><span class="nt">index_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kb-index-20260618.3</span>
-<span class="w">    </span><span class="nt">prompt_template_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rag-answer-v9</span>
-<span class="w">  </span><span class="nt">failure</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">citation_incorrect</span>
-<span class="w">    </span><span class="nt">expected_evidence</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">chunk-123-05</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">actual_context</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">chunk-789-01</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">chunk-456-02</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">user_impact</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">wrong_policy_answer</span>
-<span class="w">  </span><span class="nt">owner</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">layer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rerank</span>
-<span class="w">    </span><span class="nt">team</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">knowledge-platform</span>
-<span class="w">  </span><span class="nt">retest</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">status</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pending</span>
-<span class="w">    </span><span class="nt">target_gate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rag_retrieval_context_generation</span>
-<span class="w">    </span><span class="nt">added_to_eval_dataset_lineage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">edl-rag-support-20260620</span>
-</code></pre></div>
+<pre><code class="language-yaml">rag_quality_regression_record:
+  regression_id: rqr-20260619-0007
+  discovered_by: quality_feedback_event
+  feedback_event: qfe-20260619-0001
+  replay_binding:
+    query_ref: object://redacted-query
+    permission_decision: rpd-20260620-0001
+    context_snapshot: rcs-20260620-0001
+    index_version: kb-index-20260618.3
+    prompt_template_version: rag-answer-v9
+  failure:
+    type: citation_incorrect
+    expected_evidence: [chunk-123-05]
+    actual_context: [chunk-789-01, chunk-456-02]
+    user_impact: wrong_policy_answer
+  owner:
+    layer: rerank
+    team: knowledge-platform
+  retest:
+    status: pending
+    target_gate: rag_retrieval_context_generation
+    added_to_eval_dataset_lineage: edl-rag-support-20260620
+</code></pre>
 <p><code>rag_quality_regression_record</code> 是 RAG 质量闭环的最小工作单元。它不是客服投诉原文，也不是模型团队的 bug 单，而是把失败样本、权限、证据、上下文、生成结果和修复层级固定下来。关闭条件应至少包括：能在相同 snapshot 或重建环境中复现，owner layer 明确，修复方案执行，回归评测通过，权限和引用没有引入新风险，必要时进入 <code>eval_dataset_lineage_record</code>。若只在知识库里改一段文档而不补 regression record，下一次索引、prompt 或 rerank 变更仍可能复发。</p>
 <p>RAG 索引也应像模型 release 一样发布，而不是把向量库更新当成后台任务。<code>rag_index_release_contract</code> 把知识库版本、embedding 模型、chunking 策略、rerank 配置、ACL snapshot、数据 lineage、context assembly 策略、引用格式和服务路由绑定在一起。只有这个契约通过评测和权限检查后，Gateway、RAG 服务和缓存层才能把它作为可服务索引。否则一次看似普通的文档重建，可能同时改变召回、权限、引用、token 预算和质量门禁，事故发生后无法定位是哪个维度变了。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">rag_index_release_contract</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">contract_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rirc-support-kb-20260620</span>
-<span class="w">  </span><span class="nt">knowledge_base</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">support-kb</span>
-<span class="w">  </span><span class="nt">release_state</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">canary</span>
-<span class="w">  </span><span class="nt">source_binding</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">document_collection</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">support-docs</span>
-<span class="w">    </span><span class="nt">dataset_lineage_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dlr-support-docs-20260620</span>
-<span class="w">    </span><span class="nt">document_versions_ref</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">object://kb-release/support-docs-20260620</span>
-<span class="w">    </span><span class="nt">delete_tombstone_watermark</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2026-06-20T09:00Z</span>
-<span class="w">  </span><span class="nt">indexing_pipeline</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">parser_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">doc-parser-v18</span>
-<span class="w">    </span><span class="nt">chunking_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">heading-aware-v12</span>
-<span class="w">    </span><span class="nt">embedding_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">embed-domain-202606</span>
-<span class="w">    </span><span class="nt">embedding_dimension</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">vector_index_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kb-index-20260620.1</span>
-<span class="w">    </span><span class="nt">keyword_index_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kb-keyword-20260620.1</span>
-<span class="w">  </span><span class="nt">retrieval_policy</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">hybrid_search</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">metadata_filter_schema</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kb-filter-v7</span>
-<span class="w">    </span><span class="nt">rerank_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rerank-support-202606</span>
-<span class="w">    </span><span class="nt">rerank_config</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rerank-support-v5</span>
-<span class="w">    </span><span class="nt">context_template</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rag-answer-v9</span>
-<span class="w">    </span><span class="nt">citation_schema</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">citation-v4</span>
-<span class="w">  </span><span class="nt">access_control</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">acl_snapshot</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">acl-support-20260620.2</span>
-<span class="w">    </span><span class="nt">tenant_boundary</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tb-enterprise-a-202606</span>
-<span class="w">    </span><span class="nt">cache_key_requires_acl_snapshot</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">stale_acl_behavior</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">block_not_warn</span>
-<span class="w">  </span><span class="nt">quality_and_release</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">eval_dataset_manifest</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rag-support-202606</span>
-<span class="w">    </span><span class="nt">retrieval_gate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">context_gate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">generation_gate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">rollback_index</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kb-index-20260618.3</span>
-<span class="w">    </span><span class="nt">allowed_routes</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">support-chat-prod</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">support-agent-prod</span><span class="p p-Indicator">]</span>
-</code></pre></div>
+<pre><code class="language-yaml">rag_index_release_contract:
+  contract_id: rirc-support-kb-20260620
+  knowledge_base: support-kb
+  release_state: canary
+  source_binding:
+    document_collection: support-docs
+    dataset_lineage_record: dlr-support-docs-20260620
+    document_versions_ref: object://kb-release/support-docs-20260620
+    delete_tombstone_watermark: 2026-06-20T09:00Z
+  indexing_pipeline:
+    parser_version: doc-parser-v18
+    chunking_policy: heading-aware-v12
+    embedding_model: embed-domain-202606
+    embedding_dimension: recorded
+    vector_index_version: kb-index-20260620.1
+    keyword_index_version: kb-keyword-20260620.1
+  retrieval_policy:
+    hybrid_search: true
+    metadata_filter_schema: kb-filter-v7
+    rerank_model: rerank-support-202606
+    rerank_config: rerank-support-v5
+    context_template: rag-answer-v9
+    citation_schema: citation-v4
+  access_control:
+    acl_snapshot: acl-support-20260620.2
+    tenant_boundary: tb-enterprise-a-202606
+    cache_key_requires_acl_snapshot: true
+    stale_acl_behavior: block_not_warn
+  quality_and_release:
+    eval_dataset_manifest: rag-support-202606
+    retrieval_gate: pass
+    context_gate: pass
+    generation_gate: pass
+    rollback_index: kb-index-20260618.3
+    allowed_routes: [support-chat-prod, support-agent-prod]
+</code></pre>
 <p>这个契约的重点是把“能查”和“能上线”分开。向量库里有新索引，只说明数据结构存在；<code>rag_index_release_contract</code> 通过，才说明这个索引在目标租户、目标权限、目标 prompt、目标引用格式和目标质量门禁下可用。契约还应能被 PRR、故障树和成本账本消费：PRR 用它判断是否允许上线，故障树用它判断事故时索引和 ACL 是否一致，成本账本用它归因索引重建、cache rewarm、rerank 回归和低质量 token。</p>
 <p>索引和权限变化必须产生 <code>retrieval_acl_invalidation_event</code>。RAG 最危险的事故之一，是文档权限已经变化，但旧向量、旧 rerank cache、旧 context cache 或旧评测样本仍然可达。失效事件要说明变化来自 ACL、文档删除、数据边界、索引重建、embedding 模型升级还是租户策略变化，并要求检索、缓存、观测、评测和账单路径同时处理。只更新数据库里的 ACL 字段，不等于生产链路已经失效旧证据。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">retrieval_acl_invalidation_event</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">event_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">raie-20260620-001</span>
-<span class="w">  </span><span class="nt">trigger</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">acl_snapshot_changed</span>
-<span class="w">    </span><span class="nt">source</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">document_acl_policy_update</span>
-<span class="w">    </span><span class="nt">changed_at</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">  </span><span class="nt">scope</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">tenant</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enterprise-a</span>
-<span class="w">    </span><span class="nt">knowledge_base</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">support-kb</span>
-<span class="w">    </span><span class="nt">old_acl_snapshot</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">acl-support-20260618.7</span>
-<span class="w">    </span><span class="nt">new_acl_snapshot</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">acl-support-20260620.2</span>
-<span class="w">    </span><span class="nt">affected_index_versions</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">kb-index-20260618.3</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">kb-index-20260620.1</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">affected_cache_namespaces</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">retrieval-result-cache</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">rerank-cache</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">context-cache</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">required_actions</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">retrieval_service</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">reject_old_acl_snapshot</span>
-<span class="w">    </span><span class="nt">vector_database</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mark_old_index_acl_stale</span>
-<span class="w">    </span><span class="nt">cache_layer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">purge_or_namespace_by_acl_snapshot</span>
-<span class="w">    </span><span class="nt">evaluation_platform</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">invalidate_cases_with_old_acl</span>
-<span class="w">    </span><span class="nt">observability</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">block_plain_chunk_export_for_affected_scope</span>
-<span class="w">    </span><span class="nt">billing</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mark_affected_window_for_replay_if_leak_suspected</span>
-<span class="w">  </span><span class="nt">completion_evidence</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">stale_index_unreachable</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true_or_false</span>
-<span class="w">    </span><span class="nt">stale_cache_unreachable</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true_or_false</span>
-<span class="w">    </span><span class="nt">replay_sampling_passed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true_or_false</span>
-<span class="w">    </span><span class="nt">rag_index_release_contract_updated</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true_or_false</span>
-</code></pre></div>
+<pre><code class="language-yaml">retrieval_acl_invalidation_event:
+  event_id: raie-20260620-001
+  trigger:
+    type: acl_snapshot_changed
+    source: document_acl_policy_update
+    changed_at: recorded
+  scope:
+    tenant: enterprise-a
+    knowledge_base: support-kb
+    old_acl_snapshot: acl-support-20260618.7
+    new_acl_snapshot: acl-support-20260620.2
+    affected_index_versions: [kb-index-20260618.3, kb-index-20260620.1]
+    affected_cache_namespaces: [retrieval-result-cache, rerank-cache, context-cache]
+  required_actions:
+    retrieval_service: reject_old_acl_snapshot
+    vector_database: mark_old_index_acl_stale
+    cache_layer: purge_or_namespace_by_acl_snapshot
+    evaluation_platform: invalidate_cases_with_old_acl
+    observability: block_plain_chunk_export_for_affected_scope
+    billing: mark_affected_window_for_replay_if_leak_suspected
+  completion_evidence:
+    stale_index_unreachable: true_or_false
+    stale_cache_unreachable: true_or_false
+    replay_sampling_passed: true_or_false
+    rag_index_release_contract_updated: true_or_false
+</code></pre>
 <p>RAG 失败样本还需要 <code>rag_context_replay_bundle</code>。<code>rag_context_snapshot</code> 说明某次请求最终给模型看到了什么，replay bundle 则冻结“如何重新构造这个请求”的完整环境：入口 admission、用户身份、ACL snapshot、索引版本、query rewrite、召回候选、过滤结果、rerank 分数、context 拼接、截断、prompt 模板、模型 release、答案和引用。它的目标不是保存用户隐私明文，而是让质量团队在脱敏引用下稳定复现“当时系统为什么这样回答”。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">rag_context_replay_bundle</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">bundle_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rcrb-20260620-0007</span>
-<span class="w">  </span><span class="nt">source</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">quality_feedback_event</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qfe-20260620-0007</span>
-<span class="w">    </span><span class="nt">request_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">req-support-0007</span>
-<span class="w">    </span><span class="nt">rag_context_snapshot</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rcs-20260620-0007</span>
-<span class="w">  </span><span class="nt">replay_inputs</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">rag_agent_admission_context</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">raac-20260620-0007</span>
-<span class="w">    </span><span class="nt">retrieval_permission_decision</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rpd-20260620-0007</span>
-<span class="w">    </span><span class="nt">rag_index_release_contract</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rirc-support-kb-20260620</span>
-<span class="w">    </span><span class="nt">query_rewrite_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qr-v5</span>
-<span class="w">    </span><span class="nt">prompt_template_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rag-answer-v9</span>
-<span class="w">    </span><span class="nt">serving_release_bundle</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">srb-af-chat-large-20260619-r3</span>
-<span class="w">  </span><span class="nt">evidence</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">query_ref</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">object://redacted-query/sha256:example</span>
-<span class="w">    </span><span class="nt">candidate_chunk_ids</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">chunk-123-05</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">chunk-789-01</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">denied_chunk_summary</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">counted_by_reason</span>
-<span class="w">    </span><span class="nt">rerank_scores_ref</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">object://redacted-rerank-scores</span>
-<span class="w">    </span><span class="nt">selected_context_ref</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">object://redacted-context</span>
-<span class="w">    </span><span class="nt">citation_map_ref</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">object://citation-map</span>
-<span class="w">    </span><span class="nt">truncation_report</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">present</span>
-<span class="w">  </span><span class="nt">replay_controls</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">raw_text_access</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">requires_break_glass</span>
-<span class="w">    </span><span class="nt">deterministic_sampling</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required_if_model_supports</span>
-<span class="w">    </span><span class="nt">allow_current_acl_substitution</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-<span class="w">    </span><span class="nt">output_comparison</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">answer_and_citation_and_refusal_policy</span>
-</code></pre></div>
-<pre class="mermaid"><code>flowchart LR
-  Docs["document / ACL / lineage"] --&gt; Contract["rag_index_release_contract"]
-  Contract --&gt; Gateway["rag_agent_admission_context"]
-  Gateway --&gt; Perm["retrieval_permission_decision"]
-  Perm --&gt; Context["rag_context_snapshot"]
-  Context --&gt; Replay["rag_context_replay_bundle"]
-  ACL["ACL or delete change"] --&gt; Invalidate["retrieval_acl_invalidation_event"]
-  Invalidate --&gt; Contract
-  Invalidate --&gt; Cache["index / rerank / context cache invalidation"]
-  Replay --&gt; Regression["rag_quality_regression_record"]</code></pre>
+<pre><code class="language-yaml">rag_context_replay_bundle:
+  bundle_id: rcrb-20260620-0007
+  source:
+    quality_feedback_event: qfe-20260620-0007
+    request_id: req-support-0007
+    rag_context_snapshot: rcs-20260620-0007
+  replay_inputs:
+    rag_agent_admission_context: raac-20260620-0007
+    retrieval_permission_decision: rpd-20260620-0007
+    rag_index_release_contract: rirc-support-kb-20260620
+    query_rewrite_version: qr-v5
+    prompt_template_version: rag-answer-v9
+    serving_release_bundle: srb-af-chat-large-20260619-r3
+  evidence:
+    query_ref: object://redacted-query/sha256:example
+    candidate_chunk_ids: [chunk-123-05, chunk-789-01]
+    denied_chunk_summary: counted_by_reason
+    rerank_scores_ref: object://redacted-rerank-scores
+    selected_context_ref: object://redacted-context
+    citation_map_ref: object://citation-map
+    truncation_report: present
+  replay_controls:
+    raw_text_access: requires_break_glass
+    deterministic_sampling: required_if_model_supports
+    allow_current_acl_substitution: false
+    output_comparison: answer_and_citation_and_refusal_policy
+</code></pre>
+<p><img alt="图：2.4.1 工程实现" src="../../assets/diagrams/part-01-applications-chapter-02-rag-04.svg" /></p>
 <p>这条链路把 RAG 从“线上检索逻辑”升级成“可发布、可失效、可回放”的生产系统。读者应注意对象之间的边界：release contract 证明索引可上线，permission decision 证明本次检索可访问，context snapshot 证明模型看到了什么，replay bundle 证明事故可以复现，invalidation event 证明旧证据已不可达。缺少任一环，RAG 都会在规模化后变成不可审计的黑盒。</p>
 <h3 id="242">2.4.2 常见故障<a class="headerlink" href="#242" title="Permanent link">&para;</a></h3>
 <p>第一类故障是权限没有进入检索链路。文档本身有 ACL，但 chunk、向量或缓存没有携带权限，导致越权召回或审计缺失。第二类故障是 chunk 策略不适合文档结构：切得太大，prompt 长且噪声多；切得太小，证据不完整；表格和代码被按普通段落切碎，答案失去关键上下文。第三类故障是 embedding 模型或索引版本混乱，新旧向量混用，召回质量时好时坏。</p>

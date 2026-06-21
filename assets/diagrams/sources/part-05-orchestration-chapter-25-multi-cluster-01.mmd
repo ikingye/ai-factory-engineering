@@ -1,0 +1,17 @@
+flowchart TB
+  User["用户 / 平台 API"] --> Control["统一平台面"]
+  Control --> IAM["身份 / 租户 / 配额"]
+  Control --> Catalog["集群能力目录"]
+  Control --> Policy["策略 / 成本 / 准入"]
+  Control --> Train["训练集群<br/>Slurm / Kubernetes"]
+  Control --> Infer["生产推理集群<br/>Kubernetes"]
+  Control --> Batch["批量与评测集群"]
+  Control --> Exp["实验 / 验收集群"]
+  Train --> Registry["model registry / checkpoint"]
+  Batch --> Registry
+  Registry --> Infer
+  Train --> Obs["统一观测"]
+  Infer --> Obs
+  Batch --> Obs
+  Exp --> Obs
+  Obs --> Cost["成本与利用率"]

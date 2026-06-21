@@ -3884,35 +3884,10 @@
 <p>GPU 容器的关键点是：容器内应用需要看到 GPU 设备文件、driver library、必要二进制和正确环境变量，但 GPU driver 的内核模块仍在宿主机上。NVIDIA Container Toolkit 的价值，是把“手动挂载 <code>/dev/nvidia*</code> 和一堆库文件”变成可由 Docker/containerd/runc 自动执行的标准化流程。它不是 GPU 调度器，也不是 Kubernetes device plugin；它位于容器运行时链路上，负责让已经被分配到容器的 GPU 能在容器内真正可用。</p>
 <h3 id="2122">21.2.2 系统架构<a class="headerlink" href="#2122" title="Permanent link">&para;</a></h3>
 <p>Kubernetes 的控制流从 API Server 开始，到节点上的 kubelet 结束；容器运行时的数据面从 kubelet 进入 CRI，再进入 containerd 或 CRI-O，最后由 runc 创建容器。AI Factory 在这条链路上叠加了模型、GPU、网络、存储和队列语义。一个在线模型服务至少涉及 Deployment 或上层 ModelService、Pod、Service、Gateway、Secret、ConfigMap、PVC 或对象存储挂载、GPU 资源请求、节点标签、探针、日志、metrics 和 trace；一个训练任务还会涉及 Job 或 TrainingJob、PodGroup、queue、quota、gang scheduling、checkpoint 和数据集。</p>
-<pre class="mermaid"><code>flowchart TB
-  User["用户 / AI 平台 API"] --&gt; API["Kubernetes API Server"]
-  API --&gt; Controllers["Controllers&lt;br/&gt;Deployment / Job / StatefulSet"]
-  API --&gt; Scheduler["Scheduler&lt;br/&gt;filter / score / bind"]
-  Scheduler --&gt; Node["目标 Node"]
-  Controllers --&gt; API
-  Node --&gt; Kubelet["kubelet"]
-  Kubelet --&gt; CRI["CRI&lt;br/&gt;containerd / CRI-O"]
-  Kubelet --&gt; CNI["CNI&lt;br/&gt;Pod 网络"]
-  Kubelet --&gt; CSI["CSI&lt;br/&gt;Volume 挂载"]
-  CRI --&gt; Runtime["OCI Runtime&lt;br/&gt;runc / NVIDIA runtime"]
-  Runtime --&gt; Pod["Pod containers"]
-  CNI --&gt; Pod
-  CSI --&gt; Pod
-  Pod --&gt; App["AI workload&lt;br/&gt;inference / training / eval"]</code></pre>
+<p><img alt="图：21.2.2 系统架构" src="../../assets/diagrams/part-05-orchestration-chapter-21-containers-kubernetes-01.svg" /></p>
 <p>控制流和数据流要分开看。控制流回答“对象如何被创建、调度、启动、重启、升级、删除”；数据流回答“请求、token、模型权重、数据集、checkpoint、日志和指标如何流动”。很多 AI 故障来自两条路径不一致：控制面认为 Pod 已经 Ready，数据面上的模型权重还在下载；调度器认为 GPU 数量满足，训练数据面上的 RDMA rail 不通；Deployment rollout 成功，Gateway streaming timeout 却导致长回答中断。只看 Kubernetes 对象状态，无法解释完整 AI 体验。</p>
 <p>GPU 容器运行时链路是本章必须掌握的一条底层路径。最早的做法是手动把 <code>/dev/nvidia0</code>、<code>/dev/nvidiactl</code>、<code>/dev/nvidia-uvm</code> 和 driver library bind mount 进容器，或者使用 <code>--privileged</code> 把过多宿主能力暴露给容器。前者难维护，后者风险高。NVIDIA 先后提供过 <code>nvidia-docker</code>、<code>nvidia-docker2</code> 和 NVIDIA Container Toolkit。当前主线是 NVIDIA Container Toolkit：通过 <code>nvidia-container-runtime</code>、runtime hook、<code>nvidia-container-cli</code> 和 <code>libnvidia-container</code> 在 OCI runtime 生命周期中完成设备和库注入。</p>
-<pre class="mermaid"><code>flowchart TB
-  Docker["docker / containerd / CRI-O"] --&gt; Spec["OCI runtime spec&lt;br/&gt;config.json"]
-  Spec --&gt; NVRuntime["nvidia-container-runtime"]
-  NVRuntime --&gt; Patch["修改 spec&lt;br/&gt;加入 NVIDIA hook"]
-  Patch --&gt; Runc["runc"]
-  Runc --&gt; NS["创建 namespace / cgroup&lt;br/&gt;尚未启动用户进程"]
-  NS --&gt; Hook["nvidia-container-runtime-hook&lt;br/&gt;prestart hook"]
-  Hook --&gt; CLI["nvidia-container-cli"]
-  CLI --&gt; Lib["libnvidia-container"]
-  Lib --&gt; Mounts["bind mount GPU devices&lt;br/&gt;driver libs / binaries"]
-  Mounts --&gt; Start["runc 启动容器进程"]
-  Start --&gt; App["CUDA / NCCL / AI app"]</code></pre>
+<p><img alt="图：21.2.2 系统架构" src="../../assets/diagrams/part-05-orchestration-chapter-21-containers-kubernetes-02.svg" /></p>
 <p>在 Kubernetes 中，GPU 还多一层资源发现和分配。NVIDIA device plugin 向 kubelet 注册 <code>nvidia.com/gpu</code> 或 MIG 资源，Scheduler 根据 Pod resource request 选择节点，kubelet 在创建容器时把分配结果传给 CRI，NVIDIA Container Toolkit 再在 runtime 链路中注入设备和库。也就是说，device plugin 解决“哪些 GPU 分给这个 Pod”，container toolkit 解决“这些 GPU 如何出现在容器里”。把两者混为一谈，会导致排障时不知道该看 kubelet/device plugin，还是看 runtime hook/libnvidia-container。</p>
 <h2 id="213">21.3 关键技术<a class="headerlink" href="#213" title="Permanent link">&para;</a></h2>
 <h3 id="2131-container-runtime">21.3.1 container runtime<a class="headerlink" href="#2131-container-runtime" title="Permanent link">&para;</a></h3>
@@ -3971,339 +3946,298 @@
 <p>三条接口的 owner 往往不同：平台团队维护 runtime 基线，网络团队维护 CNI，存储团队维护 CSI，GPU 团队维护 device plugin 和 driver。但用户只看到一个 Pod 失败。因此 AI Factory 需要统一事件翻译和关联视图：从一个 Pod 能看到 CRI、CNI、CSI、device、node、image、volume 和 Gateway 状态；从一个训练任务能看到所有 worker 的接口层差异。接口插件越多，越需要清晰边界和统一证据链。</p>
 <h3 id="21310-gpu-nvidia-container-toolkit">21.3.10 GPU 容器运行时与 NVIDIA Container Toolkit<a class="headerlink" href="#21310-gpu-nvidia-container-toolkit" title="Permanent link">&para;</a></h3>
 <p>手动让 Docker 容器使用 GPU 的最小方式，是把 GPU 设备和驱动相关文件挂进去。例如显式传入 <code>/dev/nvidia0</code>、<code>/dev/nvidiactl</code>、<code>/dev/nvidia-uvm</code>，并挂载宿主机上的 NVIDIA driver library 路径。这个方式说明了 GPU 容器的本质：容器需要访问设备节点和 driver 用户态库，GPU 内核驱动仍在宿主机。它也说明了手工方式不可维护：不同驱动版本、不同 GPU、MIG、UVM、NVML、CUDA compatibility library、容器 runtime 和发行版路径都会让挂载清单变化。</p>
-<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>-it<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--device<span class="w"> </span>/dev/nvidia0:/dev/nvidia0<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--device<span class="w"> </span>/dev/nvidiactl:/dev/nvidiactl<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--device<span class="w"> </span>/dev/nvidia-uvm:/dev/nvidia-uvm<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-v<span class="w"> </span>/usr/local/nvidia:/usr/local/nvidia<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>nvidia/cuda:12.2.0-base-ubuntu22.04<span class="w"> </span>nvidia-smi
-</code></pre></div>
+<pre><code class="language-bash">docker run --rm -it \
+  --device /dev/nvidia0:/dev/nvidia0 \
+  --device /dev/nvidiactl:/dev/nvidiactl \
+  --device /dev/nvidia-uvm:/dev/nvidia-uvm \
+  -v /usr/local/nvidia:/usr/local/nvidia \
+  nvidia/cuda:12.2.0-base-ubuntu22.04 nvidia-smi
+</code></pre>
 <p><code>--privileged</code> 能让容器看到更多宿主能力，但这是过宽授权，不是工程方案。特权容器可能访问宿主设备、修改内核相关状态、绕过很多隔离限制。AI 平台为了方便调试偶尔会使用 privileged，但生产模型服务和多租户训练不应依赖它。正确方向是让设备、库、capability、seccomp 和 mount 都以最小权限进入容器，并由调度和审计系统记录。</p>
 <p>生产平台需要把这些权限收敛成 <code>runtime_privilege_profile</code>，而不是让每个用户在 YAML 中自由组合 <code>privileged</code>、<code>hostPath</code>、<code>hostNetwork</code>、Linux capabilities 和设备挂载。这个 profile 描述某类 workload 允许使用哪些宿主能力、哪些必须由平台注入、哪些只允许 debug 临时豁免。AI Factory 中最危险的错误不是某个容器拿不到 GPU，而是为了让 GPU 可用而把宿主机完整暴露给用户进程。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">runtime_privilege_profile</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-inference-production</span>
-<span class="w">  </span><span class="nt">allowed_namespaces</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">maaS-prod</span>
-<span class="w">  </span><span class="nt">workload_types</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">online_inference</span>
-<span class="w">  </span><span class="nt">privilege</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">privileged</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-<span class="w">    </span><span class="nt">allow_privilege_escalation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-<span class="w">    </span><span class="nt">run_as_non_root</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">seccomp_profile</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">RuntimeDefault</span>
-<span class="w">    </span><span class="nt">capabilities</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">add</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[]</span>
-<span class="w">      </span><span class="nt">drop</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">ALL</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">host_access</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">host_network</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-<span class="w">    </span><span class="nt">host_pid</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-<span class="w">    </span><span class="nt">host_ipc</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">conditional_for_nccl_only</span>
-<span class="w">    </span><span class="nt">host_path</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">allowed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-<span class="w">      </span><span class="nt">exceptions</span><span class="p">:</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/dev/shm</span>
-<span class="w">          </span><span class="nt">reason</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">shared_memory_for_inference_engine</span>
-<span class="w">          </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">size_limited_emptydir_preferred</span>
-<span class="w">  </span><span class="nt">devices</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">gpu</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">allocated_by_device_plugin</span>
-<span class="w">    </span><span class="nt">rdma</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">allocated_by_rdma_device_plugin</span>
-<span class="w">    </span><span class="nt">manual_device_mount</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">denied</span>
-<span class="w">  </span><span class="nt">audit</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">require_owner</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">require_ticket_for_exception</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">emit_security_audit_event</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-</code></pre></div>
+<pre><code class="language-yaml">runtime_privilege_profile:
+  name: gpu-inference-production
+  allowed_namespaces:
+    - maaS-prod
+  workload_types:
+    - online_inference
+  privilege:
+    privileged: false
+    allow_privilege_escalation: false
+    run_as_non_root: true
+    seccomp_profile: RuntimeDefault
+    capabilities:
+      add: []
+      drop: [ALL]
+  host_access:
+    host_network: false
+    host_pid: false
+    host_ipc: conditional_for_nccl_only
+    host_path:
+      allowed: false
+      exceptions:
+        - path: /dev/shm
+          reason: shared_memory_for_inference_engine
+          mode: size_limited_emptydir_preferred
+  devices:
+    gpu: allocated_by_device_plugin
+    rdma: allocated_by_rdma_device_plugin
+    manual_device_mount: denied
+  audit:
+    require_owner: true
+    require_ticket_for_exception: true
+    emit_security_audit_event: true
+</code></pre>
 <p><code>runtime_privilege_profile</code> 应由 admission webhook 或平台控制器执行。对生产 namespace，用户不能直接提交 privileged Pod，也不能随意挂载 <code>/</code>, <code>/var/run</code>, <code>/dev</code>, <code>/sys</code>, <code>/proc</code>, container runtime socket 或宿主 driver 目录。对需要 RDMA、NCCL 或性能调试的场景，可以通过受控 profile 开放 <code>IPC_LOCK</code>、<code>SYS_NICE</code>、host IPC 或特定 device，但必须有过期时间和审计。这样平台既能支持高性能 AI workload，又不会把临时调试权限变成长期生产默认值。</p>
 <p>NVIDIA 的方案演进可以概括为三代。<code>nvidia-docker</code> 1.x 是早期包装器，用户用 <code>nvidia-docker run</code> 替代 <code>docker run</code>，由额外逻辑挂载 GPU 相关资源；它与原生 Docker 生态耦合较强，后来被淘汰。<code>nvidia-docker2</code> 引入 <code>nvidia-container-runtime</code>，用户可以通过 <code>docker run --runtime=nvidia</code> 使用增强 runtime，同时保留 <code>nvidia-docker</code> 作为兼容入口。当前主线是 NVIDIA Container Toolkit，它把 runtime、hook、CLI、library 和配置工具组合起来，支持 Docker、containerd、CRI-O、Podman 等不同 runtime 场景，并提供 <code>nvidia-ctk</code> 进行配置。</p>
 <p>NVIDIA Container Toolkit 的组件职责要记清楚。<code>libnvidia-container</code> 是底层库，负责发现宿主机 NVIDIA driver 能力，并执行设备和库文件注入。<code>nvidia-container-cli</code> 是调用该库的命令行工具，可用于 debug 和实际注入。<code>nvidia-container-runtime-hook</code> 或 <code>nvidia-container-toolkit</code> 作为 OCI hook，在容器创建后、用户进程启动前被调用。<code>nvidia-container-runtime</code> 包装低层 runc，修改 OCI spec，把 NVIDIA hook 加入生命周期。<code>nvidia-ctk</code> 是配置工具，用于写入 Docker、containerd 等 runtime 配置。</p>
 <p>安装包关系会随版本变化，但可以用职责而不是包名记忆：library/CLI 负责“怎么注入”，hook 负责“何时注入”，runtime 负责“把 hook 放进 spec”，ctk 负责“把 runtime 接到 Docker/containerd”。某些版本中 <code>nvidia-container-toolkit</code> 是 <code>nvidia-container-runtime-hook</code> 的软链接或等价入口，这是实现细节。工程上更重要的是能回答：Docker/containerd 是否使用了 NVIDIA runtime，OCI spec 是否包含 hook，hook 是否被 runc 调用，CLI 是否正确识别 GPU，libnvidia-container 是否成功 bind mount 设备和库。</p>
 <p>近年来还要理解 CDI（Container Device Interface，容器设备接口）和 NRI（Node Resource Interface，节点资源接口）带来的分叉。传统模式主要依赖环境变量和 OCI prestart hook：device plugin 把 <code>NVIDIA_VISIBLE_DEVICES</code>、device nodes 或 runtime 相关信息传给 kubelet/CRI，NVIDIA runtime hook 在容器启动前解析这些信息并注入设备。CDI 模式则把设备描述写成标准化 CDI spec，例如某个 <code>nvidia.com/gpu=GPU-xxxx</code> 对应哪些 device nodes、mount、env 和 hooks，containerd、CRI-O 或低层 runtime 根据 CDI device name 完成注入。NRI 进一步允许节点侧插件在容器生命周期中调整资源和注入信息。它们的共同目标，是减少对私有环境变量和 runtime wrapper 的依赖，让设备注入更标准、更可组合。</p>
 <p>这并不意味着 legacy hook 模式立刻消失。很多生产集群仍会同时存在 Docker <code>--gpus</code>、containerd <code>nvidia</code> runtime handler、Kubernetes device plugin 的 envvar strategy、CDI strategy、GPU Operator 管理的 Toolkit 和不同版本的容器运行时。平台文档如果只写“安装 NVIDIA Container Toolkit 即可”，读者遇到 RuntimeClass、CDI spec、device plugin strategy 或 hook 日志时就会断层。更准确的表达是：GPU 容器链路有多个实现路径，但每条路径都要回答同样的问题：设备由谁分配，设备描述由谁生成，CRI 如何传递，runtime 如何消费，容器内如何验证。</p>
-<pre class="mermaid"><code>flowchart TB
-  DP["GPU Device Plugin\n发现 / 分配 GPU"] --&gt; Strategy{"device list strategy"}
-  Strategy --&gt; Env["envvar / volume / legacy path\nNVIDIA_VISIBLE_DEVICES"]
-  Strategy --&gt; CDI["CDI spec\nvendor.com/device=GPU-uuid"]
-  Env --&gt; CRI["kubelet -&gt; CRI\ncontainerd / CRI-O"]
-  CDI --&gt; CRI
-  CRI --&gt; Handler{"runtime handler"}
-  Handler --&gt; Hook["nvidia runtime / OCI hook\nlegacy injection"]
-  Handler --&gt; Native["OCI runtime consumes CDI\nstandard device injection"]
-  Hook --&gt; Container["container\n/dev/nvidia* + driver libs"]
-  Native --&gt; Container</code></pre>
+<p><img alt="图：21.3.10 GPU 容器运行时与 NVIDIA Container Toolkit" src="../../assets/diagrams/part-05-orchestration-chapter-21-containers-kubernetes-03.svg" /></p>
 <p>排障时必须先识别当前节点使用哪条路径。若集群使用 RuntimeClass <code>nvidia</code>，但 Pod 没写 runtimeClassName，可能落到默认 runc，导致 device plugin 分配了 GPU 但 runtime 没有执行 NVIDIA 注入。若 device plugin 使用 CDI strategy，但 containerd 或 CRI-O 没启用 CDI 支持，Pod 事件可能显示设备解析失败。若集群使用 legacy envvar strategy，镜像里残留 <code>NVIDIA_VISIBLE_DEVICES=all</code> 可能使非 GPU Pod 触发 NVIDIA hook。路径不同，日志入口也不同：legacy hook 看 <code>nvidia-container-runtime-hook</code>、<code>nvidia-container-cli</code> 和 containerd stderr；CDI 看 CDI spec 文件、CRI 传递的 device name 和 runtime CDI 解析错误；RuntimeClass 问题则看 Pod spec、RuntimeClass 对象、containerd runtime handler 和 kubelet CRI 配置。</p>
 <p>为了让这条路径可验证，平台应保存 <code>oci_runtime_injection_diff</code>。它不是要求用户读完整 OCI <code>config.json</code>，而是把 NVIDIA runtime、CDI 或 NRI 在容器启动前后改变了什么摘出来：新增了哪些 hook、device、mount、env、Linux capability、cgroup device rule，以及这些变化是否来自 device plugin 分配结果。没有 diff，<code>OCI runtime create failed</code> 只能靠节点日志猜；有 diff，SRE 可以判断失败发生在 spec patch、hook 执行、CDI 解析还是用户进程启动。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">oci_runtime_injection_diff</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">diff_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ord-20260620-gpu-smoke-001</span>
-<span class="w">  </span><span class="nt">pod</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-acceptance</span>
-<span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-smoke-runtimeclass</span>
-<span class="w">    </span><span class="nt">container</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cuda</span>
-<span class="w">  </span><span class="nt">runtime_path</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">cri</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">containerd</span>
-<span class="w">    </span><span class="nt">runtime_handler</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nvidia</span>
-<span class="w">    </span><span class="nt">injection_mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cdi</span>
-<span class="w">    </span><span class="nt">device_list_strategy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cdi</span>
-<span class="w">  </span><span class="nt">before</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">hooks</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">prestart</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[]</span>
-<span class="w">    </span><span class="nt">devices</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[]</span>
-<span class="w">    </span><span class="nt">mounts</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[]</span>
-<span class="w">    </span><span class="nt">env</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">NVIDIA_VISIBLE_DEVICES</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">absent</span>
-<span class="w">  </span><span class="nt">after</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">cdi_devices</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nvidia.com/gpu=GPU-xxxx</span>
-<span class="w">    </span><span class="nt">devices</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/dev/nvidia0</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/dev/nvidiactl</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/dev/nvidia-uvm</span>
-<span class="w">    </span><span class="nt">mounts</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">source</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">host_driver_library</span>
-<span class="w">        </span><span class="nt">destination</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">container_driver_library</span>
-<span class="w">    </span><span class="nt">env</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">NVIDIA_VISIBLE_DEVICES</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">GPU-xxxx</span>
-<span class="w">      </span><span class="nt">NVIDIA_DRIVER_CAPABILITIES</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">compute,utility</span>
-<span class="w">  </span><span class="nt">verdict</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">spec_patch</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">hook_or_cdi_resolution</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">unexpected_extra_devices</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-</code></pre></div>
+<pre><code class="language-yaml">oci_runtime_injection_diff:
+  diff_id: ord-20260620-gpu-smoke-001
+  pod:
+    namespace: gpu-acceptance
+    name: gpu-smoke-runtimeclass
+    container: cuda
+  runtime_path:
+    cri: containerd
+    runtime_handler: nvidia
+    injection_mode: cdi
+    device_list_strategy: cdi
+  before:
+    hooks:
+      prestart: []
+    devices: []
+    mounts: []
+    env:
+      NVIDIA_VISIBLE_DEVICES: absent
+  after:
+    cdi_devices:
+      - nvidia.com/gpu=GPU-xxxx
+    devices:
+      - /dev/nvidia0
+      - /dev/nvidiactl
+      - /dev/nvidia-uvm
+    mounts:
+      - source: host_driver_library
+        destination: container_driver_library
+    env:
+      NVIDIA_VISIBLE_DEVICES: GPU-xxxx
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+  verdict:
+    spec_patch: pass
+    hook_or_cdi_resolution: pass
+    unexpected_extra_devices: false
+</code></pre>
 <p>这个 diff 的关键不是记录所有实现细节，而是建立“分配事实到运行时事实”的桥。若 device plugin 分配了 1 张 GPU，而 diff 中出现 8 张设备，问题在 runtime 注入或镜像默认值；若 diff 中有 CDI device name，但容器创建失败提示无法解析 CDI，问题在 containerd/CRI-O 的 CDI 支持或 spec 文件；若 diff 没有任何 NVIDIA 相关变化，说明 RuntimeClass、runtime handler 或 device plugin strategy 没有接上。它应被第 38 章的容器 GPU runtime 准入和第 39 章的故障诊断消费。</p>
-<pre class="mermaid"><code>flowchart TB
-  Symptom["Pod Running\nbut GPU wrong / unavailable"] --&gt; Assign["gpu_assignment_record\nkubelet + device plugin"]
-  Assign --&gt; Diff["oci_runtime_injection_diff\nOCI spec / CDI / hook"]
-  Diff --&gt; Recon["gpu_device_visibility_reconciliation\ninside container facts"]
-  Recon --&gt; Verdict{"facts match?"}
-  Verdict --&gt;|yes| App["move upward\nCUDA / NCCL / app readiness"]
-  Verdict --&gt;|no| Runtime["runtime investigation\nRuntimeClass / CDI / hook / env"]
-  Runtime --&gt; Baseline["container_gpu_runtime_acceptance_matrix\nretest node pool"]
-  Baseline --&gt; Pool["resource pool state\nallocatable / limited / quarantine"]</code></pre>
+<p><img alt="图：21.3.10 GPU 容器运行时与 NVIDIA Container Toolkit" src="../../assets/diagrams/part-05-orchestration-chapter-21-containers-kubernetes-04.svg" /></p>
 <p>这张图的价值在于明确“先对账，再归因”。容器内 <code>nvidia-smi</code> 成功只是一个观察点，不是最终结论；真正要比较的是调度分配、OCI 注入和容器内事实是否一致。若三者一致，再进入 CUDA、NCCL、模型服务或应用 readiness；若三者不一致，就应先处理 runtime 基线，而不是让业务团队继续改镜像或模型代码。</p>
 <p>Docker 使用时，典型命令是：</p>
-<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>nvidia-ctk<span class="w"> </span>runtime<span class="w"> </span>configure<span class="w"> </span>--runtime<span class="o">=</span>docker
-sudo<span class="w"> </span>systemctl<span class="w"> </span>restart<span class="w"> </span>docker
+<pre><code class="language-bash">sudo nvidia-ctk runtime configure --runtime=docker
+sudo systemctl restart docker
 
-docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>--gpus<span class="w"> </span>all<span class="w"> </span>nvidia/cuda:12.2.0-base-ubuntu22.04<span class="w"> </span>nvidia-smi
-docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>--gpus<span class="w"> </span><span class="s1">&#39;&quot;device=1,2&quot;&#39;</span><span class="w"> </span>nvidia/cuda:12.2.0-base-ubuntu22.04<span class="w"> </span>nvidia-smi
-docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>--runtime<span class="o">=</span>nvidia<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-e<span class="w"> </span><span class="nv">NVIDIA_VISIBLE_DEVICES</span><span class="o">=</span>all<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>nvidia/cuda:12.2.0-base-ubuntu22.04<span class="w"> </span>nvidia-smi
-</code></pre></div>
+docker run --rm --gpus all nvidia/cuda:12.2.0-base-ubuntu22.04 nvidia-smi
+docker run --rm --gpus '&quot;device=1,2&quot;' nvidia/cuda:12.2.0-base-ubuntu22.04 nvidia-smi
+docker run --rm --runtime=nvidia \
+  -e NVIDIA_VISIBLE_DEVICES=all \
+  nvidia/cuda:12.2.0-base-ubuntu22.04 nvidia-smi
+</code></pre>
 <p>Kubernetes 使用 containerd 时，通常不是让用户在 Pod 里写 <code>--gpus</code>。Pod 通过 <code>resources.limits.nvidia.com/gpu</code> 申请 GPU，device plugin 分配设备，container runtime 按配置调用 NVIDIA 相关逻辑。节点 bootstrap 应检查 containerd runtime class、NVIDIA runtime 配置、device plugin、driver、<code>nvidia-container-cli info</code>、容器内 <code>nvidia-smi</code> 和最小 CUDA 程序。否则 Kubernetes 调度成功后，容器仍可能在 runtime 阶段失败。</p>
 <p>要特别注意 <code>NVIDIA_VISIBLE_DEVICES</code>。它可以是 <code>all</code>、<code>none</code>、具体 GPU index、UUID 或 MIG device 标识，不同 runtime 和工具版本支持细节不同。<code>NVIDIA_DRIVER_CAPABILITIES</code> 控制暴露 compute、utility、graphics、video 等能力。错误的环境变量会导致容器看到过多或过少设备；镜像内遗留默认值可能导致未显式申请 GPU 的容器也触发 NVIDIA hook。生产平台应通过调度和准入统一设置，而不是依赖用户手写环境变量。</p>
 <h2 id="214">21.4 工程落地<a class="headerlink" href="#214" title="Permanent link">&para;</a></h2>
 <h3 id="2141">21.4.1 工程实现<a class="headerlink" href="#2141" title="Permanent link">&para;</a></h3>
 <p>生产落地应从节点基线开始，而不是从业务 Pod YAML 开始。节点必须安装匹配的 NVIDIA driver，确认 GPU、MIG、NVLink、ECC、persistence mode、driver version 和 kernel module 状态；安装 NVIDIA Container Toolkit；用 <code>nvidia-ctk</code> 配置 Docker 或 containerd；部署 device plugin 或 GPU Operator；最后跑分层 smoke test。每一步都要记录版本和结果，作为节点准入和后续故障对比的证据。</p>
 <p>Docker 节点最小检查如下：</p>
-<div class="highlight"><pre><span></span><code>nvidia-smi
-nvidia-container-cli<span class="w"> </span>info
-nvidia-ctk<span class="w"> </span>runtime<span class="w"> </span>configure<span class="w"> </span>--runtime<span class="o">=</span>docker
-systemctl<span class="w"> </span>restart<span class="w"> </span>docker
-docker<span class="w"> </span>info<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span>runtime
-docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>--gpus<span class="w"> </span>all<span class="w"> </span>nvidia/cuda:12.2.0-base-ubuntu22.04<span class="w"> </span>nvidia-smi
-</code></pre></div>
+<pre><code class="language-bash">nvidia-smi
+nvidia-container-cli info
+nvidia-ctk runtime configure --runtime=docker
+systemctl restart docker
+docker info | grep -i runtime
+docker run --rm --gpus all nvidia/cuda:12.2.0-base-ubuntu22.04 nvidia-smi
+</code></pre>
 <p>containerd 节点要检查 runtime 配置是否进入 <code>/etc/containerd/config.toml</code>，并确认 kubelet 使用的 CRI endpoint 指向该 containerd。配置形式会随发行版、containerd 版本和 NVIDIA Toolkit 版本变化，平台不应手写不可审计的零散配置，而应由节点初始化或 GPU Operator 统一管理。配置后要重启 containerd，并通过 Kubernetes Pod 验证，而不只通过 Docker 验证。</p>
 <p>在 containerd 环境里，生产检查不应只 grep 一个 <code>nvidia</code> 字符串。要确认三个事实：第一，kubelet 的 CRI endpoint 指向的是这份 containerd；第二，containerd 中存在预期 runtime handler，例如 <code>nvidia</code>，且它指向 NVIDIA runtime 或支持 CDI 的 runtime；第三，Pod 是否通过默认 runtime、RuntimeClass 或 device plugin strategy 使用了这条 handler。下面的命令不是固定 runbook，而是检查方向：</p>
-<div class="highlight"><pre><span></span><code>crictl<span class="w"> </span>info<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span>runtime
-containerd<span class="w"> </span>config<span class="w"> </span>dump<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span>nvidia
-kubectl<span class="w"> </span>get<span class="w"> </span>runtimeclass
-kubectl<span class="w"> </span>describe<span class="w"> </span>pod<span class="w"> </span>&lt;pod&gt;<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span><span class="s2">&quot;runtime\\|nvidia\\|cdi&quot;</span>
-journalctl<span class="w"> </span>-u<span class="w"> </span>kubelet<span class="w"> </span>-u<span class="w"> </span>containerd<span class="w"> </span>--since<span class="w"> </span><span class="s2">&quot;30 min ago&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span><span class="s2">&quot;nvidia\\|cdi\\|oci&quot;</span>
-</code></pre></div>
+<pre><code class="language-bash">crictl info | grep -i runtime
+containerd config dump | grep -i nvidia
+kubectl get runtimeclass
+kubectl describe pod &lt;pod&gt; | grep -i &quot;runtime\\|nvidia\\|cdi&quot;
+journalctl -u kubelet -u containerd --since &quot;30 min ago&quot; | grep -i &quot;nvidia\\|cdi\\|oci&quot;
+</code></pre>
 <p>如果集群使用 RuntimeClass，可以为 GPU workload 显式指定：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">node.k8s.io/v1</span>
-<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">RuntimeClass</span>
-<span class="nt">metadata</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nvidia</span>
-<span class="nt">handler</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nvidia</span>
-<span class="nn">---</span>
-<span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">v1</span>
-<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Pod</span>
-<span class="nt">metadata</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-smoke-runtimeclass</span>
-<span class="nt">spec</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">runtimeClassName</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nvidia</span>
-<span class="w">  </span><span class="nt">restartPolicy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Never</span>
-<span class="w">  </span><span class="nt">containers</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cuda</span>
-<span class="w">      </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nvidia/cuda:12.2.0-base-ubuntu22.04</span>
-<span class="w">      </span><span class="nt">command</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;nvidia-smi&quot;</span><span class="p p-Indicator">]</span>
-<span class="w">      </span><span class="nt">resources</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">limits</span><span class="p">:</span>
-<span class="w">          </span><span class="nt">nvidia.com/gpu</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
-</code></pre></div>
+<pre><code class="language-yaml">apiVersion: node.k8s.io/v1
+kind: RuntimeClass
+metadata:
+  name: nvidia
+handler: nvidia
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: gpu-smoke-runtimeclass
+spec:
+  runtimeClassName: nvidia
+  restartPolicy: Never
+  containers:
+    - name: cuda
+      image: nvidia/cuda:12.2.0-base-ubuntu22.04
+      command: [&quot;nvidia-smi&quot;]
+      resources:
+        limits:
+          nvidia.com/gpu: 1
+</code></pre>
 <p>是否必须显式 RuntimeClass，取决于集群策略。有些平台把 NVIDIA runtime 配成默认 runtime，有些平台只允许 GPU workload 使用 <code>runtimeClassName: nvidia</code>，也有平台通过 CDI 让默认 runtime 消费设备描述。关键不是哪一种绝对正确，而是策略必须一致、可审计、可准入。若一半节点用默认 NVIDIA runtime，另一半节点要求 RuntimeClass，用户会看到随机失败；若 admission 没有检查 GPU Pod 的 runtime strategy，Pod 可能被调度成功却在 CreateContainer 阶段失败。</p>
 <p>CDI 路径还需要检查 CDI spec 是否存在、device name 是否与 device plugin 分配一致、runtime 是否启用 CDI，以及容器内设备与分配记录是否一致。生产诊断报告应把 <code>device_list_strategy</code> 写出来，例如 <code>envvar</code>、<code>cdi</code> 或混合模式，并记录 CDI spec hash。这样一次容器 GPU 问题发生时，SRE 不需要先猜这台节点到底走的是 hook 注入还是 CDI 注入。</p>
 <p>一个最小 GPU Pod 可以这样验证：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">v1</span>
-<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Pod</span>
-<span class="nt">metadata</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-smoke</span>
-<span class="w">  </span><span class="nt">labels</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">workload.ai-factory/type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-smoke</span>
-<span class="nt">spec</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">restartPolicy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Never</span>
-<span class="w">  </span><span class="nt">containers</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cuda</span>
-<span class="w">      </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nvidia/cuda:12.2.0-base-ubuntu22.04</span>
-<span class="w">      </span><span class="nt">command</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;nvidia-smi&quot;</span><span class="p p-Indicator">]</span>
-<span class="w">      </span><span class="nt">resources</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">limits</span><span class="p">:</span>
-<span class="w">          </span><span class="nt">nvidia.com/gpu</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
-</code></pre></div>
+<pre><code class="language-yaml">apiVersion: v1
+kind: Pod
+metadata:
+  name: gpu-smoke
+  labels:
+    workload.ai-factory/type: gpu-smoke
+spec:
+  restartPolicy: Never
+  containers:
+    - name: cuda
+      image: nvidia/cuda:12.2.0-base-ubuntu22.04
+      command: [&quot;nvidia-smi&quot;]
+      resources:
+        limits:
+          nvidia.com/gpu: 1
+</code></pre>
 <p>模型服务的 Deployment 还要补充 runtime 之外的生产语义：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">apps/v1</span>
-<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Deployment</span>
-<span class="nt">metadata</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">chat-model</span>
-<span class="nt">spec</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">replicas</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
-<span class="w">  </span><span class="nt">strategy</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">RollingUpdate</span>
-<span class="w">    </span><span class="nt">rollingUpdate</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">maxUnavailable</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span>
-<span class="w">      </span><span class="nt">maxSurge</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
-<span class="w">  </span><span class="nt">selector</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">matchLabels</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">app</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">chat-model</span>
-<span class="w">  </span><span class="nt">template</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">metadata</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">labels</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">app</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">chat-model</span>
-<span class="w">        </span><span class="nt">workload.ai-factory/type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">online-inference</span>
-<span class="w">        </span><span class="nt">model.ai-factory/name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">chat-model</span>
-<span class="w">        </span><span class="nt">tenant.ai-factory/id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">platform</span>
-<span class="w">    </span><span class="nt">spec</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">terminationGracePeriodSeconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">120</span>
-<span class="w">      </span><span class="nt">containers</span><span class="p">:</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">model-server</span>
-<span class="w">          </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">registry.example.com/inference/chat@sha256:example</span>
-<span class="w">          </span><span class="nt">ports</span><span class="p">:</span>
-<span class="w">            </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">containerPort</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8080</span>
-<span class="w">          </span><span class="nt">resources</span><span class="p">:</span>
-<span class="w">            </span><span class="nt">requests</span><span class="p">:</span>
-<span class="w">              </span><span class="nt">cpu</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;8&quot;</span>
-<span class="w">              </span><span class="nt">memory</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">64Gi</span>
-<span class="w">            </span><span class="nt">limits</span><span class="p">:</span>
-<span class="w">              </span><span class="nt">nvidia.com/gpu</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
-<span class="w">              </span><span class="nt">memory</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">64Gi</span>
-<span class="w">          </span><span class="nt">startupProbe</span><span class="p">:</span>
-<span class="w">            </span><span class="nt">httpGet</span><span class="p">:</span>
-<span class="w">              </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/startup</span>
-<span class="w">              </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8080</span>
-<span class="w">            </span><span class="nt">failureThreshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">60</span>
-<span class="w">            </span><span class="nt">periodSeconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
-<span class="w">          </span><span class="nt">readinessProbe</span><span class="p">:</span>
-<span class="w">            </span><span class="nt">httpGet</span><span class="p">:</span>
-<span class="w">              </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/ready</span>
-<span class="w">              </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8080</span>
-<span class="w">            </span><span class="nt">periodSeconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5</span>
-<span class="w">          </span><span class="nt">livenessProbe</span><span class="p">:</span>
-<span class="w">            </span><span class="nt">httpGet</span><span class="p">:</span>
-<span class="w">              </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/live</span>
-<span class="w">              </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8080</span>
-<span class="w">            </span><span class="nt">periodSeconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
-</code></pre></div>
+<pre><code class="language-yaml">apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chat-model
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: chat-model
+  template:
+    metadata:
+      labels:
+        app: chat-model
+        workload.ai-factory/type: online-inference
+        model.ai-factory/name: chat-model
+        tenant.ai-factory/id: platform
+    spec:
+      terminationGracePeriodSeconds: 120
+      containers:
+        - name: model-server
+          image: registry.example.com/inference/chat@sha256:example
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              cpu: &quot;8&quot;
+              memory: 64Gi
+            limits:
+              nvidia.com/gpu: 1
+              memory: 64Gi
+          startupProbe:
+            httpGet:
+              path: /startup
+              port: 8080
+            failureThreshold: 60
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8080
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /live
+              port: 8080
+            periodSeconds: 10
+</code></pre>
 <p>这份 YAML 仍然只是执行层示例。生产平台应由上层 ModelService 或 InferenceService 生成 Deployment、Service、HPA、Gateway route、ConfigMap、Secret、PodDisruptionBudget 和监控规则，并保留 ownerReference 与反向映射。用户看到模型服务，SRE 能下钻到 Pod；节点告警出现，平台能反查租户、模型、版本和成本中心。没有对象关联，Kubernetes 会变成一堆 YAML，而不是 AI Factory 的控制面。</p>
 <p>工程实现还应提供标准诊断脚本或诊断 Job。诊断不应只打印 <code>nvidia-smi</code>，而应按层次输出：节点 driver 和 GPU UUID、container runtime 配置、NVIDIA hook 是否可用、Pod 分配到的 GPU、容器内设备文件、CUDA library、RDMA device、NCCL 环境变量、Service endpoint 和探针结果。诊断结果应带 run id 并归档，方便后续与准入基线对比。这样用户报“Pod 起不来”或“GPU 不可用”时，平台能快速判断是镜像、调度、runtime、设备注入还是应用 readiness 问题。</p>
 <p>标准诊断 Job 的输出应包含 <code>gpu_device_visibility_reconciliation</code>。它把 Kubernetes 分配、runtime 注入和容器内枚举三类事实对齐，专门发现“能看到 GPU 但看错了 GPU”这种隐蔽问题。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">gpu_device_visibility_reconciliation</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">reconciliation_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gdvr-20260620-001</span>
-<span class="w">  </span><span class="nt">pod</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-smoke-runtimeclass</span>
-<span class="w">  </span><span class="nt">assignment_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gar-20260620-0001</span>
-<span class="w">  </span><span class="nt">expected</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">gpu_uuids</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">GPU-xxxx</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">mig_uuids</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[]</span>
-<span class="w">    </span><span class="nt">visible_count</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
-<span class="w">    </span><span class="nt">driver_capabilities</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">compute</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">utility</span><span class="p p-Indicator">]</span>
-<span class="w">  </span><span class="nt">observed</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">nvidia_smi_gpu_uuids</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">GPU-xxxx</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">cuda_visible_devices</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;0&quot;</span>
-<span class="w">    </span><span class="nt">dev_nodes</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/dev/nvidia0</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/dev/nvidiactl</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/dev/nvidia-uvm</span>
-<span class="w">    </span><span class="nt">nvidia_visible_devices</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">GPU-xxxx</span>
-<span class="w">  </span><span class="nt">checks</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">count_matches_assignment</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">uuid_matches_assignment</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">no_unassigned_gpu_visible</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">driver_library_load</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">    </span><span class="nt">cuda_minimal_kernel</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
-<span class="w">  </span><span class="nt">failure_action</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">on_mismatch</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cordon_node_and_open_runtime_investigation</span>
-</code></pre></div>
+<pre><code class="language-yaml">gpu_device_visibility_reconciliation:
+  reconciliation_id: gdvr-20260620-001
+  pod: gpu-smoke-runtimeclass
+  assignment_record: gar-20260620-0001
+  expected:
+    gpu_uuids: [GPU-xxxx]
+    mig_uuids: []
+    visible_count: 1
+    driver_capabilities: [compute, utility]
+  observed:
+    nvidia_smi_gpu_uuids: [GPU-xxxx]
+    cuda_visible_devices: &quot;0&quot;
+    dev_nodes:
+      - /dev/nvidia0
+      - /dev/nvidiactl
+      - /dev/nvidia-uvm
+    nvidia_visible_devices: GPU-xxxx
+  checks:
+    count_matches_assignment: pass
+    uuid_matches_assignment: pass
+    no_unassigned_gpu_visible: pass
+    driver_library_load: pass
+    cuda_minimal_kernel: pass
+  failure_action:
+    on_mismatch: cordon_node_and_open_runtime_investigation
+</code></pre>
 <p>这个对象应成为 GPU Pod admission、节点准入和事故排查的共同证据。容器里完全看不到 GPU 是硬失败；容器里看到过多 GPU 是隔离和计费失败；容器里看到的 UUID 与分配记录不同，则可能把一个租户的任务放到另一个租户的设备上。生产系统必须把这些情况区分开，不能都写成 “GPU unavailable”。</p>
 <p>容器 GPU runtime 的变更必须有 <code>container_runtime_change_record</code>。它记录一次 containerd、runc、NVIDIA Container Toolkit、GPU Operator、device plugin strategy、RuntimeClass、CDI spec 生成方式或 NRI 插件启用的变更。这个对象的核心不是“升级了哪个版本”，而是说明变更如何影响设备分配、OCI spec 注入、容器内可见性、RDMA/NCCL、准入基线和回滚路径。GPU 容器链路一旦漂移，症状可能出现在很多层：Pod <code>CreateContainerError</code>、容器看到错误 GPU、NCCL 找错接口、推理副本扩容失败、训练任务首个 collective 超时。没有变更记录，复盘只能在节点配置和日志里追历史。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">container_runtime_change_record</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">change_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">crc-gpu-runtime-20260620-001</span>
-<span class="w">  </span><span class="nt">scope</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">cluster</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ai-prod-k8s</span>
-<span class="w">    </span><span class="nt">node_pools</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">h100-inference-canary</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">affected_runtime_paths</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">containerd_runtime_handler</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nvidia_container_toolkit</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu_device_plugin_strategy</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cdi_spec_generation</span>
-<span class="w">  </span><span class="nt">before</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">container_runtime</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">containerd-1.7.x</span>
-<span class="w">    </span><span class="nt">runtime_handler</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nvidia</span>
-<span class="w">    </span><span class="nt">toolkit_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pinned_previous</span>
-<span class="w">    </span><span class="nt">device_list_strategy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">envvar</span>
-<span class="w">    </span><span class="nt">injection_mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">legacy_hook</span>
-<span class="w">    </span><span class="nt">nri_plugin_enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-<span class="w">  </span><span class="nt">after</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">container_runtime</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">containerd-1.7.x</span>
-<span class="w">    </span><span class="nt">runtime_handler</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">default_with_cdi</span>
-<span class="w">    </span><span class="nt">toolkit_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pinned_next</span>
-<span class="w">    </span><span class="nt">device_list_strategy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cdi</span>
-<span class="w">    </span><span class="nt">injection_mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">native_cdi</span>
-<span class="w">    </span><span class="nt">nri_plugin_enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-<span class="w">  </span><span class="nt">evidence_required</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">container_runtime_config_hash</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">runtimeclass_handler_mapping_if_used</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cdi_spec_hash</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">oci_runtime_injection_diff</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu_device_visibility_reconciliation</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">container_gpu_runtime_acceptance_matrix</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu_nic_topology_evidence_if_rdma</span>
-<span class="w">  </span><span class="nt">rollout</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">canary_nodes</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">gpu-node-001</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">max_unavailable_gpu_capacity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_defined</span>
-<span class="w">    </span><span class="nt">rollback_to_previous_runtime_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">documented_and_tested</span>
-<span class="w">  </span><span class="nt">decision</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">status</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">canary_passed_or_blocked_or_rolled_back</span>
-<span class="w">    </span><span class="nt">block_reasons</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[]</span>
-</code></pre></div>
+<pre><code class="language-yaml">container_runtime_change_record:
+  change_id: crc-gpu-runtime-20260620-001
+  scope:
+    cluster: ai-prod-k8s
+    node_pools: [h100-inference-canary]
+    affected_runtime_paths:
+      - containerd_runtime_handler
+      - nvidia_container_toolkit
+      - gpu_device_plugin_strategy
+      - cdi_spec_generation
+  before:
+    container_runtime: containerd-1.7.x
+    runtime_handler: nvidia
+    toolkit_version: pinned_previous
+    device_list_strategy: envvar
+    injection_mode: legacy_hook
+    nri_plugin_enabled: false
+  after:
+    container_runtime: containerd-1.7.x
+    runtime_handler: default_with_cdi
+    toolkit_version: pinned_next
+    device_list_strategy: cdi
+    injection_mode: native_cdi
+    nri_plugin_enabled: false
+  evidence_required:
+    - container_runtime_config_hash
+    - runtimeclass_handler_mapping_if_used
+    - cdi_spec_hash
+    - oci_runtime_injection_diff
+    - gpu_device_visibility_reconciliation
+    - container_gpu_runtime_acceptance_matrix
+    - gpu_nic_topology_evidence_if_rdma
+  rollout:
+    canary_nodes: [gpu-node-001]
+    max_unavailable_gpu_capacity: policy_defined
+    rollback_to_previous_runtime_path: documented_and_tested
+  decision:
+    status: canary_passed_or_blocked_or_rolled_back
+    block_reasons: []
+</code></pre>
 <p>这个记录要和普通变更单区分开。普通变更单关注谁批准、何时执行；<code>container_runtime_change_record</code> 关注运行时路径是否仍然能证明“分配事实、注入事实、容器内事实一致”。从 legacy hook 迁移到 CDI，或从 RuntimeClass handler 迁移到 runtime 原生 CDI 注入时，不能只跑一个 <code>nvidia-smi</code> Pod。平台应至少验证：非 GPU Pod 不会看到 GPU，单 GPU Pod 只看到被分配 GPU，MIG Pod 不会看到整卡，多 GPU/RDMA Pod 的 GPU/NIC 拓扑仍匹配，失败时资源池会自动从 allocatable 降级为 limited 或 quarantine。</p>
-<pre class="mermaid"><code>flowchart TB
-  Change["container_runtime_change_record"] --&gt; Scope["scope\nnode pool / runtime path / strategy"]
-  Scope --&gt; Canary["canary node pool"]
-  Canary --&gt; Diff["oci_runtime_injection_diff"]
-  Canary --&gt; Recon["gpu_device_visibility_reconciliation"]
-  Canary --&gt; Matrix["container_gpu_runtime_acceptance_matrix"]
-  Matrix --&gt; Verdict{pass?}
-  Diff --&gt; Verdict
-  Recon --&gt; Verdict
-  Verdict --&gt;|pass| Rollout["expand rollout"]
-  Verdict --&gt;|fail| Quarantine["cordon / rollback / retest"]
-  Quarantine --&gt; Cost["reliability_cost_ledger"]
-  Rollout --&gt; Baseline["acceptance baseline refresh"]</code></pre>
+<p><img alt="图：21.4.1 工程实现" src="../../assets/diagrams/part-05-orchestration-chapter-21-containers-kubernetes-05.svg" /></p>
 <p>这条闭环也解释了为什么“CDI 是新方向”不等于“可以直接全量切换”。官方 NVIDIA 文档已经把 Container Toolkit 描述为包含 runtime、hook、library/CLI 的组件栈，并且 GPU Operator 较新版本开始把 CDI 作为 Kubernetes workload 容器 GPU 注入的默认路径；同时 NRI 插件提供了不依赖 <code>nvidia</code> runtime class 的注入方式。生产平台应该跟随标准化方向，但必须以资源池为单位迁移、以准入矩阵证明、以 PRR 门禁约束，而不是把官方默认值当成自己的生产验收结论。</p>
 <p>落地时还要把准入门禁接到对象创建路径。生产 namespace 可以要求镜像 digest、资源标签、探针、owner、租户、成本中心和安全上下文齐全；GPU workload 可以要求目标节点池已经通过容器 GPU smoke test；训练任务可以要求 queue、quota、checkpoint 和失败策略完整。这些检查应由 admission webhook 或平台控制器自动执行，而不是靠评审 YAML。Kubernetes 允许用户提交很多合法对象，但 AI Factory 只应允许符合生产语义的对象进入关键资源池。</p>
 <p>一个 GPU workload 的准入链可以这样组织：</p>
-<pre class="mermaid"><code>flowchart LR
-  Submit["Pod / Job / ModelService"] --&gt; Namespace["namespace / tenant check"]
-  Namespace --&gt; Image["image digest / vulnerability gate"]
-  Image --&gt; Security["runtime_privilege_profile"]
-  Security --&gt; Resource["GPU / RDMA resource request"]
-  Resource --&gt; Labels["owner / cost / model labels"]
-  Labels --&gt; Baseline["node pool acceptance baseline"]
-  Baseline --&gt; Admit["admit"]
-  Namespace --&gt;|deny| Reject["typed rejection"]
-  Image --&gt;|deny| Reject
-  Security --&gt;|deny| Reject
-  Resource --&gt;|deny| Reject</code></pre>
+<p><img alt="图：21.4.1 工程实现" src="../../assets/diagrams/part-05-orchestration-chapter-21-containers-kubernetes-06.svg" /></p>
 <p>准入失败要给出 typed rejection，而不是只告诉用户 “forbidden”。例如 <code>privileged_not_allowed</code>、<code>hostpath_denied</code>、<code>gpu_request_missing</code>、<code>image_digest_required</code>、<code>tenant_label_missing</code>、<code>node_pool_not_accepted</code>。这些拒绝原因既能提升用户体验，也能进入平台指标，帮助团队判断是文档问题、镜像治理问题、权限模型过严，还是用户在绕过平台。</p>
 <h3 id="2142">21.4.2 常见故障<a class="headerlink" href="#2142" title="Permanent link">&para;</a></h3>
 <p>第一类故障是 driver/runtime 不匹配。宿主机 driver 太旧，容器内 CUDA runtime 或框架需要更高能力；或者 driver 可支持 CUDA runtime，但 NCCL、PyTorch、TensorRT-LLM 与实际 GPU/OFED 组合没有通过验证。症状包括 <code>libcuda.so.1</code> 加载失败、CUDA initialization error、<code>nvidia-smi</code> 正常但框架不可用。处理方式是查宿主 driver、容器 CUDA、NCCL、框架版本和官方兼容矩阵，再跑最小 CUDA 与 NCCL 测试。</p>

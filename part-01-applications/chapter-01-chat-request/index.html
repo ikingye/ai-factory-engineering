@@ -3833,18 +3833,7 @@
 <p>这条链路有两个关键边界。第一个边界在 Platform 与 Model Serving 之间：Platform 负责租户治理、路由、限流、审计和计量，模型服务负责 tokenizer、队列、batching 和推理执行。两者不能互相缺位。网关不知道 input token 和输出长度，就无法做细粒度限流；模型服务不知道租户和业务优先级，就无法解释为什么某类请求应该被隔离。第二个边界在推理引擎与 GPU 之间：引擎用 continuous batching、paged attention、prefix cache 或 PD 分离等策略组织计算，GPU 只执行具体 kernel 和内存访问。</p>
 <p>架构图中每个节点都应成为观测点，而不只是流程框。Client 到 Gateway 的耗时解释网络和客户端体感；Gateway 到 Server 的耗时解释治理和路由；Server 内部队列解释排队；Prefill、Decode 和 KV Cache 解释模型计算；GPU/HBM 解释底层资源；Metering 解释账单和成本。缺少任一节点，事故复盘都会出现断点。</p>
 <p>部署形态可以不同，但责任链不能缺失。小规模团队可能把 Gateway、模型服务和计量放在同一个进程或同一套服务中；大规模平台会把它们拆成独立控制面和数据面。无论实现多简单，都应保留同样的逻辑阶段，否则系统扩展时会重新补课。一个常见反模式是直接把应用请求打到推理引擎暴露的 API，短期可以跑通 Demo，长期会缺少租户治理、限流、审计、账单和统一错误语义。AI Factory 需要的不是更多层，而是关键责任不能被绕过。</p>
-<pre class="mermaid"><code>flowchart LR
-  Client["Chat Client"] --&gt; API["Chat Completion API"]
-  API --&gt; Gateway["AI Gateway"]
-  Gateway --&gt; Router["模型路由 / 限流"]
-  Router --&gt; Server["Model Server"]
-  Server --&gt; Engine["Inference Engine"]
-  Engine --&gt; Prefill["Prefill"]
-  Engine --&gt; Decode["Decode"]
-  Decode --&gt; KV["KV Cache"]
-  KV --&gt; GPU["GPU / HBM"]
-  Decode --&gt; Stream["Streaming Tokens"]
-  Stream --&gt; Meter["Token Metering"]</code></pre>
+<p><img alt="图：1.2.2 系统架构" src="../../assets/diagrams/part-01-applications-chapter-01-chat-request-01.svg" /></p>
 <h2 id="13">1.3 关键技术<a class="headerlink" href="#13" title="Permanent link">&para;</a></h2>
 <h3 id="131-chat-completion-api">1.3.1 Chat Completion API<a class="headerlink" href="#131-chat-completion-api" title="Permanent link">&para;</a></h3>
 <p>Chat Completion API 是大模型应用最常见的接口形态。应用提交模型名、消息列表、生成参数和可选工具定义，服务端返回一段生成结果或一串 streaming chunk。OpenAI-compatible API 的价值在于降低应用迁移成本，让 MaaS、私有模型服务和开源推理平台可以用相近结构承接请求。但“接口兼容”不等于“行为完全一致”：不同平台在 tokenizer、上下文模板、工具调用格式、错误码、streaming 事件、计费字段和安全策略上可能存在差异，工程接入时必须显式验证。</p>
@@ -3876,24 +3865,7 @@
 <p>Decode 是逐 token 生成输出的阶段。每一步模型根据当前 token 和已有 KV Cache 预测下一个 token，再把新 token 的 Key/Value 追加到缓存。Decode 的特点是迭代次数等于输出 token 数，单步计算相对小，但需要频繁访问 KV Cache。并发序列越多、上下文越长，KV Cache 访问和管理越关键。现代推理引擎围绕 continuous batching、paged attention、prefix cache、speculative decoding 和 PD 分离做优化，本质都是在 prefill、decode、吞吐、延迟和显存之间寻找平衡。</p>
 <p>理解 prefill 与 decode，有助于避免错误优化。若 TTFT 高是因为 prefill 长，盲目提高 decode batch 可能没有帮助；若 TPOT 高是因为 decode 拥塞，减少 prompt 长度也只能改善首 token，不能解决后续输出慢；若 KV Cache 紧张，扩更多副本可能缓解并发，但也可能被同样的长上下文快速填满。平台应在请求 trace 中分离 queue、prefill 和 decode，并按 input/output token 分桶分析。</p>
 <p>Prefill 和 decode 还会影响资源池设计。长上下文问答、短对话、代码补全和批量生成可以使用不同队列，避免在同一 batch 中互相拖累。部分系统会探索 PD 分离，即把 prefill 和 decode 放到不同资源或实例上，以提高调度灵活性；这种方案能改善某些长上下文场景，但也引入 KV 传输、路由复杂度和故障面。是否采用这类设计，要基于真实负载分布，而不是因为架构听起来先进。</p>
-<pre class="mermaid"><code>sequenceDiagram
-  participant App as 应用
-  participant GW as AI Gateway
-  participant S as 推理服务
-  participant E as 推理引擎
-  participant G as GPU
-  App-&gt;&gt;GW: Chat 请求(messages, stream=true)
-  GW-&gt;&gt;S: 鉴权、限流、路由后转发
-  S-&gt;&gt;E: tokenizer + 入队
-  E-&gt;&gt;G: prefill 输入上下文
-  G--&gt;&gt;E: KV Cache 初始化完成
-  loop 每个输出 token
-    E-&gt;&gt;G: decode step
-    G--&gt;&gt;E: next token
-    E--&gt;&gt;S: token
-    S--&gt;&gt;App: streaming chunk
-  end
-  S-&gt;&gt;GW: token 计量与 trace</code></pre>
+<p><img alt="图：1.3.6 prefill 与 decode" src="../../assets/diagrams/part-01-applications-chapter-01-chat-request-02.svg" /></p>
 <h3 id="137-kv-cache">1.3.7 KV Cache<a class="headerlink" href="#137-kv-cache" title="Permanent link">&para;</a></h3>
 <p>KV Cache 保存历史 token 在每层 attention 中对应的 Key 和 Value 张量，使 decode 阶段不必每次重新计算完整上下文。没有 KV Cache，生成第 N 个 token 时需要反复处理前面所有 token，推理成本会不可接受。使用 KV Cache 后，模型每步只需要处理新 token，并读取已有缓存完成 attention。它是 LLM 在线推理能够持续生成的关键机制，也是显存容量规划中最容易被低估的部分之一。</p>
 <p>KV Cache 的规模与模型层数、隐藏维度、并发序列、上下文长度、数据类型和输出长度相关。应用层看起来只是“允许更长上下文”或“提高并发”，底层可能意味着 HBM 中缓存占用快速增长。一个服务实例 compute utilization 不高，却可能因为 KV Cache 没有足够空间而无法接收更多请求；一个长上下文请求即使输出很短，也会在 prefill 后占用较大缓存；一个长输出请求则会在 decode 中持续增长缓存。普通微服务很少有这种“请求历史状态占用加速器显存”的问题。</p>
@@ -3902,61 +3874,61 @@
 <p>因此，应用层要把可复用内容放在稳定前缀，把动态内容放在后段。适合复用的通常是系统提示、固定工具说明、稳定输出格式、共享 RAG 框架提示和多轮会话中已经稳定的历史；不适合长期写入的通常是随机长文本、一次性文档、每次都不同的检索片段和用户自由输入。Prompt 结构设计会直接影响 runtime 缓存效率。应用团队不能只说“我的输入很长”，还要说明长输入中哪些部分会在后续请求复用，哪些只是一次性上下文。</p>
 <p>KV Cache 还决定了多租户隔离的细节。不同租户共享同一模型实例时，缓存空间实际上也是共享资源；某个租户的大量长上下文请求可能挤压其他租户，即使请求数不高。平台可以通过最大上下文、最大并发序列、租户级 token 预算、资源池隔离或调度权重来控制这种影响。对高安全要求场景，还要确认缓存生命周期和实例复用策略不会造成数据残留风险。KV Cache 不是用户可见对象，但必须被平台当成一等资源治理。</p>
 <p>在工程记录上，KV Cache 不应只是一条 <code>kv_cache_usage</code> 曲线。更可复盘的做法是维护请求级 <code>kv_block_ledger</code>，记录一次请求在 prefill、decode、取消和结束阶段占用了多少 KV block、是否命中 prefix cache、是否按时释放，以及这些 block 归属哪个租户和 endpoint。这样当用户取消 streaming 后 GPU 仍然繁忙，或者某个租户把其它请求挤出缓存时，平台能找到事实，而不是只看到 HBM 高水位。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">kv_block_ledger</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">request_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">req-20260620-001</span>
-<span class="w">  </span><span class="nt">tenant</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enterprise-a</span>
-<span class="w">  </span><span class="nt">endpoint</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-large-prod</span>
-<span class="w">  </span><span class="nt">engine_profile</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vllm-prod-h100-v7</span>
-<span class="w">  </span><span class="nt">context</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">input_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8192</span>
-<span class="w">    </span><span class="nt">max_output_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1024</span>
-<span class="w">    </span><span class="nt">context_bucket</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">long_context</span>
-<span class="w">  </span><span class="nt">allocation</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">prefill_blocks_reserved</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">decode_blocks_growth</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">peak_blocks</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">prefix_cache_blocks_reused</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">  </span><span class="nt">lifecycle</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">allocated_at</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prefill_start</span>
-<span class="w">    </span><span class="nt">released_at</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">request_closed_or_cancelled</span>
-<span class="w">    </span><span class="nt">close_reason</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">client_cancelled</span>
-<span class="w">    </span><span class="nt">release_latency_ms</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">  </span><span class="nt">governance</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">tenant_kv_quota_hit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-<span class="w">    </span><span class="nt">cache_isolation_domain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tenant_or_endpoint</span>
-</code></pre></div>
+<pre><code class="language-yaml">kv_block_ledger:
+  request_id: req-20260620-001
+  tenant: enterprise-a
+  endpoint: af-chat-large-prod
+  engine_profile: vllm-prod-h100-v7
+  context:
+    input_tokens: 8192
+    max_output_tokens: 1024
+    context_bucket: long_context
+  allocation:
+    prefill_blocks_reserved: measured
+    decode_blocks_growth: measured
+    peak_blocks: measured
+    prefix_cache_blocks_reused: measured
+  lifecycle:
+    allocated_at: prefill_start
+    released_at: request_closed_or_cancelled
+    close_reason: client_cancelled
+    release_latency_ms: measured
+  governance:
+    tenant_kv_quota_hit: false
+    cache_isolation_domain: tenant_or_endpoint
+</code></pre>
 <p>这个 ledger 对应用也有反馈价值。若一个应用的 prompt 模板经常造成高 <code>prefill_blocks_reserved</code>，说明上下文预算需要重做；若 prefix cache 命中很低，说明系统提示、工具 schema 或 RAG 模板中有过多动态字段；若取消后释放延迟高，说明 streaming 生命周期没有打通。KV Cache 的治理不是只靠底层引擎，应用的上下文结构同样决定缓存效率。</p>
 <p>对 Chat 请求来说，最危险的 KV 问题不是“显存使用率高”，而是请求生命周期已经结束，KV block 仍然被 allocator、prefix cache、decode worker 或异常恢复路径持有。用户取消 streaming、网关超时、客户端断网、engine worker 重启、PD transfer 失败，都可能让业务侧认为请求结束，而 runtime 侧仍保留状态。生产系统应把这类问题沉淀为 <code>kv_block_leak_forensic_record</code>，而不是等到整池 HBM 压力升高后才从聚合指标倒推。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">kv_block_leak_forensic_record</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">forensic_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kv-leak-20260620-001</span>
-<span class="w">  </span><span class="nt">request_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">req-20260620-001</span>
-<span class="w">  </span><span class="nt">tenant</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enterprise-a</span>
-<span class="w">  </span><span class="nt">endpoint</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-large-prod</span>
-<span class="w">  </span><span class="nt">engine_profile</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vllm-prod-h100-v7</span>
-<span class="w">  </span><span class="nt">close_event</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">close_reason</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">client_cancelled</span>
-<span class="w">    </span><span class="nt">close_seen_by_gateway</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">close_seen_by_model_server</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">close_seen_by_engine</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true_or_false</span>
-<span class="w">  </span><span class="nt">allocation_snapshot</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">blocks_at_prefill_end</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">peak_blocks</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">blocks_expected_after_close</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span>
-<span class="w">    </span><span class="nt">blocks_observed_after_close</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">release_latency_ms</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">  </span><span class="nt">suspected_owner</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">allocator_state</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">active_or_orphaned</span>
-<span class="w">    </span><span class="nt">decode_worker</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">worker_id_if_known</span>
-<span class="w">    </span><span class="nt">prefix_cache_ref</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cache_key_if_retained</span>
-<span class="w">    </span><span class="nt">pd_transfer_session</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">transfer_id_if_enabled</span>
-<span class="w">  </span><span class="nt">impact</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">leaked_block_seconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">    </span><span class="nt">affected_admission_decisions</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">endpoint_admission_decision_ids</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">tenant_quota_impact</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">  </span><span class="nt">remediation</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">force_release_or_restart_or_disable_cache_path</span>
-<span class="w">    </span><span class="nt">regression_test</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cancel_timeout_disconnect_restart_cases</span>
-</code></pre></div>
+<pre><code class="language-yaml">kv_block_leak_forensic_record:
+  forensic_id: kv-leak-20260620-001
+  request_id: req-20260620-001
+  tenant: enterprise-a
+  endpoint: af-chat-large-prod
+  engine_profile: vllm-prod-h100-v7
+  close_event:
+    close_reason: client_cancelled
+    close_seen_by_gateway: true
+    close_seen_by_model_server: true
+    close_seen_by_engine: true_or_false
+  allocation_snapshot:
+    blocks_at_prefill_end: measured
+    peak_blocks: measured
+    blocks_expected_after_close: 0
+    blocks_observed_after_close: measured
+    release_latency_ms: measured
+  suspected_owner:
+    allocator_state: active_or_orphaned
+    decode_worker: worker_id_if_known
+    prefix_cache_ref: cache_key_if_retained
+    pd_transfer_session: transfer_id_if_enabled
+  impact:
+    leaked_block_seconds: calculated
+    affected_admission_decisions: [endpoint_admission_decision_ids]
+    tenant_quota_impact: calculated
+  remediation:
+    action: force_release_or_restart_or_disable_cache_path
+    regression_test: cancel_timeout_disconnect_restart_cases
+</code></pre>
 <p>这份记录把“取消后 GPU 还忙”拆成可验证事实。首先看 close event 是否在 Gateway、model server 和 engine 三处闭合；其次看 allocator 是否仍有 orphaned block；再看 prefix cache 或 PD transfer 是否持有引用；最后把泄漏 block 秒折算到 admission 失败和成本。没有这份记录，团队很容易把泄漏误判为流量增长、长上下文变多或 GPU 不够，结果用扩容掩盖 lifecycle bug。</p>
 <h3 id="138">1.3.8 应用体验如何反向决定基础设施设计<a class="headerlink" href="#138" title="Permanent link">&para;</a></h3>
 <p>应用体验目标会一路向下传导。产品要求首 token 很快出现，平台就要减少网关排队、控制长 prompt、优化 prefill 调度，必要时把长上下文请求和短对话请求拆到不同资源池。产品要求低成本生成长报告，推理服务就要更重视吞吐、batching、异步任务和取消策略。产品要求稳定的工具调用和引用，平台就要记录每次模型调用、检索、工具结果和 token 成本。用户界面的一项体验要求，最终会变成运行时和基础设施的设计约束。</p>
@@ -3968,144 +3940,122 @@
 <p>工程落地的第一步，是为每个 Chat 请求建立统一观测记录。记录不能只停留在 HTTP 状态码和总耗时，而要覆盖租户、模型、路由、上下文、token、队列、prefill、decode、streaming 和结束原因。字段应尽量由平台统一采集，避免每个应用自行拼日志。统一字段让容量规划、故障诊断和账单使用同一套事实，也让模型服务升级、推理引擎切换和资源池迁移之后仍能比较前后效果。</p>
 <p>一个可执行的实现流程是：Gateway 生成 request id 和 trace id，完成鉴权、限流和路由后把租户与模型信息传给模型服务；模型服务在 tokenizer 后记录 input token 和上下文来源；推理引擎记录 queue、prefill、decode、KV Cache 和 batch 信息；streaming 层记录首 chunk、最后 chunk、取消和错误；计量系统最终写入 input/output token、finish reason、模型版本和费用。所有事件都应带同一 trace id，并能按时间线重建。</p>
 <p>更严格的做法，是在 Platform 与 Model Serving 之间定义内部 <code>InferenceRequest</code> 契约。外部 Chat API 可以保持 OpenAI-compatible，但进入平台后不能继续只传一段 JSON。内部契约应把“应用语义”和“资源语义”拆开：应用语义包括 messages、tools、response format 和采样参数；资源语义包括 tenant、project、service tier、token budget、deadline、routing intent、idempotency key 和 trace context。这样 Gateway、模型服务、推理引擎、计量和账单才不会各自解释同一个请求。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">inference_request</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">identity</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">tenant</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enterprise-a</span>
-<span class="w">    </span><span class="nt">project</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">support-copilot</span>
-<span class="w">    </span><span class="nt">api_key_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">key_123</span>
-<span class="w">    </span><span class="nt">user_subject</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">user_456</span>
-<span class="w">  </span><span class="nt">model</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">requested</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-large</span>
-<span class="w">    </span><span class="nt">capabilities_required</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">chat</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">streaming</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">tool_calling</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">routing_intent</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">low_ttft</span>
-<span class="w">  </span><span class="nt">budget</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">max_input_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">12000</span>
-<span class="w">    </span><span class="nt">max_output_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1024</span>
-<span class="w">    </span><span class="nt">max_total_cost</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">optional</span>
-<span class="w">    </span><span class="nt">deadline_ms</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30000</span>
-<span class="w">  </span><span class="nt">payload</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">messages_ref</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">object_or_inline</span>
-<span class="w">    </span><span class="nt">tools_ref</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">object_or_inline</span>
-<span class="w">    </span><span class="nt">response_format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">json_or_text</span>
-<span class="w">  </span><span class="nt">control</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">stream</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">idempotency_key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">req-business-001</span>
-<span class="w">    </span><span class="nt">trace_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">trace-abc</span>
-</code></pre></div>
+<pre><code class="language-yaml">inference_request:
+  identity:
+    tenant: enterprise-a
+    project: support-copilot
+    api_key_id: key_123
+    user_subject: user_456
+  model:
+    requested: af-chat-large
+    capabilities_required: [chat, streaming, tool_calling]
+    routing_intent: low_ttft
+  budget:
+    max_input_tokens: 12000
+    max_output_tokens: 1024
+    max_total_cost: optional
+    deadline_ms: 30000
+  payload:
+    messages_ref: object_or_inline
+    tools_ref: object_or_inline
+    response_format: json_or_text
+  control:
+    stream: true
+    idempotency_key: req-business-001
+    trace_id: trace-abc
+</code></pre>
 <p>这个契约的工程价值在边界场景中最明显。请求进入 Gateway 时，可能还不知道精确 input token，但可以先用字符数、历史轮数和 RAG 片段数做粗估；模型服务完成 tokenizer 后，再写入准确 token 并回传给计量。若准确 token 超过预算，服务端应在 prefill 前拒绝，而不是消耗 GPU 后失败。若客户端取消，streaming 层应把 cancel event 写回同一 trace，并通知引擎释放 KV Cache。若 Gateway fallback，新的 served model 必须写入同一请求上下文，避免账单只知道 requested model。</p>
 <p>上线前可以用三类请求验证实现是否完整：短 prompt 短输出，用来验证基础延迟和 streaming；长 prompt 短输出，用来验证 prefill、context 预算和 KV 分配；短 prompt 长输出，用来验证 decode、取消和计量。每类请求都应能在日志和 trace 中看到相同 request id，并能解释 token 数与延迟。若某类请求无法闭环，就不要急着扩大流量，因为后续故障会缺少证据。</p>
 <p>实际团队还应把这些字段纳入发布门禁。模型服务升级、prompt 模板变更、tokenizer 变更、网关路由变更和推理引擎参数调整，都可能改变 token 数、延迟分布或错误语义。变更前后应对固定样本集跑回归：确认 token 计数没有异常漂移，streaming 事件顺序稳定，取消请求能释放资源，失败请求能写入完整错误阶段。这样做可以把很多线上事故提前暴露在灰度阶段。</p>
 <p>下面的 YAML 只是字段示例，不代表某个产品规范。实际实现可以写入日志、metrics、trace span 或账单事件，但字段语义应稳定。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">chat_request_observation</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">request_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">req-20260618-001</span>
-<span class="w">  </span><span class="nt">tenant</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">team-a</span>
-<span class="w">  </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">example-llm</span>
-<span class="w">  </span><span class="nt">route</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">inference-pool-a</span>
-<span class="w">  </span><span class="nt">stream</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">input_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2048</span>
-<span class="w">  </span><span class="nt">output_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">512</span>
-<span class="w">  </span><span class="nt">context_breakdown</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">system</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">180</span>
-<span class="w">    </span><span class="nt">history</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">640</span>
-<span class="w">    </span><span class="nt">rag</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">960</span>
-<span class="w">    </span><span class="nt">user</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">268</span>
-<span class="w">  </span><span class="nt">latency</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">queue_ms</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">prefill_ms</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">ttft_ms</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">tpot_ms</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">e2e_ms</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">  </span><span class="nt">cache</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">kv_blocks</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">prefix_cache_hit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-<span class="w">  </span><span class="nt">finish_reason</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">stop</span>
-</code></pre></div>
+<pre><code class="language-yaml">chat_request_observation:
+  request_id: req-20260618-001
+  tenant: team-a
+  model: example-llm
+  route: inference-pool-a
+  stream: true
+  input_tokens: 2048
+  output_tokens: 512
+  context_breakdown:
+    system: 180
+    history: 640
+    rag: 960
+    user: 268
+  latency:
+    queue_ms: measured
+    prefill_ms: measured
+    ttft_ms: measured
+    tpot_ms: measured
+    e2e_ms: measured
+  cache:
+    kv_blocks: measured
+    prefix_cache_hit: false
+  finish_reason: stop
+</code></pre>
 <p>对 streaming 请求，还应维护一个明确状态机。没有状态机，取消、超时和部分输出会在应用、网关、模型服务和计量系统之间产生歧义。</p>
-<pre class="mermaid"><code>stateDiagram-v2
-  [*] --&gt; Accepted: auth / quota passed
-  Accepted --&gt; Tokenized: tokenizer finished
-  Tokenized --&gt; Queued: admitted by model server
-  Queued --&gt; Prefilling: scheduler starts prefill
-  Prefilling --&gt; Decoding: first token ready
-  Decoding --&gt; Streaming: chunks sent
-  Streaming --&gt; Completed: finish_reason stop/length/tool_calls
-  Streaming --&gt; ClientCancelled: client disconnect/cancel
-  Queued --&gt; Rejected: timeout or budget exceeded
-  Prefilling --&gt; Failed: runtime error
-  Decoding --&gt; Failed: runtime error
-  ClientCancelled --&gt; Metered: record generated/sent tokens
-  Completed --&gt; Metered: record usage
-  Failed --&gt; Metered: record failure stage and partial usage
-  Metered --&gt; [*]</code></pre>
+<p><img alt="图：1.4.1 工程实现" src="../../assets/diagrams/part-01-applications-chapter-01-chat-request-03.svg" /></p>
 <p>状态机还要区分 generated tokens 和 delivered tokens。Generated token 是模型已经算出的 token，delivered token 是客户端实际收到的 token；网络中断、代理缓冲和客户端取消会让二者不同。账单是否按 generated、delivered 或 successful delivered token 计算，是产品和合同问题，但系统必须能记录事实。若事实字段不存在，后续只能靠争论决定。</p>
 <p>Chat 质量闭环的入口是 <code>quality_feedback_event</code>。用户点踩、重新生成、人工接管、投诉、客服转单、开发者标记“格式错误”、安全系统标记“疑似越权”，都不应只停留在前端埋点或客服系统里。它们应被归一成质量事实事件，并与 <code>trace_id</code>、<code>request_id</code>、模型版本、prompt 模板版本、路由策略、token 计量和用户可见 outcome 绑定。否则一次真实差评无法回放，也无法进入第 13 章的评测集和第 40 章的质量事故流程。</p>
 <p><code>quality_feedback_event</code> 不等于把原始 prompt 和 response 全量复制到质量库。生产系统应先保存可回放引用和结构化摘要：请求属于哪个租户、哪个应用、哪个任务类型，用户看到的结果是什么，反馈类型是什么，严重程度如何，是否涉及安全或隐私，是否已有人类标注，是否允许作为评测样本。原文内容可以留在受权限控制的对象存储或 trace 系统中，用 <code>prompt_ref</code>、<code>response_ref</code>、<code>context_snapshot_ref</code> 引用，并按数据分级决定保留周期和可见范围。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">quality_feedback_event</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">event_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qfe-20260619-0001</span>
-<span class="w">  </span><span class="nt">trace_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">trace-abc</span>
-<span class="w">  </span><span class="nt">request_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">req-123</span>
-<span class="w">  </span><span class="nt">source</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">user_thumb_down</span>
-<span class="w">  </span><span class="nt">subject</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">tenant_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enterprise-a</span>
-<span class="w">    </span><span class="nt">application</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">support-chat</span>
-<span class="w">    </span><span class="nt">user_segment</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">premium_customer</span>
-<span class="w">  </span><span class="nt">served_artifacts</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">model_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">af-chat-large-202606</span>
-<span class="w">    </span><span class="nt">prompt_template_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">support-v18</span>
-<span class="w">    </span><span class="nt">gateway_policy_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gw-20260619.4</span>
-<span class="w">    </span><span class="nt">route_pool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">inference-premium-a</span>
-<span class="w">  </span><span class="nt">outcome</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">finish_reason</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">stop</span>
-<span class="w">    </span><span class="nt">input_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">output_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">delivered_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">user_visible_status</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">completed</span>
-<span class="w">  </span><span class="nt">feedback</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">category</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">incorrect_answer</span>
-<span class="w">    </span><span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">high</span>
-<span class="w">    </span><span class="nt">user_comment_ref</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">object://redacted-comment</span>
-<span class="w">    </span><span class="nt">requires_human_review</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">replay</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">prompt_ref</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">object://redacted-prompt</span>
-<span class="w">    </span><span class="nt">response_ref</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">object://redacted-response</span>
-<span class="w">    </span><span class="nt">context_snapshot_ref</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">object://redacted-context</span>
-<span class="w">    </span><span class="nt">privacy_classification</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">internal_sensitive</span>
-</code></pre></div>
+<pre><code class="language-yaml">quality_feedback_event:
+  event_id: qfe-20260619-0001
+  trace_id: trace-abc
+  request_id: req-123
+  source: user_thumb_down
+  subject:
+    tenant_id: enterprise-a
+    application: support-chat
+    user_segment: premium_customer
+  served_artifacts:
+    model_version: af-chat-large-202606
+    prompt_template_version: support-v18
+    gateway_policy_version: gw-20260619.4
+    route_pool: inference-premium-a
+  outcome:
+    finish_reason: stop
+    input_tokens: measured
+    output_tokens: measured
+    delivered_tokens: measured
+    user_visible_status: completed
+  feedback:
+    category: incorrect_answer
+    severity: high
+    user_comment_ref: object://redacted-comment
+    requires_human_review: true
+  replay:
+    prompt_ref: object://redacted-prompt
+    response_ref: object://redacted-response
+    context_snapshot_ref: object://redacted-context
+    privacy_classification: internal_sensitive
+</code></pre>
 <p>一次差评进入闭环后，通常要经历 triage、replay、label、regression 四步。Triage 判断它是模型质量、RAG 证据、prompt 模板、路由、runtime、客户端展示还是用户误用；replay 使用当时的模型版本、模板、sampling 参数和上下文快照复现；label 由人工或校准后的 judge 标注期望行为；regression 把稳定样本沉淀到评测集，并在后续模型、prompt、网关或 runtime 变更中作为门禁。这样，Chat 体验问题才会从“用户说不好”变成“系统可复现、可修复、可防回归”的工程对象。</p>
-<pre class="mermaid"><code>flowchart LR
-  UX["用户反馈 / 重新生成 / 人工接管"] --&gt; QFE["quality_feedback_event"]
-  QFE --&gt; Triage["triage\n模型 / RAG / prompt / route / runtime / UI"]
-  Triage --&gt; Replay["trace replay\nprompt + context + params"]
-  Replay --&gt; Label["human label / judge rubric"]
-  Label --&gt; Eval["eval case / regression set"]
-  Eval --&gt; Gate["quality gate"]
-  Gate --&gt; Release["serving / gateway release"]</code></pre>
+<p><img alt="图：1.4.1 工程实现" src="../../assets/diagrams/part-01-applications-chapter-01-chat-request-04.svg" /></p>
 <p>还需要 <code>prompt_context_snapshot</code>。它是质量回放的最小上下文证据，记录最终 prompt 的结构化来源，而不是只保存一段大文本。对于 Chat，快照应包含 system 指令版本、历史裁剪策略、RAG 片段 id、工具 observation id、采样参数、tokenizer 版本和 context 截断结果。没有这个快照，团队可能复现不出当时错误，只能用当前模板和当前索引猜测过去发生了什么。质量闭环的难点不在收集差评，而在用同样条件复现差评。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">prompt_context_snapshot</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">snapshot_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pcs-20260619-0001</span>
-<span class="w">  </span><span class="nt">request_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">req-123</span>
-<span class="w">  </span><span class="nt">tokenizer_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tokenizer-202606</span>
-<span class="w">  </span><span class="nt">chat_template_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">support-v18</span>
-<span class="w">  </span><span class="nt">sampling</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">temperature</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">top_p</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">  </span><span class="nt">context_parts</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">system</span>
-<span class="w">      </span><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sys-support-202606</span>
-<span class="w">      </span><span class="nt">token_count</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">history_summary</span>
-<span class="w">      </span><span class="nt">strategy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">last_n_plus_summary</span>
-<span class="w">      </span><span class="nt">token_count</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">retrieved_evidence</span>
-<span class="w">      </span><span class="nt">refs</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">chunk-123-05</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">chunk-456-02</span><span class="p p-Indicator">]</span>
-<span class="w">      </span><span class="nt">token_count</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">user_message</span>
-<span class="w">      </span><span class="nt">token_count</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">  </span><span class="nt">truncation</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">applied</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">dropped_parts</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">old_history</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">reason</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">max_context_budget</span>
-</code></pre></div>
+<pre><code class="language-yaml">prompt_context_snapshot:
+  snapshot_id: pcs-20260619-0001
+  request_id: req-123
+  tokenizer_version: tokenizer-202606
+  chat_template_version: support-v18
+  sampling:
+    temperature: recorded
+    top_p: recorded
+  context_parts:
+    - type: system
+      version: sys-support-202606
+      token_count: measured
+    - type: history_summary
+      strategy: last_n_plus_summary
+      token_count: measured
+    - type: retrieved_evidence
+      refs: [chunk-123-05, chunk-456-02]
+      token_count: measured
+    - type: user_message
+      token_count: measured
+  truncation:
+    applied: true
+    dropped_parts: [old_history]
+    reason: max_context_budget
+</code></pre>
 <h3 id="142">1.4.2 常见故障<a class="headerlink" href="#142" title="Permanent link">&para;</a></h3>
 <p>第一类故障是只看 QPS，不看 token。平台看到请求数平稳，却没有发现 input token P95 翻倍，导致 prefill 队列变长、TTFT 变差。解决方法不是简单扩容，而是按 token 分桶观察请求，并对长上下文、短对话、Agent 中间调用和批量任务做不同路由。第二类故障是把长请求和短请求放在同一队列。长 prompt 的 prefill 会阻塞短请求首 token，用户体感非常差，尤其在客服、代码补全和交互式 Chat 中明显。</p>
 <p>第三类故障是 streaming 语义不完整。客户端断开后，服务端继续 decode，GPU 被无效占用；或者服务端取消了生成，却没有记录已生成 token，导致计费、审计和用户历史不一致。第四类故障是 KV Cache 接近上限但 dashboard 没有展示。团队看到 GPU compute utilization 不高，以为还有容量，实际上请求被 cache 分配失败或频繁回收拖慢。第五类故障是指标口径不统一：应用说 TTFT，网关看上游响应时间，模型服务看 decode 首步，三者起止点不同，结论自然冲突。</p>
@@ -4114,22 +4064,7 @@
 <p>第五类故障是反馈与请求脱钩。用户在前端点踩，客服系统记录了一条投诉，但质量平台找不到对应 trace；开发者发现 JSON 格式错误，只在工单里贴了一段输出；SRE 回滚了模型版本，却没有把失败样本加入回归集。这会导致同类问题反复出现。解决方法是把 <code>quality_feedback_event</code> 作为应用埋点、客服工单、人工质检和模型评测之间的统一入口，并强制要求反馈事件带可追溯的 request 或 run 标识。</p>
 <p>第六类故障是回放条件漂移。团队尝试复现线上差评时，当前 prompt 模板、RAG 索引、模型权重、网关路由和采样参数都已经变了，于是复现结果正常，问题被误判为偶发。Chat 质量问题必须保留 <code>prompt_context_snapshot</code> 和 served artifact 版本。对于无法保存原文的敏感场景，也至少要保存受控引用、哈希、token 结构和版本信息，保证授权人员能在合规边界内回放。</p>
 <p>下面的故障树可以作为 TTFT 升高时的第一张排查图。它不是替代专家判断，而是让团队先按阶段排除，避免直接跳到“加 GPU”。</p>
-<pre class="mermaid"><code>flowchart TB
-  S["症状: TTFT 升高"] --&gt; A["入口阶段"]
-  S --&gt; B["Gateway 阶段"]
-  S --&gt; C["模型服务阶段"]
-  S --&gt; D["Runtime / GPU 阶段"]
-  A --&gt; A1["客户端网络慢"]
-  A --&gt; A2["请求体过大"]
-  B --&gt; B1["认证/配额服务慢"]
-  B --&gt; B2["路由到拥挤资源池"]
-  B --&gt; B3["streaming 被代理缓冲"]
-  C --&gt; C1["队列等待过长"]
-  C --&gt; C2["tokenizer 或模板异常"]
-  C --&gt; C3["长 prompt prefill 阻塞"]
-  D --&gt; D1["KV Cache 分配紧张"]
-  D --&gt; D2["prefill batch 配置不当"]
-  D --&gt; D3["GPU/HBM 或 kernel 退化"]</code></pre>
+<p><img alt="图：1.4.2 常见故障" src="../../assets/diagrams/part-01-applications-chapter-01-chat-request-05.svg" /></p>
 <h3 id="143">1.4.3 性能指标<a class="headerlink" href="#143" title="Permanent link">&para;</a></h3>
 <p>Chat 请求的指标应分成体验、负载、运行时和可靠性四组。体验指标包括 TTFT、TPOT、E2E latency、streaming chunk 间隔、取消率和用户侧超时率。负载指标包括 request/s、input tokens/s、output tokens/s、平均与 P95 context length、平均输出长度、并发序列数和每租户 token 消耗。运行时指标包括 queue time、prefill time、decode time、batch size、KV Cache 使用率、prefix cache 命中率、GPU utilization、HBM 使用和显存分配失败。可靠性指标包括错误率、限流率、fallback 率、模型实例重启和 finish reason 分布。</p>
 <p>这些指标必须按维度切开才有价值。按模型切分可以发现某个模型配置不合理；按租户切分可以发现成本和流量长尾；按上下文长度切分可以发现长 prompt 对 TTFT 的影响；按输出长度切分可以解释 TPOT 和连接保持；按路由池切分可以判断资源隔离是否有效。单一全局平均值容易掩盖问题：平均 TTFT 正常时，长上下文请求可能已经不可用；平均 GPU 利用率正常时，某个实例可能被 KV Cache 挤满；平均错误率低时，某个租户可能持续被限流。</p>

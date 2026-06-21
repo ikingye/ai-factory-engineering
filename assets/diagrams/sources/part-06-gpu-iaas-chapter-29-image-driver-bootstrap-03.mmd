@@ -1,0 +1,13 @@
+flowchart LR
+  Build["Release train\nbaseline + runtime + images"] --> Lab["lab"]
+  Lab --> Gate1["compatibility\nbootstrap\ncontainer GPU"]
+  Gate1 --> Canary["canary pool"]
+  Canary --> Gate2["NCCL / RDMA\ntraining / inference"]
+  Gate2 --> Standard["production standard"]
+  Standard --> Gate3["SLO / cost\nincident readiness"]
+  Gate3 --> Premium["premium / private delivery"]
+  Gate1 -.fail.-> Rollback["rollback\nprevious baseline"]
+  Gate2 -.fail.-> Rollback
+  Gate3 -.fail.-> Rollback
+  Rollback --> Invalidate["baseline_invalidation_record"]
+  Premium --> LTS["lts_support_policy\nEOL + backport + upgrade path"]

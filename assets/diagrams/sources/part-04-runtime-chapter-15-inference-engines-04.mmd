@@ -1,0 +1,8 @@
+flowchart LR
+  Canary["engine_canary_record"] --> Guard{"guardrail breach?"}
+  Guard -->|no| Promote["continue / promote"]
+  Guard -->|yes| Action["engine_canary_guardrail_action"]
+  Action --> GW["patch Gateway route / admission"]
+  Action --> Runtime["disable feature or rollback profile"]
+  Action --> Bundle["freeze diagnostic evidence"]
+  Action --> Cost["record rollback and prevention cost"]

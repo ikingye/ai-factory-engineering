@@ -1,0 +1,11 @@
+flowchart TB
+  Alert["release / quality / SLO / billing alert"] --> Bundle["serving_release_evidence_bundle"]
+  Rel["serving_release_bundle"] --> Bundle
+  Route["serving_route_release_contract"] --> Bundle
+  Quality["serving_quality_contract"] --> Bundle
+  Cache["cache_residency / invalidation"] --> Bundle
+  Runtime["engine_canary / admission health"] --> Bundle
+  Meter["usage schema / metering events"] --> Bundle
+  Bundle --> Fault["serving_release_fault_tree_execution"]
+  Bundle --> Cost["serving_release_cost_record"]
+  Bundle --> PRR["serving release PRR drill / gate update"]

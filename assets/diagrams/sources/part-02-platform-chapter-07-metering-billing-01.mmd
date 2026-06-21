@@ -1,0 +1,12 @@
+flowchart LR
+  Req["模型请求"] --> Gateway["AI Gateway"]
+  Gateway --> Meter["metering event"]
+  Model["模型服务"] --> Meter
+  Agent["Agent / Tools"] --> Meter
+  RAG["Embedding / Rerank"] --> Meter
+  Meter --> Stream["事件流"]
+  Stream --> Usage["用量聚合"]
+  Usage --> Cost["成本分摊"]
+  Usage --> Bill["账单"]
+  Cost --> Margin["毛利分析"]
+  Bill --> Tenant["租户 / 项目"]

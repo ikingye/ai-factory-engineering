@@ -3382,7 +3382,7 @@
 <ul>
 <li>一个真实工程场景：从故障、需求或上线压力切入，而不是从定义切入。</li>
 <li>一组核心概念：首次出现的术语给出中文解释和英文原词。</li>
-<li>一张系统关系图：能用 Mermaid 表达组件关系、数据流或控制流时，优先画图。</li>
+<li>一张系统关系图：能表达组件关系、数据流或控制流时，优先画图；公开正文统一引用 <code>docs/assets/diagrams/</code> 下的静态 SVG 图。</li>
 <li>一条工程路径：说明请求、任务、数据、模型或资源如何穿过系统。</li>
 <li>一组常见故障：列出真实生产中会遇到的错配、瓶颈和排障入口。</li>
 <li>一组指标：区分体验指标、资源指标、稳定性指标和成本指标。</li>
@@ -3417,58 +3417,62 @@
 </ul>
 <h2 id="4">4. 章节模板<a class="headerlink" href="#4" title="Permanent link">&para;</a></h2>
 <p>后续扩写章节时建议使用以下结构，并允许根据主题增删小节：</p>
-<div class="highlight"><pre><span></span><code><span class="gh"># 第 X 章：章节标题</span>
+<pre><code class="language-markdown"># 第 X 章：章节标题
 
-<span class="gu">## X.1 导读</span>
+## X.1 导读
 
-<span class="gu">### X.1.1 本章回答的问题</span>
+### X.1.1 本章回答的问题
 
-<span class="gu">### X.1.2 本章上下文</span>
+### X.1.2 本章上下文
 
-<span class="gu">### X.1.3 读者测试</span>
+### X.1.3 读者测试
 
-<span class="gu">### X.1.4 一个真实场景</span>
+### X.1.4 一个真实场景
 
-<span class="gu">## X.2 基础模型</span>
+## X.2 基础模型
 
-<span class="gu">### X.2.1 核心概念</span>
+### X.2.1 核心概念
 
-<span class="gu">### X.2.2 系统架构</span>
+### X.2.2 系统架构
 
-<span class="gu">## X.3 关键技术</span>
+## X.3 关键技术
 
-<span class="gu">### X.3.1 主题专属技术节</span>
+### X.3.1 主题专属技术节
 
-<span class="gu">### X.3.2 主题专属技术节</span>
+### X.3.2 主题专属技术节
 
-<span class="gu">## X.4 工程落地</span>
+## X.4 工程落地
 
-<span class="gu">### X.4.1 工程实现</span>
+### X.4.1 工程实现
 
-<span class="gu">### X.4.2 常见故障</span>
+### X.4.2 常见故障
 
-<span class="gu">### X.4.3 性能指标</span>
+### X.4.3 性能指标
 
-<span class="gu">### X.4.4 设计取舍</span>
+### X.4.4 设计取舍
 
-<span class="gu">## X.5 小结与延伸阅读</span>
+## X.5 小结与延伸阅读
 
-<span class="gu">### X.5.1 小结</span>
+### X.5.1 小结
 
-<span class="gu">### X.5.2 延伸阅读</span>
-</code></pre></div>
+### X.5.2 延伸阅读
+</code></pre>
 <h2 id="5">5. 标题编号规范<a class="headerlink" href="#5" title="Permanent link">&para;</a></h2>
 <p>章节标题使用 <code># 第 X 章：章节标题</code>。章节页使用两级正文目录：H2 是稳定大组，H3 是可引用小节。H2 固定为 <code>## X.1 导读</code>、<code>## X.2 基础模型</code>、<code>## X.3 关键技术</code>、<code>## X.4 工程落地</code>、<code>## X.5 小结与延伸阅读</code>。H3 使用 <code>### X.N.M 标题</code>，其中 <code>X</code> 是章号，<code>N</code> 是所属 H2 大组序号，<code>M</code> 是该组内从 1 开始递增的小节序号。</p>
 <p>导读类模块放在 <code>X.1</code> 下，例如 <code>### 21.1.1 本章回答的问题</code>、<code>### 21.1.2 本章上下文</code>、<code>### 21.1.3 读者测试</code>、<code>### 21.1.4 一个真实场景</code>。概念和架构放在 <code>X.2</code> 下。主题专属正文节放在 <code>X.3</code> 下，例如 <code>### 21.3.1 container runtime</code>、<code>### 21.3.10 GPU 容器运行时与 NVIDIA Container Toolkit</code>。工程实现、故障、指标和取舍放在 <code>X.4</code> 下。小结和延伸阅读放在 <code>X.5</code> 下。</p>
 <p>编号必须连续，不能因为某一节是模板节就跳过。新增或删除 H3 后，应重新排列该 H2 大组内的小节编号，避免出现 <code>21.3.6</code> 后直接跳到 <code>21.3.10</code>。第 0 章使用 <code>0.1</code>、<code>0.1.1</code> 这类编号。首页、前言、路线图、系统地图、写作规范、深度标准和审稿标准等非章节页，使用页内 H2 编号 <code>## N. 标题</code>；如果非章节页也使用 H3，则使用 <code>### N.M 标题</code>，例如术语表的 <code>### 1.1 AI Factory</code>。</p>
 <p>扩写章节后运行：</p>
-<div class="highlight"><pre><span></span><code>python3<span class="w"> </span>tools/audit_doc_coauthoring.py
-python3<span class="w"> </span>tools/audit_heading_numbering.py
-python3<span class="w"> </span>tools/audit_consistency.py
-</code></pre></div>
+<pre><code class="language-bash">python3 tools/audit_doc_coauthoring.py
+python3 tools/audit_heading_numbering.py
+python3 tools/audit_consistency.py
+</code></pre>
 <p><code>tools/audit_heading_numbering.py</code> 会检查章节页 H2 大组和 H3 小节是否都带有当前章号前缀，也会检查非章节页 H2/H3 是否使用页内连续编号。编号的意图不是制造形式负担，而是让全站目录像经典技术书一样分层清晰、可引用、可审校、可长期维护。</p>
 <h2 id="6">6. 图表规范<a class="headerlink" href="#6" title="Permanent link">&para;</a></h2>
-<p>Mermaid 图应服务于论证，不做装饰。推荐使用三类图：</p>
+<p>图表应服务于论证，不做装饰。全书统一使用 <code>fireworks-tech-graph</code> 生成的静态 SVG/PNG 资产：SVG 用于正文引用，PNG 用于渲染复核，原始 Mermaid 源保存在 <code>docs/assets/diagrams/sources/</code>，清单保存在 <code>docs/assets/diagrams/manifest.json</code>。新增或修改图时运行：</p>
+<pre><code class="language-bash">python3 tools/render_mermaid_diagrams.py --write
+python3 tools/audit_diagrams.py
+</code></pre>
+<p>推荐使用三类图：</p>
 <ul>
 <li><code>flowchart</code>：表达请求路径、训练链路、控制面和数据面关系。</li>
 <li><code>sequenceDiagram</code>：表达一次 API 调用、流式返回、多轮 Agent 调用。</li>

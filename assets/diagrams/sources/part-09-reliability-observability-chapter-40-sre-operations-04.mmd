@@ -1,0 +1,13 @@
+flowchart TB
+  Ticket["customer ticket"] --> Classify["support_ticket_taxonomy\ncategory + severity"]
+  Classify --> Evidence["diagnostic_bundle_sla\nfreeze and redact evidence"]
+  Evidence --> Incident["incident\nreliability evidence + mitigation"]
+  Evidence --> Change["change\nrelease train + upgrade rehearsal"]
+  Evidence --> Billing["billing dispute\nmetering replay + SLA credit"]
+  Evidence --> Security["security case\nsecurity evidence bundle"]
+  Incident --> Timeline["customer communication timeline"]
+  Change --> Timeline
+  Billing --> Timeline
+  Security --> Timeline
+  Timeline --> Review["postmortem / problem record\nproduct backlog"]
+  Review --> Policy["release / LTS / support policy update"]

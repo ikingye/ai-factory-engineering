@@ -1,0 +1,11 @@
+flowchart LR
+  Drill["heterogeneous_gpu_prr_drill"] --> Pool["heterogeneous_gpu_pool_profile"]
+  Pool --> Matrix["heterogeneous_pool_acceptance_matrix"]
+  Matrix --> Fit["model_hardware_fit_record"]
+  Fit --> Route["gpu_generation_route_decision"]
+  Route --> Serving["serving route / fallback"]
+  Serving --> Quality["quality + SLO gate"]
+  Serving --> Energy["energy_ledger"]
+  Quality --> Cost["heterogeneous_gpu_cost_scorecard"]
+  Energy --> Cost
+  Cost --> PRR["PRR gate update"]

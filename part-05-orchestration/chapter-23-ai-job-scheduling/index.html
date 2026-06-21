@@ -3867,18 +3867,7 @@
 <p>统一状态还要跨工具。一个 RayJob、Kubeflow TrainingJob、Argo Workflow 和 Volcano PodGroup 都应能映射到平台统一状态。用户关心的是任务是否排队、运行、失败或恢复，不应被迫理解每个工具的内部状态机。</p>
 <p>状态统一也是计费和审计的前提。</p>
 <p>没有统一状态，就没有统一责任。</p>
-<pre class="mermaid"><code>flowchart LR
-  Submit["作业提交"] --&gt; Queue["队列"]
-  Queue --&gt; Quota["quota / borrowing"]
-  Quota --&gt; Admit["admission"]
-  Admit --&gt; Gang["gang scheduling"]
-  Gang --&gt; Place["topology placement"]
-  Place --&gt; Run["运行 / 控制器"]
-  Run --&gt; Metrics["metrics / accounting"]
-  Metrics --&gt; Queue
-  Admin["平台策略"] --&gt; Queue
-  Admin --&gt; Priority["priority / preemption"]
-  Priority --&gt; Admit</code></pre>
+<p><img alt="图：23.2.2 系统架构" src="../../assets/diagrams/part-05-orchestration-chapter-23-ai-job-scheduling-01.svg" /></p>
 <h2 id="233">23.3 关键技术<a class="headerlink" href="#233" title="Permanent link">&para;</a></h2>
 <h3 id="2331-kubernetes-scheduler">23.3.1 为什么默认 Kubernetes Scheduler 不够<a class="headerlink" href="#2331-kubernetes-scheduler" title="Permanent link">&para;</a></h3>
 <p>默认 Kubernetes Scheduler 以 Pod 为主要调度对象，适合大量无状态服务和普通控制面组件。它能处理资源请求、亲和性、污点容忍、拓扑扩展约束和插件评分。但大规模 AI workload 常常不是独立 Pod：分布式训练需要多个 worker 同时启动，批量任务需要队列和并发控制，微调需要租户配额，评测需要版本和报告，在线推理需要保留容量。</p>
@@ -3955,189 +3944,180 @@
 <h3 id="2341">23.4.1 工程实现<a class="headerlink" href="#2341" title="Permanent link">&para;</a></h3>
 <p>工程实现应先定义作业模型。一个 AI job 至少应包含 workload type、tenant、queue、priority、resource、runtime、data、checkpoint、preemption policy 和 observability 标签。训练任务还要包含 worker 数、gang、拓扑和恢复策略；批量推理要包含 shard、输出和幂等；评测要包含模型版本、数据集和报告。没有这些字段，调度系统只能做低层资源匹配。</p>
 <p>示例队列配置如下：</p>
-<div class="highlight"><pre><span></span><code><span class="nt">queue</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">training-prod</span>
-<span class="w">  </span><span class="nt">cohort</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ai-factory</span>
-<span class="w">  </span><span class="nt">quota</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">guaranteed_gpu</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">128</span>
-<span class="w">    </span><span class="nt">max_gpu</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">256</span>
-<span class="w">  </span><span class="nt">policy</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">allow_borrowing</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">preemptible</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-<span class="w">    </span><span class="nt">priority_class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">production</span>
-</code></pre></div>
+<pre><code class="language-yaml">queue:
+  name: training-prod
+  cohort: ai-factory
+  quota:
+    guaranteed_gpu: 128
+    max_gpu: 256
+  policy:
+    allow_borrowing: true
+    preemptible: false
+    priority_class: production
+</code></pre>
 <p>训练作业的 admission 事件应结构化。一次作业能否进入运行，不只是资源数量问题，还包括 quota、gang、拓扑、镜像、数据权限、checkpoint、节点健康和准入基线。把这些检查写成事件，用户才能理解 pending，平台才能做容量分析。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">job_admission_event</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">job_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">exp-20260619-001</span>
-<span class="w">  </span><span class="nt">workload_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">distributed-training</span>
-<span class="w">  </span><span class="nt">queue</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">training-prod</span>
-<span class="w">  </span><span class="nt">requested</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">gpu_count</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">512</span>
-<span class="w">    </span><span class="nt">gpu_flavor</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">h100</span>
-<span class="w">    </span><span class="nt">topology</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">same_fabric_required</span>
-<span class="w">  </span><span class="nt">checks</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">quota</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed</span>
-<span class="w">    </span><span class="nt">gang_capacity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">blocked</span>
-<span class="w">    </span><span class="nt">topology</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">waiting_for_contiguous_nodes</span>
-<span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed</span>
-<span class="w">    </span><span class="nt">dataset_permission</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed</span>
-<span class="w">    </span><span class="nt">checkpoint_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed</span>
-<span class="w">    </span><span class="nt">node_acceptance_baseline</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed</span>
-<span class="w">    </span><span class="nt">framework_runtime_matrix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed</span>
-<span class="w">    </span><span class="nt">parallelism_plan_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed</span>
-<span class="w">    </span><span class="nt">rank_topology_contract</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">unsatisfied</span>
-<span class="w">    </span><span class="nt">nccl_env_contract</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed</span>
-<span class="w">  </span><span class="nt">decision</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">admitted</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-<span class="w">    </span><span class="nt">reason</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">topology_unsatisfied</span>
-<span class="w">    </span><span class="nt">next_recheck</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scheduled</span>
-</code></pre></div>
+<pre><code class="language-yaml">job_admission_event:
+  job_id: exp-20260619-001
+  workload_type: distributed-training
+  queue: training-prod
+  requested:
+    gpu_count: 512
+    gpu_flavor: h100
+    topology: same_fabric_required
+  checks:
+    quota: passed
+    gang_capacity: blocked
+    topology: waiting_for_contiguous_nodes
+    image: passed
+    dataset_permission: passed
+    checkpoint_path: passed
+    node_acceptance_baseline: passed
+    framework_runtime_matrix: passed
+    parallelism_plan_record: passed
+    rank_topology_contract: unsatisfied
+    nccl_env_contract: passed
+  decision:
+    admitted: false
+    reason: topology_unsatisfied
+    next_recheck: scheduled
+</code></pre>
 <p>Pending reason 应是枚举，而不是自由文本。建议至少区分 <code>quota_insufficient</code>、<code>gang_capacity</code>、<code>topology_unsatisfied</code>、<code>resource_flavor_unavailable</code>、<code>node_health_blocked</code>、<code>image_unavailable</code>、<code>data_permission_denied</code>、<code>checkpoint_path_invalid</code>、<code>preemption_in_progress</code>。这些原因应进入 UI、CLI、事件、指标和容量报表。否则用户看到 pending，只能找管理员问。</p>
 <p>对大规模训练，admission 不能只检查 GPU 数量。它还要检查第 16 章的 <code>framework_runtime_matrix</code> 是否覆盖当前镜像和框架，第 17 章的 <code>parallelism_plan_record</code> 是否能解释 GPU 数、batch 和 checkpoint 语义，<code>rank_topology_contract</code> 是否能在当前资源池满足，第 18 章的 <code>nccl_env_contract</code> 是否与资源池 RDMA/fabric baseline 匹配。若这些检查缺失，任务可能顺利进入 running，却在 rendezvous、first effective step 或 checkpoint 阶段浪费大量 GPU。</p>
 <p>更稳妥的 admission 结果应区分 <code>reject</code>、<code>wait</code>、<code>conditional_accept</code> 和 <code>accept</code>。例如 Tensor Parallel group 的 same-node hard constraint 不满足，应 <code>reject</code> 或继续 <code>wait</code>；Pipeline 相邻 stage 的 same-rack soft constraint 不满足，可以在用户接受降级后 <code>conditional_accept</code>；NCCL contract 与资源池 baseline 版本不一致，应先触发通信回归。调度系统的质量，体现在它能在 GPU 分配前暴露这些风险，而不是让训练任务替平台做验证。</p>
 <p>当平台支持 DRA、MIG、CDI 或异构 GPU class 时，admission 还要为资源声明生成 <code>resource_claim_admission_record</code>。它回答的不是“Pod 能不能被调度到某个节点”，而是“这个 ResourceClaim 或 extended resource request 是否符合租户 entitlement、queue quota、DeviceClass、MIG profile、runtime baseline、拓扑和成本策略”。传统调度事件往往只显示节点不满足条件；资源声明准入记录必须把不满足条件拆成可行动原因。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">resource_claim_admission_record</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">record_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rcar-20260620-001</span>
-<span class="w">  </span><span class="nt">workload</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">job_or_pod</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">training-job/pretrain-exp-20260620</span>
-<span class="w">    </span><span class="nt">tenant</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">foundation-model-team</span>
-<span class="w">    </span><span class="nt">queue</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">training-prod</span>
-<span class="w">    </span><span class="nt">workload_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">distributed_training</span>
-<span class="w">  </span><span class="nt">claim_contract</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">gpu_resource_claim_contract</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">grcc-pretrain-h100-20260620</span>
-<span class="w">    </span><span class="nt">kubernetes_mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dra</span>
-<span class="w">    </span><span class="nt">device_class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu.ai-factory/h100-rdma</span>
-<span class="w">    </span><span class="nt">resource_claim_template</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rct-pretrain-worker</span>
-<span class="w">    </span><span class="nt">requested_claims</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">512</span>
-<span class="w">  </span><span class="nt">policy_checks</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">resource_pool_entitlement</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed</span>
-<span class="w">    </span><span class="nt">queue_quota</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed</span>
-<span class="w">    </span><span class="nt">gang_capacity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">wait</span>
-<span class="w">    </span><span class="nt">device_class_available</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed</span>
-<span class="w">    </span><span class="nt">mig_profile_compatible</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">not_applicable</span>
-<span class="w">    </span><span class="nt">runtime_baseline</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed</span>
-<span class="w">    </span><span class="nt">fabric_baseline</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed</span>
-<span class="w">    </span><span class="nt">rank_topology_contract</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">blocked</span>
-<span class="w">    </span><span class="nt">heterogeneous_pool_acceptance_matrix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed</span>
-<span class="w">    </span><span class="nt">cost_budget</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed</span>
-<span class="w">  </span><span class="nt">decision</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">state</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">wait</span>
-<span class="w">    </span><span class="nt">reason</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rank_topology_contract_unsatisfied</span>
-<span class="w">    </span><span class="nt">pending_reason</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">topology_unsatisfied</span>
-<span class="w">    </span><span class="nt">retry_when</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">contiguous_nodes_available</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">lower_priority_borrowed_capacity_reclaimed</span>
-<span class="w">  </span><span class="nt">evidence</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">resource_slices_or_inventory_snapshot</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">linked</span>
-<span class="w">    </span><span class="nt">acceptance_baseline</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">h100-rdma-prod-202606</span>
-<span class="w">    </span><span class="nt">queue_fairness_ledger_window</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qfl-20260620-00</span>
-</code></pre></div>
+<pre><code class="language-yaml">resource_claim_admission_record:
+  record_id: rcar-20260620-001
+  workload:
+    job_or_pod: training-job/pretrain-exp-20260620
+    tenant: foundation-model-team
+    queue: training-prod
+    workload_type: distributed_training
+  claim_contract:
+    gpu_resource_claim_contract: grcc-pretrain-h100-20260620
+    kubernetes_mode: dra
+    device_class: gpu.ai-factory/h100-rdma
+    resource_claim_template: rct-pretrain-worker
+    requested_claims: 512
+  policy_checks:
+    resource_pool_entitlement: passed
+    queue_quota: passed
+    gang_capacity: wait
+    device_class_available: passed
+    mig_profile_compatible: not_applicable
+    runtime_baseline: passed
+    fabric_baseline: passed
+    rank_topology_contract: blocked
+    heterogeneous_pool_acceptance_matrix: passed
+    cost_budget: passed
+  decision:
+    state: wait
+    reason: rank_topology_contract_unsatisfied
+    pending_reason: topology_unsatisfied
+    retry_when:
+      - contiguous_nodes_available
+      - lower_priority_borrowed_capacity_reclaimed
+  evidence:
+    resource_slices_or_inventory_snapshot: linked
+    acceptance_baseline: h100-rdma-prod-202606
+    queue_fairness_ledger_window: qfl-20260620-00
+</code></pre>
 <p>这个记录把资源声明从 Kubernetes 对象提升为平台可解释事件。若 <code>DeviceClass</code> 不存在或没有匹配 <code>ResourceSlice</code>，这是资源发现或 inventory 问题；若 entitlement 失败，是租户授权问题；若 quota 失败，是组织资源策略问题；若 rank topology 失败，是调度和资源碎片问题；若 runtime baseline 失败，是节点基线或准入问题。用户看到的 pending reason 应来自这个记录，而不是从多处事件里人工猜测。</p>
-<pre class="mermaid"><code>flowchart TB
-  Contract["gpu_resource_claim_contract"] --&gt; Admission["resource_claim_admission_record"]
-  Ent["entitlement"] --&gt; Admission
-  Quota["queue quota / gang"] --&gt; Admission
-  Device["DeviceClass / ResourceSlice\nor extended resource inventory"] --&gt; Admission
-  Topo["rank topology / GPU-NIC / fabric"] --&gt; Admission
-  Baseline["runtime + acceptance baseline"] --&gt; Admission
-  Admission --&gt;|accept| Placement["placement_commit_record"]
-  Admission --&gt;|wait| Pending["pending reason\nquota / gang / topology / flavor"]
-  Admission --&gt;|reject| User["actionable error"]</code></pre>
+<p><img alt="图：23.4.1 工程实现" src="../../assets/diagrams/part-05-orchestration-chapter-23-ai-job-scheduling-02.svg" /></p>
 <p>资源声明准入还应进入容量运营。若大量任务卡在 <code>device_class_available</code>，说明 GPU class 供应不足或标签过细；若卡在 <code>rank_topology_contract_unsatisfied</code>，说明碎片、抢占或预留策略有问题；若卡在 <code>runtime_baseline</code>，说明准入或变更流程阻断了资源；若卡在 <code>cost_budget</code>，说明任务预算和资源产品不匹配。调度系统的作用不是只把任务排队，而是把稀缺资源缺口转成可治理信号。</p>
 <p>平台还应实现 pending reason 和调度审计。用户提交作业后，应看到当前状态是 queued、admitted、scheduling、running、preempted、failed 还是 completed；pending 原因应区分 quota 不足、gang 不满足、GPU 型号不匹配、拓扑不满足、镜像不可用、数据无权限或节点健康不足。调度审计记录每次准入、抢占、放置和失败原因，为容量规划和争议处理提供证据。</p>
 <p>实现还要把调度策略版本化。队列规则、quota、priority class、preemption policy 和拓扑策略变化后，应能解释某个历史作业使用的是哪一版策略。否则调度结果无法复盘，用户也无法理解为什么同样任务在不同时间等待不同。策略版本化是调度系统走向生产治理的标志。</p>
 <p>实现还应支持模拟和 dry-run。用户提交作业前，平台可以返回将进入哪个队列、消耗哪些 quota、是否满足 gang、可能被哪些约束阻塞。管理员调整 quota 或优先级前，也可以模拟影响范围。调度策略越复杂，越需要在执行前预估后果。</p>
 <p>实现还应有事件模型。准入、借用、抢占、恢复、失败和完成都要产生结构化事件，事件进入 UI、审计、告警和成本系统。没有事件模型，调度系统只能靠日志排障。</p>
 <p>训练作业事件应沿着统一生命周期记录，而不是散落在队列、Pod、launcher 和训练日志里。<code>training_lifecycle_event</code> 把作业从 submitted、admitted、placement committed、gang started、rendezvous、first effective step、checkpoint、preempting、recovering 到 completed 的关键点串起来。它让用户看到任务卡在哪个阶段，也让成本系统区分等待、启动浪费和有效训练。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">training_lifecycle_event</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">event_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tle-20260620-001</span>
-<span class="w">  </span><span class="nt">job_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">exp-20260619-001</span>
-<span class="w">  </span><span class="nt">tenant</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">foundation-model-team</span>
-<span class="w">  </span><span class="nt">queue</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">training-prod</span>
-<span class="w">  </span><span class="nt">phase</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">first_effective_step</span>
-<span class="w">  </span><span class="nt">timestamps</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">submitted_at</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">admitted_at</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">placement_committed_at</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">gang_started_at</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">rendezvous_completed_at</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">    </span><span class="nt">first_effective_step_at</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">  </span><span class="nt">references</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">job_admission_event</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">jae-exp-20260619-001</span>
-<span class="w">    </span><span class="nt">placement_commit_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pcr-exp-20260619-001</span>
-<span class="w">    </span><span class="nt">rank_mapping</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rank-mapping-exp-20260619-001</span>
-<span class="w">    </span><span class="nt">parallelism_plan_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ppr-llm-20260620-001</span>
-<span class="w">    </span><span class="nt">rank_topology_contract</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rtc-llm-20260620-001</span>
-<span class="w">    </span><span class="nt">nccl_env_contract</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nec-h100-rdma-20260620</span>
-<span class="w">    </span><span class="nt">checkpoint_manifest</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">latest_valid_if_resumed</span>
-<span class="w">  </span><span class="nt">accounting</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">allocated_gpu_seconds_so_far</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">effective_training_gpu_seconds_so_far</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">    </span><span class="nt">startup_waste_gpu_seconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-</code></pre></div>
+<pre><code class="language-yaml">training_lifecycle_event:
+  event_id: tle-20260620-001
+  job_id: exp-20260619-001
+  tenant: foundation-model-team
+  queue: training-prod
+  phase: first_effective_step
+  timestamps:
+    submitted_at: recorded
+    admitted_at: recorded
+    placement_committed_at: recorded
+    gang_started_at: recorded
+    rendezvous_completed_at: recorded
+    first_effective_step_at: recorded
+  references:
+    job_admission_event: jae-exp-20260619-001
+    placement_commit_record: pcr-exp-20260619-001
+    rank_mapping: rank-mapping-exp-20260619-001
+    parallelism_plan_record: ppr-llm-20260620-001
+    rank_topology_contract: rtc-llm-20260620-001
+    nccl_env_contract: nec-h100-rdma-20260620
+    checkpoint_manifest: latest_valid_if_resumed
+  accounting:
+    allocated_gpu_seconds_so_far: measured
+    effective_training_gpu_seconds_so_far: measured
+    startup_waste_gpu_seconds: calculated
+</code></pre>
 <p>这个事件让“任务 pending”“任务 running”“任务开始训练”变成三个不同事实。很多 GPU 浪费发生在 admitted 之后、first effective step 之前：镜像拉取、数据预检、NCCL rendezvous、checkpoint 恢复都可能消耗资源但不产生训练 token。调度系统若只记录 running，会把这些浪费平均摊进训练成本，无法指导优化。</p>
 <p>事件模型还应支持订阅。用户订阅作业事件，SRE 订阅异常事件，平台运营订阅 quota 和抢占事件。不同角色看到不同视图，但底层事件源一致。这样调度系统既能服务人机交互，也能服务自动化。</p>
 <p>队列治理还需要 <code>queue_fairness_ledger</code>。它不是简单的队列长度统计，而是记录每个队列在一个窗口内的 guaranteed、borrowed、lent、preempted、starved 和 effective GPU hours。这样平台才能回答：某队列等待长是因为它超出配额、拓扑不可满足、资源被别人借用，还是策略配置不合理。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">queue_fairness_ledger</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">window</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2026-06-20T00:00Z/2026-06-20T01:00Z</span>
-<span class="w">  </span><span class="nt">cohort</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ai-factory-training</span>
-<span class="w">  </span><span class="nt">queues</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">queue</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">training-prod</span>
-<span class="w">      </span><span class="nt">guaranteed_gpus</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">512</span>
-<span class="w">      </span><span class="nt">used_gpu_hours</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">      </span><span class="nt">borrowed_gpu_hours</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">      </span><span class="nt">lent_gpu_hours</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">      </span><span class="nt">pending_reasons</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">gang_capacity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">        </span><span class="nt">topology_unsatisfied</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">        </span><span class="nt">quota_insufficient</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">      </span><span class="nt">starvation</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">longest_waiting_job_age</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">        </span><span class="nt">starvation_policy_breached</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">queue</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">research</span>
-<span class="w">      </span><span class="nt">guaranteed_gpus</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">256</span>
-<span class="w">      </span><span class="nt">preempted_gpu_hours</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">      </span><span class="nt">effective_gpu_hours</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
-<span class="w">  </span><span class="nt">decisions</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">rebalance_quota</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">evaluate</span>
-<span class="w">    </span><span class="nt">adjust_borrowing_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">optional</span>
-</code></pre></div>
+<pre><code class="language-yaml">queue_fairness_ledger:
+  window: 2026-06-20T00:00Z/2026-06-20T01:00Z
+  cohort: ai-factory-training
+  queues:
+    - queue: training-prod
+      guaranteed_gpus: 512
+      used_gpu_hours: measured
+      borrowed_gpu_hours: measured
+      lent_gpu_hours: measured
+      pending_reasons:
+        gang_capacity: measured
+        topology_unsatisfied: measured
+        quota_insufficient: measured
+      starvation:
+        longest_waiting_job_age: measured
+        starvation_policy_breached: false
+    - queue: research
+      guaranteed_gpus: 256
+      preempted_gpu_hours: measured
+      effective_gpu_hours: measured
+  decisions:
+    rebalance_quota: evaluate
+    adjust_borrowing_policy: optional
+</code></pre>
 <p>这个 ledger 能把调度争议变成数据问题。若 research 长期借出资源但在生产高峰被频繁抢占，说明 borrowing 策略要调；若 training-prod 长期 pending 是拓扑不可满足，而不是 quota 不足，扩容方向应是同 fabric 连续资源，不是单纯增加 GPU；若某队列长期饥饿，应触发运营评审。公平不是平均等待，而是规则、承诺和实际效果一致。</p>
 <p>抢占也需要 checkpoint-aware policy。调度器不应只知道某个任务优先级低，还要知道它能否安全释放资源。对于训练任务，抢占点通常是 checkpoint 完成后；对于 batch inference，抢占点是 shard 完成后；对于 online inference，抢占通常应通过 drain 而不是 kill。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">preemption_policy</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">workload_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">distributed-training</span>
-<span class="w">  </span><span class="nt">allowed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">safe_points</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">checkpoint_committed</span>
-<span class="w">  </span><span class="nt">max_notice_seconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">600</span>
-<span class="w">  </span><span class="nt">on_preempt</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">emit_event</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">preserve_checkpoint</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">requeue</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">accounting</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">record_wasted_gpu_hours</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-</code></pre></div>
+<pre><code class="language-yaml">preemption_policy:
+  workload_type: distributed-training
+  allowed: true
+  safe_points:
+    - checkpoint_committed
+  max_notice_seconds: 600
+  on_preempt:
+    emit_event: true
+    preserve_checkpoint: true
+    requeue: true
+  accounting:
+    record_wasted_gpu_hours: true
+</code></pre>
 <p>每次抢占还应形成 <code>preemption_record</code>。Policy 说明允许怎么抢占，record 说明这一次实际发生了什么。它要记录 notice、safe point、checkpoint、释放资源、浪费 GPU 小时、恢复结果和受影响队列。没有 record，抢占会被视为调度器内部动作，用户只能看到任务被杀。</p>
-<div class="highlight"><pre><span></span><code><span class="nt">preemption_record</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">preemption_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">preempt-20260620-001</span>
-<span class="w">  </span><span class="nt">victim_job</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">exp-lowprio-042</span>
-<span class="w">  </span><span class="nt">requester</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">job_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">exp-prod-urgent-017</span>
-<span class="w">    </span><span class="nt">queue</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">training-prod</span>
-<span class="w">    </span><span class="nt">reason</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">production_release_blocker</span>
-<span class="w">  </span><span class="nt">policy</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">safe_point</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">checkpoint_committed</span>
-<span class="w">    </span><span class="nt">notice_seconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">600</span>
-<span class="w">  </span><span class="nt">execution</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">checkpoint_before_release</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ckpt-step-80000</span>
-<span class="w">    </span><span class="nt">released_gpus</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">128</span>
-<span class="w">    </span><span class="nt">victim_requeued</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">recovery_started_at</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
-<span class="w">  </span><span class="nt">cost</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">wasted_gpu_hours</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">    </span><span class="nt">lost_progress_since_checkpoint</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-<span class="w">    </span><span class="nt">requester_wait_time_reduced</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
-</code></pre></div>
+<pre><code class="language-yaml">preemption_record:
+  preemption_id: preempt-20260620-001
+  victim_job: exp-lowprio-042
+  requester:
+    job_id: exp-prod-urgent-017
+    queue: training-prod
+    reason: production_release_blocker
+  policy:
+    safe_point: checkpoint_committed
+    notice_seconds: 600
+  execution:
+    checkpoint_before_release: ckpt-step-80000
+    released_gpus: 128
+    victim_requeued: true
+    recovery_started_at: recorded
+  cost:
+    wasted_gpu_hours: calculated
+    lost_progress_since_checkpoint: calculated
+    requester_wait_time_reduced: calculated
+</code></pre>
 <p>抢占记录应进入 queue fairness ledger 和 training ROI ledger。这样平台才能判断抢占是不是净收益：高优任务提前启动带来的收益，是否大于低优任务损失、重跑和用户体验成本。没有这个账本，抢占会被滥用为容量不足的补丁。</p>
 <h3 id="2342">23.4.2 常见故障<a class="headerlink" href="#2342" title="Permanent link">&para;</a></h3>
 <p>第一类故障是半启动。分布式训练的部分 worker 启动后等待其余 worker，既不能训练，又占住 GPU。解决方向是 gang scheduling 和作业级准入。第二类故障是队列不可见。用户只看到 pending，不知道是 quota、拓扑、优先级还是资源碎片。没有 pending reason，平台支持成本会显著上升。</p>

@@ -1,0 +1,10 @@
+flowchart LR
+  Drill["serving_release_prr_drill"] --> Bundle["serving_release_bundle"]
+  Drill --> Route["serving_route_release_contract"]
+  Bundle --> Evidence["serving_release_evidence_bundle"]
+  Route --> Evidence
+  Evidence --> Fault["serving_release_fault_tree_execution"]
+  Fault --> Rollback["serving_rollback_record"]
+  Fault --> Cost["serving_release_cost_record"]
+  Fault --> Billing["billing hold / replay"]
+  Cost --> PRR["PRR serving release gate"]
