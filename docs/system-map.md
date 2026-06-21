@@ -173,6 +173,7 @@ flowchart TB
 | `engine_admission_health` | 让 Gateway 知道 endpoint 是否还能按 SLO 接收请求。 | 第 6、14、15、37、39 章 | `engine_canary_record`、`incident_record` |
 | `engine_request_state_ledger` | 记录单个推理请求从 admission、prefill、decode、streaming 到 usage close 的 runtime 状态和计量对账。 | 第 15、39、41、44 章 | `kv_block_ledger`、`inference_runtime_fault_tree_execution`、`inference_runtime_incident_cost_record` |
 | `kv_block_ledger` | 把 KV block 分配、释放、prefix cache、租户和泄漏成本串起来。 | 第 1、14、15、37、39、41 章 | `Token Factory ledger`、`runtime_quality_gate` |
+| `prefix_cache_accounting_record` | 记录 input/output、cache read、cache write、eviction 和后续读命中转化，判断前缀缓存是否真正降低 prefill 成本。 | 第 1、7、15、37、41 章 | `kv_block_ledger`、`inference_runtime_cost_ledger`、`billing_dispute_replay` |
 | `kv_block_leak_forensic_record` | 取证请求关闭后 KV block 是否泄漏、由哪个 allocator/cache/worker/PD session 持有以及影响多少 admission 和成本。 | 第 1、14、37、39、41、44 章 | `kv_block_ledger`、`inference_runtime_cost_ledger` |
 | `engine_canary_record` | 记录 engine/runtime 变更的协议、质量、性能、KV 和成本门禁结果。 | 第 14、15、37、39 章 | `serving_quality_contract`、`runtime_quality_gate` |
 | `engine_canary_guardrail_action` | 记录 canary 护栏触发后的冻结、降权、关闭 feature、回滚和证据保留动作。 | 第 14、15、37、39、41、44 章 | `engine_canary_record`、`inference_runtime_diagnostic_bundle` |
@@ -272,7 +273,7 @@ flowchart TB
 | `incident_record` | 记录事故时间线、影响面、根因证据、止血动作和行动项。 | 第 39、40 章 | `slo_budget_ledger`、`reliability_cost` |
 | `heterogeneous_gpu_pool_profile` | 描述多代 GPU、HBM、互联、runtime baseline、准入状态、entitlement 和 workload tier 组成的异构资源池。 | 第 28、35、44 章 | `model_hardware_fit_record`、`heterogeneous_pool_acceptance_matrix`、`production_readiness_review` |
 | `gpu_generation_spec_record` | 记录 GPU 代际、官方规格来源、SKU/形态、HBM、互联、功耗、精度能力和本地验收口径。 | 第 35、38、44 章 | `gpu_capability_scorecard`、`model_hardware_fit_record` |
-| `gpu_interconnect_profile` | 描述 PCIe、NVLink/NVSwitch、NVLink-C2C、HGX/DGX/NVL72 等互联层级和可调度 GPU 域。 | 第 34、35、38 章 | `gpu_server_profile`、`rank_topology_contract` |
+| `gpu_interconnect_profile` | 描述 PCIe、NVLink/NVSwitch、NVLink-C2C、HGX/DGX/NVL72 等互联层级、带宽方向、代际演进和可调度 GPU 域。 | 第 31、34、35、38 章 | `gpu_server_profile`、`rank_topology_contract` |
 | `numa_topology_evidence` | 记录 CPU socket、内存通道、PCIe root、GPU、NIC、NVMe、中断绑定和容器 CPU 绑定的运行证据。 | 第 22、34、38、39 章 | `gpu_nic_topology_evidence`、`network_diagnostic_bundle` |
 | `gpu_generation_readiness_gate` | 判断新 GPU 或新系统形态是否能进入指定生产等级。 | 第 35、44 章 | `gpu_capability_scorecard`、`production_readiness_review` |
 | `model_hardware_fit_record` | 证明某个模型或 endpoint 的精度、context、engine、HBM、互联、SLO 和质量门禁是否适合某个 GPU class。 | 第 35、38、44 章 | `gpu_generation_route_decision`、`production_readiness_review` |

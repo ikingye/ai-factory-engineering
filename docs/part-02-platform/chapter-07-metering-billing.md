@@ -100,6 +100,17 @@ Reasoning token 是部分推理模型内部思考或隐藏推理产生的 token 
 
 还有一些 token 相关口径也要单独记录。Cached input token 可能成本低于普通 input token；prefix cache 命中可能降低 prefill 成本；工具调用中的模型中间输出可能不直接展示给用户；Agent 的内部总结可能属于任务成本但不是最终回答。把这些口径混在一起，会让 cost per token 和 revenue per token 失真。计量系统应保留细粒度事实，再由计费策略决定如何收费。
 
+缓存相关 token 至少要拆成读和写。输入 token 是本次请求完整 prompt 的 token 数，不会因为 cache 命中而扣减；输出 token 是模型生成的 token 数；缓存读 token 是本次输入中命中 prefix/radix cache 的 token；缓存写 token 是本次新计算后写入 prompt cache、未来可能复用的 token。四者关系如下：
+
+| 口径 | 含义 | 计量示例 |
+| --- | --- | --- |
+| `input_tokens` | 本次请求完整输入 token，总输入不会因缓存命中变小。 | prompt 总长 8460，就记 8460。 |
+| `output_tokens` | 模型实际生成 token。 | 回复生成 120 token，就记 120。 |
+| `cache_read_tokens` | 本次输入中命中 prefix/radix cache 的 token。 | 第二次请求复用前缀，命中 8448，就记 8448。 |
+| `cache_write_tokens` | 本次新写入 prompt cache 的 token。 | 首次请求把 8460 个稳定前缀写入 cache，就记相应写入值。 |
+
+一个两次请求的例子更容易看清口径。第一次请求 `input_tokens=8460`、`output_tokens=120`、`cache_read_tokens=0`、`cache_write_tokens=8460`，只能说明系统把前缀写进了缓存。第二次请求几乎相同前缀，只新增一点内容，`input_tokens=8472`、`output_tokens=100`、`cache_read_tokens=8448`、`cache_write_tokens=24`，才说明第一次写入产生了后续收益。若大量请求长期表现为高 `cache_write_tokens` 但低 `cache_read_tokens`，计量系统应把它标记为低复用或 cache pollution 风险，而不是把写入量当成优化成果。
+
 对用户可见口径也要保持清楚。用户通常关心自己为什么被扣费，平台则关心真实成本。二者可以不同，但不能互相矛盾。比如 reasoning token 是否展示、cached token 是否优惠、失败请求是否收费，都应在产品说明和账单明细中明确。计量透明度越高，账单争议越少。
 
 这些口径还会影响应用设计。若 cached input token 有明显成本优势，应用会倾向于稳定系统提示词和可复用上下文；若 reasoning token 有独立预算，应用会为不同任务选择不同推理强度。计量不是被动记录，它会改变开发者使用模型的方式。
@@ -244,7 +255,8 @@ metering_event:
     input_tokens: integer
     output_tokens: integer
     reasoning_tokens: integer
-    cached_tokens: integer
+    cache_read_tokens: integer
+    cache_write_tokens: integer
   status:
     result: success | failed | cancelled
     error_stage: gateway | queue | prefill | decode | stream | tool
@@ -255,6 +267,36 @@ metering_event:
 ```
 
 实现时要做对账。网关事件、模型服务事件、账单聚合和可观测指标应能按 trace id 对齐；若 token 数、模型版本或状态不一致，应进入异常表。账单可以允许人工修正，但修正必须保留原因和审批。计量系统的可信度来自可对账，而不是来自某个数据库字段看起来完整。
+
+缓存读写最好沉淀为 `prefix_cache_accounting_record`，并与原始 metering event 关联。它回答三个问题：本次请求完整输入是多少，读命中节省了多少 prefill，新写入内容后续是否真的被复用。示例：
+
+```yaml
+prefix_cache_accounting_record:
+  request_id: req-20260621-001
+  endpoint: af-chat-large-prod
+  model_version: af-chat-large-202606
+  tokenizer_version: tok-202606
+  usage:
+    input_tokens: 8472
+    output_tokens: 100
+    cache_read_tokens: 8448
+    cache_write_tokens: 24
+  cache_key_scope:
+    tenant: enterprise-a
+    prompt_template_version: support-chat-v12
+    tool_schema_version: tools-v8
+    isolation_domain: tenant_or_shared_template
+  cache_effect:
+    prefill_tokens_saved: 8448
+    evicted_tokens_estimate: measured_or_zero
+    future_read_conversion_window: 24h
+    future_read_tokens_from_this_write: measured_later
+  verdict:
+    value: useful_or_low_reuse_or_polluting
+    reason: read_hit_high_and_write_small
+```
+
+这份记录不一定进入用户账单明细，但应进入成本和 runtime 分析。它能解释为什么两次请求 input token 都很高，但第二次 TTFT 明显下降；也能解释为什么某个业务线 cache write 很高、cost/token 却没有改善。
 
 `tenant_cost_isolation` 是多租户 MaaS 计费的核心对象。它定义哪些成本归属于租户直接用量，哪些成本归属于租户保留容量，哪些属于共享平台 overhead，哪些属于安全或可靠性事故。没有这个对象，平台容易把所有 GPU 成本按 token 平均摊开，导致高 SLA 租户、专属资源池、低利用 reservation、失败重试和免费额度的真实成本都被掩盖。
 

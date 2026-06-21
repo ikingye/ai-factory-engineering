@@ -63,12 +63,29 @@ REQUIRED_SNIPPETS = {
         "GPU 虚拟化与资源管理链路覆盖矩阵",
         "NVIDIA GPU 代际、官方规格来源、SKU/形态、HBM、互联、功耗、精度能力和本地验收口径",
         "IB、RoCEv1/v2、iWARP、UEC/UET 类新型传输",
+        "`prefix_cache_accounting_record`",
     ],
     "docs/system-map.md": [
         "`gpu_generation_spec_record`",
+        "`prefix_cache_accounting_record`",
         "`gpu_slicing_policy`",
         "`rdma_transport_profile`",
         "`numa_topology_evidence`",
+    ],
+    "docs/part-02-platform/chapter-07-metering-billing.md": [
+        "`cache_read_tokens`",
+        "`cache_write_tokens`",
+        "输入 token 是本次请求完整 prompt 的 token 数，不会因为 cache 命中而扣减",
+    ],
+    "docs/part-04-runtime/chapter-15-inference-engines.md": [
+        "cache-aware 调度",
+        "缓存读 token",
+        "缓存写 token",
+    ],
+    "docs/part-07-network-storage/chapter-31-scale-up-networking.md": [
+        "PCIe 3.0/4.0/5.0 x16 单向约为 15.75/31.5/63GB/s",
+        "NVLink/NVSwitch 代际演进",
+        "rack-scale domain",
     ],
     "docs/part-00-introduction/chapter-00-from-datacenter-to-ai-factory.md": [
         "### 0.3.5 AI Factory 的分层模型",

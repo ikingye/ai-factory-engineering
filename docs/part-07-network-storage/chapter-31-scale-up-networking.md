@@ -107,6 +107,8 @@ PCIe 验收还应覆盖异常恢复。设备重置、节点重启、驱动重载
 
 PCIe 信息也应进入故障报告。没有它，跨团队排障会缺少关键上下文。
 
+带宽口径必须写清方向。PCIe 常见工程近似可以按 `GT/s × 编码有效比例 ÷ 8 × lane_count` 计算单向有效带宽；PCIe 3.0/4.0/5.0 x16 单向约为 15.75/31.5/63GB/s，若说双向聚合则约为 32/64/128GB/s。NVLink 常见口径则按 `单链路单向带宽 × 链路数 × 2` 估算单 GPU 双向聚合带宽。两个公式回答的是不同链路层级，不能把 PCIe 双向聚合、NVLink per-GPU 带宽、NVSwitch 域内带宽和 rack-scale NVLink domain 带宽混在一个数字里比较。
+
 
 ### 31.3.2 NVLink
 
@@ -123,6 +125,16 @@ NVLink 的使用也要通过 workload 验证。单独链路测试正常，不代
 NVLink 域还应影响资源命名。用户看到的资源不应只是 `gpu: 4`，而应能区分同域 4 卡和任意 4 卡。命名越准确，性能预期越清楚，排障争议越少。
 
 资源命名本质上是性能契约的一部分，也应该和计费等级一致。`4xGPU-same-nvswitch-domain`、`4xGPU-best-effort-topology` 和 `4xGPU-cross-domain` 对模型服务的价值不同，不能只按 GPU 数量定价和承诺。平台如果不表达拓扑等级，就会让用户用生产事故来发现资源差异。
+
+NVLink/NVSwitch 代际演进的主线，是从点对点 mesh 走向交换结构和 rack-scale domain。Pascal P100 时代，每 GPU 常见 4 条 NVLink，双向聚合约 160GB/s，8 卡系统需要依赖网状或 cube-mesh 拓扑，GPU 对之间可能存在不同跳数。Volta V100 把链路数和单链路速率提高，单 GPU 双向聚合约 300GB/s；DGX-2 时代引入 NVSwitch，让 16 GPU 形成更均衡的全互联域。Ampere A100 时代，每 GPU 12 条第三代 NVLink，双向聚合约 600GB/s，8 GPU HGX/DGX 形态通过 NVSwitch 组织单节点高带宽域。Hopper H100 时代，每 GPU 18 条第四代 NVLink，官方口径为 900GB/s。Blackwell B200/GB200 时代，第五代 NVLink per GPU 官方口径到 1.8TB/s，并把 GB200 NVL72 这类 72 GPU rack-scale domain 推到 130TB/s 级 NVLink Switch System 通信口径。演进的工程意义不是“数字更大”，而是拓扑从不对称点对点走向更大的可调度 GPU island。
+
+| 代表时期 | 代表系统 | NVLink/NVSwitch 形态 | 平台工程含义 |
+| --- | --- | --- | --- |
+| Pascal / P100 | DGX-1 P100 | 点对点 NVLink，常见 cube-mesh；无 NVSwitch。 | 同为 8 GPU，GPU 对之间路径可能不等价，调度和并行策略要考虑拓扑不对称。 |
+| Volta / V100 | DGX-1 V100、DGX-2 | V100 单 GPU 双向聚合约 300GB/s；DGX-2 引入 NVSwitch 支撑 16 GPU 全互联域。 | NVSwitch 把“高速链路”提升为“交换域”，完整域成为资源单位。 |
+| Ampere / A100 | DGX/HGX A100 | 第三代 NVLink + 第二代 NVSwitch，A100 单 GPU双向聚合约 600GB/s。 | 8 GPU NVSwitch 域成为训练和多 GPU 推理的常见生产基线。 |
+| Hopper / H100 | DGX/HGX H100 | 第四代 NVLink + 第三代 NVSwitch，H100 官方 per-GPU NVLink 900GB/s。 | 更大 tensor parallel、MoE 和长上下文服务要求把 NVSwitch 域纳入调度与验收。 |
+| Blackwell / B200、GB200 | HGX B200、GB200 NVL72 | 第五代 NVLink，B200/GB200 per-GPU 1.8TB/s；NVL72 为 72 GPU rack-scale domain。 | 资源边界从服务器扩展到机柜级 GPU island，维护、计费和故障域都要升级。 |
 
 
 ### 31.3.3 NVSwitch
@@ -310,7 +322,7 @@ node_topology:
 
 工程实现还应提供拓扑变更审计。任何 BIOS、firmware、driver、设备更换或线缆调整导致的拓扑变化，都应进入资源池事件。调度器使用的是拓扑事实，事实变化必须可追踪。
 
-同时，要给用户提供简化视图。用户不需要阅读完整拓扑矩阵，但需要知道资源等级：同域 GPU、跨域 GPU、GPU-NIC 邻近、best-effort 拓扑。把复杂拓扑转化为可理解资源等级，是平台产品化的关键。
+同时，要向用户呈现简化视图。用户不需要阅读完整拓扑矩阵，但需要知道资源等级：同域 GPU、跨域 GPU、GPU-NIC 邻近、best-effort 拓扑。把复杂拓扑转化为可理解资源等级，是平台产品化的关键。
 
 实现上还应把拓扑要求做成可验证字段，而不是自由文本。比如 `same_gpu_domain: true`、`gpu_nic_affinity: required`、`complete_island: preferred`。结构化字段才能被调度器和审计系统使用。
 
