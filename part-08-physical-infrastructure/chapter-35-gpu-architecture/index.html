@@ -3993,7 +3993,7 @@
 <tr>
 <td>企业推理/可视化高显存池</td>
 <td>NVIDIA RTX PRO 6000 Blackwell Server Edition</td>
-<td>Blackwell；96GB GDDR7；PCIe Gen5；面向 enterprise AI、visual computing 和图形/推理融合工作负载</td>
+<td>Blackwell；96GB GDDR7 ECC；1597GB/s；PCIe Gen5；最高 600W configurable；面向 enterprise AI、visual computing 和图形/推理融合工作负载</td>
 <td>企业私有化推理、多模态、可视化、数字孪生和图形 AI 混部</td>
 <td>高显存和通用性强，但仍是 PCIe/GDDR 路径；功耗与整机配置以 OEM BOM 为准，不要把它当作 HBM/NVSwitch 训练卡替代品。</td>
 </tr>
@@ -4006,10 +4006,10 @@
 </tr>
 <tr>
 <td>Hopper 主力池</td>
-<td>NVIDIA H100 SXM / H100 PCIe</td>
-<td>Hopper；80GB HBM3；3.35TB/s；FP8 Transformer Engine；SXM 形态 NVLink 900GB/s、最高 700W configurable；PCIe 形态为 Gen5 x16（128GB/s bidirectional）</td>
+<td>NVIDIA H100 SXM / H100 NVL</td>
+<td>Hopper；FP8 Transformer Engine；SXM：80GB HBM3、3.35TB/s、NVLink 900GB/s、最高 700W configurable；NVL：94GB HBM3、3.9TB/s、NVLink 600GB/s、PCIe Gen5（128GB/s bidirectional）、350-400W configurable</td>
 <td>大规模训练、高性能推理、HPC+AI</td>
-<td>生态成熟，适合作为 2026 生产基线；SXM、NVL、PCIe 的互联和功耗口径不能混用。</td>
+<td>生态成熟，适合作为 2026 生产基线；SXM、NVL、普通 PCIe SKU 的显存带宽、互联和功耗口径不能混用。</td>
 </tr>
 <tr>
 <td>Hopper 大显存池</td>
@@ -4021,7 +4021,7 @@
 <tr>
 <td>Blackwell HGX 高密训练推理</td>
 <td>NVIDIA B200 / HGX B200</td>
-<td>Blackwell；常见公开口径为 180GB HBM3e、约 8TB/s、NVLink 5 最高 1.8TB/s per GPU；支持 FP4/FP8 等新低精度路径</td>
+<td>Blackwell；HGX B200 官方系统口径为 8 GPU 总显存 1.4TB、第五代 NVLink、GPU-to-GPU 1.8TB/s、Total NVLink 14.4TB/s；单 GPU 常见公开口径为约 180GB class HBM3e、约 8TB/s；支持 FP4/FP8 等新低精度路径</td>
 <td>新一代大模型训练、长上下文推理、高密多 GPU 服务</td>
 <td>功耗、液冷或风冷平台、driver/CUDA/NCCL/engine 成熟度和供货形态要一起验证。</td>
 </tr>
