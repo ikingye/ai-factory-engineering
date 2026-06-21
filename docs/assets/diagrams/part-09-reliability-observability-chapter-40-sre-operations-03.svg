@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2962 360" width="2962" height="360">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1247 600" width="1247" height="600">
   <defs>
     <marker id="arrowA" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
       <polygon points="0 0, 10 3.5, 0 7" fill="#7c3aed"/>
@@ -41,39 +41,50 @@
     .footnote { font-size: 12px; font-weight: 500; fill: #94a3b8; }
     </style>
   </defs>
-  <rect width="2962.0" height="360.0" fill="#ffffff"/>
-  <text x="1481.0" y="56" text-anchor="middle" class="title">40.3.4 incident</text>
-  <text x="1481.0" y="82" text-anchor="middle" class="subtitle">part-09-reliability-observability/chapter-40-sre-operations.md:201</text>
-  <path d="M 465.0,161.0 L 537.0,161.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 864.0,161.0 L 936.0,161.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 1207.0,161.0 L 1279.0,161.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 1550.0,161.0 L 1622.0,161.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 1907.0,161.0 L 1979.0,161.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 2222.0,161.0 L 2294.0,161.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 2523.0,161.0 L 2595.0,161.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <rect x="96.0" y="126.0" width="369.0" height="70.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
-  <text x="280.5" y="161.0" text-anchor="middle" class="node-title">detect</text>
-  <text x="280.5" y="183.0" text-anchor="middle" class="node-sub">key anomaly / policy deny spike / audit alert</text>
-  <rect x="537.0" y="126.0" width="327.0" height="70.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
-  <text x="700.5" y="161.0" text-anchor="middle" class="node-title">contain</text>
-  <text x="700.5" y="183.0" text-anchor="middle" class="node-sub">revoke / freeze / isolate / route block</text>
-  <rect x="936.0" y="126.0" width="271.0" height="70.0" rx="10.0" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.8"/>
-  <text x="1071.5" y="161.0" text-anchor="middle" class="node-title">tenant impact</text>
-  <text x="1071.5" y="183.0" text-anchor="middle" class="node-sub">usage / data / model / resource</text>
-  <rect x="1279.0" y="126.0" width="271.0" height="70.0" rx="10.0" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.8"/>
-  <text x="1414.5" y="161.0" text-anchor="middle" class="node-title">freeze evidence</text>
-  <text x="1414.5" y="183.0" text-anchor="middle" class="node-sub">policy_decision / trace / audit</text>
-  <rect x="1622.0" y="126.0" width="285.0" height="70.0" rx="10.0" fill="#f0fdfa" stroke="#99f6e4" stroke-width="1.8"/>
-  <text x="1764.5" y="161.0" text-anchor="middle" class="node-title">notify</text>
-  <text x="1764.5" y="183.0" text-anchor="middle" class="node-sub">tenant / security / legal / owner</text>
-  <rect x="1979.0" y="126.0" width="243.0" height="70.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8"/>
-  <text x="2100.5" y="161.0" text-anchor="middle" class="node-title">eradicate</text>
-  <text x="2100.5" y="183.0" text-anchor="middle" class="node-sub">fix policy / rotate / clean</text>
-  <rect x="2294.0" y="126.0" width="229.0" height="70.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
-  <text x="2408.5" y="161.0" text-anchor="middle" class="node-title">postmortem</text>
-  <text x="2408.5" y="183.0" text-anchor="middle" class="node-sub">controls / runbook / cost</text>
-  <rect x="2595.0" y="126.0" width="271.0" height="70.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
-  <text x="2730.5" y="161.0" text-anchor="middle" class="node-title">new guardrail</text>
-  <text x="2730.5" y="183.0" text-anchor="middle" class="node-sub">admission / monitoring / budget</text>
-  <text x="2682.0" y="344.0" class="footnote">Rendered with fireworks-tech-graph</text>
+  <rect width="1247.0" height="600.0" fill="#ffffff"/>
+  <text x="623.5" y="56" text-anchor="middle" class="title">40.3.4 incident</text>
+  <text x="623.5" y="82" text-anchor="middle" class="subtitle">part-09-reliability-observability/chapter-40-sre-operations.md:201</text>
+  <rect x="42.0" y="118.0" width="423.0" height="372.0" rx="16.0" fill="#f8fafc" stroke="#dbe5f1" stroke-width="1.4" stroke-dasharray="7 5"/>
+  <text x="60.0" y="142.0" class="section">阶段 1</text>
+  <text x="60.0" y="162.0" class="section-sub">detect -&gt; tenant impact</text>
+  <rect x="503.0" y="118.0" width="339.0" height="372.0" rx="16.0" fill="#ffffff" stroke="#dbe5f1" stroke-width="1.4" stroke-dasharray="7 5"/>
+  <text x="521.0" y="142.0" class="section">阶段 2</text>
+  <text x="521.0" y="162.0" class="section-sub">freeze evidence -&gt; eradicate</text>
+  <rect x="880.0" y="118.0" width="325.0" height="372.0" rx="16.0" fill="#f8fafc" stroke="#dbe5f1" stroke-width="1.4" stroke-dasharray="7 5"/>
+  <text x="898.0" y="142.0" class="section">阶段 3</text>
+  <text x="898.0" y="162.0" class="section-sub">postmortem -&gt; new guardrail</text>
+  <path d="M 253.5,242.0 L 253.5,270.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 253.5,340.0 L 253.5,368.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 389.0,403.0 L 409.4,403.0 L 516.6,207.0 L 537.0,207.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 672.5,242.0 L 672.5,270.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 672.5,340.0 L 672.5,368.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 794.0,403.0 L 814.4,403.0 L 907.6,256.0 L 928.0,256.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 1042.5,291.0 L 1042.5,319.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <rect x="69.0" y="172.0" width="369.0" height="70.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
+  <text x="253.5" y="207.0" text-anchor="middle" class="node-title">detect</text>
+  <text x="253.5" y="229.0" text-anchor="middle" class="node-sub">key anomaly / policy deny spike / audit alert</text>
+  <rect x="90.0" y="270.0" width="327.0" height="70.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
+  <text x="253.5" y="305.0" text-anchor="middle" class="node-title">contain</text>
+  <text x="253.5" y="327.0" text-anchor="middle" class="node-sub">revoke / freeze / isolate / route block</text>
+  <rect x="118.0" y="368.0" width="271.0" height="70.0" rx="10.0" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.8"/>
+  <text x="253.5" y="403.0" text-anchor="middle" class="node-title">tenant impact</text>
+  <text x="253.5" y="425.0" text-anchor="middle" class="node-sub">usage / data / model / resource</text>
+  <rect x="537.0" y="172.0" width="271.0" height="70.0" rx="10.0" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.8"/>
+  <text x="672.5" y="207.0" text-anchor="middle" class="node-title">freeze evidence</text>
+  <text x="672.5" y="229.0" text-anchor="middle" class="node-sub">policy_decision / trace / audit</text>
+  <rect x="530.0" y="270.0" width="285.0" height="70.0" rx="10.0" fill="#f0fdfa" stroke="#99f6e4" stroke-width="1.8"/>
+  <text x="672.5" y="305.0" text-anchor="middle" class="node-title">notify</text>
+  <text x="672.5" y="327.0" text-anchor="middle" class="node-sub">tenant / security / legal / owner</text>
+  <rect x="551.0" y="368.0" width="243.0" height="70.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8"/>
+  <text x="672.5" y="403.0" text-anchor="middle" class="node-title">eradicate</text>
+  <text x="672.5" y="425.0" text-anchor="middle" class="node-sub">fix policy / rotate / clean</text>
+  <rect x="928.0" y="221.0" width="229.0" height="70.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
+  <text x="1042.5" y="256.0" text-anchor="middle" class="node-title">postmortem</text>
+  <text x="1042.5" y="278.0" text-anchor="middle" class="node-sub">controls / runbook / cost</text>
+  <rect x="907.0" y="319.0" width="271.0" height="70.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
+  <text x="1042.5" y="354.0" text-anchor="middle" class="node-title">new guardrail</text>
+  <text x="1042.5" y="376.0" text-anchor="middle" class="node-sub">admission / monitoring / budget</text>
+  <line x1="42.0" y1="562.0" x2="72.0" y2="562.0" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <text x="82.0" y="566.0" class="legend">主路径 / 阶段推进</text>
+  <text x="967.0" y="584.0" class="footnote">Rendered with fireworks-tech-graph</text>
 </svg>

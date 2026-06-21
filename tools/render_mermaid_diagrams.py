@@ -55,6 +55,17 @@ class ParsedEdge:
     target: str
     label: str = ""
     dashed: bool = False
+    directed: bool = True
+    bidirectional: bool = False
+
+
+@dataclass
+class EdgeToken:
+    label: str = ""
+    dashed: bool = False
+    directed: bool = True
+    bidirectional: bool = False
+    length: int = 0
 
 
 @dataclass
@@ -208,6 +219,12 @@ def parse_node_expr(expr: str, diagram: ParsedDiagram, container: str | None = N
 
     raw_id, rest = match.groups()
     rest = rest.strip()
+    normalized = normalize_node_id(raw_id)
+    if not rest and normalized in diagram.containers:
+        anchor = container_anchor_node(diagram, normalized)
+        if anchor:
+            return anchor
+        return diagram.add_node(normalized, diagram.containers[normalized], "rect", container)
     label = raw_id
     shape = "rect"
     if rest:
@@ -219,6 +236,30 @@ def parse_node_expr(expr: str, diagram: ParsedDiagram, container: str | None = N
             if body:
                 label = clean_label(body)
     return diagram.add_node(raw_id, label, shape, container)
+
+
+def container_anchor_node(diagram: ParsedDiagram, container_id: str) -> str:
+    members = [node_id for node_id, node in diagram.nodes.items() if node.container == container_id]
+    if not members:
+        return ""
+    preferred_tokens = (
+        "switch",
+        "nvswitch",
+        "leaf",
+        "fabric",
+        "gateway",
+        "serving",
+        "worker b",
+        "worker",
+        "gpu1",
+        "gpu 1",
+    )
+    for token in preferred_tokens:
+        for node_id in members:
+            label = diagram.nodes[node_id].label.lower()
+            if token in node_id.lower() or token in label:
+                return node_id
+    return members[len(members) // 2]
 
 
 def extract_balanced(text: str, opener: str, closer: str) -> str:
@@ -251,9 +292,75 @@ def extract_balanced(text: str, opener: str, closer: str) -> str:
     return text[start:].strip()
 
 
-def split_edge_chain(statement: str) -> tuple[list[str], list[str]]:
+def match_edge_token(statement: str, idx: int) -> EdgeToken | None:
+    if statement.startswith("<-->", idx):
+        return EdgeToken(directed=False, bidirectional=True, length=4)
+    if statement.startswith("---", idx):
+        return EdgeToken(directed=False, length=3)
+    if statement.startswith("-->", idx):
+        cursor = idx + 3
+        while cursor < len(statement) and statement[cursor].isspace():
+            cursor += 1
+        label = ""
+        if cursor < len(statement) and statement[cursor] == "|":
+            end = statement.find("|", cursor + 1)
+            if end != -1:
+                label = clean_label(statement[cursor + 1 : end])
+                cursor = end + 1
+        else:
+            cursor = idx + 3
+        return EdgeToken(label=label, length=cursor - idx)
+    if statement.startswith("-.->", idx):
+        return EdgeToken(dashed=True, length=4)
+    if statement.startswith("-.", idx):
+        end = statement.find(".->", idx + 2)
+        if end != -1:
+            label = clean_label(statement[idx + 2 : end])
+            return EdgeToken(label=label, dashed=True, length=end + 3 - idx)
+    return None
+
+
+def has_edge_operator(statement: str) -> bool:
+    quote: str | None = None
+    depth = 0
+    escaped = False
+    idx = 0
+    while idx < len(statement):
+        ch = statement[idx]
+        if escaped:
+            escaped = False
+            idx += 1
+            continue
+        if ch == "\\":
+            escaped = True
+            idx += 1
+            continue
+        if quote:
+            if ch == quote:
+                quote = None
+            idx += 1
+            continue
+        if ch in {"'", '"'}:
+            quote = ch
+            idx += 1
+            continue
+        if ch in "[{(":
+            depth += 1
+            idx += 1
+            continue
+        if ch in "]})":
+            depth = max(0, depth - 1)
+            idx += 1
+            continue
+        if depth == 0 and match_edge_token(statement, idx):
+            return True
+        idx += 1
+    return False
+
+
+def split_edge_chain(statement: str) -> tuple[list[str], list[EdgeToken]]:
     parts: list[str] = []
-    labels: list[str] = []
+    tokens: list[EdgeToken] = []
     quote: str | None = None
     depth = 0
     escaped = False
@@ -286,21 +393,19 @@ def split_edge_chain(statement: str) -> tuple[list[str], list[str]]:
             depth = max(0, depth - 1)
             idx += 1
             continue
-        if depth == 0 and statement.startswith("-->", idx):
+        if depth == 0:
+            token = match_edge_token(statement, idx)
+        else:
+            token = None
+        if token:
             parts.append(statement[cursor:idx].strip())
-            idx += 3
-            label = ""
-            if idx < len(statement) and statement[idx] == "|":
-                end = statement.find("|", idx + 1)
-                if end != -1:
-                    label = clean_label(statement[idx + 1 : end])
-                    idx = end + 1
-            labels.append(label)
+            idx += token.length
+            tokens.append(token)
             cursor = idx
             continue
         idx += 1
     parts.append(statement[cursor:].strip())
-    return parts, labels
+    return parts, tokens
 
 
 def parse_flowchart(code: str) -> ParsedDiagram:
@@ -327,11 +432,11 @@ def parse_flowchart(code: str) -> ParsedDiagram:
             if container_stack:
                 container_stack.pop()
             continue
-        if "-->" not in stripped:
+        if not has_edge_operator(stripped):
             parse_node_expr(stripped, diagram, container_stack[-1] if container_stack else None)
             continue
 
-        parts, labels = split_edge_chain(stripped)
+        parts, tokens = split_edge_chain(stripped)
         if len(parts) < 2:
             continue
         current_container = container_stack[-1] if container_stack else None
@@ -339,7 +444,17 @@ def parse_flowchart(code: str) -> ParsedDiagram:
         for offset, target_expr in enumerate(parts[1:]):
             target = parse_node_expr(target_expr, diagram, current_container)
             if source and target:
-                diagram.edges.append(ParsedEdge(source, target, labels[offset] if offset < len(labels) else ""))
+                token = tokens[offset] if offset < len(tokens) else EdgeToken()
+                diagram.edges.append(
+                    ParsedEdge(
+                        source,
+                        target,
+                        token.label,
+                        token.dashed,
+                        token.directed,
+                        token.bidirectional,
+                    )
+                )
             source = target
     return diagram
 
@@ -350,17 +465,18 @@ def parse_state_diagram(code: str) -> ParsedDiagram:
         stripped = statement.strip()
         if not stripped or stripped.startswith("state "):
             continue
-        if "-->" not in stripped:
+        if not has_edge_operator(stripped):
             parse_node_expr(stripped, diagram)
             continue
         left_right, _, transition = stripped.partition(":")
-        parts, labels = split_edge_chain(left_right)
+        parts, tokens = split_edge_chain(left_right)
         if len(parts) < 2:
             continue
         source = parse_node_expr(parts[0], diagram, state_role="source")
         target = parse_node_expr(parts[1], diagram, state_role="target")
-        label = clean_label(transition) or (labels[0] if labels else "")
-        diagram.edges.append(ParsedEdge(source, target, label))
+        label = clean_label(transition) or (tokens[0].label if tokens else "")
+        token = tokens[0] if tokens else EdgeToken()
+        diagram.edges.append(ParsedEdge(source, target, label, token.dashed, token.directed, token.bidirectional))
     return diagram
 
 
@@ -454,6 +570,196 @@ def node_style(node: ParsedNode, index: int) -> dict[str, object]:
     }
 
 
+def diagram_degree_stats(diagram: ParsedDiagram) -> tuple[dict[str, int], dict[str, int], int]:
+    indegree = {node_id: 0 for node_id in diagram.nodes}
+    outdegree = {node_id: 0 for node_id in diagram.nodes}
+    for edge in diagram.edges:
+        if edge.source in outdegree and edge.target in indegree:
+            outdegree[edge.source] += 1
+            indegree[edge.target] += 1
+    branch_nodes = sum(1 for node_id in diagram.nodes if indegree[node_id] > 1 or outdegree[node_id] > 1)
+    return indegree, outdegree, branch_nodes
+
+
+def use_stage_matrix_layout(diagram: ParsedDiagram, levels: dict[str, int]) -> bool:
+    if diagram.kind != "flowchart" or diagram.containers:
+        return False
+    node_count = len(diagram.nodes)
+    if node_count < 6:
+        return False
+    _, _, branch_nodes = diagram_degree_stats(diagram)
+    level_width = max((list(levels.values()).count(level) for level in set(levels.values())), default=0)
+    level_count = len(set(levels.values()))
+    return branch_nodes <= 1 and level_width <= 2 and level_count >= max(4, node_count // 2)
+
+
+def chunk_stage_nodes(node_order: list[str]) -> list[list[str]]:
+    node_count = len(node_order)
+    if node_count <= 8:
+        stage_count = 3
+    elif node_count <= 16:
+        stage_count = 4
+    else:
+        stage_count = 5
+    stage_count = min(stage_count, node_count)
+    base = node_count // stage_count
+    remainder = node_count % stage_count
+    chunks: list[list[str]] = []
+    cursor = 0
+    for stage in range(stage_count):
+        size = base + (1 if stage < remainder else 0)
+        chunks.append(node_order[cursor : cursor + size])
+        cursor += size
+    return [chunk for chunk in chunks if chunk]
+
+
+def short_node_title(diagram: ParsedDiagram, node_id: str) -> str:
+    title, _ = split_label(diagram.nodes[node_id].label)
+    return title or node_id
+
+
+def layout_stage_matrix(
+    diagram: ParsedDiagram,
+    title: str,
+    source_ref: str,
+    node_specs: dict[str, dict[str, object]],
+) -> dict[str, object]:
+    stages = chunk_stage_nodes(diagram.node_order)
+    stage_gap = 38
+    margin_x = 42
+    top = 118
+    header_height = 54
+    row_gap = 98
+    max_rows = max((len(stage) for stage in stages), default=1)
+    stage_widths = [
+        max(228, max(int(node_specs[node_id]["width"]) for node_id in stage) + 54)
+        for stage in stages
+    ]
+    stage_height = header_height + max_rows * row_gap + 24
+    width = max(1040, margin_x * 2 + sum(stage_widths) + stage_gap * max(0, len(stages) - 1))
+    height = max(600, top + stage_height + 82)
+
+    nodes = []
+    containers = []
+    stage_by_node: dict[str, int] = {}
+    row_by_node: dict[str, int] = {}
+    x_cursor = (width - (sum(stage_widths) + stage_gap * max(0, len(stages) - 1))) / 2
+    for stage_index, stage_nodes in enumerate(stages):
+        stage_width = stage_widths[stage_index]
+        first = short_node_title(diagram, stage_nodes[0])
+        last = short_node_title(diagram, stage_nodes[-1])
+        subtitle = first if first == last else f"{first} -> {last}"
+        if len(subtitle) > 52:
+            subtitle = subtitle[:49].rstrip() + "..."
+        containers.append(
+            {
+                "x": x_cursor,
+                "y": top,
+                "width": stage_width,
+                "height": stage_height,
+                "label": f"阶段 {stage_index + 1}",
+                "subtitle": subtitle,
+                "fill": "#f8fafc" if stage_index % 2 == 0 else "#ffffff",
+                "stroke": "#dbe5f1",
+                "stroke_dasharray": "7 5",
+                "rx": 16,
+                "preserve_case": True,
+            }
+        )
+        y_start = top + header_height + max(0, (max_rows - len(stage_nodes)) * row_gap / 2)
+        for row, node_id in enumerate(stage_nodes):
+            spec = dict(node_specs[node_id])
+            spec.update(
+                {
+                    "id": node_id,
+                    "x": x_cursor + (stage_width - int(spec["width"])) / 2,
+                    "y": y_start + row * row_gap,
+                }
+            )
+            nodes.append(spec)
+            stage_by_node[node_id] = stage_index
+            row_by_node[node_id] = row
+        x_cursor += stage_width + stage_gap
+
+    node_lookup = {node["id"]: node for node in nodes}
+    arrows = []
+    for edge in diagram.edges:
+        if edge.source not in node_lookup or edge.target not in node_lookup:
+            continue
+        source_node = node_lookup[edge.source]
+        target_node = node_lookup[edge.target]
+        source_cx = float(source_node["x"]) + float(source_node["width"]) / 2
+        target_cx = float(target_node["x"]) + float(target_node["width"]) / 2
+        source_cy = float(source_node["y"]) + float(source_node["height"]) / 2
+        target_cy = float(target_node["y"]) + float(target_node["height"]) / 2
+        source_stage = stage_by_node[edge.source]
+        target_stage = stage_by_node[edge.target]
+        arrow: dict[str, object] = {
+            "source": edge.source,
+            "target": edge.target,
+            "label": edge.label,
+            "flow": "control",
+        }
+        apply_edge_style(arrow, edge)
+        if edge.dashed:
+            arrow["dashed"] = True
+            arrow["flow"] = "async"
+        if target_stage > source_stage:
+            arrow["source_port"] = "right"
+            arrow["target_port"] = "left"
+            arrow["corridor_y"] = [round((source_cy + target_cy) / 2, 2)]
+        elif target_stage == source_stage:
+            if row_by_node.get(edge.target, 0) >= row_by_node.get(edge.source, 0):
+                arrow["source_port"] = "bottom"
+                arrow["target_port"] = "top"
+            else:
+                arrow["source_port"] = "top"
+                arrow["target_port"] = "bottom"
+                arrow["flow"] = "feedback"
+        else:
+            arrow["source_port"] = "bottom"
+            arrow["target_port"] = "bottom"
+            arrow["flow"] = "feedback"
+            lane_y = max(source_cy, target_cy) + 54
+            arrow["route_points"] = [[source_cx, lane_y], [target_cx, lane_y]]
+        arrows.append(arrow)
+
+    legend = [{"flow": "control", "label": "主路径 / 阶段推进"}]
+    if any(not edge.directed for edge in diagram.edges):
+        legend.append({"flow": "neutral", "label": "物理 / 拓扑连接"})
+    if any(arrow.get("flow") == "feedback" for arrow in arrows):
+        legend.append({"flow": "feedback", "label": "反馈 / 回退"})
+    if any(arrow.get("flow") == "async" for arrow in arrows):
+        legend.append({"flow": "async", "label": "异步或返回"})
+
+    return {
+        "template_type": "architecture",
+        "style": 1,
+        "width": int(width),
+        "height": int(height),
+        "title": title,
+        "subtitle": source_ref,
+        "containers": containers,
+        "nodes": nodes,
+        "arrows": arrows,
+        "legend": legend,
+        "legend_position": "bottom-left",
+        "legend_y": int(height - 38),
+        "footer": "Rendered with fireworks-tech-graph",
+        "footer_position": "bottom-right",
+    }
+
+
+def apply_edge_style(arrow: dict[str, object], edge: ParsedEdge) -> None:
+    if not edge.directed:
+        arrow["flow"] = "neutral"
+        arrow["stroke_width"] = 2.0
+        arrow["edge_style"] = "bidirectional" if edge.bidirectional else "undirected"
+    if edge.dashed:
+        arrow["dashed"] = True
+        arrow["flow"] = "async"
+
+
 def layout_diagram(diagram: ParsedDiagram, title: str, source_ref: str) -> dict[str, object]:
     levels = assign_levels(diagram)
     grouped: dict[int, list[str]] = defaultdict(list)
@@ -468,6 +774,8 @@ def layout_diagram(diagram: ParsedDiagram, title: str, source_ref: str) -> dict[
         for idx, node_id in enumerate(diagram.node_order)
         for node in [diagram.nodes[node_id]]
     }
+    if use_stage_matrix_layout(diagram, levels):
+        return layout_stage_matrix(diagram, title, source_ref, node_specs)
     if lr:
         col_widths = {
             level: max(int(node_specs[node_id]["width"]) for node_id in items) + 72
@@ -541,9 +849,7 @@ def layout_diagram(diagram: ParsedDiagram, title: str, source_ref: str) -> dict[
             "label": edge.label,
             "flow": "control",
         }
-        if edge.dashed:
-            arrow["dashed"] = True
-            arrow["flow"] = "async"
+        apply_edge_style(arrow, edge)
         if lr:
             arrow["source_port"] = "right"
             arrow["target_port"] = "left"
@@ -620,6 +926,12 @@ def layout_diagram(diagram: ParsedDiagram, title: str, source_ref: str) -> dict[
             "fill": "none",
         })
 
+    legend = []
+    if any(edge.dashed for edge in diagram.edges):
+        legend.append({"flow": "async", "label": "异步或返回消息"})
+    if any(not edge.directed for edge in diagram.edges):
+        legend.append({"flow": "neutral", "label": "物理 / 拓扑连接"})
+
     return {
         "template_type": "architecture",
         "style": 1,
@@ -630,10 +942,7 @@ def layout_diagram(diagram: ParsedDiagram, title: str, source_ref: str) -> dict[
         "containers": containers,
         "nodes": nodes,
         "arrows": arrows,
-        "legend": [
-            {"flow": "control", "label": "主路径 / 状态转换"},
-            {"flow": "async", "label": "异步或返回消息"},
-        ] if any(edge.dashed for edge in diagram.edges) else [],
+        "legend": legend,
         "legend_position": "bottom-left",
         "legend_y": int(height - 38),
         "footer": "Rendered with fireworks-tech-graph",
@@ -665,6 +974,62 @@ def render_svg(data: dict[str, object], output: Path) -> None:
     output.parent.mkdir(parents=True, exist_ok=True)
     cmd = [sys.executable, str(SKILL_RENDERER), "architecture", str(output), json.dumps(data, ensure_ascii=False)]
     subprocess.run(cmd, check=True, cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    postprocess_edge_markers(output, data)
+
+
+def ensure_bidirectional_marker(svg_text: str) -> str:
+    if 'id="arrowHStart"' in svg_text:
+        return svg_text
+    marker = "\n".join(
+        [
+            '    <marker id="arrowHStart" markerWidth="10" markerHeight="7" refX="1" refY="3.5" orient="auto">',
+            '      <polygon points="10 0, 0 3.5, 10 7" fill="#6b7280"/>',
+            "    </marker>",
+        ]
+    )
+    return svg_text.replace('    <marker id="arrowH"', marker + "\n    <marker id=\"arrowH\"", 1)
+
+
+def postprocess_edge_markers(output: Path, data: dict[str, object]) -> None:
+    arrows = [arrow for arrow in data.get("arrows", []) if isinstance(arrow, dict)]
+    if not any(arrow.get("edge_style") for arrow in arrows):
+        return
+    text = output.read_text(encoding="utf-8")
+    arrow_index = 0
+
+    def replace_path(match: re.Match[str]) -> str:
+        nonlocal arrow_index
+        tag = match.group(0)
+        if arrow_index >= len(arrows):
+            return tag
+        edge_style = arrows[arrow_index].get("edge_style")
+        arrow_index += 1
+        if edge_style == "undirected":
+            return re.sub(r'\smarker-end="url\(#arrow[A-Z]\)"', "", tag)
+        if edge_style == "bidirectional":
+            return re.sub(
+                r'\smarker-end="url\(#arrow[A-Z]\)"',
+                ' marker-start="url(#arrowHStart)" marker-end="url(#arrowH)"',
+                tag,
+            )
+        return tag
+
+    new_text = re.sub(r'  <path d="[^"]+" fill="none" stroke="[^"]+" stroke-width="[^"]+" marker-end="url\(#arrow[A-Z]\)"[^/]*/>', replace_path, text)
+    if 'marker-start="url(#arrowHStart)"' in new_text:
+        new_text = ensure_bidirectional_marker(new_text)
+    if any(arrow.get("edge_style") == "bidirectional" for arrow in arrows):
+        new_text = re.sub(
+            r'(<line x1="[^"]+" y1="[^"]+" x2="[^"]+" y2="[^"]+" stroke="#6b7280"[^>]*) marker-end="url\(#arrowH\)"',
+            r'\1 marker-start="url(#arrowHStart)" marker-end="url(#arrowH)"',
+            new_text,
+        )
+    elif any(arrow.get("edge_style") == "undirected" for arrow in arrows):
+        new_text = re.sub(
+            r'(<line x1="[^"]+" y1="[^"]+" x2="[^"]+" y2="[^"]+" stroke="#6b7280"[^>]*) marker-end="url\(#arrowH\)"',
+            r"\1",
+            new_text,
+        )
+    output.write_text(new_text, encoding="utf-8")
 
 
 def render_sequence_svg(diagram: ParsedDiagram, title: str, source_ref: str, output: Path) -> None:

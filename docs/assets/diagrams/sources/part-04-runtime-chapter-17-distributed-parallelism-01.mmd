@@ -1,16 +1,22 @@
 flowchart TB
-  Model["模型结构"] --> Split["并行切分策略"]
-  Split --> DP["Data Parallel"]
-  Split --> TP["Tensor Parallel"]
-  Split --> PP["Pipeline Parallel"]
-  Split --> EP["Expert Parallel"]
-  Split --> SP["Sequence Parallel"]
-  DP --> Comm["collective / P2P 通信"]
-  TP --> Comm
-  PP --> Comm
-  EP --> Comm
-  SP --> Comm
-  Comm --> Placement["拓扑感知放置"]
-  Placement --> Intra["节点内 NVLink / NVSwitch"]
-  Placement --> Inter["跨节点 IB / RoCE / RDMA"]
-  Placement --> Metrics["rank / group / topology metrics"]
+  Workload["model / batch / context profile"] --> Plan["parallelism plan"]
+  Plan --> DataState["data + model state pressure"]
+  Plan --> ModelCompute["layer / depth / MoE pressure"]
+  Plan --> Context["activation / long context pressure"]
+  DataState --> DP["Data Parallel\nreplica + batch shard"]
+  DataState --> ZeRO["ZeRO / FSDP\noptimizer / grad / param shard"]
+  ModelCompute --> TP["Tensor Parallel\nmatrix / head shard"]
+  ModelCompute --> PP["Pipeline Parallel\nstage + micro-batch"]
+  ModelCompute --> EP["Expert Parallel\nexpert shard + router"]
+  Context --> SP["SP / CP\nsequence or context shard"]
+  DP --> Groups["rank groups"]
+  ZeRO --> Groups
+  TP --> Groups
+  PP --> Groups
+  EP --> Groups
+  SP --> Groups
+  Groups --> Comm["communication plan\nAllReduce / RS / AG / A2A / P2P"]
+  Comm --> Placement["topology-aware placement"]
+  Placement --> Intra["scale-up domain\nNVLink / NVSwitch"]
+  Placement --> Inter["scale-out fabric\nIB / RoCE / RDMA"]
+  Placement --> Metrics["run evidence\nrank / group / topology metrics"]

@@ -141,6 +141,37 @@ NCCL test 的阈值应按拓扑分组。节点内、同 rack、跨 rack 和跨 r
 
 NCCL test 还要记录环境变量和自动选择结果。接口选择、算法选择和拓扑文件会影响结果。没有这些信息，后续复现测试很难得到同样路径。
 
+高优训练池还应增加并行策略验收，而不是只跑裸 NCCL。验收矩阵要覆盖至少五类代表性通信：DP/ZeRO 的梯度或状态同步、TP 的节点内层内 collective、PP 的相邻 stage P2P、EP/MoE 的 AllToAll dispatch/combine、SP/CP 的长序列或 activation shard 通信。每类测试都要记录 `parallelism_plan_record`、rank group、placement、NCCL 环境、消息大小和 step trace。这样当真实训练变慢时，团队能判断是 fabric 基线退化，还是某个并行维度没有被验收覆盖。
+
+```yaml
+parallelism_acceptance_slice:
+  baseline_id: parallelism-h100-prod-20260620
+  workload_slices:
+    data_parallel_zero:
+      collectives: [all_reduce, reduce_scatter, all_gather]
+      topology: multi_node_multi_rail
+    tensor_parallel:
+      collectives: [all_gather, reduce_scatter]
+      topology: same_nvswitch_domain_required
+    pipeline_parallel:
+      communication: stage_p2p
+      topology: same_rack_preferred
+    expert_parallel:
+      collectives: [all_to_all]
+      topology: multi_node_hotspot_detection
+    sequence_context_parallel:
+      communication: sequence_or_context_shard_exchange
+      topology: implementation_specific
+  required_evidence:
+    rank_group_mapping: required
+    placement_commit_record: required
+    collective_trace_record: required
+    rail_balance_report: required_for_multi_node
+    nvlink_or_nvswitch_baseline: required_for_tp
+```
+
+这份切片能避免一个常见误区：AllReduce 通过，不代表 AllToAll、TP 层内通信或 PP stage 传输都健康。不同并行维度对应不同路径和不同故障模式，验收也必须分开。
+
 
 ### 38.3.5 nvbandwidth
 

@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1726 360" width="1726" height="360">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1040 600" width="1040" height="600">
   <defs>
     <marker id="arrowA" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
       <polygon points="0 0, 10 3.5, 0 7" fill="#7c3aed"/>
@@ -41,28 +41,39 @@
     .footnote { font-size: 12px; font-weight: 500; fill: #94a3b8; }
     </style>
   </defs>
-  <rect width="1726.0" height="360.0" fill="#ffffff"/>
-  <text x="863.0" y="56" text-anchor="middle" class="title">37.3.8 network telemetry</text>
-  <text x="863.0" y="82" text-anchor="middle" class="subtitle">part-09-reliability-observability/chapter-37-ai-factory-observability.md:455</text>
-  <path d="M 297.0,155.0 L 317.4,155.0 L 348.6,161.0 L 369.0,161.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 563.0,161.0 L 635.0,161.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 799.0,161.0 L 819.4,161.0 L 850.6,155.0 L 871.0,155.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 1035.0,155.0 L 1107.0,155.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 1287.0,155.0 L 1307.4,155.0 L 1338.6,161.0 L 1359.0,161.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <rect x="96.0" y="126.0" width="201.0" height="58.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
-  <text x="196.5" y="155.0" text-anchor="middle" class="node-title">switch / NIC counters</text>
-  <rect x="369.0" y="126.0" width="194.0" height="70.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
-  <text x="466.0" y="161.0" text-anchor="middle" class="node-title">port-to-node-to-rank</text>
-  <text x="466.0" y="183.0" text-anchor="middle" class="node-sub">mapping</text>
-  <rect x="635.0" y="126.0" width="164.0" height="70.0" rx="10.0" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.8"/>
-  <text x="717.0" y="161.0" text-anchor="middle" class="node-title">job / model</text>
-  <text x="717.0" y="183.0" text-anchor="middle" class="node-sub">tenant impact</text>
-  <rect x="871.0" y="126.0" width="164.0" height="58.0" rx="10.0" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.8"/>
-  <text x="953.0" y="155.0" text-anchor="middle" class="node-title">baseline drift</text>
-  <rect x="1107.0" y="126.0" width="180.0" height="58.0" rx="10.0" fill="#f0fdfa" stroke="#99f6e4" stroke-width="1.8"/>
-  <text x="1197.0" y="155.0" text-anchor="middle" class="node-title">severity and owner</text>
-  <rect x="1359.0" y="126.0" width="271.0" height="70.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8"/>
-  <text x="1494.5" y="161.0" text-anchor="middle" class="node-title">degrade fabric</text>
-  <text x="1494.5" y="183.0" text-anchor="middle" class="node-sub">isolate node / reroute / repair</text>
-  <text x="1446.0" y="344.0" class="footnote">Rendered with fireworks-tech-graph</text>
+  <rect width="1040.0" height="600.0" fill="#ffffff"/>
+  <text x="520.0" y="56" text-anchor="middle" class="title">37.3.8 network telemetry</text>
+  <text x="520.0" y="82" text-anchor="middle" class="subtitle">part-09-reliability-observability/chapter-37-ai-factory-observability.md:455</text>
+  <rect x="78.0" y="118.0" width="255.0" height="274.0" rx="16.0" fill="#f8fafc" stroke="#dbe5f1" stroke-width="1.4" stroke-dasharray="7 5"/>
+  <text x="96.0" y="142.0" class="section">阶段 1</text>
+  <text x="96.0" y="162.0" class="section-sub">switch / NIC counters -&gt; port-to-node-to-rank</text>
+  <rect x="371.0" y="118.0" width="228.0" height="274.0" rx="16.0" fill="#ffffff" stroke="#dbe5f1" stroke-width="1.4" stroke-dasharray="7 5"/>
+  <text x="389.0" y="142.0" class="section">阶段 2</text>
+  <text x="389.0" y="162.0" class="section-sub">job / model -&gt; baseline drift</text>
+  <rect x="637.0" y="118.0" width="325.0" height="274.0" rx="16.0" fill="#f8fafc" stroke="#dbe5f1" stroke-width="1.4" stroke-dasharray="7 5"/>
+  <text x="655.0" y="142.0" class="section">阶段 3</text>
+  <text x="655.0" y="162.0" class="section-sub">severity and owner -&gt; degrade fabric</text>
+  <path d="M 205.5,230.0 L 205.5,270.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 302.5,305.0 L 322.9,305.0 L 382.6,207.0 L 403.0,207.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 485.0,242.0 L 485.0,270.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 567.0,299.0 L 617.0,299.0 L 617.0,201.0 L 709.5,201.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 799.5,230.0 L 799.5,270.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <rect x="105.0" y="172.0" width="201.0" height="58.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
+  <text x="205.5" y="201.0" text-anchor="middle" class="node-title">switch / NIC counters</text>
+  <rect x="108.5" y="270.0" width="194.0" height="70.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
+  <text x="205.5" y="305.0" text-anchor="middle" class="node-title">port-to-node-to-rank</text>
+  <text x="205.5" y="327.0" text-anchor="middle" class="node-sub">mapping</text>
+  <rect x="403.0" y="172.0" width="164.0" height="70.0" rx="10.0" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.8"/>
+  <text x="485.0" y="207.0" text-anchor="middle" class="node-title">job / model</text>
+  <text x="485.0" y="229.0" text-anchor="middle" class="node-sub">tenant impact</text>
+  <rect x="403.0" y="270.0" width="164.0" height="58.0" rx="10.0" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.8"/>
+  <text x="485.0" y="299.0" text-anchor="middle" class="node-title">baseline drift</text>
+  <rect x="709.5" y="172.0" width="180.0" height="58.0" rx="10.0" fill="#f0fdfa" stroke="#99f6e4" stroke-width="1.8"/>
+  <text x="799.5" y="201.0" text-anchor="middle" class="node-title">severity and owner</text>
+  <rect x="664.0" y="270.0" width="271.0" height="70.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8"/>
+  <text x="799.5" y="305.0" text-anchor="middle" class="node-title">degrade fabric</text>
+  <text x="799.5" y="327.0" text-anchor="middle" class="node-sub">isolate node / reroute / repair</text>
+  <line x1="42.0" y1="562.0" x2="72.0" y2="562.0" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <text x="82.0" y="566.0" class="legend">主路径 / 阶段推进</text>
+  <text x="760.0" y="584.0" class="footnote">Rendered with fireworks-tech-graph</text>
 </svg>

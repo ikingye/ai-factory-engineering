@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 1212" width="960" height="1212">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1114 600" width="1114" height="600">
   <defs>
     <marker id="arrowA" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
       <polygon points="0 0, 10 3.5, 0 7" fill="#7c3aed"/>
@@ -41,40 +41,53 @@
     .footnote { font-size: 12px; font-weight: 500; fill: #94a3b8; }
     </style>
   </defs>
-  <rect width="960.0" height="1212.0" fill="#ffffff"/>
-  <text x="480.0" y="56" text-anchor="middle" class="title">42.4.1 工程实现</text>
-  <text x="480.0" y="82" text-anchor="middle" class="subtitle">part-10-economics-cases/chapter-42-business-models.md:410</text>
-  <path d="M 480.0,224.0 L 480.0,296.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 480.0,366.0 L 480.0,438.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 480.0,508.0 L 480.0,580.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 480.0,650.0 L 480.0,722.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 480.0,792.0 L 480.0,812.4 L 349.5,843.6 L 349.5,864.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 349.5,934.0 L 349.5,954.4 L 480.0,985.6 L 480.0,1006.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 480.0,792.0 L 480.0,812.4 L 607.0,843.6 L 607.0,864.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 594.5,1041.0 L 614.9,1041.0 L 618.4,189.0 L 598.0,189.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <rect x="362.0" y="154.0" width="236.0" height="70.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
-  <text x="480.0" y="189.0" text-anchor="middle" class="node-title">private_delivery_lifecycle</text>
-  <text x="480.0" y="211.0" text-anchor="middle" class="node-sub">contract</text>
-  <rect x="337.5" y="296.0" width="285.0" height="70.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
-  <text x="480.0" y="331.0" text-anchor="middle" class="node-title">offline_release_bundle</text>
-  <text x="480.0" y="353.0" text-anchor="middle" class="node-sub">manifest / what supplier supports</text>
-  <rect x="376.0" y="438.0" width="208.0" height="70.0" rx="10.0" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.8"/>
-  <text x="480.0" y="473.0" text-anchor="middle" class="node-title">offline_import_record</text>
-  <text x="480.0" y="495.0" text-anchor="middle" class="node-sub">what customer imported</text>
-  <rect x="344.5" y="580.0" width="271.0" height="70.0" rx="10.0" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.8"/>
-  <text x="480.0" y="615.0" text-anchor="middle" class="node-title">private_deployment</text>
-  <text x="480.0" y="637.0" text-anchor="middle" class="node-sub">acceptance_record / what passed</text>
-  <rect x="341.0" y="722.0" width="278.0" height="70.0" rx="10.0" fill="#f0fdfa" stroke="#99f6e4" stroke-width="1.8"/>
-  <text x="480.0" y="757.0" text-anchor="middle" class="node-title">support_ticket</text>
-  <text x="480.0" y="779.0" text-anchor="middle" class="node-sub">taxonomy + diagnostic_bundle_sla</text>
-  <rect x="245.5" y="864.0" width="208.0" height="70.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8"/>
-  <text x="349.5" y="899.0" text-anchor="middle" class="node-title">field_patch</text>
-  <text x="349.5" y="921.0" text-anchor="middle" class="node-sub">governance / execution</text>
-  <rect x="499.5" y="864.0" width="215.0" height="70.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
-  <text x="607.0" y="899.0" text-anchor="middle" class="node-title">commercial_pnl_ledger</text>
-  <text x="607.0" y="921.0" text-anchor="middle" class="node-sub">support + delivery cost</text>
-  <rect x="365.5" y="1006.0" width="229.0" height="70.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
-  <text x="480.0" y="1041.0" text-anchor="middle" class="node-title">merge back / LTS backport</text>
-  <text x="480.0" y="1063.0" text-anchor="middle" class="node-sub">EOL</text>
-  <text x="680.0" y="1196.0" class="footnote">Rendered with fireworks-tech-graph</text>
+  <rect width="1114.0" height="600.0" fill="#ffffff"/>
+  <text x="557.0" y="56" text-anchor="middle" class="title">42.4.1 工程实现</text>
+  <text x="557.0" y="82" text-anchor="middle" class="subtitle">part-10-economics-cases/chapter-42-business-models.md:410</text>
+  <rect x="42.0" y="118.0" width="339.0" height="372.0" rx="16.0" fill="#f8fafc" stroke="#dbe5f1" stroke-width="1.4" stroke-dasharray="7 5"/>
+  <text x="60.0" y="142.0" class="section">阶段 1</text>
+  <text x="60.0" y="162.0" class="section-sub">private_delivery_lifecycle -&gt; offline_import_record</text>
+  <rect x="419.0" y="118.0" width="332.0" height="372.0" rx="16.0" fill="#ffffff" stroke="#dbe5f1" stroke-width="1.4" stroke-dasharray="7 5"/>
+  <text x="437.0" y="142.0" class="section">阶段 2</text>
+  <text x="437.0" y="162.0" class="section-sub">private_deployment -&gt; field_patch</text>
+  <rect x="789.0" y="118.0" width="283.0" height="372.0" rx="16.0" fill="#f8fafc" stroke="#dbe5f1" stroke-width="1.4" stroke-dasharray="7 5"/>
+  <text x="807.0" y="142.0" class="section">阶段 3</text>
+  <text x="807.0" y="162.0" class="section-sub">merge back / LTS backport -&gt; commercial_pnl_ledger</text>
+  <path d="M 211.5,242.0 L 211.5,270.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 211.5,340.0 L 211.5,368.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 315.5,403.0 L 335.9,403.0 L 429.1,207.0 L 449.5,207.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 585.0,242.0 L 585.0,270.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 585.0,340.0 L 585.0,368.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 689.0,403.0 L 709.4,403.0 L 795.6,256.0 L 816.0,256.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 724.0,305.0 L 744.4,305.0 L 802.6,354.0 L 823.0,354.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 930.5,291.0 L 930.5,310.0 L 211.5,310.0 L 211.5,242.0" fill="none" stroke="#ef4444" stroke-width="2.4" marker-end="url(#arrowG)"/>
+  <rect x="93.5" y="172.0" width="236.0" height="70.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
+  <text x="211.5" y="207.0" text-anchor="middle" class="node-title">private_delivery_lifecycle</text>
+  <text x="211.5" y="229.0" text-anchor="middle" class="node-sub">contract</text>
+  <rect x="69.0" y="270.0" width="285.0" height="70.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
+  <text x="211.5" y="305.0" text-anchor="middle" class="node-title">offline_release_bundle</text>
+  <text x="211.5" y="327.0" text-anchor="middle" class="node-sub">manifest / what supplier supports</text>
+  <rect x="107.5" y="368.0" width="208.0" height="70.0" rx="10.0" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.8"/>
+  <text x="211.5" y="403.0" text-anchor="middle" class="node-title">offline_import_record</text>
+  <text x="211.5" y="425.0" text-anchor="middle" class="node-sub">what customer imported</text>
+  <rect x="449.5" y="172.0" width="271.0" height="70.0" rx="10.0" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.8"/>
+  <text x="585.0" y="207.0" text-anchor="middle" class="node-title">private_deployment</text>
+  <text x="585.0" y="229.0" text-anchor="middle" class="node-sub">acceptance_record / what passed</text>
+  <rect x="446.0" y="270.0" width="278.0" height="70.0" rx="10.0" fill="#f0fdfa" stroke="#99f6e4" stroke-width="1.8"/>
+  <text x="585.0" y="305.0" text-anchor="middle" class="node-title">support_ticket</text>
+  <text x="585.0" y="327.0" text-anchor="middle" class="node-sub">taxonomy + diagnostic_bundle_sla</text>
+  <rect x="481.0" y="368.0" width="208.0" height="70.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8"/>
+  <text x="585.0" y="403.0" text-anchor="middle" class="node-title">field_patch</text>
+  <text x="585.0" y="425.0" text-anchor="middle" class="node-sub">governance / execution</text>
+  <rect x="816.0" y="221.0" width="229.0" height="70.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
+  <text x="930.5" y="256.0" text-anchor="middle" class="node-title">merge back / LTS backport</text>
+  <text x="930.5" y="278.0" text-anchor="middle" class="node-sub">EOL</text>
+  <rect x="823.0" y="319.0" width="215.0" height="70.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
+  <text x="930.5" y="354.0" text-anchor="middle" class="node-title">commercial_pnl_ledger</text>
+  <text x="930.5" y="376.0" text-anchor="middle" class="node-sub">support + delivery cost</text>
+  <line x1="42.0" y1="562.0" x2="72.0" y2="562.0" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <text x="82.0" y="566.0" class="legend">主路径 / 阶段推进</text>
+  <line x1="42.0" y1="584.0" x2="72.0" y2="584.0" stroke="#ef4444" stroke-width="2.4" marker-end="url(#arrowG)"/>
+  <text x="82.0" y="588.0" class="legend">反馈 / 回退</text>
+  <text x="834.0" y="584.0" class="footnote">Rendered with fireworks-tech-graph</text>
 </svg>

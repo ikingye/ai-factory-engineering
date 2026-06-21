@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1142 1010" width="1142" height="1010">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1619 1318" width="1619" height="1318">
   <defs>
     <marker id="arrowA" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
       <polygon points="0 0, 10 3.5, 0 7" fill="#7c3aed"/>
@@ -41,48 +41,77 @@
     .footnote { font-size: 12px; font-weight: 500; fill: #94a3b8; }
     </style>
   </defs>
-  <rect width="1142.0" height="1010.0" fill="#ffffff"/>
-  <text x="571.0" y="56" text-anchor="middle" class="title">17.2.2 系统架构</text>
-  <text x="571.0" y="82" text-anchor="middle" class="subtitle">part-04-runtime/chapter-17-distributed-parallelism.md:68</text>
-  <path d="M 571.0,212.0 L 571.0,284.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 571.0,342.0 L 571.0,362.4 L 142.0,393.6 L 142.0,414.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 571.0,342.0 L 571.0,362.4 L 352.0,393.6 L 352.0,414.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 571.0,342.0 L 571.0,362.4 L 566.5,393.6 L 566.5,414.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 571.0,342.0 L 571.0,362.4 L 781.0,393.6 L 781.0,414.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 571.0,342.0 L 571.0,362.4 L 995.5,393.6 L 995.5,414.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 142.0,472.0 L 142.0,492.4 L 571.0,523.6 L 571.0,544.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 352.0,472.0 L 352.0,492.4 L 571.0,523.6 L 571.0,544.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 566.5,472.0 L 566.5,492.4 L 571.0,523.6 L 571.0,544.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 781.0,472.0 L 781.0,492.4 L 571.0,523.6 L 571.0,544.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 995.5,472.0 L 995.5,492.4 L 571.0,523.6 L 571.0,544.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 571.0,602.0 L 571.0,674.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 571.0,732.0 L 571.0,752.4 L 345.0,789.6 L 345.0,810.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 571.0,732.0 L 571.0,752.4 L 588.5,789.6 L 588.5,810.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 571.0,732.0 L 571.0,752.4 L 814.5,783.6 L 814.5,804.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <rect x="489.0" y="154.0" width="164.0" height="58.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
-  <text x="571.0" y="183.0" text-anchor="middle" class="node-title">模型结构</text>
-  <rect x="489.0" y="284.0" width="164.0" height="58.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
-  <text x="571.0" y="313.0" text-anchor="middle" class="node-title">并行切分策略</text>
-  <rect x="60.0" y="414.0" width="164.0" height="58.0" rx="10.0" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.8"/>
-  <text x="142.0" y="443.0" text-anchor="middle" class="node-title">Data Parallel</text>
-  <rect x="270.0" y="414.0" width="164.0" height="58.0" rx="10.0" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.8"/>
-  <text x="352.0" y="443.0" text-anchor="middle" class="node-title">Tensor Parallel</text>
-  <rect x="480.0" y="414.0" width="173.0" height="58.0" rx="10.0" fill="#f0fdfa" stroke="#99f6e4" stroke-width="1.8"/>
-  <text x="566.5" y="443.0" text-anchor="middle" class="node-title">Pipeline Parallel</text>
-  <rect x="699.0" y="414.0" width="164.0" height="58.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8"/>
-  <text x="781.0" y="443.0" text-anchor="middle" class="node-title">Expert Parallel</text>
-  <rect x="909.0" y="414.0" width="173.0" height="58.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
-  <text x="995.5" y="443.0" text-anchor="middle" class="node-title">Sequence Parallel</text>
-  <rect x="477.5" y="544.0" width="187.0" height="58.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
-  <text x="571.0" y="573.0" text-anchor="middle" class="node-title">collective / P2P 通信</text>
-  <rect x="489.0" y="674.0" width="164.0" height="58.0" rx="10.0" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.8"/>
-  <text x="571.0" y="703.0" text-anchor="middle" class="node-title">拓扑感知放置</text>
-  <rect x="244.5" y="810.0" width="201.0" height="58.0" rx="10.0" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.8"/>
-  <text x="345.0" y="839.0" text-anchor="middle" class="node-title">节点内 NVLink / NVSwitch</text>
-  <rect x="491.5" y="810.0" width="194.0" height="58.0" rx="10.0" fill="#f0fdfa" stroke="#99f6e4" stroke-width="1.8"/>
-  <text x="588.5" y="839.0" text-anchor="middle" class="node-title">跨节点 IB / RoCE / RDMA</text>
-  <rect x="731.5" y="804.0" width="166.0" height="70.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8"/>
-  <text x="814.5" y="839.0" text-anchor="middle" class="node-title">rank / group</text>
-  <text x="814.5" y="861.0" text-anchor="middle" class="node-sub">topology metrics</text>
-  <text x="862.0" y="994.0" class="footnote">Rendered with fireworks-tech-graph</text>
+  <rect width="1619.0" height="1318.0" fill="#ffffff"/>
+  <text x="809.5" y="56" text-anchor="middle" class="title">17.2.2 系统架构</text>
+  <text x="809.5" y="82" text-anchor="middle" class="subtitle">part-04-runtime/chapter-17-distributed-parallelism.md:68</text>
+  <path d="M 809.5,224.0 L 809.5,296.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 809.5,354.0 L 809.5,374.4 L 581.0,405.6 L 581.0,426.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 809.5,354.0 L 809.5,374.4 L 799.0,405.6 L 799.0,426.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 809.5,354.0 L 809.5,374.4 L 1027.5,405.6 L 1027.5,426.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 581.0,496.0 L 581.0,516.4 L 160.5,547.6 L 160.5,568.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 581.0,496.0 L 581.0,516.4 L 439.0,547.6 L 439.0,568.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 799.0,496.0 L 799.0,516.4 L 710.5,547.6 L 710.5,568.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 799.0,496.0 L 799.0,516.4 L 943.5,547.6 L 943.5,568.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 799.0,496.0 L 799.0,516.4 L 1183.5,547.6 L 1183.5,568.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 1027.5,496.0 L 1027.5,516.4 L 1444.5,547.6 L 1444.5,568.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 160.5,638.0 L 160.5,658.4 L 809.5,689.6 L 809.5,710.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 439.0,638.0 L 439.0,658.4 L 809.5,689.6 L 809.5,710.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 710.5,638.0 L 710.5,658.4 L 809.5,689.6 L 809.5,710.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 943.5,638.0 L 943.5,658.4 L 809.5,689.6 L 809.5,710.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 1183.5,638.0 L 1183.5,658.4 L 809.5,689.6 L 809.5,710.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 1444.5,638.0 L 1444.5,658.4 L 809.5,689.6 L 809.5,710.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 809.5,768.0 L 809.5,840.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 809.5,910.0 L 809.5,982.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 809.5,1040.0 L 809.5,1060.4 L 545.0,1091.6 L 545.0,1112.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 809.5,1040.0 L 809.5,1060.4 L 760.5,1091.6 L 760.5,1112.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 809.5,1040.0 L 809.5,1060.4 L 1025.0,1091.6 L 1025.0,1112.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <rect x="727.5" y="154.0" width="164.0" height="70.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
+  <text x="809.5" y="189.0" text-anchor="middle" class="node-title">model / batch</text>
+  <text x="809.5" y="211.0" text-anchor="middle" class="node-sub">context profile</text>
+  <rect x="726.5" y="296.0" width="166.0" height="58.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
+  <text x="809.5" y="325.0" text-anchor="middle" class="node-title">parallelism plan</text>
+  <rect x="491.0" y="426.0" width="180.0" height="70.0" rx="10.0" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.8"/>
+  <text x="581.0" y="461.0" text-anchor="middle" class="node-title">data + model state</text>
+  <text x="581.0" y="483.0" text-anchor="middle" class="node-sub">pressure</text>
+  <rect x="717.0" y="426.0" width="164.0" height="70.0" rx="10.0" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.8"/>
+  <text x="799.0" y="461.0" text-anchor="middle" class="node-title">layer / depth</text>
+  <text x="799.0" y="483.0" text-anchor="middle" class="node-sub">MoE pressure</text>
+  <rect x="927.0" y="426.0" width="201.0" height="70.0" rx="10.0" fill="#f0fdfa" stroke="#99f6e4" stroke-width="1.8"/>
+  <text x="1027.5" y="461.0" text-anchor="middle" class="node-title">activation</text>
+  <text x="1027.5" y="483.0" text-anchor="middle" class="node-sub">long context pressure</text>
+  <rect x="60.0" y="568.0" width="201.0" height="70.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8"/>
+  <text x="160.5" y="603.0" text-anchor="middle" class="node-title">Data Parallel</text>
+  <text x="160.5" y="625.0" text-anchor="middle" class="node-sub">replica + batch shard</text>
+  <rect x="307.0" y="568.0" width="264.0" height="70.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
+  <text x="439.0" y="603.0" text-anchor="middle" class="node-title">ZeRO / FSDP</text>
+  <text x="439.0" y="625.0" text-anchor="middle" class="node-sub">optimizer / grad / param shard</text>
+  <rect x="617.0" y="568.0" width="187.0" height="70.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
+  <text x="710.5" y="603.0" text-anchor="middle" class="node-title">Tensor Parallel</text>
+  <text x="710.5" y="625.0" text-anchor="middle" class="node-sub">matrix / head shard</text>
+  <rect x="850.0" y="568.0" width="187.0" height="70.0" rx="10.0" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.8"/>
+  <text x="943.5" y="603.0" text-anchor="middle" class="node-title">Pipeline Parallel</text>
+  <text x="943.5" y="625.0" text-anchor="middle" class="node-sub">stage + micro-batch</text>
+  <rect x="1083.0" y="568.0" width="201.0" height="70.0" rx="10.0" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.8"/>
+  <text x="1183.5" y="603.0" text-anchor="middle" class="node-title">Expert Parallel</text>
+  <text x="1183.5" y="625.0" text-anchor="middle" class="node-sub">expert shard + router</text>
+  <rect x="1330.0" y="568.0" width="229.0" height="70.0" rx="10.0" fill="#f0fdfa" stroke="#99f6e4" stroke-width="1.8"/>
+  <text x="1444.5" y="603.0" text-anchor="middle" class="node-title">SP / CP</text>
+  <text x="1444.5" y="625.0" text-anchor="middle" class="node-sub">sequence or context shard</text>
+  <rect x="727.5" y="710.0" width="164.0" height="58.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8"/>
+  <text x="809.5" y="739.0" text-anchor="middle" class="node-title">rank groups</text>
+  <rect x="674.0" y="840.0" width="271.0" height="70.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
+  <text x="809.5" y="875.0" text-anchor="middle" class="node-title">communication plan</text>
+  <text x="809.5" y="897.0" text-anchor="middle" class="node-sub">AllReduce / RS / AG / A2A / P2P</text>
+  <rect x="698.5" y="982.0" width="222.0" height="58.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
+  <text x="809.5" y="1011.0" text-anchor="middle" class="node-title">topology-aware placement</text>
+  <rect x="458.5" y="1112.0" width="173.0" height="70.0" rx="10.0" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.8"/>
+  <text x="545.0" y="1147.0" text-anchor="middle" class="node-title">scale-up domain</text>
+  <text x="545.0" y="1169.0" text-anchor="middle" class="node-sub">NVLink / NVSwitch</text>
+  <rect x="677.5" y="1112.0" width="166.0" height="70.0" rx="10.0" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.8"/>
+  <text x="760.5" y="1147.0" text-anchor="middle" class="node-title">scale-out fabric</text>
+  <text x="760.5" y="1169.0" text-anchor="middle" class="node-sub">IB / RoCE / RDMA</text>
+  <rect x="889.5" y="1112.0" width="271.0" height="70.0" rx="10.0" fill="#f0fdfa" stroke="#99f6e4" stroke-width="1.8"/>
+  <text x="1025.0" y="1147.0" text-anchor="middle" class="node-title">run evidence</text>
+  <text x="1025.0" y="1169.0" text-anchor="middle" class="node-sub">rank / group / topology metrics</text>
+  <text x="1339.0" y="1302.0" class="footnote">Rendered with fireworks-tech-graph</text>
 </svg>
