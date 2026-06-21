@@ -1,18 +1,19 @@
 flowchart TB
+  Scheduler["Topology-aware Scheduler"] --> Placement["rank / rail placement"]
+  Placement --> Rack1Ranks["Rack 1 ranks\nGPU Node 1-2"]
+  Placement --> Rack2Ranks["Rack 2 ranks\nGPU Node 3-4"]
+
   subgraph Rack1["Rack 1 / Rail-aware"]
-    N1["GPU Node 1"] --- L1["Leaf A"]
-    N2["GPU Node 2"] --- L1
+    Rack1Ranks --- L1["Leaf A"]
   end
   subgraph Rack2["Rack 2 / Rail-aware"]
-    N3["GPU Node 3"] --- L2["Leaf B"]
-    N4["GPU Node 4"] --- L2
+    Rack2Ranks --- L2["Leaf B"]
   end
   L1 --- S1["Spine 1"]
   L1 --- S2["Spine 2"]
   L2 --- S1
   L2 --- S2
-  N1 --> NCCL["NCCL / Collective Communication"]
-  Scheduler["Topology-aware Scheduler"] --> N1
-  Scheduler --> N3
-  Telemetry["RDMA / Port counters / NCCL logs"] --> S1
-  Telemetry --> S2
+  S1 --> NCCL["NCCL / Collective Communication"]
+  S2 --> NCCL
+  S1 --> Telemetry["RDMA / Port counters / NCCL logs"]
+  S2 --> Telemetry

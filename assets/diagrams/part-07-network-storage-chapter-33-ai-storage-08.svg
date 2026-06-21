@@ -54,6 +54,10 @@
   <path d="M 2169.0,217.0 L 2189.4,217.0 L 2253.1,155.0 L 2273.5,155.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
   <path d="M 2437.5,155.0 L 2457.9,155.0 L 2521.6,211.0 L 2542.0,211.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
   <path d="M 2169.0,217.0 L 2189.4,217.0 L 2220.6,267.0 L 2241.0,267.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 325.0,267.0 L 345.4,267.0 L 376.6,211.0 L 397.0,211.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)" stroke-dasharray="6,4"/>
+  <path d="M 325.0,267.0 L 345.4,267.0 L 1130.6,211.0 L 1151.0,211.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)" stroke-dasharray="6,4"/>
+  <path d="M 325.0,267.0 L 345.4,267.0 L 1683.6,211.0 L 1704.0,211.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)" stroke-dasharray="6,4"/>
+  <path d="M 325.0,267.0 L 345.4,267.0 L 2253.1,155.0 L 2273.5,155.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)" stroke-dasharray="6,4"/>
   <rect x="103.0" y="126.0" width="215.0" height="58.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
   <text x="210.5" y="155.0" text-anchor="middle" class="node-title">raw data / private data</text>
   <rect x="96.0" y="238.0" width="229.0" height="58.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8"/>
@@ -79,5 +83,15 @@
   <text x="2355.5" y="267.0" text-anchor="middle" class="node-title">cache_invalidation_record</text>
   <rect x="2542.0" y="182.0" width="164.0" height="58.0" rx="10.0" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.8"/>
   <text x="2624.0" y="211.0" text-anchor="middle" class="node-title">serving release</text>
+  <rect x="329.5" y="209.0" width="63" height="20" rx="6" fill="#ffffff" opacity="0.94"/>
+  <text x="361.0" y="223.0" text-anchor="middle" class="arrow-label">governs</text>
+  <rect x="706.5" y="241.0" width="63" height="20" rx="6" fill="#ffffff" opacity="0.94"/>
+  <text x="738.0" y="255.0" text-anchor="middle" class="arrow-label">governs</text>
+  <rect x="983.0" y="241.0" width="63" height="20" rx="6" fill="#ffffff" opacity="0.94"/>
+  <text x="1014.5" y="255.0" text-anchor="middle" class="arrow-label">governs</text>
+  <rect x="1267.75" y="197.0" width="63" height="20" rx="6" fill="#ffffff" opacity="0.94"/>
+  <text x="1299.25" y="211.0" text-anchor="middle" class="arrow-label">governs</text>
+  <line x1="42.0" y1="366.0" x2="72.0" y2="366.0" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <text x="82.0" y="370.0" class="legend">异步或返回消息</text>
   <text x="2522.0" y="388.0" class="footnote">Rendered with fireworks-tech-graph</text>
 </svg>

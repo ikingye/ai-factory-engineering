@@ -1,16 +1,10 @@
 flowchart TB
-  CPU0["CPU Socket 0 / NUMA 0"] --- PCIe0["PCIe Root Complex 0"]
-  CPU1["CPU Socket 1 / NUMA 1"] --- PCIe1["PCIe Root Complex 1"]
-  PCIe0 --- NIC0["NIC / DPU 0"]
-  PCIe1 --- NIC1["NIC / DPU 1"]
-  PCIe0 --- GPU0["GPU 0"]
-  PCIe0 --- GPU1["GPU 1"]
-  PCIe1 --- GPU2["GPU 2"]
-  PCIe1 --- GPU3["GPU 3"]
-  GPU0 <--> NVSW["NVSwitch / NVLink Domain"]
-  GPU1 <--> NVSW
-  GPU2 <--> NVSW
-  GPU3 <--> NVSW
+  Host["Dual-socket host\nCPU / NUMA / memory"] --> PCIe["PCIe root complexes\nGPU + NIC attachment"]
+  PCIe --> GPUIsland["GPU island\nGPU 0-3 local PCIe paths"]
+  PCIe --> NICIsland["NIC / DPU island\nmulti-rail egress"]
+  GPUIsland <--> NVSW["NVSwitch / NVLink Domain"]
+  NICIsland --- SO["Scale-out Fabric"]
   NVSW --> MP["Tensor / Pipeline / Expert Parallel"]
-  NIC0 --> SO["Scale-out Fabric"]
-  NIC1 --> SO
+  SO --> RDMA["RDMA / multi-node path"]
+  MP --> Placement["rank placement contract"]
+  RDMA --> Placement

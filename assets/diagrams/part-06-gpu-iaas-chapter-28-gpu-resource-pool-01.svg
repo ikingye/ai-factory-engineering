@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1875 404" width="1875" height="404">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1079 600" width="1079" height="600">
   <defs>
     <marker id="arrowA" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
       <polygon points="0 0, 10 3.5, 0 7" fill="#7c3aed"/>
@@ -41,38 +41,51 @@
     .footnote { font-size: 12px; font-weight: 500; fill: #94a3b8; }
     </style>
   </defs>
-  <rect width="1875.0" height="404.0" fill="#ffffff"/>
-  <text x="937.5" y="56" text-anchor="middle" class="title">28.2.2 系统架构</text>
-  <text x="937.5" y="82" text-anchor="middle" class="subtitle">part-06-gpu-iaas/chapter-28-gpu-resource-pool.md:156</text>
-  <path d="M 419.5,161.0 L 439.9,161.0 L 502.6,211.0 L 523.0,211.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 451.0,273.0 L 471.4,273.0 L 502.6,211.0 L 523.0,211.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 752.0,211.0 L 772.4,211.0 L 803.6,161.0 L 824.0,161.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 1018.0,161.0 L 1038.4,161.0 L 1069.6,217.0 L 1090.0,217.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 1263.0,217.0 L 1283.4,217.0 L 1314.6,211.0 L 1335.0,211.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 1499.0,211.0 L 1519.4,211.0 L 1550.6,217.0 L 1571.0,217.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 1675.0,252.0 L 1675.0,330.0 L 273.5,330.0 L 273.5,308.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 752.0,211.0 L 772.4,211.0 L 803.6,273.0 L 824.0,273.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <rect x="127.5" y="126.0" width="292.0" height="70.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
-  <text x="273.5" y="161.0" text-anchor="middle" class="node-title">model requirements</text>
-  <text x="273.5" y="183.0" text-anchor="middle" class="node-sub">context / precision / engine / SLO</text>
-  <rect x="96.0" y="238.0" width="355.0" height="70.0" rx="10.0" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.8"/>
-  <text x="273.5" y="273.0" text-anchor="middle" class="node-title">heterogeneous_gpu_pool</text>
-  <text x="273.5" y="295.0" text-anchor="middle" class="node-sub">profile / classes / baselines / entitlement</text>
-  <rect x="523.0" y="182.0" width="229.0" height="58.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
-  <text x="637.5" y="211.0" text-anchor="middle" class="node-title">model_hardware_fit_record</text>
-  <rect x="824.0" y="126.0" width="194.0" height="70.0" rx="10.0" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.8"/>
-  <text x="921.0" y="161.0" text-anchor="middle" class="node-title">gpu_generation_route</text>
-  <text x="921.0" y="183.0" text-anchor="middle" class="node-sub">decision</text>
-  <rect x="824.0" y="238.0" width="194.0" height="70.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
-  <text x="921.0" y="273.0" text-anchor="middle" class="node-title">production_readiness</text>
-  <text x="921.0" y="295.0" text-anchor="middle" class="node-sub">review</text>
-  <rect x="1090.0" y="182.0" width="173.0" height="70.0" rx="10.0" fill="#f0fdfa" stroke="#99f6e4" stroke-width="1.8"/>
-  <text x="1176.5" y="217.0" text-anchor="middle" class="node-title">serving placement</text>
-  <text x="1176.5" y="239.0" text-anchor="middle" class="node-sub">endpoint</text>
-  <rect x="1335.0" y="182.0" width="164.0" height="58.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8"/>
-  <text x="1417.0" y="211.0" text-anchor="middle" class="node-title">metering events</text>
-  <rect x="1571.0" y="182.0" width="208.0" height="70.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
-  <text x="1675.0" y="217.0" text-anchor="middle" class="node-title">heterogeneous_gpu_cost</text>
-  <text x="1675.0" y="239.0" text-anchor="middle" class="node-sub">scorecard</text>
-  <text x="1595.0" y="388.0" class="footnote">Rendered with fireworks-tech-graph</text>
+  <rect width="1079.0" height="600.0" fill="#ffffff"/>
+  <text x="539.5" y="56" text-anchor="middle" class="title">28.2.2 系统架构</text>
+  <text x="539.5" y="82" text-anchor="middle" class="subtitle">part-06-gpu-iaas/chapter-28-gpu-resource-pool.md:156</text>
+  <rect x="42.0" y="118.0" width="409.0" height="372.0" rx="16.0" fill="#f8fafc" stroke="#dbe5f1" stroke-width="1.4" stroke-dasharray="7 5"/>
+  <text x="60.0" y="142.0" class="section">阶段 1</text>
+  <text x="60.0" y="162.0" class="section-sub">model requirements -&gt; heterogeneous_gpu_pool</text>
+  <rect x="489.0" y="118.0" width="248.0" height="372.0" rx="16.0" fill="#ffffff" stroke="#dbe5f1" stroke-width="1.4" stroke-dasharray="7 5"/>
+  <text x="507.0" y="142.0" class="section">阶段 2</text>
+  <text x="507.0" y="162.0" class="section-sub">gpu_generation_route -&gt; metering events</text>
+  <rect x="775.0" y="118.0" width="262.0" height="372.0" rx="16.0" fill="#f8fafc" stroke="#dbe5f1" stroke-width="1.4" stroke-dasharray="7 5"/>
+  <text x="793.0" y="142.0" class="section">阶段 3</text>
+  <text x="793.0" y="162.0" class="section-sub">heterogeneous_gpu_cost -&gt; production_readiness</text>
+  <path d="M 246.5,242.0 L 246.5,270.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 246.5,368.0 L 246.5,328.0" fill="none" stroke="#ef4444" stroke-width="2.4" marker-end="url(#arrowG)"/>
+  <path d="M 361.0,299.0 L 381.4,299.0 L 495.6,207.0 L 516.0,207.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 613.0,242.0 L 613.0,270.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 613.0,340.0 L 613.0,368.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 695.0,397.0 L 715.4,397.0 L 781.6,256.0 L 802.0,256.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 906.0,291.0 L 906.0,457.0 L 246.5,457.0 L 246.5,438.0" fill="none" stroke="#ef4444" stroke-width="2.4" marker-end="url(#arrowG)"/>
+  <path d="M 361.0,299.0 L 381.4,299.0 L 788.6,354.0 L 809.0,354.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <rect x="100.5" y="172.0" width="292.0" height="70.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
+  <text x="246.5" y="207.0" text-anchor="middle" class="node-title">model requirements</text>
+  <text x="246.5" y="229.0" text-anchor="middle" class="node-sub">context / precision / engine / SLO</text>
+  <rect x="132.0" y="270.0" width="229.0" height="58.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
+  <text x="246.5" y="299.0" text-anchor="middle" class="node-title">model_hardware_fit_record</text>
+  <rect x="69.0" y="368.0" width="355.0" height="70.0" rx="10.0" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.8"/>
+  <text x="246.5" y="403.0" text-anchor="middle" class="node-title">heterogeneous_gpu_pool</text>
+  <text x="246.5" y="425.0" text-anchor="middle" class="node-sub">profile / classes / baselines / entitlement</text>
+  <rect x="516.0" y="172.0" width="194.0" height="70.0" rx="10.0" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.8"/>
+  <text x="613.0" y="207.0" text-anchor="middle" class="node-title">gpu_generation_route</text>
+  <text x="613.0" y="229.0" text-anchor="middle" class="node-sub">decision</text>
+  <rect x="526.5" y="270.0" width="173.0" height="70.0" rx="10.0" fill="#f0fdfa" stroke="#99f6e4" stroke-width="1.8"/>
+  <text x="613.0" y="305.0" text-anchor="middle" class="node-title">serving placement</text>
+  <text x="613.0" y="327.0" text-anchor="middle" class="node-sub">endpoint</text>
+  <rect x="531.0" y="368.0" width="164.0" height="58.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8"/>
+  <text x="613.0" y="397.0" text-anchor="middle" class="node-title">metering events</text>
+  <rect x="802.0" y="221.0" width="208.0" height="70.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
+  <text x="906.0" y="256.0" text-anchor="middle" class="node-title">heterogeneous_gpu_cost</text>
+  <text x="906.0" y="278.0" text-anchor="middle" class="node-sub">scorecard</text>
+  <rect x="809.0" y="319.0" width="194.0" height="70.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
+  <text x="906.0" y="354.0" text-anchor="middle" class="node-title">production_readiness</text>
+  <text x="906.0" y="376.0" text-anchor="middle" class="node-sub">review</text>
+  <line x1="42.0" y1="562.0" x2="72.0" y2="562.0" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <text x="82.0" y="566.0" class="legend">主路径 / 阶段推进</text>
+  <line x1="42.0" y1="584.0" x2="72.0" y2="584.0" stroke="#ef4444" stroke-width="2.4" marker-end="url(#arrowG)"/>
+  <text x="82.0" y="588.0" class="legend">反馈 / 回退</text>
+  <text x="799.0" y="584.0" class="footnote">Rendered with fireworks-tech-graph</text>
 </svg>

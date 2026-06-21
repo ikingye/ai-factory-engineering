@@ -4721,6 +4721,27 @@
     suspected_cost_ledger: training_roi_ledger
 </code></pre>
 <p>这个 bundle 给 oncall 一个明确的 stop rule：缺少 <code>rank_mapping</code>、<code>nccl_env_contract</code> 或 <code>collective_trace_record</code> 时，不应直接判断是网络问题；缺少 <code>communication_critical_path_record</code> 时，不应把某个慢 collective 直接换算成 GPU 浪费；缺少 <code>checkpoint_overlap_evidence</code> 时，不应把周期性 step spike 直接归因于 fabric；缺少 <code>parallelism_plan_record</code> 时，不应评价并行策略是否合理。止血可以先做，但根因结论必须等证据齐备。</p>
+<p>并行维度还应决定排障入口。DP/ZeRO 慢时先看梯度或状态同步、bucket、overlap 和慢 rank；TP 慢时先看同组 GPU 是否处于同一 NVLink/NVSwitch 域、层内 collective 是否跨节点、hidden/head 切分是否符合模板；PP 慢时先看最慢 stage、bubble、micro-batch 和相邻 stage 路径；EP 慢时先看 router 分布、expert overflow/drop、AllToAll 和热点 expert；SP/CP 慢或 OOM 时先看序列长度分布、activation checkpoint、attention 实现和通信 buffer。把所有症状都归为 “NCCL 慢”，会让故障树过早失去方向。</p>
+<pre><code class="language-yaml">parallelism_fault_entry:
+  symptom: step_time_regression
+  choose_branch_by:
+    data_parallel_zero:
+      signals: [all_reduce_slow, reduce_scatter_slow, optimizer_state_sync_slow]
+      first_checks: [bucket_overlap, slow_rank, fabric_baseline]
+    tensor_parallel:
+      signals: [layer_collective_slow, tp_group_skew, single_node_tokens_drop]
+      first_checks: [same_nvswitch_domain, nvlink_baseline, tp_rank_mapping]
+    pipeline_parallel:
+      signals: [stage_idle_high, bubble_high, p2p_wait_high]
+      first_checks: [stage_balance, micro_batch_count, adjacent_stage_topology]
+    expert_parallel:
+      signals: [all_to_all_slow, expert_hotspot, token_drop_or_overflow]
+      first_checks: [router_distribution, expert_capacity, rail_balance]
+    sequence_context_parallel:
+      signals: [long_context_oom, activation_comm_slow, tail_sequence_step_spike]
+      first_checks: [length_distribution, context_parallel_impl, activation_checkpointing]
+</code></pre>
+<p>这个入口把并行策略从“背景配置”提升为故障树选择条件。值班人员不需要在事故中重新学习模型结构，但必须能从作业元数据看到并行计划和 rank group。</p>
 <p>通信类事故的临时止血也要和证据分开。可以先暂停新大任务进入 suspect rack、隔离明显异常 NIC、回滚最近 NCCL env 模板、或恢复到上一个健康 checkpoint；但这些动作只是降低损失，不等于根因已定。最终复盘应指出哪一个 contract、baseline、regression 或 acceptance matrix 漏掉了风险，并把修复写回第 38 章的准入流程。</p>
 <p>对应地，存储诊断包应描述路径、manifest、缓存和影响：</p>
 <p><img alt="图：39.4.1 工程实现" src="../../assets/diagrams/part-09-reliability-observability-chapter-39-troubleshooting-14.svg" /></p>

@@ -3905,10 +3905,12 @@
 <h3 id="3238-collective-communication">32.3.8 collective communication<a class="headerlink" href="#3238-collective-communication" title="Permanent link">&para;</a></h3>
 <p>Collective communication 是多进程协同通信原语，如 AllReduce、AllGather、ReduceScatter、Broadcast 和 AllToAll。大模型训练和并行推理大量依赖这些原语。NCCL 会根据 GPU 拓扑、网络拓扑、消息大小、算法和环境变量选择通信路径。</p>
 <p>Scale-out 网络最终要服务 collective communication。网络设计、rank 放置和 NCCL 参数不一致时，collective performance 会下降。比如 rank 分布跨越远距离拓扑，NCCL 没选中期望 NIC，或者 rail 不均衡，都可能让 AllReduce 带宽低于预期。网络性能要通过 collective 视角验证。</p>
+<p>不同 collective 的风险不同。Data Parallel 的 AllReduce 或 ReduceScatter 往往规模大、周期稳定，适合用跨节点 fabric 扩展，但会被慢 rank 和 checkpoint 叠加放大。Tensor Parallel 如果跨节点，会把每层关键路径通信推到 scale-out fabric 上，通常只有在节点内 GPU 不足、网络等级很高且基线证明可接受时才应采用。Pipeline Parallel 的 P2P 流量更像相邻 stage 之间的定向通道，最好让相邻 stage 不跨过太远拓扑。Expert Parallel/MoE 的 AllToAll 受 token 分布影响，容易产生 rail、rack 或 expert 热点。Sequence/Context Parallel 的压力则取决于长序列实现和 attention 分块方式。</p>
 <p>NCCL test 是网络验收的重要工具，但不能替代真实训练。它能把 GPU、driver、RDMA、网络和通信库放在同一个压力场景下验证，适合作为准入和回归基线。真实模型还会受到 batch、计算图、checkpoint、数据读取和框架实现影响，因此需要结合 workload 指标。</p>
 <p>工程上，应把 collective 指标与任务元数据绑定：job id、模型、并行策略、rank placement、节点、NIC、rail、NCCL version、环境变量和端口计数。这样当 collective performance 下降时，平台能判断是网络路径、运行时参数、调度放置还是模型配置变化。</p>
 <p>诊断 collective communication 时，最重要的是区分“网络慢”和“通信阶段变长”。通信阶段变长可能来自网络拥塞，也可能来自 rank skew、某些 GPU 计算落后、数据加载不同步、checkpoint 干扰或并行策略不合理。NCCL test 提供的是通信栈基线，真实训练提供的是系统结果。两者都需要保留，才能判断问题是 fabric 退化、runtime 变化，还是 workload 自身改变。</p>
 <p>Collective communication 也是容量规划的输入。不同并行策略对网络压力不同：data parallel 偏向周期性 AllReduce，tensor parallel 对延迟和带宽更敏感，MoE 的 expert parallel 可能产生 AllToAll 和不均衡流量。平台如果只按 GPU 数量计费或调度，就会忽略这些通信差异。更成熟的做法是记录模型并行策略和通信画像，把网络需求纳入 quota、队列和资源等级。</p>
+<p>容量规划时还要区分“允许跨节点”和“建议跨节点”。DP 通常是 scale-out fabric 的主要消费方；PP 可以跨节点但要保护相邻 stage 的路径；EP 可以跨节点但要额外看 AllToAll 和负载均衡；TP 虽然技术上可以跨节点，工程上却最容易把网络推到关键路径，默认应先消耗 scale-up 域。这个区别应进入资源产品和调度模板，否则同样 256 张 GPU 会因为并行维度不同产生完全不同的网络压力。</p>
 <h2 id="324">32.4 工程落地<a class="headerlink" href="#324" title="Permanent link">&para;</a></h2>
 <h3 id="3241">32.4.1 工程实现<a class="headerlink" href="#3241" title="Permanent link">&para;</a></h3>
 <p>Scale-out 网络上线前应建立 fabric 信息模型。它描述网络类型、拓扑、rail、节点接入、调度标签、拥塞控制、RDMA 参数和验收结果。示例：</p>

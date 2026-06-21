@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1973 360" width="1973" height="360">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1040 600" width="1040" height="600">
   <defs>
     <marker id="arrowA" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
       <polygon points="0 0, 10 3.5, 0 7" fill="#7c3aed"/>
@@ -41,34 +41,45 @@
     .footnote { font-size: 12px; font-weight: 500; fill: #94a3b8; }
     </style>
   </defs>
-  <rect width="1973.0" height="360.0" fill="#ffffff"/>
-  <text x="986.5" y="56" text-anchor="middle" class="title">30.2.2 系统架构</text>
-  <text x="986.5" y="82" text-anchor="middle" class="subtitle">part-07-network-storage/chapter-30-ai-networking-basics.md:93</text>
-  <path d="M 260.0,155.0 L 280.4,155.0 L 311.6,161.0 L 332.0,161.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 561.0,161.0 L 633.0,161.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 799.0,161.0 L 871.0,161.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 1058.0,161.0 L 1130.0,161.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 1359.0,161.0 L 1431.0,161.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 1618.0,161.0 L 1690.0,161.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <rect x="96.0" y="126.0" width="164.0" height="58.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
-  <text x="178.0" y="155.0" text-anchor="middle" class="node-title">job / request</text>
-  <rect x="332.0" y="126.0" width="229.0" height="70.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
-  <text x="446.5" y="161.0" text-anchor="middle" class="node-title">placement: rank / replica</text>
-  <text x="446.5" y="183.0" text-anchor="middle" class="node-sub">node</text>
-  <rect x="633.0" y="126.0" width="166.0" height="70.0" rx="10.0" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.8"/>
-  <text x="716.0" y="161.0" text-anchor="middle" class="node-title">GPU / NIC / NUMA</text>
-  <text x="716.0" y="183.0" text-anchor="middle" class="node-sub">container</text>
-  <rect x="871.0" y="126.0" width="187.0" height="70.0" rx="10.0" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.8"/>
-  <text x="964.5" y="161.0" text-anchor="middle" class="node-title">rail / leaf / spine</text>
-  <text x="964.5" y="183.0" text-anchor="middle" class="node-sub">storage path</text>
-  <rect x="1130.0" y="126.0" width="229.0" height="70.0" rx="10.0" fill="#f0fdfa" stroke="#99f6e4" stroke-width="1.8"/>
-  <text x="1244.5" y="161.0" text-anchor="middle" class="node-title">RDMA / ECN / PFC / errors</text>
-  <text x="1244.5" y="183.0" text-anchor="middle" class="node-sub">latency</text>
-  <rect x="1431.0" y="126.0" width="187.0" height="70.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8"/>
-  <text x="1524.5" y="161.0" text-anchor="middle" class="node-title">acceptance baseline</text>
-  <text x="1524.5" y="183.0" text-anchor="middle" class="node-sub">historical baseline</text>
-  <rect x="1690.0" y="126.0" width="187.0" height="70.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
-  <text x="1783.5" y="161.0" text-anchor="middle" class="node-title">isolate / reroute</text>
-  <text x="1783.5" y="183.0" text-anchor="middle" class="node-sub">reschedule / repair</text>
-  <text x="1693.0" y="344.0" class="footnote">Rendered with fireworks-tech-graph</text>
+  <rect width="1040.0" height="600.0" fill="#ffffff"/>
+  <text x="520.0" y="56" text-anchor="middle" class="title">30.2.2 系统架构</text>
+  <text x="520.0" y="82" text-anchor="middle" class="subtitle">part-07-network-storage/chapter-30-ai-networking-basics.md:93</text>
+  <rect x="78.5" y="118.0" width="283.0" height="372.0" rx="16.0" fill="#f8fafc" stroke="#dbe5f1" stroke-width="1.4" stroke-dasharray="7 5"/>
+  <text x="96.5" y="142.0" class="section">阶段 1</text>
+  <text x="96.5" y="162.0" class="section-sub">job / request -&gt; GPU / NIC / NUMA</text>
+  <rect x="399.5" y="118.0" width="283.0" height="372.0" rx="16.0" fill="#ffffff" stroke="#dbe5f1" stroke-width="1.4" stroke-dasharray="7 5"/>
+  <text x="417.5" y="142.0" class="section">阶段 2</text>
+  <text x="417.5" y="162.0" class="section-sub">rail / leaf / spine -&gt; RDMA / ECN / PFC / errors</text>
+  <rect x="720.5" y="118.0" width="241.0" height="372.0" rx="16.0" fill="#f8fafc" stroke="#dbe5f1" stroke-width="1.4" stroke-dasharray="7 5"/>
+  <text x="738.5" y="142.0" class="section">阶段 3</text>
+  <text x="738.5" y="162.0" class="section-sub">acceptance baseline -&gt; isolate / reroute</text>
+  <path d="M 220.0,230.0 L 220.0,270.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 220.0,340.0 L 220.0,368.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 303.0,403.0 L 323.4,403.0 L 427.1,256.0 L 447.5,256.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 541.0,291.0 L 541.0,319.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 655.5,354.0 L 675.9,354.0 L 727.1,256.0 L 747.5,256.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 841.0,291.0 L 841.0,319.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <rect x="138.0" y="172.0" width="164.0" height="58.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
+  <text x="220.0" y="201.0" text-anchor="middle" class="node-title">job / request</text>
+  <rect x="105.5" y="270.0" width="229.0" height="70.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
+  <text x="220.0" y="305.0" text-anchor="middle" class="node-title">placement: rank / replica</text>
+  <text x="220.0" y="327.0" text-anchor="middle" class="node-sub">node</text>
+  <rect x="137.0" y="368.0" width="166.0" height="70.0" rx="10.0" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.8"/>
+  <text x="220.0" y="403.0" text-anchor="middle" class="node-title">GPU / NIC / NUMA</text>
+  <text x="220.0" y="425.0" text-anchor="middle" class="node-sub">container</text>
+  <rect x="447.5" y="221.0" width="187.0" height="70.0" rx="10.0" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.8"/>
+  <text x="541.0" y="256.0" text-anchor="middle" class="node-title">rail / leaf / spine</text>
+  <text x="541.0" y="278.0" text-anchor="middle" class="node-sub">storage path</text>
+  <rect x="426.5" y="319.0" width="229.0" height="70.0" rx="10.0" fill="#f0fdfa" stroke="#99f6e4" stroke-width="1.8"/>
+  <text x="541.0" y="354.0" text-anchor="middle" class="node-title">RDMA / ECN / PFC / errors</text>
+  <text x="541.0" y="376.0" text-anchor="middle" class="node-sub">latency</text>
+  <rect x="747.5" y="221.0" width="187.0" height="70.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8"/>
+  <text x="841.0" y="256.0" text-anchor="middle" class="node-title">acceptance baseline</text>
+  <text x="841.0" y="278.0" text-anchor="middle" class="node-sub">historical baseline</text>
+  <rect x="747.5" y="319.0" width="187.0" height="70.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
+  <text x="841.0" y="354.0" text-anchor="middle" class="node-title">isolate / reroute</text>
+  <text x="841.0" y="376.0" text-anchor="middle" class="node-sub">reschedule / repair</text>
+  <line x1="42.0" y1="562.0" x2="72.0" y2="562.0" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <text x="82.0" y="566.0" class="legend">主路径 / 阶段推进</text>
+  <text x="760.0" y="584.0" class="footnote">Rendered with fireworks-tech-graph</text>
 </svg>

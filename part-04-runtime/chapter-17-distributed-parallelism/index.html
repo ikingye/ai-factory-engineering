@@ -3890,17 +3890,23 @@
 <p>Data Parallel 是最直观的并行方式：每个 GPU 或 GPU 组保存一份模型副本，处理不同数据 batch，反向传播后同步梯度或参数状态。它适合模型能够放入单个并行单元、但需要提高数据吞吐的场景。许多训练任务从单机多卡扩展到多节点时，首先采用 Data Parallel，因为它对模型代码侵入较小，也容易和现有数据加载流程结合。</p>
 <p>Data Parallel 的核心成本是同步。GPU 数量越多，每个 step 后需要同步的梯度越多，AllReduce 或 ReduceScatter 的开销越明显。如果计算量足够大，通信可以被计算掩盖；如果 batch 太小、模型太轻或网络较弱，通信会成为扩展瓶颈。看扩展效率时，不能只看 GPU utilization，还要看通信占 step time 的比例，以及不同 rank 是否因为慢节点而等待。</p>
 <p>工程上，Data Parallel 要关注 global batch、micro batch、gradient accumulation 和学习率策略。增加 GPU 后如果 global batch 改变，训练收敛行为也可能改变；如果为了维持 global batch 而减小每卡 batch，通信占比可能升高。平台需要记录这些参数，否则一次扩容实验无法解释性能和质量变化。Data Parallel 不是“免费横向扩展”，它把计算扩展问题转化为同步效率和训练语义一致性问题。</p>
+<p>Data Parallel 还有一个容易混淆的边界：传统 DP 或 DDP 复制完整模型状态，而 ZeRO 和 FSDP 通过切分 optimizer state、gradient 和 parameter 来减少冗余。ZeRO-1 只切 optimizer state，ZeRO-2 进一步切 gradient，ZeRO-3 连 parameter 也切分；FSDP 与 ZeRO-3 更接近，重点是训练状态分片和按需聚合。它们能显著降低每卡 HBM 占用，但不是把某一层矩阵按行列拆开计算的 Tensor Parallel。平台文档应把“状态切分”和“层内计算切分”分开记录，否则 checkpoint、恢复、推理导出和通信诊断都会混乱。</p>
+<p>ZeRO/FSDP 的收益也不是免费显存。参数、梯度或 optimizer state 被切分后，forward、backward 和 optimizer step 的某些阶段需要 AllGather、ReduceScatter 或参数重建，通信模式会从单纯梯度 AllReduce 变成更复杂的状态交换。它适合模型状态成为瓶颈的场景，但如果网络较弱、bucket 设置不合理或重叠不充分，显存省下来了，step time 可能变长。生产模板应同时记录 <code>state_sharding_stage</code>、bucket、prefetch、overlap 和 checkpoint 格式。</p>
 <p>在生产平台上，Data Parallel 的验收可以从弱扩展和强扩展两条线做。弱扩展保持每卡 batch 不变，看 GPU 数增加后总吞吐是否接近线性；强扩展保持 global batch 不变，看更多 GPU 是否真的缩短 step time。两种测试回答的问题不同，混在一起会误导容量规划。平台给用户承诺训练效率时，应说明使用哪种扩展口径。</p>
 <p>如果 Data Parallel 扩展效率差，优先检查慢 rank、通信重叠、bucket 配置和网络路径，而不是立刻更换模型代码。</p>
 <h3 id="1732-tensor-parallel">17.3.2 Tensor Parallel<a class="headerlink" href="#1732-tensor-parallel" title="Permanent link">&para;</a></h3>
 <p>Tensor Parallel 把单层中的矩阵乘、attention 或 MLP 计算沿张量维度切分到多个 GPU。它解决的问题是单个模型层太大、单卡显存或计算能力不足，或者希望用多个 GPU 加速单层计算。与 Data Parallel 复制模型不同，Tensor Parallel 让一个层的计算跨 GPU 协作完成，因此通信频率更高，对带宽和延迟更敏感。</p>
 <p>典型约束是拓扑。Tensor Parallel group 通常更适合放在节点内 NVLink 或 NVSwitch 连接的 GPU 上，因为层内通信发生在 forward 和 backward 的关键路径中。如果 group 跨节点，通信可能走 IB/RoCE，延迟和拥塞风险都会增加。不是说 Tensor Parallel 不能跨节点，而是跨节点后需要更强网络和更谨慎的配置。调度器如果随机分配 GPU，Tensor Parallel 的性能会高度不稳定。</p>
 <p>工程上，Tensor Parallel size 需要结合模型隐藏维度、attention heads、GPU 显存、节点内 GPU 数和框架支持来选。过小可能无法放下模型，过大可能增加通信和 kernel 碎片化。它还会影响 checkpoint 格式和推理部署：训练时切分的权重，服务时可能需要相同并行度，或经过合并转换。平台应记录 Tensor Parallel group 的 rank 到 GPU 映射，排障时才能判断慢来自模型计算、通信链路还是放置错误。</p>
+<p>以 Transformer 为例，Tensor Parallel 通常会沿 attention head、MLP 权重矩阵的列或行切分。列并行让每张 GPU 计算部分输出通道，行并行让每张 GPU 消费部分输入通道，随后通过 AllGather、ReduceScatter 或 AllReduce 合并结果。切分不是随意的：attention head 数、hidden size、intermediate size 和 vocab projection 都要能被并行度合理整除；否则会出现额外 padding、通信或 kernel 效率下降。框架模板应把这些可整除约束写进准入校验，而不是让任务在运行时失败。</p>
+<p>Tensor Parallel 的通信发生在层内关键路径，频率通常高于 Data Parallel 的梯度同步。某些实现中，MLP 的一次列并行加行并行会在 forward/backward 中触发多次 collective；输出层如果直接按 vocab 大矩阵合并，通信量也可能非常大。因此 TP 的经验原则是尽量放在同一 NVLink/NVSwitch 域内，跨节点 TP 必须有明确性能证据和网络等级。TP 可以降低单卡参数和 activation 压力，但并行度过大时，通信和 kernel 碎片化会吞掉收益。</p>
 <p>一个实用判断是：Tensor Parallel 优先解决“单层太大或单层计算需要多 GPU”的问题，而不是泛化的扩容工具。如果模型能在较小并行度下稳定运行，盲目增大 Tensor Parallel size 可能只是把更多时间交给通信。调参时应比较层内通信占比、HBM 峰值和 kernel 效率，而不是只看是否避免 OOM。</p>
 <p>验收时应固定节点内拓扑，避免同一 Tensor Parallel group 在不同运行中落到不同链路上。否则 benchmark 结果不可比较。</p>
 <h3 id="1733-pipeline-parallel">17.3.3 Pipeline Parallel<a class="headerlink" href="#1733-pipeline-parallel" title="Permanent link">&para;</a></h3>
 <p>Pipeline Parallel 把模型按层或模块切成多个 stage，不同 GPU 或 GPU 组负责不同 stage。Micro-batch 依次通过各 stage，形成流水线。它适合模型层数多、整体参数和 activation 无法由单个并行单元承载的场景，也常与 Tensor Parallel 和 Data Parallel 组合使用。Pipeline 的价值是把模型深度分摊到更多设备，但代价是流水线调度和负载均衡复杂。</p>
 <p>Pipeline 的主要问题是 bubble 和 stage imbalance。流水线开始和结束时总有设备等待，micro-batch 数不足时 bubble 更明显；如果某些 stage 包含更多计算或更大 activation，它们会成为瓶颈，其他 stage 等待。切分模型时不能只按层数平均，还要看每层计算量、参数量、activation 大小和通信路径。对于 Transformer，embedding、attention、MLP 和输出层的成本可能并不均匀。</p>
+<p>减少 bubble 的基本手段是把 global batch 切成更多 micro-batch，让不同 stage 同时处理不同 micro-batch。1F1B 调度会在前向填满后尽快穿插反向，降低同时保留的 activation 数量；interleaved 或 virtual pipeline 会把每个物理 stage 进一步拆成多个虚拟 stage，降低局部等待；更激进的 zero-bubble 类调度会拆分 backward 中输入梯度和参数梯度的时序，用更细粒度填充空洞。这些方法都不是单纯“加 GPU”，而是在计算、显存和调度复杂度之间交换。</p>
+<p>Pipeline 的气泡率可以用直觉公式理解：当 pipeline stage 数为 <code>p</code>、micro-batch 数为 <code>m</code> 时，常规流水线的等待比例大致随 <code>(p - 1) / m</code> 下降。这个公式不是生产评估的完整模型，但能说明为什么 micro-batch 太少会浪费 GPU，micro-batch 太多又会提高 activation、调度和通信管理成本。平台模板应同时记录 <code>pipeline_parallel_size</code>、<code>micro_batch_size</code>、<code>num_micro_batches</code>、schedule 类型和 stage 切分依据。</p>
 <p>平台实现 Pipeline Parallel 时，应把 stage 到节点/GPU 的映射记录下来，并提供 stage-level 指标。只看整体 GPU utilization，无法发现某个 stage 长期拖慢流水线。调度上，可以让相邻 stage 落在拓扑相近的位置，减少 P2P 传输成本。Checkpoint 也要理解 stage 切分，否则恢复或导出时会遇到状态不完整的问题。Pipeline Parallel 的关键，不是把层切开，而是让流水线持续、均衡、可恢复地运行。</p>
 <p>Pipeline 配置还会影响故障恢复语义。某个 stage 失败后，整个流水线需要一致恢复；若 checkpoint 只保存局部状态或保存点不一致，恢复后可能出现参数不同步。平台应规定 stage state、optimizer state 和随机数状态如何保存。对长时间训练而言，Pipeline 的可恢复性和吞吐同样重要。</p>
 <p>评估 Pipeline 时，stage idle time 比平均 GPU 利用率更有解释力。平均值看似正常，某个慢 stage 仍然可能决定全局 step time。</p>
@@ -3908,6 +3914,7 @@
 <h3 id="1734-expert-parallel">17.3.4 Expert Parallel<a class="headerlink" href="#1734-expert-parallel" title="Permanent link">&para;</a></h3>
 <p>Expert Parallel 常见于 Mixture of Experts（MoE）模型。MoE 不是让每个 token 经过所有参数，而是通过 router 把 token 分配给部分 expert。Expert Parallel 把不同 expert 放在不同 GPU 或 GPU 组上，从而扩大总参数量，同时控制每个 token 的实际计算量。它适合追求大模型容量但希望控制单 token 计算成本的场景。</p>
 <p>Expert Parallel 的难点在于 token dispatch 和负载均衡。某些 expert 如果接收过多 token，就会形成热点，导致尾延迟、显存峰值或训练不稳定；跨节点 dispatch 会消耗网络带宽，并让通信模式变得更不规则。与 Data Parallel 或 Tensor Parallel 相比，MoE 的通信更受数据分布和 router 行为影响，不能只依赖静态拓扑分析。</p>
+<p>MoE 的通信形态通常包含 dispatch 和 combine 两段：router 根据 token 特征选择 top-k expert，系统把 token 重排后发给对应 expert，expert 计算完成后再按原顺序合并。跨 GPU、跨节点或跨 DP shard 时，这个过程常表现为 All-to-All 类流量。它和 AllReduce 不同，不只是把同形状梯度求和，而是把不同 token 分发到不同 expert，流量大小和负载由数据分布和路由策略决定。</p>
 <p>工程上，应监控 expert token 分布、drop 或 overflow、dispatch time、combine time、expert 负载和跨节点流量。训练时还要关注 router loss、负载均衡策略和容量因子等参数。调度层如果能把高频互访的 expert 或同一 expert group 放在更近拓扑上，可以降低抖动。对于推理，Expert Parallel 还会影响请求路由和尾延迟，因为不同请求的 token 可能触发不同 expert。MoE 的核心不是“参数更多”，而是“稀疏激活带来的系统复杂度”。</p>
 <p>MoE 还要求成本核算更细。Dense model 的每 token 计算路径相对稳定，MoE 的每 token 成本会随路由和 expert 负载变化。训练平台要看 expert 平衡，推理平台要看不同请求的尾延迟和热 expert。若只按平均 tokens/s 做容量规划，热点 expert 会在高峰期暴露为不可解释的延迟抖动。</p>
 <p>因此，Expert Parallel 的验收要包含分布指标，而不只是整体吞吐。平均值无法说明 expert 是否均衡。</p>
@@ -3915,6 +3922,7 @@
 <p>扩容不能替代负载治理。</p>
 <h3 id="1735-sequence-parallel">17.3.5 Sequence Parallel<a class="headerlink" href="#1735-sequence-parallel" title="Permanent link">&para;</a></h3>
 <p>Sequence Parallel 把序列维度切分到多个设备，常用于长上下文训练，或与 Tensor Parallel 结合降低 activation 显存。长序列会显著增加 attention 和 activation 开销，单卡或单个 Tensor Parallel group 可能无法承载。通过拆分 sequence，系统可以把部分中间状态分散到多个 GPU，缓解 HBM 压力。</p>
+<p>这里要区分两类常被混用的口径。Megatron 风格 Sequence Parallel 多与 Tensor Parallel 配合，把 layernorm、dropout 等对序列位置局部可计算的 activation 沿 sequence 维切分，常把原本 TP 中的 AllReduce 拆成 ReduceScatter + AllGather，从而减少 activation 冗余。长上下文场景中的 Context/Sequence Parallel，如 Ulysses、Ring Attention 或类似实现，则更关注 attention 的长序列计算与 KV/activation 分布。二者都沿序列维做文章，但适用层、通信模式和调参目标不同。</p>
 <p>它的收益取决于模型结构、序列长度、attention 实现和框架支持。短序列场景中，Sequence Parallel 的额外通信可能超过显存收益；长序列场景中，它可能成为训练能否启动的关键。Sequence Parallel 常常和 activation checkpointing、FlashAttention 类优化、Tensor Parallel 和 FSDP 同时出现，因此排障时不能孤立看一个开关。一次 OOM 可能来自序列长度、activation、通信 buffer 和重算策略共同作用。</p>
 <p>平台上，Sequence Parallel 需要记录最大 context length、实际样本长度分布、padding 策略、activation 显存、通信耗时和 rank 映射。应用层要求更长上下文时，压力会沿着模型、Runtime、调度和存储向下传导。AI Factory 如果只按“模型参数量”估算资源，会低估长上下文训练的成本。Sequence Parallel 提醒我们：序列长度本身就是容量规划变量。</p>
 <p>Sequence Parallel 的诊断也要关注样本分布。两个任务参数量相同、平均长度相同，但长尾样本比例不同，显存峰值和 step time 可能完全不同。平台应保留训练数据的长度统计，至少记录 bucket、padding 和截断策略。没有这些数据，长上下文训练中的 OOM 和吞吐波动很难复盘。</p>
@@ -3925,12 +3933,48 @@
 <h3 id="1736-hybrid-parallel">17.3.6 Hybrid Parallel<a class="headerlink" href="#1736-hybrid-parallel" title="Permanent link">&para;</a></h3>
 <p>Hybrid Parallel 是多种并行方式的组合，例如 Data + Tensor + Pipeline，或在 MoE 模型中叠加 Expert Parallel、Sequence Parallel 和 FSDP。大模型训练通常需要混合并行，因为单一并行方式无法同时解决参数量、激活显存、计算吞吐、通信瓶颈和集群规模问题。Hybrid Parallel 的价值是把不同约束分配给不同策略处理，但配置空间会迅速扩大。</p>
 <p>混合并行的核心挑战是维度乘积和通信嵌套。假设一个任务使用 tensor_parallel_size=8、pipeline_parallel_size=4、data_parallel_size=16，总 GPU 数就是多个维度的组合。每个 rank 同时属于不同通信组，一次 step 中可能发生层内通信、stage 间传输、梯度同步和 checkpoint 写入。任何一个维度设置不合理，都会拖慢整体。更复杂并行不一定更高效，只有和模型结构、拓扑和 batch 匹配时才有价值。</p>
+<p>一个实用分组规则是先确定模型并行组，再由 <code>world_size / (tp * pp * ep)</code> 推导数据并行规模，具体还要看框架如何定义 expert、context 和 shard 维度。例如 16 张 GPU、<code>tp=2</code>、<code>pp=4</code> 时，每个模型副本占 8 张 GPU，若不开 EP 和额外 context 维度，则 <code>dp=2</code>。TP 组适合在同节点或同 NVSwitch 域内，PP 组沿 stage 串联，DP 组连接相同模型切片做梯度或状态同步。这个乘积只是起点，真正的生产配置还必须生成 rank group 和拓扑合同。</p>
+<pre><code class="language-yaml">parallel_rank_group_example:
+  world_size: 16
+  dimensions:
+    tensor_parallel_size: 2
+    pipeline_parallel_size: 4
+    data_parallel_size: 2
+  model_parallel_groups:
+    - [g0, g1, g4, g5, g8, g9, g12, g13]
+    - [g2, g3, g6, g7, g10, g11, g14, g15]
+  tensor_parallel_groups:
+    - [g0, g1]
+    - [g4, g5]
+    - [g8, g9]
+    - [g12, g13]
+    - [g2, g3]
+    - [g6, g7]
+    - [g10, g11]
+    - [g14, g15]
+  pipeline_parallel_groups:
+    - [g0, g4, g8, g12]
+    - [g1, g5, g9, g13]
+    - [g2, g6, g10, g14]
+    - [g3, g7, g11, g15]
+  data_parallel_groups:
+    - [g0, g2]
+    - [g1, g3]
+    - [g4, g6]
+    - [g5, g7]
+    - [g8, g10]
+    - [g9, g11]
+    - [g12, g14]
+    - [g13, g15]
+</code></pre>
+<p>这类示例的重点不是固定某一种编号，而是让平台能回答“哪几个 rank 共享同一层切片、哪几个 rank 是流水线相邻 stage、哪几个 rank 需要同步同一份权重语义”。没有这些组，NCCL 日志中的 rank 只是数字，无法映射到模型结构。</p>
 <p>工程上，平台应沉淀推荐模板，而不是让用户每次手动枚举组合。模板可以按模型规模、上下文长度、GPU 类型、节点拓扑和网络能力划分，并附带基线吞吐、显存峰值和已知限制。高级用户可以调整，但调整必须可审计。Hybrid Parallel 的治理目标，是把高维配置空间收敛为少量可解释、可复现、可回滚的生产路径。</p>
 <p>模板化并不意味着僵化。好的模板会公开关键假设：目标模型规模、GPU 类型、节点内互联、跨节点网络、推荐 batch、已验证 checkpoint 方式和不适用场景。用户偏离模板时，平台应记录偏离项，并把指标和故障按模板版本比较。这样 Hybrid Parallel 才能从个人经验变成组织能力。</p>
 <p>模板评审时，应要求给出“为什么不用更简单策略”的理由。复杂度必须有清楚收益。</p>
 <p>否则 Hybrid Parallel 会变成难以维护的参数堆叠。</p>
 <h3 id="1737-gpu">17.3.7 并行策略如何映射到 GPU 拓扑<a class="headerlink" href="#1737-gpu" title="Permanent link">&para;</a></h3>
 <p>并行策略最终要落到物理拓扑。通常，高频、低延迟要求强的通信应尽量放在节点内 NVLink/NVSwitch；跨节点 RDMA 更适合可扩展但相对低频或可重叠的通信；跨机架通信要考虑 oversubscription、拥塞和故障域。Tensor Parallel 往往更偏节点内，Data Parallel 可以跨节点扩展，Pipeline stage 的相邻关系需要结合带宽和负载均衡，Expert Parallel 则要看 token 路由模式。</p>
+<p>可以把放置原则压缩成四句话：TP 尽量不跨低带宽路径，PP 相邻 stage 尽量靠近但要避免 stage 负载不均，DP 可以跨节点和故障域但要保护梯度同步有效带宽，EP 要按 All-to-All 和 expert 热点规划网络路径。SP/CP 则取决于它服务的是 TP activation 去冗余，还是长上下文 attention 计算。不同策略同时出现时，调度器要明确谁是最高优先级约束，不能把所有约束都当成同等软偏好。</p>
 <p>拓扑映射不是一次性的静态设计。随着模型变大、上下文变长、batch 改变、框架升级和集群扩容，最优放置也会变化。平台应保存节点、GPU、NIC、rail、机架和交换机端口信息，并把任务的 rank group 映射到这些对象上。这样当某个训练慢时，才能判断是并行策略不合理、调度放置不稳定，还是某条链路退化。</p>
 <p>调度系统需要从“满足 GPU 数量”升级为“满足并行拓扑意图”。作业提交可以表达 same_node、same_rack、same_rail、avoid_fault_domain 等约束；调度器在资源不足时可以给出明确原因，而不是让任务 pending 或随机降级。拓扑感知调度的价值，是让训练性能可预测。没有这个能力，AI Factory 会出现同一任务今天快、明天慢的问题，排障成本会随集群规模放大。</p>
 <p>拓扑映射还要服务可靠性。为了性能把所有关键通信集中在同一故障域，可能提高单次吞吐，却降低作业韧性；为了分散故障域而跨更多网络路径，可能降低吞吐。训练任务、在线推理和评测任务对这两者的权重不同。平台应允许不同队列使用不同放置策略，而不是给所有任务同一套拓扑规则。</p>

@@ -18,6 +18,9 @@
     <marker id="arrowG" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
       <polygon points="0 0, 10 3.5, 0 7" fill="#ef4444"/>
     </marker>
+    <marker id="arrowHStart" markerWidth="10" markerHeight="7" refX="1" refY="3.5" orient="auto">
+      <polygon points="10 0, 0 3.5, 10 7" fill="#6b7280"/>
+    </marker>
     <marker id="arrowH" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
       <polygon points="0 0, 10 3.5, 0 7" fill="#6b7280"/>
     </marker>
@@ -50,11 +53,13 @@
   <text x="264.0" y="136.0" class="section">EAST-WEST PATH</text>
   <path d="M 142.0,218.0 L 142.0,238.4 L 501.0,275.6 L 501.0,296.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
   <path d="M 501.0,354.0 L 501.0,374.4 L 388.0,411.6 L 388.0,432.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 356.5,218.0 L 356.5,238.4 L 715.5,275.6 L 715.5,296.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 715.5,354.0 L 715.5,374.4 L 602.5,411.6 L 602.5,432.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 356.5,218.0 L 356.5,238.4 L 715.5,275.6 L 715.5,296.0" fill="none" stroke="#6b7280" stroke-width="2.0" marker-start="url(#arrowHStart)" marker-end="url(#arrowH)"/>
+  <path d="M 715.5,354.0 L 715.5,374.4 L 602.5,411.6 L 602.5,432.0" fill="none" stroke="#6b7280" stroke-width="2.0" marker-start="url(#arrowHStart)" marker-end="url(#arrowH)"/>
   <path d="M 388.0,490.0 L 388.0,510.4 L 610.5,547.6 L 610.5,568.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
   <path d="M 356.5,218.0 L 356.5,238.4 L 825.0,405.6 L 825.0,426.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
   <path d="M 715.5,354.0 L 715.5,374.4 L 825.0,405.6 L 825.0,426.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 571.0,224.0 L 571.0,244.4 L 715.5,275.6 L 715.5,296.0" fill="none" stroke="#6b7280" stroke-width="2.0"/>
+  <path d="M 571.0,224.0 L 571.0,244.4 L 825.0,405.6 L 825.0,426.0" fill="none" stroke="#6b7280" stroke-width="2.0"/>
   <path d="M 699.0,189.0 L 653.0,189.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
   <path d="M 939.0,189.0 L 918.6,189.0 L 918.6,248.0 L 463.4,248.0 L 463.4,189.0 L 443.0,189.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
   <rect x="60.0" y="160.0" width="164.0" height="58.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
@@ -82,5 +87,7 @@
   <text x="825.0" y="483.0" text-anchor="middle" class="node-sub">Checkpoint Storage</text>
   <rect x="524.0" y="568.0" width="173.0" height="58.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
   <text x="610.5" y="597.0" text-anchor="middle" class="node-title">KV / Weight Cache</text>
+  <line x1="42.0" y1="724.0" x2="72.0" y2="724.0" stroke="#6b7280" stroke-width="2.4" marker-start="url(#arrowHStart)" marker-end="url(#arrowH)"/>
+  <text x="82.0" y="728.0" class="legend">物理 / 拓扑连接</text>
   <text x="941.0" y="746.0" class="footnote">Rendered with fireworks-tech-graph</text>
 </svg>

@@ -3859,6 +3859,7 @@
 <p>NVLink 是 GPU 间高带宽互联技术，用于提升 GPU-to-GPU 数据交换能力。它对 tensor parallel、pipeline parallel、MoE expert 通信、多 GPU 推理、KV Cache 分布和单节点 collective communication 都很重要。相比只走 PCIe，NVLink 可以显著降低强 GPU 间通信 workload 的通信成本。</p>
 <p>NVLink 的价值不只是“更快”，而是让某些模型切分策略变得可行。大模型无法放入单张 GPU 时，权重、activation、attention 或 KV Cache 需要分布在多张 GPU 上。每一步 decode 或训练 step 都可能需要跨 GPU 交换数据。若 GPU 间路径慢，计算单元会等待通信，tokens/s 和训练吞吐都会下降。</p>
 <p>但 NVLink 不是应用自动变快的保证。框架、NCCL、CUDA、容器、驱动和拓扑发现都要正确识别并使用它。并行策略也要匹配拓扑：强通信组应尽量放在同一 NVLink 域内，弱通信组可以使用更宽松约束。只要调度把 tensor parallel 组拆到低带宽路径上，硬件优势就会消失。</p>
+<p>对并行训练和多 GPU 推理来说，NVLink/NVSwitch 最常服务三类热路径。第一类是 Tensor Parallel 的层内中间张量交换，几乎每层都会触发，最不适合跨低带宽路径。第二类是 MoE/Expert Parallel 的节点内 expert dispatch/combine，它的平均流量可能不如 TP 规则，但热点 expert 会制造尾部等待。第三类是长上下文或 KV Cache 分布带来的 activation/KV 交换，序列越长、请求越不均匀，越需要稳定的节点内互联。把这些组放进同一高带宽域，通常比单纯追求“任意空闲 GPU 数量”更重要。</p>
 <p>运维上，应监控 NVLink 状态、错误计数和带宽基线。轻微链路错误可能先表现为通信性能下降，而不是 GPU 掉卡。节点准入和维修后复测应包含 NVLink 检查。对生产推理和训练节点，NVLink 健康应是节点是否可调度的一部分。</p>
 <p>NVLink 的使用也要通过 workload 验证。单独链路测试正常，不代表模型并行配置一定高效。平台应保留典型 tensor parallel 或单节点 NCCL 基准，作为推理和训练部署前的参考。硬件路径和软件策略要一起验证。</p>
 <p>NVLink 域还应影响资源命名。用户看到的资源不应只是 <code>gpu: 4</code>，而应能区分同域 4 卡和任意 4 卡。命名越准确，性能预期越清楚，排障争议越少。</p>
@@ -3909,6 +3910,7 @@
 <h3 id="3133-nvswitch">31.3.3 NVSwitch<a class="headerlink" href="#3133-nvswitch" title="Permanent link">&para;</a></h3>
 <p>NVSwitch 用于构建多 GPU 之间更高连通性的交换结构。相比简单点对点 NVLink，NVSwitch 可以让一组 GPU 形成更均衡的互联域，降低拓扑不对称对通信的影响。对 8 GPU 或更大紧耦合系统来说，NVSwitch 域常被视为一个高性能资源单元。</p>
 <p>对大模型训练和高并发推理，NVSwitch 域的资源边界非常重要。Tensor parallel 组、expert parallel 组或多 GPU 推理实例，如果全部位于同一 NVSwitch 域内，通信性能更可预测。如果任务跨域，通信可能退回较低带宽路径，吞吐和延迟都会受影响。调度器应尽量保留这种高带宽域。</p>
+<p>NVSwitch 域还应和并行组绑定验收。一个 8 GPU 域可以跑单节点 TP 基线、节点内 AllReduce/AllGather/ReduceScatter、典型 TP 推理和 MoE dispatch micro-benchmark；如果这些基线存在明显离群，节点不应进入强通信资源池。仅证明每张 GPU 可见，不足以证明这个域适合 TP、EP 或长上下文服务。</p>
 <p>NVSwitch 也改变故障和维护模型。一个 NVSwitch 或相关链路异常，可能影响一组 GPU，而不是单张卡。运维不能只看 GPU 是否可见，还要看 NVSwitch 错误、链路状态和域内通信基线。故障隔离可能需要隔离整个 GPU 域，而不是单卡。</p>
 <p>工程上，平台应把 NVSwitch 域写入资源标签和资源池。任务可以声明“需要完整 NVSwitch 域”“需要 4 张同域 GPU”或“可跨域”。不同声明对应不同等待时间和成本。把 NVSwitch 域隐藏起来，会让用户无法解释同样 GPU 数量下的性能差异。</p>
 <p>NVSwitch 资源还要考虑共享策略。一个 8 卡域可以给一个大模型独占，也可以拆给多个小服务，但拆分后剩余 GPU 是否还能满足强通信任务，需要资源池持续跟踪。拓扑碎片不是普通空闲碎片，它会直接影响模型能否部署。</p>

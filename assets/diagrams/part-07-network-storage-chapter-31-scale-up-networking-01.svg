@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2248 620" width="2248" height="620">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 1046" width="960" height="1046">
   <defs>
     <marker id="arrowA" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
       <polygon points="0 0, 10 3.5, 0 7" fill="#7c3aed"/>
@@ -17,6 +17,9 @@
     </marker>
     <marker id="arrowG" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
       <polygon points="0 0, 10 3.5, 0 7" fill="#ef4444"/>
+    </marker>
+    <marker id="arrowHStart" markerWidth="10" markerHeight="7" refX="1" refY="3.5" orient="auto">
+      <polygon points="10 0, 0 3.5, 10 7" fill="#6b7280"/>
     </marker>
     <marker id="arrowH" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
       <polygon points="0 0, 10 3.5, 0 7" fill="#6b7280"/>
@@ -41,42 +44,42 @@
     .footnote { font-size: 12px; font-weight: 500; fill: #94a3b8; }
     </style>
   </defs>
-  <rect width="2248.0" height="620.0" fill="#ffffff"/>
-  <text x="1124.0" y="56" text-anchor="middle" class="title">31.2.2 系统架构</text>
-  <text x="1124.0" y="82" text-anchor="middle" class="subtitle">part-07-network-storage/chapter-31-scale-up-networking.md:72</text>
-  <path d="M 1056.0,212.0 L 1056.0,232.4 L 1018.0,263.6 L 1018.0,284.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 1266.0,212.0 L 1266.0,232.4 L 1018.0,263.6 L 1018.0,284.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 1476.0,212.0 L 1476.0,232.4 L 1018.0,263.6 L 1018.0,284.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 1686.0,212.0 L 1686.0,232.4 L 1018.0,263.6 L 1018.0,284.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 1018.0,342.0 L 1018.0,362.4 L 1124.0,393.6 L 1124.0,414.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 1896.0,212.0 L 1896.0,232.4 L 1258.0,263.6 L 1258.0,284.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 2106.0,212.0 L 2106.0,232.4 L 1258.0,263.6 L 1258.0,284.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <rect x="60.0" y="154.0" width="201.0" height="58.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
-  <text x="160.5" y="183.0" text-anchor="middle" class="node-title">CPU Socket 0 / NUMA 0</text>
-  <rect x="307.0" y="154.0" width="201.0" height="58.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
-  <text x="407.5" y="183.0" text-anchor="middle" class="node-title">CPU Socket 1 / NUMA 1</text>
-  <rect x="554.0" y="154.0" width="164.0" height="58.0" rx="10.0" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.8"/>
-  <text x="636.0" y="183.0" text-anchor="middle" class="node-title">PCIe0</text>
-  <rect x="764.0" y="154.0" width="164.0" height="58.0" rx="10.0" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.8"/>
-  <text x="846.0" y="183.0" text-anchor="middle" class="node-title">PCIe1</text>
-  <rect x="974.0" y="154.0" width="164.0" height="58.0" rx="10.0" fill="#f0fdfa" stroke="#99f6e4" stroke-width="1.8"/>
-  <text x="1056.0" y="183.0" text-anchor="middle" class="node-title">GPU0</text>
-  <rect x="1184.0" y="154.0" width="164.0" height="58.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
-  <text x="1266.0" y="183.0" text-anchor="middle" class="node-title">GPU1</text>
-  <rect x="1394.0" y="154.0" width="164.0" height="58.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
-  <text x="1476.0" y="183.0" text-anchor="middle" class="node-title">GPU2</text>
-  <rect x="1604.0" y="154.0" width="164.0" height="58.0" rx="10.0" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.8"/>
-  <text x="1686.0" y="183.0" text-anchor="middle" class="node-title">GPU3</text>
-  <rect x="1814.0" y="154.0" width="164.0" height="58.0" rx="10.0" fill="#f0fdfa" stroke="#99f6e4" stroke-width="1.8"/>
-  <text x="1896.0" y="183.0" text-anchor="middle" class="node-title">NIC0</text>
-  <rect x="2024.0" y="154.0" width="164.0" height="58.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
-  <text x="2106.0" y="183.0" text-anchor="middle" class="node-title">NIC1</text>
-  <rect x="907.0" y="284.0" width="222.0" height="58.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8"/>
-  <text x="1018.0" y="313.0" text-anchor="middle" class="node-title">NVSwitch / NVLink Domain</text>
-  <rect x="1175.0" y="284.0" width="166.0" height="58.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8"/>
-  <text x="1258.0" y="313.0" text-anchor="middle" class="node-title">Scale-out Fabric</text>
-  <rect x="1037.5" y="414.0" width="173.0" height="70.0" rx="10.0" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.8"/>
-  <text x="1124.0" y="449.0" text-anchor="middle" class="node-title">Tensor / Pipeline</text>
-  <text x="1124.0" y="471.0" text-anchor="middle" class="node-sub">Expert Parallel</text>
-  <text x="1968.0" y="604.0" class="footnote">Rendered with fireworks-tech-graph</text>
+  <rect width="960.0" height="1046.0" fill="#ffffff"/>
+  <text x="480.0" y="56" text-anchor="middle" class="title">31.2.2 系统架构</text>
+  <text x="480.0" y="82" text-anchor="middle" class="subtitle">part-07-network-storage/chapter-31-scale-up-networking.md:72</text>
+  <path d="M 480.0,224.0 L 480.0,296.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 480.0,366.0 L 480.0,386.4 L 370.5,417.6 L 370.5,438.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 480.0,366.0 L 480.0,386.4 L 614.0,417.6 L 614.0,438.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 370.5,508.0 L 370.5,528.4 L 374.0,559.6 L 374.0,580.0" fill="none" stroke="#6b7280" stroke-width="2.0" marker-start="url(#arrowHStart)" marker-end="url(#arrowH)"/>
+  <path d="M 614.0,508.0 L 614.0,580.0" fill="none" stroke="#6b7280" stroke-width="2.0"/>
+  <path d="M 374.0,638.0 L 374.0,658.4 L 353.0,689.6 L 353.0,710.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 614.0,638.0 L 614.0,658.4 L 589.5,695.6 L 589.5,716.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 353.0,780.0 L 353.0,800.4 L 480.0,831.6 L 480.0,852.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 589.5,774.0 L 589.5,794.4 L 480.0,831.6 L 480.0,852.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <rect x="386.5" y="154.0" width="187.0" height="70.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
+  <text x="480.0" y="189.0" text-anchor="middle" class="node-title">Dual-socket host</text>
+  <text x="480.0" y="211.0" text-anchor="middle" class="node-sub">CPU / NUMA / memory</text>
+  <rect x="383.0" y="296.0" width="194.0" height="70.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
+  <text x="480.0" y="331.0" text-anchor="middle" class="node-title">PCIe root complexes</text>
+  <text x="480.0" y="353.0" text-anchor="middle" class="node-sub">GPU + NIC attachment</text>
+  <rect x="259.5" y="438.0" width="222.0" height="70.0" rx="10.0" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.8"/>
+  <text x="370.5" y="473.0" text-anchor="middle" class="node-title">GPU island</text>
+  <text x="370.5" y="495.0" text-anchor="middle" class="node-sub">GPU 0-3 local PCIe paths</text>
+  <rect x="527.5" y="438.0" width="173.0" height="70.0" rx="10.0" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.8"/>
+  <text x="614.0" y="473.0" text-anchor="middle" class="node-title">NIC / DPU island</text>
+  <text x="614.0" y="495.0" text-anchor="middle" class="node-sub">multi-rail egress</text>
+  <rect x="263.0" y="580.0" width="222.0" height="58.0" rx="10.0" fill="#f0fdfa" stroke="#99f6e4" stroke-width="1.8"/>
+  <text x="374.0" y="609.0" text-anchor="middle" class="node-title">NVSwitch / NVLink Domain</text>
+  <rect x="531.0" y="580.0" width="166.0" height="58.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8"/>
+  <text x="614.0" y="609.0" text-anchor="middle" class="node-title">Scale-out Fabric</text>
+  <rect x="266.5" y="710.0" width="173.0" height="70.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
+  <text x="353.0" y="745.0" text-anchor="middle" class="node-title">Tensor / Pipeline</text>
+  <text x="353.0" y="767.0" text-anchor="middle" class="node-sub">Expert Parallel</text>
+  <rect x="485.5" y="716.0" width="208.0" height="58.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
+  <text x="589.5" y="745.0" text-anchor="middle" class="node-title">RDMA / multi-node path</text>
+  <rect x="372.5" y="852.0" width="215.0" height="58.0" rx="10.0" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.8"/>
+  <text x="480.0" y="881.0" text-anchor="middle" class="node-title">rank placement contract</text>
+  <line x1="42.0" y1="1008.0" x2="72.0" y2="1008.0" stroke="#6b7280" stroke-width="2.4" marker-start="url(#arrowHStart)" marker-end="url(#arrowH)"/>
+  <text x="82.0" y="1012.0" class="legend">物理 / 拓扑连接</text>
+  <text x="680.0" y="1030.0" class="footnote">Rendered with fireworks-tech-graph</text>
 </svg>

@@ -3913,6 +3913,49 @@
 <p>Incast 还应在容量测试中主动制造。只测稳定顺序读写会掩盖突发问题。并发启动、并发 checkpoint、并发权重加载和并发日志写入，都应成为 AI 存储网络验收场景。</p>
 <h3 id="3037-ai">30.3.7 AI 网络流量模型<a class="headerlink" href="#3037-ai" title="Permanent link">&para;</a></h3>
 <p>AI 网络不能只按“平均带宽”和“平均延迟”建模。训练和推理会产生几类有明显差异的流量。第一类是同步突发流量，例如 AllReduce、ReduceScatter、AllGather 和 MoE AllToAll，特点是阶段性、强同步、受最慢 rank 拖累。第二类是 incast 和 fan-in/fan-out，例如并发权重加载、checkpoint、日志聚合、对象存储请求和 MoE expert 聚合，特点是短时集中和尾延迟敏感。第三类是小消息低延迟流量，例如控制面、RPC、调度、数据库、检索和部分推理链路，特点是吞吐不大但对抖动敏感。第四类是持续大流量，例如数据集读取、checkpoint 写入和批量推理结果落盘。</p>
+<p>并行策略是流量模型的来源。Data Parallel 主要制造每个 step 的梯度或状态同步，常见形态是 AllReduce 或 ReduceScatter/AllGather；Tensor Parallel 在每层 forward/backward 的关键路径交换中间张量，对节点内带宽和延迟更敏感；Pipeline Parallel 主要在相邻 stage 之间传递 activation 和 gradient，流量相对定向，但会被 bubble 和 stage imbalance 放大；Expert Parallel/MoE 通过 router 触发 dispatch/combine，常表现为 All-to-All 类多对多流量，并且受 token 分布影响；Sequence/Context Parallel 则会把序列长度、attention 实现和 activation 交换带入网络画像。网络团队看到的 collective 名称，必须能反查到这些并行维度。</p>
+<table>
+<thead>
+<tr>
+<th>并行维度</th>
+<th>主要通信</th>
+<th>网络关注点</th>
+<th>优先放置倾向</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Data Parallel / ZeRO / FSDP</td>
+<td>AllReduce、ReduceScatter、AllGather</td>
+<td>有效带宽、慢 rank、bucket 与 overlap</td>
+<td>可跨节点，需关注 rail 和故障域</td>
+</tr>
+<tr>
+<td>Tensor Parallel</td>
+<td>层内 AllGather、ReduceScatter、AllReduce</td>
+<td>高频低延迟、节点内带宽、NVLink/NVSwitch 域</td>
+<td>优先同节点或同 GPU island</td>
+</tr>
+<tr>
+<td>Pipeline Parallel</td>
+<td>stage 间 P2P activation/gradient</td>
+<td>相邻 stage 路径、bubble、stage imbalance</td>
+<td>相邻 stage 尽量同 rack 或低跳数</td>
+</tr>
+<tr>
+<td>Expert Parallel / MoE</td>
+<td>All-to-All dispatch/combine</td>
+<td>多对多突发、expert 热点、负载倾斜</td>
+<td>expert group 和高频互访路径靠近</td>
+</tr>
+<tr>
+<td>Sequence / Context Parallel</td>
+<td>sequence shard 聚合、attention 交换</td>
+<td>长序列尾部压力、activation 通信</td>
+<td>依实现决定，需与 TP/CP 组绑定</td>
+</tr>
+</tbody>
+</table>
 <p>HPC 和 AI 训练中还常见 OBS（oblivious bulk synchronous）式流量：计算阶段和通信阶段交替出现，通信时多个 rank 按固定模式同时发送大量数据。它不一定像普通微服务那样由业务请求随机触发，而是由训练 step 节奏驱动。这个特征使得平均端口利用率可能不高，但通信窗口内队列、重传和拥塞会直接影响 step time。容量测试如果只看长时间平均，会低估训练突发。</p>
 <p>AI 网络目标也不是永远追求最小单包延迟。对大规模训练，更重要的是高有效带宽、浅队列、可预测尾延迟、低重传、稳定 collective completion time 和可解释的 rank skew；对在线推理，则要保护 TTFT、TPOT、streaming gap 和租户隔离；对存储路径，则要控制并发读取和 checkpoint 的突发。不同流量模型需要不同队列、QoS、调度和验收方法。</p>
 <p>平台应把流量模型写入 workload profile。一个大训练任务应声明或推导 collective 类型、rank 数、rail 需求、checkpoint 周期和存储读写；一个推理 endpoint 应声明入口流量、上下文分布、是否跨 GPU 通信、权重加载模式和 streaming 连接特征。网络资源不再只是节点标签，而是 workload 能否稳定运行的约束。</p>

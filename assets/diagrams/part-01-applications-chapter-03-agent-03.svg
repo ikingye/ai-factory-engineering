@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 1294" width="960" height="1294">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1040 600" width="1040" height="600">
   <defs>
     <marker id="arrowA" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
       <polygon points="0 0, 10 3.5, 0 7" fill="#7c3aed"/>
@@ -41,34 +41,45 @@
     .footnote { font-size: 12px; font-weight: 500; fill: #94a3b8; }
     </style>
   </defs>
-  <rect width="960.0" height="1294.0" fill="#ffffff"/>
-  <text x="480.0" y="56" text-anchor="middle" class="title">3.4.1 工程实现</text>
-  <text x="480.0" y="82" text-anchor="middle" class="subtitle">part-01-applications/chapter-03-agent.md:454</text>
-  <path d="M 480.0,212.0 L 480.0,284.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 480.0,342.0 L 480.0,414.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 480.0,484.0 L 480.0,556.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 480.0,614.0 L 480.0,686.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 480.0,756.0 L 480.0,828.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 480.0,886.0 L 480.0,958.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <path d="M 480.0,1016.0 L 480.0,1088.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
-  <rect x="365.5" y="154.0" width="229.0" height="58.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
-  <text x="480.0" y="183.0" text-anchor="middle" class="node-title">用户取消 / 工具失败 / 人工接管 / 审计告警</text>
-  <rect x="376.0" y="284.0" width="208.0" height="58.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
-  <text x="480.0" y="313.0" text-anchor="middle" class="node-title">quality_feedback_event</text>
-  <rect x="369.0" y="414.0" width="222.0" height="70.0" rx="10.0" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.8"/>
-  <text x="480.0" y="449.0" text-anchor="middle" class="node-title">agent run replay</text>
-  <text x="480.0" y="471.0" text-anchor="middle" class="node-sub">state + tools + policies</text>
-  <rect x="372.5" y="556.0" width="215.0" height="58.0" rx="10.0" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.8"/>
-  <text x="480.0" y="585.0" text-anchor="middle" class="node-title">agent_trajectory_record</text>
-  <rect x="398.0" y="686.0" width="164.0" height="70.0" rx="10.0" fill="#f0fdfa" stroke="#99f6e4" stroke-width="1.8"/>
-  <text x="480.0" y="721.0" text-anchor="middle" class="node-title">failure layer</text>
-  <text x="480.0" y="743.0" text-anchor="middle" class="node-sub">classification</text>
-  <rect x="379.5" y="828.0" width="201.0" height="58.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8"/>
-  <text x="480.0" y="857.0" text-anchor="middle" class="node-title">agent_regression_case</text>
-  <rect x="390.0" y="958.0" width="180.0" height="58.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
-  <text x="480.0" y="987.0" text-anchor="middle" class="node-title">agent quality gate</text>
-  <rect x="383.0" y="1088.0" width="194.0" height="70.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
-  <text x="480.0" y="1123.0" text-anchor="middle" class="node-title">model / orchestrator</text>
-  <text x="480.0" y="1145.0" text-anchor="middle" class="node-sub">tool schema release</text>
-  <text x="680.0" y="1278.0" class="footnote">Rendered with fireworks-tech-graph</text>
+  <rect width="1040.0" height="600.0" fill="#ffffff"/>
+  <text x="520.0" y="56" text-anchor="middle" class="title">3.4.1 工程实现</text>
+  <text x="520.0" y="82" text-anchor="middle" class="subtitle">part-01-applications/chapter-03-agent.md:454</text>
+  <rect x="82.0" y="118.0" width="283.0" height="372.0" rx="16.0" fill="#f8fafc" stroke="#dbe5f1" stroke-width="1.4" stroke-dasharray="7 5"/>
+  <text x="100.0" y="142.0" class="section">阶段 1</text>
+  <text x="100.0" y="162.0" class="section-sub">用户取消 / 工具失败 / 人工接管 / 审计告警 -&gt; agent run replay</text>
+  <rect x="403.0" y="118.0" width="269.0" height="372.0" rx="16.0" fill="#ffffff" stroke="#dbe5f1" stroke-width="1.4" stroke-dasharray="7 5"/>
+  <text x="421.0" y="142.0" class="section">阶段 2</text>
+  <text x="421.0" y="162.0" class="section-sub">agent_trajectory_record -&gt; agent_regression_case</text>
+  <rect x="710.0" y="118.0" width="248.0" height="372.0" rx="16.0" fill="#f8fafc" stroke="#dbe5f1" stroke-width="1.4" stroke-dasharray="7 5"/>
+  <text x="728.0" y="142.0" class="section">阶段 3</text>
+  <text x="728.0" y="162.0" class="section-sub">agent quality gate -&gt; model / orchestrator</text>
+  <path d="M 223.5,230.0 L 223.5,270.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 223.5,328.0 L 223.5,368.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 334.5,403.0 L 383.0,403.0 L 383.0,201.0 L 430.0,201.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 537.5,230.0 L 537.5,270.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 537.5,340.0 L 537.5,368.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 638.0,397.0 L 658.4,397.0 L 723.6,250.0 L 744.0,250.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 834.0,279.0 L 834.0,319.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <rect x="109.0" y="172.0" width="229.0" height="58.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
+  <text x="223.5" y="201.0" text-anchor="middle" class="node-title">用户取消 / 工具失败 / 人工接管 / 审计告警</text>
+  <rect x="119.5" y="270.0" width="208.0" height="58.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
+  <text x="223.5" y="299.0" text-anchor="middle" class="node-title">quality_feedback_event</text>
+  <rect x="112.5" y="368.0" width="222.0" height="70.0" rx="10.0" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.8"/>
+  <text x="223.5" y="403.0" text-anchor="middle" class="node-title">agent run replay</text>
+  <text x="223.5" y="425.0" text-anchor="middle" class="node-sub">state + tools + policies</text>
+  <rect x="430.0" y="172.0" width="215.0" height="58.0" rx="10.0" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.8"/>
+  <text x="537.5" y="201.0" text-anchor="middle" class="node-title">agent_trajectory_record</text>
+  <rect x="455.5" y="270.0" width="164.0" height="70.0" rx="10.0" fill="#f0fdfa" stroke="#99f6e4" stroke-width="1.8"/>
+  <text x="537.5" y="305.0" text-anchor="middle" class="node-title">failure layer</text>
+  <text x="537.5" y="327.0" text-anchor="middle" class="node-sub">classification</text>
+  <rect x="437.0" y="368.0" width="201.0" height="58.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8"/>
+  <text x="537.5" y="397.0" text-anchor="middle" class="node-title">agent_regression_case</text>
+  <rect x="744.0" y="221.0" width="180.0" height="58.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
+  <text x="834.0" y="250.0" text-anchor="middle" class="node-title">agent quality gate</text>
+  <rect x="737.0" y="319.0" width="194.0" height="70.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
+  <text x="834.0" y="354.0" text-anchor="middle" class="node-title">model / orchestrator</text>
+  <text x="834.0" y="376.0" text-anchor="middle" class="node-sub">tool schema release</text>
+  <line x1="42.0" y1="562.0" x2="72.0" y2="562.0" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <text x="82.0" y="566.0" class="legend">主路径 / 阶段推进</text>
+  <text x="760.0" y="584.0" class="footnote">Rendered with fireworks-tech-graph</text>
 </svg>
