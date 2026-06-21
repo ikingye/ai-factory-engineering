@@ -1,0 +1,13 @@
+flowchart TB
+  GPUs["72 GPU rack-scale domain"] --> NVLS["NVLink Switch layer
+high-bandwidth fabric"]
+  NVLS --> Compute["large model island
+TP / EP / KV sharing"]
+  Compute --> Host["Grace / host layer
+CPU / memory / IO"]
+  Host --> ScaleOut["scale-out fabric
+RDMA to other racks"]
+  Compute --> Ops["operations boundary
+thermal / power / fault domain"]
+  Ops --> Scheduler["scheduler resource unit
+GPU island allocation"]

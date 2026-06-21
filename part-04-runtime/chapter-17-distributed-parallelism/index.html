@@ -3911,6 +3911,7 @@
 <p>Pipeline 配置还会影响故障恢复语义。某个 stage 失败后，整个流水线需要一致恢复；若 checkpoint 只保存局部状态或保存点不一致，恢复后可能出现参数不同步。平台应规定 stage state、optimizer state 和随机数状态如何保存。对长时间训练而言，Pipeline 的可恢复性和吞吐同样重要。</p>
 <p>评估 Pipeline 时，stage idle time 比平均 GPU 利用率更有解释力。平均值看似正常，某个慢 stage 仍然可能决定全局 step time。</p>
 <p>因此，Pipeline 调优要先看最慢 stage，而不是平均 GPU 曲线。</p>
+<p><img alt="图：17.3.3 Pipeline Parallel" src="../../assets/diagrams/part-04-runtime-chapter-17-distributed-parallelism-02.svg" /></p>
 <h3 id="1734-expert-parallel">17.3.4 Expert Parallel<a class="headerlink" href="#1734-expert-parallel" title="Permanent link">&para;</a></h3>
 <p>Expert Parallel 常见于 Mixture of Experts（MoE）模型。MoE 不是让每个 token 经过所有参数，而是通过 router 把 token 分配给部分 expert。Expert Parallel 把不同 expert 放在不同 GPU 或 GPU 组上，从而扩大总参数量，同时控制每个 token 的实际计算量。它适合追求大模型容量但希望控制单 token 计算成本的场景。</p>
 <p>Expert Parallel 的难点在于 token dispatch 和负载均衡。某些 expert 如果接收过多 token，就会形成热点，导致尾延迟、显存峰值或训练不稳定；跨节点 dispatch 会消耗网络带宽，并让通信模式变得更不规则。与 Data Parallel 或 Tensor Parallel 相比，MoE 的通信更受数据分布和 router 行为影响，不能只依赖静态拓扑分析。</p>
@@ -3920,6 +3921,7 @@
 <p>因此，Expert Parallel 的验收要包含分布指标，而不只是整体吞吐。平均值无法说明 expert 是否均衡。</p>
 <p>如果分布长期倾斜，应先处理路由和容量策略，再扩大 GPU。</p>
 <p>扩容不能替代负载治理。</p>
+<p><img alt="图：17.3.4 Expert Parallel" src="../../assets/diagrams/part-04-runtime-chapter-17-distributed-parallelism-03.svg" /></p>
 <h3 id="1735-sequence-parallel">17.3.5 Sequence Parallel<a class="headerlink" href="#1735-sequence-parallel" title="Permanent link">&para;</a></h3>
 <p>Sequence Parallel 把序列维度切分到多个设备，常用于长上下文训练，或与 Tensor Parallel 结合降低 activation 显存。长序列会显著增加 attention 和 activation 开销，单卡或单个 Tensor Parallel group 可能无法承载。通过拆分 sequence，系统可以把部分中间状态分散到多个 GPU，缓解 HBM 压力。</p>
 <p>这里要区分两类常被混用的口径。Megatron 风格 Sequence Parallel 多与 Tensor Parallel 配合，把 layernorm、dropout 等对序列位置局部可计算的 activation 沿 sequence 维切分，常把原本 TP 中的 AllReduce 拆成 ReduceScatter + AllGather，从而减少 activation 冗余。长上下文场景中的 Context/Sequence Parallel，如 Ulysses、Ring Attention 或类似实现，则更关注 attention 的长序列计算与 KV/activation 分布。二者都沿序列维做文章，但适用层、通信模式和调参目标不同。</p>

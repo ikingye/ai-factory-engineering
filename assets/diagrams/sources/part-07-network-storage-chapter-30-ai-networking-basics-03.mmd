@@ -1,0 +1,15 @@
+flowchart TB
+  Workload["AI workload traffic
+collective / storage / serving"] --> Queue["switch queues
+buffer / QoS"]
+  Queue --> Signal["congestion signals
+ECN / PFC / drops"]
+  Signal --> NIC["NIC reaction
+DCQCN / retransmit"]
+  NIC --> App["application impact
+step time / TTFT"]
+  App --> Telemetry["correlated telemetry
+port / NCCL / trace"]
+  Telemetry --> Tune["fabric tuning
+threshold / routing / capacity"]
+  Tune --> Queue

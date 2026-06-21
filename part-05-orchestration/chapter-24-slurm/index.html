@@ -3910,6 +3910,7 @@
 <p>模板还应支持本地调试和生产提交的一致性。研究者可以在小 partition 用相同模板调试，再扩大到大规模训练。若调试脚本和生产脚本完全不同，问题会在放大后暴露。<code>sbatch</code> 和 <code>srun</code> 的价值，在于让这种逐步放大过程足够直接。</p>
 <p>模板要避免过度封装。研究者仍需要能看到最终命令、环境变量和节点列表，才能定位性能问题。好的模板是可读、可覆盖、可审计的，而不是隐藏所有细节的黑盒。透明性是 Slurm 工作流的重要优势。</p>
 <p>同时，模板要有版本。一次训练使用哪个模板版本、哪些默认参数、哪些参数被用户覆盖，都应进入日志和实验元数据。否则同一份训练脚本在不同时间运行，可能因为模板变化得到不同结果。可复现性来自代码，也来自提交入口。</p>
+<p><img alt="图：24.3.6 sbatch 与 srun" src="../../assets/diagrams/part-05-orchestration-chapter-24-slurm-02.svg" /></p>
 <h3 id="2437-gpu">24.3.7 GPU 资源<a class="headerlink" href="#2437-gpu" title="Permanent link">&para;</a></h3>
 <p>Slurm 通常通过 GRES 等机制管理 GPU 资源。作业可以申请每节点 GPU 数、特定 GPU 类型或特定节点特性。AI 场景还需要考虑 MIG、GPU 独占、拓扑、健康状态、driver baseline、RDMA 和本地 NVMe。GPU 不只是计数资源，而是带有能力、拓扑和状态的稀缺资源。</p>
 <p>GPU 资源管理必须与节点健康联动。Slurm 看到 GRES 可用，不代表 GPU 适合训练。GPU Xid、ECC、NVLink error、降频、RDMA 异常、驱动漂移都应影响节点或 GPU 是否可调度。否则坏卡进入训练任务，会造成长时间失败和昂贵重跑。准入测试结果应能反馈给 Slurm，例如 drain 节点或调整特性标签。</p>
@@ -3924,6 +3925,7 @@
 <p>拓扑策略还要与维护计划协调。某个 rack 进入维护，相关拓扑域能力下降，调度器和用户都应知道。否则作业可能等待一个暂时不可用的理想拓扑，或被调度到性能较差的替代路径。拓扑感知不是一次性配置，而是持续运营数据。</p>
 <p>拓扑调度还要服务成本。为了极致性能保留最优节点集合可能提高训练吞吐，但也可能让其它任务等待；放宽拓扑约束提高利用率，却可能降低训练效率。平台应让用户或队列明确性能优先还是等待时间优先。不同策略适合不同训练阶段。</p>
 <p>因此，拓扑策略最好可解释。用户应能看到作业为什么等待，是缺少连续节点、缺少同 rail 节点，还是被高优先级队列占用。可解释的等待比黑盒排队更容易被接受，也便于平台判断是否需要扩容或调整队列规则。</p>
+<p><img alt="图：24.3.8 topology-aware scheduling" src="../../assets/diagrams/part-05-orchestration-chapter-24-slurm-03.svg" /></p>
 <h3 id="2439-slurm-vs-kubernetes">24.3.9 Slurm vs Kubernetes<a class="headerlink" href="#2439-slurm-vs-kubernetes" title="Permanent link">&para;</a></h3>
 <p>Slurm 擅长批式 HPC 作业、研究训练、节点独占、命令行工作流、账户 fairshare 和拓扑调度。Kubernetes 擅长服务化、声明式控制器、在线服务、云原生生态、多租户 API 和平台组件。二者的优势不同，来自历史目标不同。把 Slurm 说成“旧”，或把 Kubernetes 说成“一定更现代”，都过于粗糙。</p>
 <p>AI Factory 中，一种常见分工是：Slurm 管大规模预训练、研究集群和需要强 HPC 语义的任务；Kubernetes 管 MaaS、推理服务、微调平台、评测服务、AI Gateway 和控制面。Ray、Kubeflow、Argo、Kueue、Volcano 等工具可以在 Kubernetes 侧补充批式语义，但不一定完全替代 Slurm。选择要看 workload、团队习惯和运维能力。</p>

@@ -1,0 +1,14 @@
+flowchart TB
+  Trace["collective trace
+name / size / ranks"] --> Rank["rank mapping
+GPU / NIC / rail"]
+  Rank --> Path["network path
+NVLink / IB / RoCE"]
+  Path --> Skew["skew analysis
+slow rank / imbalance"]
+  Skew --> Cause["root cause candidates
+placement / fabric / compute lag"]
+  Cause --> Action["action
+reroute / isolate / retune"]
+  Action --> Baseline["baseline update
+regression guard"]

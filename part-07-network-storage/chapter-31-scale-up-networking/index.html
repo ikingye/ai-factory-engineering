@@ -3982,6 +3982,7 @@
 <p>这类架构还会改变组织协作。硬件、机房、电力、制冷、网络、调度和模型服务必须围绕系统级单元协同。若仍按普通服务器交接，很多问题会在生产中才暴露。系统级 GPU 域需要系统级验收。</p>
 <p>平台也要避免过度承诺。系统级架构性能强，但只有当 workload 能使用其互联能力时才有价值。对弱通信任务，它可能只是昂贵资源。资源产品应说明适用场景。</p>
 <p>适用场景越清楚，资源浪费越少。系统级 GPU 域应优先承载强通信模型并行、低延迟多 GPU 推理和高价值训练，而不是被弱通信 batch job 长期占用。资源池需要把“能跑”和“值得跑”区分开。</p>
+<p><img alt="图：31.3.8 GB200 / NVL72 类架构" src="../../assets/diagrams/part-07-network-storage-chapter-31-scale-up-networking-03.svg" /></p>
 <h2 id="314">31.4 工程落地<a class="headerlink" href="#314" title="Permanent link">&para;</a></h2>
 <h3 id="3141">31.4.1 工程实现<a class="headerlink" href="#3141" title="Permanent link">&para;</a></h3>
 <p>Scale-up 拓扑应进入资源画像，而不是只保留在硬件文档中。资源画像至少包含 NUMA domain、CPU set、GPU 列表、NIC 列表、PCIe 路径、NVLink/NVSwitch 域、本地 NVMe、驱动和拓扑基线。示例：</p>

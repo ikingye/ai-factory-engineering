@@ -1,0 +1,14 @@
+flowchart TB
+  Forward["forward pass
+activation generated"] --> SavePolicy["save policy
+which tensors kept"]
+  SavePolicy --> HBM["HBM pressure
+activation footprint"]
+  SavePolicy --> Recompute["recompute path
+extra compute"]
+  HBM --> StepTime["step time
+memory vs compute tradeoff"]
+  Recompute --> StepTime
+  StepTime --> Config["checkpoint config
+layers / segments"]
+  Config --> SavePolicy

@@ -1,0 +1,14 @@
+flowchart TB
+  Server["GPU server"] --> BMC["BMC
+power / sensors / remote console"]
+  BMC --> Firmware["firmware inventory
+BIOS / NIC / GPU"]
+  BMC --> Power["power telemetry
+PSU / rail / cap"]
+  BMC --> Thermal["thermal telemetry
+fan / inlet / GPU temp"]
+  Firmware --> Admission["hardware admission
+version / health gate"]
+  Power --> Admission
+  Thermal --> Admission
+  Admission --> Pool["schedulable GPU node"]

@@ -1,0 +1,12 @@
+flowchart TB
+  GPU["GPU complex"] --> PCIe["PCIe / NUMA path"]
+  CPU["CPU socket"] --> PCIe
+  PCIe --> NIC["NIC / DPU
+RDMA endpoint"]
+  NIC --> Rail["network rail
+leaf / spine"]
+  GPU --> NVLink["NVLink / NVSwitch
+scale-up path"]
+  NIC --> NCCL["NCCL scale-out
+collective traffic"]
+  NVLink --> NCCL

@@ -3842,6 +3842,7 @@
 <p>Token 计量还要处理失败请求。请求在鉴权前失败，没有模型 token；在 tokenizer 后失败，有 input token 但无 output token；在 prefill 后失败，已经消耗 GPU；在 decode 中失败，已有部分 output token；fallback 后，实际服务模型可能变化。计量系统如果只记录 success，会低估失败成本；如果不记录失败阶段，又无法优化平台。失败 token 是可靠性成本的一部分。</p>
 <p>Token 计量也要支持对账。可观测 dashboard、账单聚合和模型服务日志中的 token 数应能在合理误差内一致。若 dashboard 显示某租户使用量下降，而账单显示增长，平台必须能定位差异来自缓存、失败、折扣、迟到事件还是标签错误。没有对账机制，token 计量只能用于展示，不能用于结算和治理。</p>
 <p>最后要避免在网关侧盲估 token 后直接出账。网关可以做预算预扣和粗略限流，但最终口径应以实际服务模型和实际 tokenizer 为准。尤其在长上下文、工具输出、模板拼接和模型 fallback 场景中，网关看到的输入并不等于模型真正消费的输入。</p>
+<p><img alt="图：7.3.1 token 计量" src="../../assets/diagrams/part-02-platform-chapter-07-metering-billing-02.svg" /></p>
 <h3 id="732-input-tokenoutput-tokenreasoning-token">7.3.2 input token、output token、reasoning token<a class="headerlink" href="#732-input-tokenoutput-tokenreasoning-token" title="Permanent link">&para;</a></h3>
 <p>Input token 对应输入上下文，主要影响 prefill、KV Cache 初始分配和上下文相关成本。Output token 对应生成结果，主要影响 decode、streaming 时长和用户可见产出。二者必须分开记录，因为应用优化方向不同：RAG、长文档和工具输出会增加 input token；长报告、代码生成和多轮回答会增加 output token。只记录 total token 会掩盖成本来源。</p>
 <p>Reasoning token 是部分推理模型内部思考或隐藏推理产生的 token 口径。不同平台对它的暴露、计费和限制策略不同：有的平台显示 reasoning token，有的平台只体现在价格中，有的平台允许设置 reasoning effort。工程上应把 reasoning token 当成单独口径处理，至少在模型能力和账单说明中明确。否则用户会发现同样 input/output token 的请求价格不同，却无法解释。</p>
@@ -3924,6 +3925,7 @@ margin_rate = (revenue - cost) / revenue
 <p>训练和推理还应分开看 ROI。训练成本可能在当期很高，但如果产出模型长期降低推理成本或提升收入，就有投资价值；推理服务可能短期毛利低，但能带来客户增长或产品粘性。经济模型需要时间窗口和业务目标。单月 cost per token 不能解释所有决策，但没有它，平台也无法判断优化是否有效。</p>
 <p>毛利模型还应进入容量规划。若某类流量毛利稳定且增长，平台可以规划专属资源和优化路线；若某类流量长期负毛利，要么调价，要么限制，要么优化模型和运行时。技术扩容不能脱离经济回报。AI Factory 的规模化，最终要同时满足能力、可靠性和经济性。</p>
 <p>因此毛利分析应成为平台例会的一部分，而不是季度财务复盘。模型上线、价格调整、资源池扩容、SLA 承诺和重大客户接入，都应同时查看质量指标、容量指标和毛利指标。只有这样，工程团队才能知道哪些优化真正改变了业务结果。</p>
+<p><img alt="图：7.3.8 毛利模型" src="../../assets/diagrams/part-02-platform-chapter-07-metering-billing-03.svg" /></p>
 <h2 id="74">7.4 工程落地<a class="headerlink" href="#74" title="Permanent link">&para;</a></h2>
 <h3 id="741">7.4.1 工程实现<a class="headerlink" href="#741" title="Permanent link">&para;</a></h3>
 <p>计量事件应采用统一结构，并且尽量不可变。原始事件写入事件流或日志存储，后续聚合、补偿和账单修正都应保留 lineage。事件至少包含 event id、trace id、request id 或 run id、租户、项目、API Key、requested model、served model、token、状态、错误阶段、开始结束时间、路由和价格版本。Agent、RAG 和工具事件也应能归属到同一个 run。</p>

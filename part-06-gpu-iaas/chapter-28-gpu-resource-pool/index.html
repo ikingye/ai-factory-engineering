@@ -4166,6 +4166,7 @@
     - dc-a-rack-12-2026-06
 </code></pre>
 <p>这个视图能解释扩容争议。采购团队说 GPU 到货，设施团队说 rack 已上电，平台团队却不能承诺大训练，是因为 workload-fit GPU 还受 power、cooling、fabric、storage 或准入状态约束。资源池把这些约束展开，容量讨论就不再停留在“还有多少卡”。</p>
+<p><img alt="图：28.3.8 capacity planning" src="../../assets/diagrams/part-06-gpu-iaas-chapter-28-gpu-resource-pool-03.svg" /></p>
 <h2 id="284">28.4 工程落地<a class="headerlink" href="#284" title="Permanent link">&para;</a></h2>
 <h3 id="2841">28.4.1 工程实现<a class="headerlink" href="#2841" title="Permanent link">&para;</a></h3>
 <p>工程实现应先定义资源对象模型。GPU、node、pool、allocation、reservation、health event、maintenance event 和 capacity forecast 应有稳定字段和生命周期。资源对象示例：</p>

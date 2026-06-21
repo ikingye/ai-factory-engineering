@@ -1,0 +1,13 @@
+flowchart TB
+  Partition["partition
+GPU class / policy"] --> Topology["topology plugin
+node / switch / rail"]
+  JobReq["job request
+GPUs / nodes / constraints"] --> Topology
+  Topology --> Allocation["allocation decision
+same switch / spread"]
+  Allocation --> Launch["rank launch
+NCCL topology"]
+  Launch --> Metrics["job metrics
+step time / collective"]
+  Metrics --> Topology

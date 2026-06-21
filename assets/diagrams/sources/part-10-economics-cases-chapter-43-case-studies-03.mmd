@@ -1,0 +1,15 @@
+flowchart TB
+  GPU["GPU purchase
+capex ready"] --> Missing["missing factory layers"]
+  Missing --> Platform["platform gaps
+MaaS / gateway / quota"]
+  Missing --> Ops["ops gaps
+observability / SRE / PRR"]
+  Missing --> Data["data and model gaps
+lineage / eval / release"]
+  Platform --> Failure["failure modes
+low utilization / no SLA / no cost control"]
+  Ops --> Failure
+  Data --> Failure
+  Failure --> Factory["AI Factory program
+process + platform + economics"]

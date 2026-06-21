@@ -3886,6 +3886,7 @@
 <p>训练 dashboard 应把模型指标和基础设施指标放在同一时间轴：loss、gradient norm、learning rate、tokens/s、step time、data loading time、checkpoint time、GPU utilization、HBM、NCCL 错误、RDMA 指标、存储延迟和节点健康。只有时间线对齐，团队才能判断异常先后顺序。没有统一 dashboard，训练稳定性排查会退化为跨团队日志拼接。</p>
 <p>稳定性还依赖演练。平台应定期验证 checkpoint 恢复、worker 失败、节点隔离、存储延迟、通信异常和作业重排流程。很多系统在正常路径上看似可用，但第一次真实故障才发现恢复脚本不可用或权限不足。预训练任务太昂贵，不能把第一次恢复演练放在生产事故中。</p>
 <p>稳定性文化也很重要。训练团队应接受“暂停保存现场”有时比“立刻重启继续跑”更正确；基础设施团队应把训练异常当作端到端事件，而不是只检查节点是否在线。长任务的可靠性来自流程、工具和判断共同作用。平台要把正确动作做成默认路径。</p>
+<p><img alt="图：10.3.8 训练稳定性" src="../../assets/diagrams/part-03-models-chapter-10-pretraining-03.svg" /></p>
 <h2 id="104">10.4 工程落地<a class="headerlink" href="#104" title="Permanent link">&para;</a></h2>
 <h3 id="1041">10.4.1 工程实现<a class="headerlink" href="#1041" title="Permanent link">&para;</a></h3>
 <p>训练任务提交应包含数据、模型、并行和恢复配置，并进入实验追踪系统。配置至少包括 dataset version、tokenizer version、code commit、container image、model config、optimizer、learning rate schedule、global batch tokens、parallelism、checkpoint policy 和 resume policy。这些字段不是文档装饰，而是复现和排障的最低条件。平台应拒绝关键字段缺失的长周期训练任务。</p>

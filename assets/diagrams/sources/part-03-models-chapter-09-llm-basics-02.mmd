@@ -1,0 +1,12 @@
+flowchart TB
+  Tokens["token sequence
+input context"] --> QKV["Q / K / V projection"]
+  QKV --> Score["attention score
+Q x K"]
+  Score --> Weight["softmax weights
+上下文相关性"]
+  Weight --> Mix["weighted value
+聚合上下文"]
+  Mix --> Block["Transformer block
+residual + MLP"]
+  Block --> Output["next-token logits"]

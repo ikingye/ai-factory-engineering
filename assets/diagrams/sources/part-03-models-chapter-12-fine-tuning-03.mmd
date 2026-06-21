@@ -1,0 +1,13 @@
+flowchart TB
+  Request["customization request
+租户 / 场景 / 数据"] --> Approval["approval
+权限 / 合规 / 成本"]
+  Approval --> Job["training job
+配置 / 资源 / 版本"]
+  Job --> Artifact["artifact lineage
+base / adapter / dataset"]
+  Artifact --> Release["release decision
+灰度 / 回滚 / 下线"]
+  Release --> Observe["online feedback
+质量 / 成本 / 安全"]
+  Observe --> Request

@@ -3926,6 +3926,7 @@
     open: none
 </code></pre>
 <p>这个对象让安全评审从“配置看起来正确”变成“关键路径有证据”。例如某个租户禁止第三方 provider，evidence 要能抽样证明 Gateway 决策确实拒绝了外联；某个租户要求日志脱敏，evidence 要能证明 trace 中只有引用和 hash；某个租户使用专属资源池，evidence 要能证明请求没有进入共享池。它也是后续 PRR 的输入：高敏租户没有隔离证据，不应进入生产。</p>
+<p><img alt="图：5.3.4 API Key" src="../../assets/diagrams/part-02-platform-chapter-05-maas-02.svg" /></p>
 <h3 id="535">5.3.5 租户、项目、配额<a class="headerlink" href="#535" title="Permanent link">&para;</a></h3>
 <p>租户是资源、权限和账单的组织边界，项目是租户内部的应用或工作空间边界，配额是对模型能力消费的限制。一个企业租户可以包含多个项目，例如客服、办公、研发和数据分析；每个项目有不同模型权限、预算、SLA 和负责人。这个层次能让平台既支持组织级治理，又支持应用级成本归因。没有项目边界，MaaS 很快会变成“租户总账”，无法运营。</p>
 <p>配额设计不能只看请求数。LLM 请求的资源压力更接近 token、上下文长度、输出长度、并发和模型成本。一个租户每分钟 100 次短问答，与每分钟 100 次长文档总结，对 prefill、KV Cache、GPU 和账单的影响完全不同。MaaS 应支持 request quota、input token quota、output token quota、TPM、并发请求、streaming 连接、日预算、模型级配额和资源池级配额。</p>
@@ -3980,6 +3981,7 @@
 </code></pre>
 <p>这个模型要和第 7 章的计量事件、第 37 章的证据包、第 40 章的 incident 和第 41 章的可靠性成本账本连接。SLA credit 不应只靠平均可用性曲线判断，而要能回放到具体租户、endpoint、时间窗口、请求阶段和账单项目。若 TTFT 违约来自平台资源池，赔付可能成立；若来自客户侧取消或超预算拒绝，通常不应计入；若来自 preview 模型，取决于产品是否明确排除。结构化模型能保护客户，也能保护平台不被不可控因素拖入赔付。</p>
 <p>MaaS 客户上线时，应把 <code>customer_onboarding_evidence</code>、<code>tenant_boundary</code>、<code>sla_credit_model</code> 和 <code>billing_dispute_replay</code> 串起来。一个可售的租户不是“能调用 API”，而是具备身份、权限、模型访问、配额、预算、SLA、支持、账单和争议处理证据。尤其是高价值客户，SLA 承诺必须对应实际服务等级：Premium 客户若没有 dedicated pool、error budget、oncall、状态通知和赔付模型，就不应写入 Premium SLA。</p>
+<p><img alt="图：5.3.7 SLA 与服务等级" src="../../assets/diagrams/part-02-platform-chapter-05-maas-03.svg" /></p>
 <h2 id="54">5.4 工程落地<a class="headerlink" href="#54" title="Permanent link">&para;</a></h2>
 <h3 id="541">5.4.1 工程实现<a class="headerlink" href="#541" title="Permanent link">&para;</a></h3>
 <p>MaaS 工程实现应围绕控制面对象建模。<code>model</code> 描述模型能力和版本，<code>endpoint</code> 描述实际服务位置和健康，<code>tenant</code> 与 <code>project</code> 描述组织边界，<code>api_key</code> 描述身份和权限，<code>quota</code> 描述资源契约，<code>route</code> 描述请求进入哪个后端，<code>usage</code> 描述实际消耗，<code>service_level</code> 描述承诺。数据面处理请求时，应把这些对象串起来，形成可审计链路。</p>

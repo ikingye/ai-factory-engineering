@@ -3897,6 +3897,7 @@
 <p>DeepSpeed 还会改变 checkpoint 和恢复流程。分片状态如何保存，如何导出完整权重，跨版本是否兼容，恢复时是否需要相同 world size，都要提前验证。很多训练事故发生在“训练能跑，但 checkpoint 不能恢复或不能服务化”。平台应把恢复测试作为训练模板的一部分。</p>
 <p>使用 DeepSpeed 时，平台还应显式管理资源预期。开启 offload 可能把瓶颈从 HBM 移到 CPU 内存、PCIe 或 NVMe；增大 bucket 可能减少通信次数，却提高临时显存；gradient accumulation 可以降低单步显存压力，却改变有效 batch 和故障恢复粒度。每项能力都应配套指标和默认阈值。否则 DeepSpeed 配置会被当成“魔法优化”，一旦性能退化或恢复失败，就很难解释是哪一个开关改变了系统行为。</p>
 <p>因此，DeepSpeed 模板至少要附带推荐适用范围，而不是只给出一份 JSON。</p>
+<p><img alt="图：16.3.2 DeepSpeed" src="../../assets/diagrams/part-04-runtime-chapter-16-training-frameworks-02.svg" /></p>
 <h3 id="1633-megatron-lm">16.3.3 Megatron-LM<a class="headerlink" href="#1633-megatron-lm" title="Permanent link">&para;</a></h3>
 <p>Megatron-LM 关注大规模 Transformer 训练，提供 tensor parallel、pipeline parallel、sequence parallel 等能力，常用于训练超大模型和研究并行策略。它把模型内部计算切分到多个 GPU，使单个 GPU 无法承载的模型可以训练。相比通用框架，它更贴近大模型训练的高性能路径。</p>
 <p>Megatron-LM 对并行配置和 GPU 拓扑非常敏感。Tensor parallel 更依赖节点内高速互联，pipeline parallel 需要处理阶段气泡，sequence parallel 改变激活和通信模式。并行维度如何映射到 NVLink、NVSwitch、InfiniBand 或 RoCE，会直接影响训练效率。配置合理与否，可能比单个 GPU 性能更重要。</p>
@@ -3937,6 +3938,7 @@
 <p>Activation checkpointing 还影响调试和复现。重算路径中的随机性、dropout、混合精度和编译优化都需要正确处理，否则可能出现难以解释的数值差异。框架通常会处理大部分细节，但生产平台仍应在升级框架或改变策略后做回归验证。显存优化不能牺牲训练正确性。</p>
 <p>在大规模训练中，它通常与 FSDP、ZeRO、tensor parallel 和长上下文训练一起出现，因此不能孤立评估。启用后如果显存降低但 checkpoint 周期变长，故障后重跑成本可能上升；如果 step time 增加但允许更大的 global batch，整体训练效率反而可能改善。平台应要求每个模板给出启用前后的基线对比，让用户知道它解决的是 HBM 约束、吞吐约束还是模型规模约束。</p>
 <p>只有把节省的显存和增加的计算同时量化，团队才能做可靠取舍。</p>
+<p><img alt="图：16.3.8 activation checkpointing" src="../../assets/diagrams/part-04-runtime-chapter-16-training-frameworks-03.svg" /></p>
 <h2 id="164">16.4 工程落地<a class="headerlink" href="#164" title="Permanent link">&para;</a></h2>
 <h3 id="1641">16.4.1 工程实现<a class="headerlink" href="#1641" title="Permanent link">&para;</a></h3>
 <p>训练任务应把框架配置作为一等信息，而不是把它隐藏在启动脚本中。Runtime spec 至少应包含 framework、framework version、CUDA/NCCL/driver 版本、precision、distributed strategy、DeepSpeed/FSDP/ZeRO 配置、activation checkpointing、checkpoint format、data loader 和恢复策略。这些信息应进入实验追踪、任务记录和排障报告。</p>

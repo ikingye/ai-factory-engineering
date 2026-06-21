@@ -3863,6 +3863,7 @@
 <p>Provisioning 还要与调度系统隔离。节点在安装和初始化期间不应被 Kubernetes 或 Slurm 误认为可用。只有状态进入 validated 或 allocatable 后，才允许注册到生产集群或去掉 taint/drain 状态。很多生产事故来自“安装中节点被提前纳入资源池”。交付流程必须把资源可用性作为最后一步，而不是默认结果。</p>
 <p>此外，provisioning 应支持批量回滚。某个 image、driver 或初始化版本验证失败时，平台要能停止后续节点、标记已影响批次，并恢复到上一条稳定基线。没有批次控制，错误会在自动化流程中被高速放大。</p>
 <p>交付越自动化，回滚越重要。</p>
+<p><img alt="图：26.3.3 bare metal provisioning" src="../../assets/diagrams/part-06-gpu-iaas-chapter-26-bare-metal-gpu-cloud-02.svg" /></p>
 <h3 id="2634-bmcipmiredfish">26.3.4 BMC、IPMI、Redfish<a class="headerlink" href="#2634-bmcipmiredfish" title="Permanent link">&para;</a></h3>
 <p>BMC 是服务器管理控制器，可以在操作系统之外控制电源、读取硬件状态、设置启动顺序、访问远程控制台和收集硬件告警。IPMI 和 Redfish 是常见管理接口，其中 Redfish 基于现代 API 风格，更适合自动化集成。裸金属云离不开 BMC，因为操作系统损坏、节点无响应或需要重装时，BMC 是最后的控制入口。</p>
 <p>BMC 在交付流程中承担多个动作：开关机、重启、设置 PXE 启动、挂载虚拟介质、读取传感器、获取硬件日志、确认电源和温度状态。维修流程也依赖 BMC：节点失联时先判断 BMC 是否可达，OS 是否可达，硬件是否告警。没有可靠 BMC，裸金属平台会在节点故障时失去自动化控制能力。</p>
@@ -3896,6 +3897,7 @@
 <p>节点初始化的最后一步，是进入准入测试和资源池状态机。通过测试后，节点可以加入训练、推理、实验或验收资源池；未通过则进入维修或隔离。初始化流程还应支持重入：节点维修后重新初始化，节点回收后清理残留，节点退役前移除凭据和资源记录。裸金属节点有完整生命周期，不只是首次装机。</p>
 <p>初始化也要避免把环境差异藏在手工操作中。临时 SSH 改配置、手工安装包、现场修改网络参数，都应被视为漂移来源。生产节点的最终状态必须由 image、配置和初始化版本共同决定，而不是由某次人工修复决定。</p>
 <p>这是一条基本纪律。</p>
+<p><img alt="图：26.3.8 节点初始化" src="../../assets/diagrams/part-06-gpu-iaas-chapter-26-bare-metal-gpu-cloud-03.svg" /></p>
 <h2 id="264">26.4 工程落地<a class="headerlink" href="#264" title="Permanent link">&para;</a></h2>
 <h3 id="2641">26.4.1 工程实现<a class="headerlink" href="#2641" title="Permanent link">&para;</a></h3>
 <p>工程实现应围绕节点生命周期状态机建设，而不是堆叠脚本。状态机至少包含 discovered、bmc-ready、provisioning、provisioned、bootstrapping、initialized、validating、allocatable、allocated、draining、maintenance、retired。每个状态有进入条件、动作、超时、失败原因和下一步。这样平台可以批量交付，也可以精确定位卡在哪一步。</p>

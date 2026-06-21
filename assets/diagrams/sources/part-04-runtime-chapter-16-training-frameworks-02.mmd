@@ -1,0 +1,15 @@
+flowchart TB
+  Model["model code
+PyTorch module"] --> Engine["training engine
+DeepSpeed / FSDP / Megatron"]
+  Engine --> Parallel["parallel plan
+DP / TP / PP / ZeRO"]
+  Parallel --> Runtime["runtime execution
+forward / backward / optimizer"]
+  Runtime --> Checkpoint["checkpoint format
+sharded state"]
+  Runtime --> Trace["training trace
+step / memory / collective"]
+  Trace --> Tuning["tuning loop
+batch / bucket / overlap"]
+  Tuning --> Parallel

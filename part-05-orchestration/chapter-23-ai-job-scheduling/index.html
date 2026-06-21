@@ -3882,6 +3882,7 @@
 <p>Gang 还要考虑启动阶段的真实依赖。所有 worker Pod 创建成功，不代表 NCCL 初始化成功；所有容器 Running，不代表数据和 checkpoint 可访问。对关键训练任务，gang 准入后仍需要 runtime 自检和失败回滚。否则系统只是避免了调度半启动，却可能陷入运行时半启动。</p>
 <p>因此，gang 成功率不能只按 Pod 创建统计，还要看训练是否进入有效 step。平台应把调度 gang 和运行时 rendezvous 区分记录。前者由调度系统负责，后者由训练 runtime 和网络存储共同决定。</p>
 <p>这样才能区分调度问题和运行时问题。</p>
+<p><img alt="图：23.3.2 gang scheduling" src="../../assets/diagrams/part-05-orchestration-chapter-23-ai-job-scheduling-03.svg" /></p>
 <h3 id="2333-queue">23.3.3 queue<a class="headerlink" href="#2333-queue" title="Permanent link">&para;</a></h3>
 <p>Queue 是作业等待、排序和公平共享的基本单元。队列可以按团队、项目、业务线、workload 类型、优先级或环境划分，例如 <code>training-prod</code>、<code>research</code>、<code>batch-inference</code>、<code>evaluation</code>。每个队列可以有保底、上限、权重、借用策略、抢占策略和准入规则。没有队列，所有任务直接争抢全局 GPU，用户体验和组织治理都会失控。</p>
 <p>队列的价值是把组织策略变成系统规则。生产任务有保底，研究任务可以借用空闲资源，低优先级批任务可以被抢占，关键评测可以插队。队列还提供可解释等待：用户可以看到自己排在什么队列、前面有哪些任务、等待原因是 quota、gang、拓扑还是资源池不足。可解释等待比单纯 pending 更重要。</p>

@@ -1,0 +1,14 @@
+flowchart TB
+  Job["distributed job
+replicas / ranks"] --> Gang["gang scheduling
+all-or-nothing"]
+  Gang --> Queue["queue / cohort
+priority / quota"]
+  Queue --> Placement["placement
+GPU / topology / rail"]
+  Placement --> Start["rendezvous start
+all ranks ready"]
+  Start --> Run["training run"]
+  Run --> Requeue["failure / preemption
+requeue policy"]
+  Requeue --> Queue

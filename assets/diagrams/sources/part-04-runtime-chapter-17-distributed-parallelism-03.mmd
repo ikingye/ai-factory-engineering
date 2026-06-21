@@ -1,0 +1,13 @@
+flowchart TB
+  Tokens["tokens"] --> Router["router / gate
+top-k experts"]
+  Router --> Dispatch["All-to-All dispatch
+token regroup"]
+  Dispatch --> Experts["expert shards
+GPU groups"]
+  Experts --> Combine["All-to-All combine
+restore order"]
+  Combine --> Output["dense path output"]
+  Router --> Balance["load balance loss
+capacity / overflow"]
+  Balance --> Router

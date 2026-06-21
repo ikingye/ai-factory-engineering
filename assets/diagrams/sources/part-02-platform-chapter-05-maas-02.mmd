@@ -1,0 +1,14 @@
+flowchart TB
+  Key["API Key
+租户身份入口"] --> Auth["鉴权与签名
+key / secret / scope"]
+  Auth --> Tenant["tenant / project
+归属解析"]
+  Tenant --> Policy["policy bundle
+模型权限 / 数据边界"]
+  Policy --> Quota["quota check
+并发 / token / budget"]
+  Quota --> Route["route decision
+模型与资源池"]
+  Route --> Audit["audit event
+key / tenant / trace"]

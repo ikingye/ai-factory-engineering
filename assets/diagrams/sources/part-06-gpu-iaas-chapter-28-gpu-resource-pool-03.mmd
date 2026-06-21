@@ -1,0 +1,13 @@
+flowchart TB
+  Inventory["GPU inventory
+class / topology / health"] --> Demand["demand forecast
+training / inference / dev"]
+  Usage["usage history
+allocation / idle / failures"] --> Demand
+  Demand --> Plan["capacity plan
+buy / reserve / reclaim"]
+  Plan --> Pool["resource pool
+labels / quotas / tiers"]
+  Pool --> Feedback["utilization feedback
+SLO / cost / wait time"]
+  Feedback --> Demand

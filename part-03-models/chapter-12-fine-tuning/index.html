@@ -3827,6 +3827,7 @@
 <p>LoRA 也有边界。它依赖 base model 的能力，不能凭少量数据创造基础模型完全不具备的能力；数据质量差时，LoRA 仍会学习错误模式；多个 LoRA 同时加载、组合或合并可能引入服务复杂度；不同推理引擎对动态 LoRA 的支持和性能表现也不同。平台必须把 LoRA 视为模型产物，而不是随意文件。</p>
 <p>QLoRA 进一步引入量化相关取舍。量化降低显存占用，但可能影响训练稳定性、数值行为和最终质量；不同硬件、框架和量化配置可能导致结果差异。平台应记录 quantization config、base model 版本、adapter 配置和评测结果。LoRA/QLoRA 的低成本优势，只有在产物管理和服务策略清晰时才能真正规模化。</p>
 <p>服务端还要考虑 LoRA 的热加载和缓存。高频 adapter 可以常驻，低频 adapter 可以按需加载，但加载延迟、显存占用和并发隔离都要被观测。若平台忽视这些运行时成本，LoRA 训练阶段的节省可能会在服务阶段被复杂度抵消。</p>
+<p><img alt="图：12.3.2 LoRA 与 QLoRA" src="../../assets/diagrams/part-03-models-chapter-12-fine-tuning-02.svg" /></p>
 <h3 id="1233-adapter">12.3.3 adapter<a class="headerlink" href="#1233-adapter" title="Permanent link">&para;</a></h3>
 <p>Adapter 是插入模型中的小型可训练模块，通过训练少量附加参数适配特定任务。它和 LoRA 一样属于参数高效微调思路，但实现形式不同。Adapter 可以让不同任务共享同一个基础模型，同时使用不同附加模块表达任务差异。对于多任务、多租户或需要快速切换定制能力的平台，adapter 是一种重要设计选项。</p>
 <p>Adapter 的工程关注点首先是兼容性。一个 adapter 依赖特定 base model、模型结构、层位置、hidden size、tokenizer 和推理实现。基础模型升级后，旧 adapter 不一定可用；推理引擎更新后，动态加载方式也可能变化。因此注册系统必须记录 adapter 的依赖关系和兼容范围，不能只记录 artifact 路径。</p>
@@ -3859,6 +3860,7 @@
 <p>最后要支持生命周期治理。微调模型可能过期、被新数据替代、因安全问题下线，或因租户合同结束需要删除。平台应提供发布、冻结、回滚、下线、删除和审计流程。企业微调产物涉及客户数据，生命周期管理既是工程问题，也是合规和商业问题。</p>
 <p>模型管理还要支持发现和清理。多租户平台运行一段时间后，会产生大量实验 adapter、失败任务产物和过期模型。若没有状态和保留策略，存储成本会上升，错误加载风险也会增加。Registry 应区分 draft、candidate、production、deprecated 和 archived。</p>
 <p>还要支持模型卡片。每个微调产物应说明适用场景、数据来源摘要、已通过评测、已知限制、服务方式和负责人。模型卡片让应用团队知道如何使用，也让平台团队知道如何运维。</p>
+<p><img alt="图：12.3.7 微调模型管理" src="../../assets/diagrams/part-03-models-chapter-12-fine-tuning-03.svg" /></p>
 <h2 id="124">12.4 工程落地<a class="headerlink" href="#124" title="Permanent link">&para;</a></h2>
 <h3 id="1241">12.4.1 工程实现<a class="headerlink" href="#1241" title="Permanent link">&para;</a></h3>
 <p>微调任务模板应把数据、方法、资源、产物和门禁放在同一个声明中。模板既给平台调度使用，也给审计和复现使用。用户提交任务时，平台应校验租户权限、base model 是否允许微调、数据是否通过脱敏、资源是否在配额内、评测是否配置完整。缺少这些校验，微调很快会退化为不受控脚本集合。</p>

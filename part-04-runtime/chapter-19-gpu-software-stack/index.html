@@ -3911,6 +3911,7 @@
     - pod_device_visibility_reconciliation
 </code></pre>
 <p>这个 baseline 的价值在升级时最明显。containerd、CRI-O、runc、Toolkit、device plugin 任一组件升级，都可能改变设备注入路径。若 baseline 只记录版本，不记录注入模式和 spec hash，升级后即使版本看起来正确，也无法解释为什么容器内可见设备发生变化。AI Factory 应把“GPU 如何进入容器”视为可验收能力，而不是 runtime 的内部细节。</p>
+<p><img alt="图：19.3.6 NVIDIA Container Toolkit" src="../../assets/diagrams/part-04-runtime-chapter-19-gpu-software-stack-02.svg" /></p>
 <h3 id="1937-gpu-operator">19.3.7 GPU Operator<a class="headerlink" href="#1937-gpu-operator" title="Permanent link">&para;</a></h3>
 <p>GPU Operator 使用 Kubernetes Operator 模式管理 GPU 软件栈，通常可以部署或管理 driver、NVIDIA Container Toolkit、GPU Device Plugin、DCGM exporter、MIG manager、Node Feature Discovery 等组件。它的价值是把 GPU 节点配置声明化、自动化，降低手工安装和漂移风险。对于 Kubernetes GPU 集群，GPU Operator 是常见管理方式。</p>
 <p>但 GPU Operator 不是无条件更好的选择。若裸金属平台已经通过 golden image 固定 driver 和 RDMA 栈，再让 Operator 动态安装 driver，可能引入版本冲突和升级风险。若集群需要严格控制驱动升级窗口，Operator 的自动化能力也需要被平台变更流程约束。关键问题不是“是否使用 Operator”，而是哪些组件由它管理，哪些组件由节点镜像或外部 provisioning 管理。</p>
@@ -3931,6 +3932,7 @@
 <p>禁用组合不应进入生产队列。</p>
 <p>这应由系统自动执行。</p>
 <p>人工约定不够可靠。</p>
+<p><img alt="图：19.3.8 版本兼容性" src="../../assets/diagrams/part-04-runtime-chapter-19-gpu-software-stack-03.svg" /></p>
 <h2 id="194">19.4 工程落地<a class="headerlink" href="#194" title="Permanent link">&para;</a></h2>
 <h3 id="1941">19.4.1 工程实现<a class="headerlink" href="#1941" title="Permanent link">&para;</a></h3>
 <p>工程实现应从 GPU node baseline 开始。基线至少包含 OS、kernel、driver、CUDA 支持范围、NCCL、cuDNN、OFED/RDMA、Container Toolkit、DCGM、GPU Operator 策略、container runtime 和验证用例。基线发布后，节点加入资源池、升级、维修返回、重装系统都要重新验证。没有基线，节点只是“装了驱动的机器”，不是 AI Factory 可交付资源。</p>

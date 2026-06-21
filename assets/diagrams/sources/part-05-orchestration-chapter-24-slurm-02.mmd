@@ -1,0 +1,13 @@
+flowchart TB
+  User["user script"] --> Sbatch["sbatch
+submit allocation"]
+  Sbatch --> Controller["slurmctld
+queue / priority"]
+  Controller --> Nodes["allocated nodes
+GPU resources"]
+  Nodes --> Srun["srun
+launch steps"]
+  Srun --> Tasks["tasks / ranks
+CUDA_VISIBLE_DEVICES"]
+  Tasks --> Accounting["sacct / slurmdbd
+usage and state"]

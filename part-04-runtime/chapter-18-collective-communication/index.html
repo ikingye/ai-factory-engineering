@@ -3980,6 +3980,7 @@
 <p>完整 trace 应覆盖计算、通信和调度放置。</p>
 <p>三者缺一，定位都会失真。</p>
 <p>通信瓶颈分析本质上是跨层关联。</p>
+<p><img alt="图：18.3.8 通信瓶颈分析" src="../../assets/diagrams/part-04-runtime-chapter-18-collective-communication-03.svg" /></p>
 <h2 id="184">18.4 工程落地<a class="headerlink" href="#184" title="Permanent link">&para;</a></h2>
 <h3 id="1841">18.4.1 工程实现<a class="headerlink" href="#1841" title="Permanent link">&para;</a></h3>
 <p>工程实现应让训练任务自动记录通信环境。至少包括 backend、NCCL 版本、CUDA/driver 版本、关键 NCCL 环境变量、网络接口、RDMA 设备、rank 到 GPU/NIC 映射、并行组、collective metrics 和 debug 日志策略。没有这些信息，通信故障复盘会依赖人工记忆。平台应把它们写入作业元数据和运行报告。</p>

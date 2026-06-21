@@ -3973,6 +3973,7 @@
 <p>NIC 还应进入资源等级。高优训练池需要完整 rail 和稳定 RDMA；普通批量任务可能接受共享网络；推理池可能更重视 north-south 稳定性和权重分发。平台把这些差异写进资源画像和调度策略，才能把网络能力稳定交付给 workload。</p>
 <p>NIC 故障诊断要从端到端路径开始。容器内看到哪个接口，NCCL 选择哪个接口，RDMA 走哪个 GID，交换机端口是否对应预期 rail，存储流量是否与训练通信共享链路，都需要记录。只看节点网卡 up，不足以证明 AI 网络路径正确。</p>
 <p>NIC 的验收还要在容器内完成。宿主机 RDMA 测试通过，不代表训练容器拥有正确设备、权限、库和环境变量。AI workload 使用的路径，才是最终验收路径。</p>
+<p><img alt="图：34.3.6 NIC" src="../../assets/diagrams/part-08-physical-infrastructure-chapter-34-gpu-server-02.svg" /></p>
 <h3 id="3437-dpu">34.3.7 DPU<a class="headerlink" href="#3437-dpu" title="Permanent link">&para;</a></h3>
 <p>DPU 是 Data Processing Unit，通常在 NIC 基础上提供更强的数据处理、隔离、卸载和可编程能力。它可能承载虚拟网络、RDMA、加密、安全策略、存储协议、遥测、租户隔离或裸金属云控制面。DPU 的引入可以降低主机 CPU 负担，也可以把网络和安全边界从主机 OS 中部分移出。</p>
 <p>在 AI Factory 中，DPU 常见于多租户 GPU IaaS、虚拟化 GPU、裸金属交付、高性能存储和安全隔离场景。它可以让租户主机更接近“干净计算节点”，把网络策略、流量控制和部分存储路径放到独立数据面中。但这也意味着故障路径更长：用户容器、主机 OS、driver、DPU firmware、DPU OS、交换机和控制面都可能参与一次异常。</p>
@@ -3987,6 +3988,7 @@
 <p>BMC 同时是高风险管理面。管理网必须与业务网隔离，账号和密钥要集中管理，操作要审计，权限要最小化，自动化脚本不能散落凭据。一个泄露的 BMC 凭据可能意味着攻击者能关停或重装物理服务器。AI Factory 的安全边界必须覆盖 BMC。</p>
 <p>BMC 数据还应被标准化。不同厂商事件字段、传感器命名和 Redfish 实现可能不同，平台需要把它们转换成统一健康模型，例如 power_degraded、thermal_risk、firmware_required、manual_repair_required。否则上层只会看到一堆难以自动决策的硬件日志。</p>
 <p>标准化后的 BMC 事件应能驱动自动化动作。轻微告警进入观察，严重电源或温度事件触发 drain，无法恢复的硬件事件进入维修队列。事件只有能影响状态，才真正进入平台。</p>
+<p><img alt="图：34.3.8 BMC" src="../../assets/diagrams/part-08-physical-infrastructure-chapter-34-gpu-server-03.svg" /></p>
 <h3 id="3439-power-shelf">34.3.9 power shelf<a class="headerlink" href="#3439-power-shelf" title="Permanent link">&para;</a></h3>
 <p>Power shelf 或电源模块为高密度 GPU 服务器提供稳定供电。GPU 服务器功耗高，训练和推理可能长期接近满载，电力路径从机房配电、母线、PDU、机柜、电源模块到服务器内部，都有容量、冗余和故障域约束。电力不是设施团队的背景问题，而是 GPU 产能是否能兑现的前提。</p>
 <p>功耗问题在上层常表现为 GPU 降频、节点重启、BMC 告警、机柜批量异常或任务随机失败。某个 rack 物理上能安装更多服务器，不代表电力允许所有 GPU 同时满载。容量规划要看 nameplate power、实际 workload 功耗、冗余策略、降额运行、峰值和电力故障域。否则资源池会登记出无法满载的“纸面 GPU”。</p>

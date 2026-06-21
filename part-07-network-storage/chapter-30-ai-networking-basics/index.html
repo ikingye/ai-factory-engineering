@@ -3973,6 +3973,7 @@
 <p>工程上，还要让拥塞事件可见。ECN mark、PFC pause、队列丢弃、RDMA 重传、端口利用率和 workload step time 应能在同一时间轴上查看。没有可见性，拥塞控制会变成黑盒参数调优。AI 网络需要的是可解释的稳定性，而不是只追求单次 benchmark 峰值。</p>
 <p>拥塞控制策略还应有变更审计。某个交换机队列、PFC 优先级或 ECN 阈值的修改，可能影响整个训练 fabric。变更前要有基线，变更后要有回归，失败时要能回滚。网络配置应像代码一样管理，而不是依赖设备上的临时命令。</p>
 <p>拥塞控制也不能替代容量规划。如果网络长期处于拥塞控制介入状态，说明 traffic、调度或容量已经不匹配。机制能缓解拥塞，但不能把不足的物理能力变成充足能力。</p>
+<p><img alt="图：30.3.9 congestion control" src="../../assets/diagrams/part-07-network-storage-chapter-30-ai-networking-basics-03.svg" /></p>
 <h2 id="304">30.4 工程落地<a class="headerlink" href="#304" title="Permanent link">&para;</a></h2>
 <h3 id="3041">30.4.1 工程实现<a class="headerlink" href="#3041" title="Permanent link">&para;</a></h3>
 <p>AI 网络工程落地可以分成四类资产。第一类是网络域：推理入口、训练 fabric、存储网络、管理网络和 BMC 网络应有清晰边界。第二类是能力标签：节点所属 rack、leaf、spine、rail、NIC、NUMA、存储路径和故障域要进入资源画像。第三类是基线：节点间带宽、延迟、NCCL、RDMA、存储读写和端口计数都要有 baseline。第四类是变更闭环：网络配置、firmware、driver 和调度策略变化后要回归。</p>

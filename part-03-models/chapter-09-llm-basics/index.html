@@ -3827,6 +3827,7 @@
 <p>许多推理优化都围绕 attention 展开。FlashAttention 关注 attention 计算的 I/O 效率；paged attention 关注 KV Cache 的分页和复用；prefix cache 关注重复前缀的缓存命中；speculative decoding 则通过候选 token 加速 decode。理解 attention，可以帮助平台团队判断优化到底解决的是计算、访存、缓存还是调度问题。</p>
 <p>排障时，attention 相关问题常表现为 TTFT 上升、HBM 压力增加、长上下文请求挤压短请求、TPOT 抖动或 OOM。诊断入口不是只看 GPU utilization，而是同时看 input token 分布、prefill time、KV Cache 使用率、batch composition 和请求队列。Attention 是模型能力来源之一，也是长上下文成本来源之一。</p>
 <p>设计应用时，也要尊重 attention 的成本边界。RAG 不应把所有候选文档无差别拼进 context，Agent 不应无限追加历史，办公助手不应默认携带整份文档。更好的做法是用检索、摘要、窗口裁剪和缓存控制上下文质量。Attention 能让模型利用上下文，但不会替平台免费筛选上下文。</p>
+<p><img alt="图：9.3.2 attention" src="../../assets/diagrams/part-03-models-chapter-09-llm-basics-02.svg" /></p>
 <h3 id="933-tokenizer">9.3.3 tokenizer<a class="headerlink" href="#933-tokenizer" title="Permanent link">&para;</a></h3>
 <p>Tokenizer 把文本转换成 token ids，也把模型输出的 token ids 转回文本。它决定同一段文本在模型中被切成多少 token，以及哪些字符、词片段或字节序列能被表示。不同模型可能使用不同 tokenizer，同一段中文、英文、代码或符号文本的 token 数会不同。因此 tokenizer 是上下文长度、限流、计量和账单的基础口径。</p>
 <p>Tokenizer 的不一致会制造很多平台问题。应用侧用一个 tokenizer 估算没有超限，服务端用另一个 tokenizer 计算后拒绝；计量系统按请求模型统计 token，fallback 后实际服务模型 tokenizer 不同；模型升级时 tokenizer 变化，导致 token 数、成本和上下文利用率同时变化。若平台没有记录 tokenizer 版本，很多账单和性能变化都会变得难以解释。</p>
@@ -3839,6 +3840,7 @@
 <p>Prefill 和 decode 的资源特征不同，因此需要不同优化。Prefill 更适合大块并行计算，关注长输入、batching 和算力利用；decode 更关注持续调度、cache 命中、访存效率和流式输出稳定性。把两者混在一个平均延迟里，会掩盖瓶颈。一个系统可能 prefill 很慢但 decode 稳定，也可能首 token 很快但后续输出拖沓。</p>
 <p>工程上还会出现 prefill/decode 分离（PD 分离）等架构。它把 prefill 和 decode 放到不同资源池或服务路径中，试图分别优化吞吐、延迟和缓存管理。但这种设计会引入更复杂的状态转移、网络传输和调度逻辑。是否采用 PD 分离，应基于 workload、模型大小、长上下文比例和运维复杂度，而不是把它当作默认答案。</p>
 <p>容量规划也应分别估算 prefill 和 decode。长输入短输出的 RAG 问答，瓶颈可能在 prefill；短输入长输出的写作和代码生成，瓶颈可能在 decode；交互式 Chat 则同时关心首 token 和输出节奏。把所有请求折算成平均 token，会让资源池设计失真。正确做法是建立 workload profile。</p>
+<p><img alt="图：9.3.4 prefill 与 decode" src="../../assets/diagrams/part-03-models-chapter-09-llm-basics-03.svg" /></p>
 <h3 id="935-kv-cache">9.3.5 KV Cache<a class="headerlink" href="#935-kv-cache" title="Permanent link">&para;</a></h3>
 <p>KV Cache 保存历史 token 在各层 attention 中的 Key 和 Value，避免 decode 阶段每生成一个 token 都重新计算完整上下文。没有 KV Cache，长输出的重复计算会非常昂贵；有了 KV Cache，模型可以把历史上下文以缓存形式复用。它是现代 LLM 推理服务的核心状态，也是推理并发容量的关键约束。</p>
 <p>KV Cache 的占用与模型层数、hidden size、并发序列数、上下文长度、输出长度和数据类型相关。它不是固定开销，而是随着请求生命周期增长。一个服务实例的权重可能能放进 HBM，但在高并发、长上下文或长输出时，KV Cache 可能先耗尽显存。此时 GPU 还有计算余量，也无法继续接收请求。这就是推理容量不能只看权重大小的原因。</p>

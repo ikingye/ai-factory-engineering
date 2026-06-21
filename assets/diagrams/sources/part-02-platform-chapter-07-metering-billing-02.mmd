@@ -1,0 +1,17 @@
+flowchart TB
+  Request["request trace
+model / tenant / key"] --> Count["token counter
+input / output / reasoning"]
+  Count --> Cache["cache accounting
+read / write tokens"]
+  Count --> Usage["usage event
+immutable fact"]
+  Cache --> Usage
+  Usage --> Price["pricing version
+model / SLA / discount"]
+  Price --> Invoice["bill line
+tenant / project / cost center"]
+  Usage --> Ledger["cost ledger
+GPU / provider / overhead"]
+  Ledger --> Margin["margin view
+revenue - cost"]

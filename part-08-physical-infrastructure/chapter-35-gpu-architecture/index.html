@@ -3859,6 +3859,7 @@
 <p>生产系统使用 Tensor Core 能力时，必须同时验证性能和质量。推理中，INT8 或 FP8 可能提升吞吐、降低显存和能耗，但需要评测精度、稳定性、安全性和业务指标；训练中，低精度可能影响 loss scale、梯度稳定和收敛。硬件能力不能直接等同于生产可用能力，必须经过模型评测和回滚方案。</p>
 <p>观测上，应记录 Tensor Core 利用率、GEMM kernel 选择、低精度路径是否启用、不同 batch/shape 下的吞吐和模型质量指标。若新 GPU 上线后性能不达预期，第一步不是质疑硬件，而是确认 runtime 是否真正使用了目标 Tensor Core 路径。Tensor Core 是算力杠杆，但需要软件和模型共同撬动。</p>
 <p>Tensor Core 优化也会改变资源需求。更低精度减少 HBM 占用，可能允许更大 batch 或更多并发；更高吞吐又可能增加网络、KV Cache 和输出 streaming 压力。优化一个算子后，系统瓶颈会移动。成熟平台会在每次引擎或精度升级后重新测端到端曲线，而不是只看单 kernel 提速。</p>
+<p><img alt="图：35.3.2 Tensor Core" src="../../assets/diagrams/part-08-physical-infrastructure-chapter-35-gpu-architecture-03.svg" /></p>
 <h3 id="3533-cuda-core">35.3.3 CUDA core<a class="headerlink" href="#3533-cuda-core" title="Permanent link">&para;</a></h3>
 <p>CUDA core 是 GPU 的通用并行计算单元，适合执行大量标量或向量操作。虽然大模型最显眼的计算是矩阵乘，但并非所有工作都落在 Tensor Core 上。激活函数、归一化、位置编码、采样、top-k/top-p、索引、mask、数据重排、部分 attention 辅助逻辑、自定义算子和许多小 kernel，仍会使用 CUDA core 或通用执行路径。</p>
 <p>在线推理 decode 阶段尤其能体现 CUDA core 与内存访问的重要性。每次生成一个 token，不仅有矩阵计算，还有 KV Cache 读取、logits 处理、采样、停止条件判断和请求调度。batch 小或请求形态不规则时，通用 kernel 和 kernel launch 开销会更突出。只看 Tensor Core 峰值，无法解释 TPOT、长尾延迟和 streaming 抖动。</p>

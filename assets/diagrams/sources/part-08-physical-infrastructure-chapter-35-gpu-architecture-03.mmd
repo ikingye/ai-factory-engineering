@@ -1,0 +1,14 @@
+flowchart TB
+  Workload["AI math workload
+GEMM / attention / MLP"] --> Precision["precision mode
+FP8 / BF16 / FP16 / INT8"]
+  Precision --> TensorCore["Tensor Core
+matrix acceleration"]
+  TensorCore --> SM["SM scheduling
+warps / registers"]
+  SM --> HBM["HBM bandwidth
+load weights / activations"]
+  HBM --> Throughput["effective throughput
+latency / tokens/s"]
+  Throughput --> Profile["model profile
+capacity and cost"]
