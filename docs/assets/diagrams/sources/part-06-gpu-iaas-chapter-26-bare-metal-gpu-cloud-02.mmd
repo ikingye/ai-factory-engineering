@@ -1,0 +1,13 @@
+flowchart TB
+  Request["bare metal request
+GPU class / topology"] --> Inventory["inventory check
+health / reservation"]
+  Inventory --> BMC["BMC / Redfish
+power and boot"]
+  BMC --> PXE["PXE / image install"]
+  PXE --> Driver["driver and runtime
+CUDA / NCCL / DCGM"]
+  Driver --> Admission["node admission
+GPU / NIC / NVLink tests"]
+  Admission --> Ready["ready node
+assign to pool"]

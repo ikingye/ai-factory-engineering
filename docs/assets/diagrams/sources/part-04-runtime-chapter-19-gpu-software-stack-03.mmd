@@ -1,0 +1,11 @@
+flowchart TB
+  Kernel["Linux kernel"] --> Driver["NVIDIA driver"]
+  Driver --> CUDA["CUDA runtime
+libcuda / libcudart"]
+  CUDA --> Libraries["cuDNN / NCCL / TensorRT"]
+  Libraries --> Framework["PyTorch / JAX / vLLM"]
+  Framework --> Workload["training / inference workload"]
+  Driver --> DCGM["DCGM / NVML
+health telemetry"]
+  DCGM --> Admission["node admission
+version gate"]

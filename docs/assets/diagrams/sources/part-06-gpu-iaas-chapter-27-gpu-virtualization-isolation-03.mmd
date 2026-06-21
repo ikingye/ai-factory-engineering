@@ -1,0 +1,13 @@
+flowchart TB
+  TenantA["tenant A workload"] --> Boundary["isolation boundary
+VM / container / MIG"]
+  TenantB["tenant B workload"] --> Boundary
+  Boundary --> Device["GPU device
+memory / SM / copy engine"]
+  Boundary --> Host["host surface
+driver / runtime / logs"]
+  Device --> Risk["risk signals
+leakage / interference / reset"]
+  Host --> Risk
+  Risk --> Control["control action
+quota / placement / quarantine"]

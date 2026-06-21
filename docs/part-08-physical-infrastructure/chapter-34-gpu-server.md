@@ -209,6 +209,7 @@ NIC 故障诊断要从端到端路径开始。容器内看到哪个接口，NCCL
 
 NIC 的验收还要在容器内完成。宿主机 RDMA 测试通过，不代表训练容器拥有正确设备、权限、库和环境变量。AI workload 使用的路径，才是最终验收路径。
 
+![图：34.3.6 NIC](../assets/diagrams/part-08-physical-infrastructure-chapter-34-gpu-server-02.svg)
 
 ### 34.3.7 DPU
 
@@ -239,6 +240,7 @@ BMC 数据还应被标准化。不同厂商事件字段、传感器命名和 Red
 
 标准化后的 BMC 事件应能驱动自动化动作。轻微告警进入观察，严重电源或温度事件触发 drain，无法恢复的硬件事件进入维修队列。事件只有能影响状态，才真正进入平台。
 
+![图：34.3.8 BMC](../assets/diagrams/part-08-physical-infrastructure-chapter-34-gpu-server-03.svg)
 
 ### 34.3.9 power shelf
 

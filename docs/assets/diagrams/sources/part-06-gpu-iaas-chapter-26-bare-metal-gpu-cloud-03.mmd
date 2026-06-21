@@ -1,0 +1,13 @@
+flowchart TB
+  OS["OS image"] --> Bootstrap["bootstrap agent
+network / storage / users"]
+  Bootstrap --> Driver["GPU driver
+version pin"]
+  Bootstrap --> Fabric["RDMA fabric
+OFED / RoCE / IB"]
+  Driver --> Test["acceptance tests
+DCGM / NCCL / nvbandwidth"]
+  Fabric --> Test
+  Test --> Label["resource labels
+GPU / NIC / topology"]
+  Label --> Pool["GPU cloud pool"]

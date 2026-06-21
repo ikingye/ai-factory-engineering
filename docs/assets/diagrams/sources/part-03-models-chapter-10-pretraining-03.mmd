@@ -1,0 +1,14 @@
+flowchart TB
+  Dataset["clean dataset
+shards / tokens"] --> Train["training step
+forward / backward"]
+  Train --> Signal["stability signals
+loss / grad norm / overflow"]
+  Signal --> Decision{ "stable?" }
+  Decision -->|yes| Checkpoint["checkpoint
+weights / optimizer / rng"]
+  Decision -->|no| Mitigate["mitigation
+lr / batch / skip / rollback"]
+  Mitigate --> Train
+  Checkpoint --> Resume["resume evidence
+可恢复训练"]

@@ -220,6 +220,7 @@ tenant_isolation_evidence:
 
 这个对象让安全评审从“配置看起来正确”变成“关键路径有证据”。例如某个租户禁止第三方 provider，evidence 要能抽样证明 Gateway 决策确实拒绝了外联；某个租户要求日志脱敏，evidence 要能证明 trace 中只有引用和 hash；某个租户使用专属资源池，evidence 要能证明请求没有进入共享池。它也是后续 PRR 的输入：高敏租户没有隔离证据，不应进入生产。
 
+![图：5.3.4 API Key](../assets/diagrams/part-02-platform-chapter-05-maas-02.svg)
 
 ### 5.3.5 租户、项目、配额
 
@@ -300,6 +301,7 @@ sla_credit_model:
 
 MaaS 客户上线时，应把 `customer_onboarding_evidence`、`tenant_boundary`、`sla_credit_model` 和 `billing_dispute_replay` 串起来。一个可售的租户不是“能调用 API”，而是具备身份、权限、模型访问、配额、预算、SLA、支持、账单和争议处理证据。尤其是高价值客户，SLA 承诺必须对应实际服务等级：Premium 客户若没有 dedicated pool、error budget、oncall、状态通知和赔付模型，就不应写入 Premium SLA。
 
+![图：5.3.7 SLA 与服务等级](../assets/diagrams/part-02-platform-chapter-05-maas-03.svg)
 
 ## 5.4 工程落地
 

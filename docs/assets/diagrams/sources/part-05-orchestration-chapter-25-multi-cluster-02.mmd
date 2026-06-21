@@ -1,0 +1,14 @@
+flowchart TB
+  Control["global control plane
+policy / inventory"] --> ClusterA["training cluster
+large GPU pool"]
+  Control --> ClusterB["inference cluster
+low latency pool"]
+  Control --> ClusterC["dev cluster
+shared / elastic"]
+  ClusterA --> Telemetry["capacity telemetry"]
+  ClusterB --> Telemetry
+  ClusterC --> Telemetry
+  Telemetry --> Placement["federated placement
+quota / cost / locality"]
+  Placement --> Control

@@ -1,0 +1,12 @@
+flowchart TB
+  Prompt["prompt tokens"] --> Prefill["prefill
+并行处理输入"]
+  Prefill --> KV["KV Cache
+按层保存历史"]
+  KV --> Decode["decode loop
+逐 token 生成"]
+  Decode --> Stream["streaming output
+TTFT / TPOT"]
+  Decode --> KV
+  Stream --> Metrics["serving metrics
+latency / cache / tokens"]

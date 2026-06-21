@@ -1,0 +1,13 @@
+flowchart TB
+  Online["online inference
+SLO protected"] --> Guard["isolation guard
+priority / eviction"]
+  Offline["offline training
+best-effort / batch"] --> Guard
+  Guard --> NodePool["shared GPU pool
+labels / taints / quotas"]
+  NodePool --> Observe["interference signals
+latency / SM / HBM"]
+  Observe --> Policy["mixing policy
+allow / throttle / isolate"]
+  Policy --> Guard

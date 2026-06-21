@@ -1,0 +1,12 @@
+flowchart TB
+  Pod["container workload"] --> Runtime["container runtime
+containerd / runc"]
+  Runtime --> Toolkit["NVIDIA Container Toolkit
+prestart / CDI"]
+  Toolkit --> Devices["GPU devices
+/dev/nvidia*"]
+  Toolkit --> Libs["driver libraries
+mount / env"]
+  Devices --> CUDAApp["CUDA application"]
+  Libs --> CUDAApp
+  CUDAApp --> Driver["host driver"]

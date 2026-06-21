@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 774" width="960" height="774">
+  <defs>
+    <marker id="arrowA" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#7c3aed"/>
+    </marker>
+    <marker id="arrowB" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#10b981"/>
+    </marker>
+    <marker id="arrowC" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2563eb"/>
+    </marker>
+    <marker id="arrowE" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#f97316"/>
+    </marker>
+    <marker id="arrowF" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#7c3aed"/>
+    </marker>
+    <marker id="arrowG" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#ef4444"/>
+    </marker>
+    <marker id="arrowH" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#6b7280"/>
+    </marker>
+    <filter id="shadowSoft" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="3" stdDeviation="6" flood-color="#0f172a" flood-opacity="0.12"/>
+    </filter>
+    <filter id="shadowGlass" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="10" stdDeviation="16" flood-color="#020617" flood-opacity="0.28"/>
+    </filter>
+    <style>
+    text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', 'Microsoft JhengHei', 'SimHei', sans-serif; }
+    .title { font-size: 30px; font-weight: 700; fill: #111827; }
+    .subtitle { font-size: 14px; font-weight: 500; fill: #6b7280; }
+    .section { font-size: 13px; font-weight: 700; fill: #2563eb; letter-spacing: 1.4px; }
+    .section-sub { font-size: 12px; font-weight: 500; fill: #94a3b8; }
+    .node-title { font-size: 18px; font-weight: 700; fill: #111827; }
+    .node-sub { font-size: 12px; font-weight: 500; fill: #6b7280; }
+    .node-type { font-size: 12px; font-weight: 700; fill: #9ca3af; letter-spacing: 0.08em; }
+    .arrow-label { font-size: 12px; font-weight: 600; fill: #6b7280; }
+    .legend { font-size: 12px; font-weight: 500; fill: #6b7280; }
+    .footnote { font-size: 12px; font-weight: 500; fill: #94a3b8; }
+    </style>
+  </defs>
+  <rect width="960.0" height="774.0" fill="#ffffff"/>
+  <text x="480.0" y="56" text-anchor="middle" class="title">25.3.1 多集群管理</text>
+  <text x="480.0" y="82" text-anchor="middle" class="subtitle">part-05-orchestration/chapter-25-multi-cluster.md:79</text>
+  <path d="M 480.0,224.0 L 480.0,244.4 L 264.5,275.6 L 264.5,296.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 480.0,224.0 L 480.0,296.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 480.0,224.0 L 480.0,244.4 L 695.5,275.6 L 695.5,296.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 264.5,366.0 L 264.5,386.4 L 480.0,417.6 L 480.0,438.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 480.0,366.0 L 480.0,438.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 695.5,366.0 L 695.5,386.4 L 480.0,417.6 L 480.0,438.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 480.0,496.0 L 480.0,568.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 587.5,603.0 L 607.9,603.0 L 597.4,189.0 L 577.0,189.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <rect x="383.0" y="154.0" width="194.0" height="70.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
+  <text x="480.0" y="189.0" text-anchor="middle" class="node-title">global control plane</text>
+  <text x="480.0" y="211.0" text-anchor="middle" class="node-sub">policy / inventory</text>
+  <rect x="181.5" y="296.0" width="166.0" height="70.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
+  <text x="264.5" y="331.0" text-anchor="middle" class="node-title">training cluster</text>
+  <text x="264.5" y="353.0" text-anchor="middle" class="node-sub">large GPU pool</text>
+  <rect x="393.5" y="296.0" width="173.0" height="70.0" rx="10.0" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.8"/>
+  <text x="480.0" y="331.0" text-anchor="middle" class="node-title">inference cluster</text>
+  <text x="480.0" y="353.0" text-anchor="middle" class="node-sub">low latency pool</text>
+  <rect x="612.5" y="296.0" width="166.0" height="70.0" rx="10.0" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.8"/>
+  <text x="695.5" y="331.0" text-anchor="middle" class="node-title">dev cluster</text>
+  <text x="695.5" y="353.0" text-anchor="middle" class="node-sub">shared / elastic</text>
+  <rect x="390.0" y="438.0" width="180.0" height="58.0" rx="10.0" fill="#f0fdfa" stroke="#99f6e4" stroke-width="1.8"/>
+  <text x="480.0" y="467.0" text-anchor="middle" class="node-title">capacity telemetry</text>
+  <rect x="372.5" y="568.0" width="215.0" height="70.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8"/>
+  <text x="480.0" y="603.0" text-anchor="middle" class="node-title">federated placement</text>
+  <text x="480.0" y="625.0" text-anchor="middle" class="node-sub">quota / cost / locality</text>
+  <text x="680.0" y="758.0" class="footnote">Rendered with fireworks-tech-graph</text>
+</svg>

@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1040 600" width="1040" height="600">
+  <defs>
+    <marker id="arrowA" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#7c3aed"/>
+    </marker>
+    <marker id="arrowB" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#10b981"/>
+    </marker>
+    <marker id="arrowC" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2563eb"/>
+    </marker>
+    <marker id="arrowE" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#f97316"/>
+    </marker>
+    <marker id="arrowF" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#7c3aed"/>
+    </marker>
+    <marker id="arrowG" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#ef4444"/>
+    </marker>
+    <marker id="arrowH" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#6b7280"/>
+    </marker>
+    <filter id="shadowSoft" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="3" stdDeviation="6" flood-color="#0f172a" flood-opacity="0.12"/>
+    </filter>
+    <filter id="shadowGlass" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="10" stdDeviation="16" flood-color="#020617" flood-opacity="0.28"/>
+    </filter>
+    <style>
+    text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', 'Microsoft JhengHei', 'SimHei', sans-serif; }
+    .title { font-size: 30px; font-weight: 700; fill: #111827; }
+    .subtitle { font-size: 14px; font-weight: 500; fill: #6b7280; }
+    .section { font-size: 13px; font-weight: 700; fill: #2563eb; letter-spacing: 1.4px; }
+    .section-sub { font-size: 12px; font-weight: 500; fill: #94a3b8; }
+    .node-title { font-size: 18px; font-weight: 700; fill: #111827; }
+    .node-sub { font-size: 12px; font-weight: 500; fill: #6b7280; }
+    .node-type { font-size: 12px; font-weight: 700; fill: #9ca3af; letter-spacing: 0.08em; }
+    .arrow-label { font-size: 12px; font-weight: 600; fill: #6b7280; }
+    .legend { font-size: 12px; font-weight: 500; fill: #6b7280; }
+    .footnote { font-size: 12px; font-weight: 500; fill: #94a3b8; }
+    </style>
+  </defs>
+  <rect width="1040.0" height="600.0" fill="#ffffff"/>
+  <text x="520.0" y="56" text-anchor="middle" class="title">25.3.3 离线与在线混部</text>
+  <text x="520.0" y="82" text-anchor="middle" class="subtitle">part-05-orchestration/chapter-25-multi-cluster.md:117</text>
+  <rect x="78.5" y="118.0" width="241.0" height="274.0" rx="16.0" fill="#f8fafc" stroke="#dbe5f1" stroke-width="1.4" stroke-dasharray="7 5"/>
+  <text x="96.5" y="142.0" class="section">阶段 1</text>
+  <text x="96.5" y="162.0" class="section-sub">online inference -&gt; isolation guard</text>
+  <rect x="357.5" y="118.0" width="276.0" height="274.0" rx="16.0" fill="#ffffff" stroke="#dbe5f1" stroke-width="1.4" stroke-dasharray="7 5"/>
+  <text x="375.5" y="142.0" class="section">阶段 2</text>
+  <text x="375.5" y="162.0" class="section-sub">offline training -&gt; shared GPU pool</text>
+  <rect x="671.5" y="118.0" width="290.0" height="274.0" rx="16.0" fill="#f8fafc" stroke="#dbe5f1" stroke-width="1.4" stroke-dasharray="7 5"/>
+  <text x="689.5" y="142.0" class="section">阶段 3</text>
+  <text x="689.5" y="162.0" class="section-sub">interference signals -&gt; mixing policy</text>
+  <path d="M 199.0,242.0 L 199.0,270.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 495.5,242.0 L 495.5,359.0 L 199.0,359.0 L 199.0,340.0" fill="none" stroke="#ef4444" stroke-width="2.4" marker-end="url(#arrowG)"/>
+  <path d="M 292.5,305.0 L 384.5,305.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 606.5,305.0 L 626.9,305.0 L 699.1,207.0 L 719.5,207.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 816.5,242.0 L 816.5,270.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 816.5,340.0 L 816.5,359.0 L 199.0,359.0 L 199.0,340.0" fill="none" stroke="#ef4444" stroke-width="2.4" marker-end="url(#arrowG)"/>
+  <rect x="116.0" y="172.0" width="166.0" height="70.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
+  <text x="199.0" y="207.0" text-anchor="middle" class="node-title">online inference</text>
+  <text x="199.0" y="229.0" text-anchor="middle" class="node-sub">SLO protected</text>
+  <rect x="105.5" y="270.0" width="187.0" height="70.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
+  <text x="199.0" y="305.0" text-anchor="middle" class="node-title">isolation guard</text>
+  <text x="199.0" y="327.0" text-anchor="middle" class="node-sub">priority / eviction</text>
+  <rect x="402.0" y="172.0" width="187.0" height="70.0" rx="10.0" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.8"/>
+  <text x="495.5" y="207.0" text-anchor="middle" class="node-title">offline training</text>
+  <text x="495.5" y="229.0" text-anchor="middle" class="node-sub">best-effort / batch</text>
+  <rect x="384.5" y="270.0" width="222.0" height="70.0" rx="10.0" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.8"/>
+  <text x="495.5" y="305.0" text-anchor="middle" class="node-title">shared GPU pool</text>
+  <text x="495.5" y="327.0" text-anchor="middle" class="node-sub">labels / taints / quotas</text>
+  <rect x="719.5" y="172.0" width="194.0" height="70.0" rx="10.0" fill="#f0fdfa" stroke="#99f6e4" stroke-width="1.8"/>
+  <text x="816.5" y="207.0" text-anchor="middle" class="node-title">interference signals</text>
+  <text x="816.5" y="229.0" text-anchor="middle" class="node-sub">latency / SM / HBM</text>
+  <rect x="698.5" y="270.0" width="236.0" height="70.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8"/>
+  <text x="816.5" y="305.0" text-anchor="middle" class="node-title">mixing policy</text>
+  <text x="816.5" y="327.0" text-anchor="middle" class="node-sub">allow / throttle / isolate</text>
+  <line x1="42.0" y1="562.0" x2="72.0" y2="562.0" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <text x="82.0" y="566.0" class="legend">主路径 / 阶段推进</text>
+  <line x1="42.0" y1="584.0" x2="72.0" y2="584.0" stroke="#ef4444" stroke-width="2.4" marker-end="url(#arrowG)"/>
+  <text x="82.0" y="588.0" class="legend">反馈 / 回退</text>
+  <text x="760.0" y="584.0" class="footnote">Rendered with fireworks-tech-graph</text>
+</svg>

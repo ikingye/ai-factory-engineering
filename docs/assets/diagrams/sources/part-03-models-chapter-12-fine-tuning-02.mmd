@@ -1,0 +1,14 @@
+flowchart TB
+  Base["base model
+frozen weights"] --> Adapter["LoRA / adapter
+小参数增量"]
+  Data["domain dataset
+清洗 / 脱敏 / 切分"] --> Train["fine-tuning job
+trainer / GPU / checkpoint"]
+  Adapter --> Train
+  Train --> Eval["eval gate
+质量 / 安全 / 回归"]
+  Eval --> Registry["model registry
+adapter + base binding"]
+  Registry --> Serve["serving route
+租户定制模型"]

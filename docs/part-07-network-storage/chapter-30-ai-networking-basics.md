@@ -216,6 +216,7 @@ AI Factory 应把拥塞控制纳入准入和变更流程。上线前做基准，
 
 拥塞控制也不能替代容量规划。如果网络长期处于拥塞控制介入状态，说明 traffic、调度或容量已经不匹配。机制能缓解拥塞，但不能把不足的物理能力变成充足能力。
 
+![图：30.3.9 congestion control](../assets/diagrams/part-07-network-storage-chapter-30-ai-networking-basics-03.svg)
 
 ## 30.4 工程落地
 

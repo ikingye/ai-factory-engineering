@@ -1,0 +1,14 @@
+flowchart TB
+  Catalog["model catalog
+能力与等级"] --> SLA["service level
+latency / availability"]
+  SLA --> Pool["serving pool
+共享 / 专属 / premium"]
+  SLA --> Limit["limit policy
+QPS / TPM / concurrency"]
+  Pool --> Monitor["SLO telemetry
+TTFT / TPOT / errors"]
+  Limit --> Monitor
+  Monitor --> Support["support workflow
+告警 / 赔付 / 迁移"]
+  Support --> Catalog

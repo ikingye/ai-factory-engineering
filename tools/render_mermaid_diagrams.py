@@ -1124,13 +1124,16 @@ def export_png(svg: Path, png: Path) -> None:
     subprocess.run(["rsvg-convert", str(svg), "-o", str(png)], check=True, cwd=ROOT)
 
 
-def collect_from_markdown() -> list[dict[str, object]]:
+def collect_from_markdown(base_indexes: dict[str, int] | None = None) -> list[dict[str, object]]:
+    base_indexes = base_indexes or {}
     items: list[dict[str, object]] = []
     for markdown_path in iter_markdown_files():
         text = markdown_path.read_text(encoding="utf-8")
-        for index, match in enumerate(MERMAID_RE.finditer(text), start=1):
+        rel_doc = markdown_path.relative_to(DOCS).as_posix()
+        base_index = base_indexes.get(rel_doc, 0)
+        for inline_index, match in enumerate(MERMAID_RE.finditer(text), start=1):
+            index = base_index + inline_index
             code = match.group(1).strip("\n")
-            rel_doc = markdown_path.relative_to(DOCS).as_posix()
             name = slugify(markdown_path.relative_to(DOCS), index)
             items.append(
                 {
@@ -1184,10 +1187,13 @@ def render_all(write: bool) -> list[dict[str, object]]:
     ASSET_DIR.mkdir(parents=True, exist_ok=True)
     SOURCE_DIR.mkdir(parents=True, exist_ok=True)
     manifest: list[dict[str, object]] = []
-    source_items = collect_from_markdown()
-    replacing_markdown = bool(source_items)
-    if not source_items:
-        source_items = collect_from_sources()
+    existing_items = collect_from_sources()
+    base_indexes: dict[str, int] = defaultdict(int)
+    for item in existing_items:
+        base_indexes[str(item["source"])] = max(base_indexes[str(item["source"])], int(item["index"]))
+    inline_items = collect_from_markdown(base_indexes)
+    replacing_markdown = bool(inline_items)
+    source_items = existing_items + inline_items
 
     replacements_by_path: dict[Path, list[tuple[tuple[int, int], str]]] = defaultdict(list)
     for item in source_items:

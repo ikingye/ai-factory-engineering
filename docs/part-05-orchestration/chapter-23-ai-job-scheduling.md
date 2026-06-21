@@ -103,6 +103,7 @@ Gang 还要考虑启动阶段的真实依赖。所有 worker Pod 创建成功，
 
 这样才能区分调度问题和运行时问题。
 
+![图：23.3.2 gang scheduling](../assets/diagrams/part-05-orchestration-chapter-23-ai-job-scheduling-03.svg)
 
 ### 23.3.3 queue
 

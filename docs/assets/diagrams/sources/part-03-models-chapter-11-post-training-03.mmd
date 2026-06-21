@@ -1,0 +1,12 @@
+flowchart TB
+  Policy["safety policy
+允许 / 拒绝 / 升级"] --> Data["safety data
+红队 / 真实反馈"]
+  Data --> Tune["post-training
+SFT / preference / refusal"]
+  Tune --> Guard["runtime guardrail
+输入输出策略"]
+  Guard --> Feedback["safety feedback
+false allow / false reject"]
+  Feedback --> Policy
+  Feedback --> Data

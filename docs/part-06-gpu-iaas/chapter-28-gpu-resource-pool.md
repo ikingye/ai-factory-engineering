@@ -499,6 +499,7 @@ capacity_view:
 
 这个视图能解释扩容争议。采购团队说 GPU 到货，设施团队说 rack 已上电，平台团队却不能承诺大训练，是因为 workload-fit GPU 还受 power、cooling、fabric、storage 或准入状态约束。资源池把这些约束展开，容量讨论就不再停留在“还有多少卡”。
 
+![图：28.3.8 capacity planning](../assets/diagrams/part-06-gpu-iaas-chapter-28-gpu-resource-pool-03.svg)
 
 ## 28.4 工程落地
 

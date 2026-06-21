@@ -1,0 +1,13 @@
+flowchart TB
+  Revenue["revenue per token
+价格 / 合同 / 折扣"] --> Gross["gross margin
+按模型与租户"]
+  Direct["direct cost
+GPU / provider / power"] --> Gross
+  Shared["shared overhead
+平台 / 运维 / 空闲"] --> Gross
+  Gross --> Decision["pricing decision
+调价 / 降级 / 专属池"]
+  Decision --> Quota["quota and routing
+预算 / SLA / fallback"]
+  Quota --> Revenue

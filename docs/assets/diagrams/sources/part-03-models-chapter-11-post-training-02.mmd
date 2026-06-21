@@ -1,0 +1,16 @@
+flowchart TB
+  Base["base model"] --> SFT["SFT
+指令跟随基础"]
+  SFT --> Pref["preference data
+chosen / rejected"]
+  Pref --> DPO["DPO / RLHF
+偏好优化"]
+  DPO --> Safety["safety tuning
+拒答 / 边界"]
+  Safety --> Eval["alignment eval
+helpful / harmless"]
+  Eval --> Release["serving candidate
+灰度发布"]
+  Eval --> DataFix["data repair
+标注与规则修正"]
+  DataFix --> Pref
