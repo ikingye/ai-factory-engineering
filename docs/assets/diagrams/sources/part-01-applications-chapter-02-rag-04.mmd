@@ -1,0 +1,10 @@
+flowchart LR
+  Docs["document / ACL / lineage"] --> Contract["rag_index_release_contract"]
+  Contract --> Gateway["rag_agent_admission_context"]
+  Gateway --> Perm["retrieval_permission_decision"]
+  Perm --> Context["rag_context_snapshot"]
+  Context --> Replay["rag_context_replay_bundle"]
+  ACL["ACL or delete change"] --> Invalidate["retrieval_acl_invalidation_event"]
+  Invalidate --> Contract
+  Invalidate --> Cache["index / rerank / context cache invalidation"]
+  Replay --> Regression["rag_quality_regression_record"]

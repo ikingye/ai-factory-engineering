@@ -1,0 +1,16 @@
+flowchart TB
+  Demand["业务需求 / 应用清单"] --> Model["模型路径 / 评测目标"]
+  Demand --> SLO["SLO / 安全 / 合规"]
+  Model --> Capacity["容量规划 / 成本模型"]
+  SLO --> Platform["MaaS / Gateway / 租户 / 计量"]
+  Capacity --> GPU["GPU / 服务器 / 资源池"]
+  Capacity --> Network["网络 / RDMA / 拓扑"]
+  Capacity --> Storage["对象存储 / PFS / NVMe"]
+  GPU --> Orchestration["Kubernetes / Slurm / Queue / Quota"]
+  Network --> Orchestration
+  Storage --> Orchestration
+  Orchestration --> Runtime["推理引擎 / 训练框架"]
+  Runtime --> Serving["模型服务 / 训练任务"]
+  Serving --> Ops["观测 / SRE / 成本"]
+  Ops --> Acceptance["准入 / 验收 / 基线"]
+  Acceptance --> Launch["分阶段上线"]

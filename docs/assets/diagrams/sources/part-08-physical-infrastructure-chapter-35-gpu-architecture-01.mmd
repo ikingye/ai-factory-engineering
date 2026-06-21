@@ -1,0 +1,11 @@
+flowchart TB
+  Model["Model: matmul / attention / KV Cache"] --> Framework["Framework / Engine"]
+  Framework --> Kernel["CUDA Kernels / Compiler"]
+  Kernel --> SM["SM Scheduler"]
+  SM --> TensorCore["Tensor Core"]
+  SM --> CUDACore["CUDA Core"]
+  TensorCore --> HBM["HBM Capacity / Bandwidth"]
+  CUDACore --> HBM
+  HBM --> Interconnect["NVLink / NVSwitch / PCIe"]
+  Interconnect --> MultiGPU["Multi-GPU Parallelism"]
+  MultiGPU --> Metrics["tokens/s / step time / tokens/W"]

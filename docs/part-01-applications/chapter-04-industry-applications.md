@@ -59,16 +59,7 @@
 
 在组织上，这条链路也能减少沟通误差。应用团队用业务指标描述需求，平台团队用 SLO、token 和资源池承接，基础设施团队用 GPU、网络、存储和隔离实现，财务团队用成本和收入判断可持续性。若缺少共同架构，行业应用会把复杂性分散到各团队的口头约定里；若架构明确，差异就能转化为配置、指标和验收。
 
-```mermaid
-flowchart TB
-  App["行业应用"] --> Pattern["交互模式\nChat / RAG / Agent / 补全 / 多模态"]
-  Pattern --> Platform["平台需求\nGateway / 权限 / 计费 / 观测 / 接管"]
-  Platform --> Model["模型需求\n质量 / 延迟 / 上下文 / 多模态 / 工具调用"]
-  Model --> Runtime["运行时需求\nbatching / cache / engine / serving"]
-  Runtime --> Infra["基础设施需求\nGPU / 网络 / 存储 / 隔离"]
-  Infra --> Cost["成本 / SLA / 容量规划"]
-  Cost --> App
-```
+![图：4.2.2 系统架构](../assets/diagrams/part-01-applications-chapter-04-industry-applications-01.svg)
 
 
 ## 4.3 关键技术
@@ -194,19 +185,7 @@ multimodal_workload_profile:
 
 这个 profile 的关键不是字段多，而是把媒体链路从“前端上传文件”提升为生产契约。`media_inputs` 决定对象存储、上传网关、病毒扫描、解码服务和预处理队列；`derived_artifacts` 决定第 33 章的 `media_artifact_manifest`；`quality.task_slices` 决定第 13 章的多模态门禁；`metering_units` 决定第 41 章的多模态成本账本。若某个业务后续从扫描 PDF 扩展到视频，profile 必须失效并重审，而不是在原有 Chat endpoint 上直接加一个上传按钮。
 
-```mermaid
-flowchart TB
-  App["多模态应用\nPDF / image / audio / video"] --> Profile["multimodal_workload_profile"]
-  Profile --> Upload["upload policy\nsize / type / tenant / retention"]
-  Upload --> Pipeline["media_processing_pipeline_record\nscan / decode / OCR / ASR / frames"]
-  Pipeline --> Manifest["media_artifact_manifest\noriginal + derived artifacts"]
-  Manifest --> Serving["model serving\nvision / audio / text fusion"]
-  Serving --> Quality["multimodal_quality_gate_execution"]
-  Serving --> Metering["multimodal_metering_event"]
-  Metering --> Cost["multimodal_cost_ledger"]
-  Quality --> PRR["multimodal_prr_drill"]
-  Cost --> PRR
-```
+![图：4.3.5 多模态应用](../assets/diagrams/part-01-applications-chapter-04-industry-applications-02.svg)
 
 多模态应用最容易被低估的是失败语义。文本请求失败，通常可以返回错误或重试；媒体请求失败，可能已经上传了原始文件、生成了部分 OCR、写入了 embedding、产生了临时帧、触发了人工复核，还可能已经被下游模型消费。工程上应把每个阶段的幂等键、输出 manifest、清理策略和计量状态定义清楚。否则一次 OCR 失败重试可能重复扣费，视频抽帧失败可能留下孤儿对象，扫描合同的中间图像可能越过保留策略长期留存。
 
@@ -338,24 +317,7 @@ workload_profile:
 
 `workload_profile` 到生产策略的链路可以画成下面的控制流。它的核心思想是：应用画像先进入评审和证据层，再生成平台策略；运行数据反过来更新画像。不要让业务需求直接改模型路由或资源池。
 
-```mermaid
-flowchart LR
-  Sample["真实样本\nprompt / documents / traces"] --> Profile["workload_profile"]
-  Business["业务目标\nvalue metric / failure impact"] --> Profile
-  Data["数据边界\npermission / retention / audit"] --> Profile
-  Profile --> Review["application_readiness_review"]
-  Review --> Gateway["Gateway policy\nrate limit / context budget / authz"]
-  Review --> Model["Model routing\nquality scorecard / fallback"]
-  Review --> Runtime["Runtime policy\nbatching / cache / timeout"]
-  Review --> Pool["Resource pool\nlatency / topology / isolation"]
-  Review --> Cost["Cost ledger\nvalue unit / chargeback"]
-  Gateway --> Telemetry["production telemetry"]
-  Model --> Telemetry
-  Runtime --> Telemetry
-  Pool --> Telemetry
-  Cost --> Telemetry
-  Telemetry -->|"profile drift / SLO breach / cost anomaly"| Profile
-```
+![图：4.4.1 工程实现](../assets/diagrams/part-01-applications-chapter-04-industry-applications-03.svg)
 
 应用进入生产前应通过 `application_readiness_review`。它不是一次会议纪要，而是上线门禁记录。门禁至少检查八类证据：真实样本是否覆盖主路径和长尾，评测集是否覆盖业务失败，权限和数据保留是否清楚，模型路由和 fallback 是否可回滚，观测字段是否能串起 request、tenant、model、tool 和 cost，人工接管是否存在，成本是否有预算，退出条件是否可执行。
 

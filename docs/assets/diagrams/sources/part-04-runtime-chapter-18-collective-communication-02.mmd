@@ -1,0 +1,11 @@
+flowchart TB
+  Plan["parallelism_plan_record"] --> Contract["rank_topology_contract"]
+  Contract --> Env["nccl_env_contract"]
+  Env --> Run["collective_trace_record"]
+  Run --> Critical["communication_critical_path_record"]
+  Baseline["fabric_baseline / NCCL baseline"] --> Regression["communication_regression_record"]
+  Run --> Regression
+  Regression --> Bundle["communication_diagnostic_bundle"]
+  Critical --> Bundle
+  Bundle --> Incident["training_incident_record"]
+  Incident --> Cost["training_roi_ledger / reliability_cost_ledger"]

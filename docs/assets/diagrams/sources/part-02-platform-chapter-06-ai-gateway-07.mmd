@@ -1,0 +1,8 @@
+flowchart LR
+  Req["request features\n任务 / 租户 / 风险 / 能力"] --> Score["routing_quality_scorecard"]
+  Eval["offline eval"] --> Score
+  Online["online quality telemetry"] --> Score
+  Cost["quality_cost_ledger"] --> Score
+  Health["serving health / SLO"] --> Score
+  Score --> Route["route model / pool / fallback"]
+  Route --> PDR["policy_decision_record"]

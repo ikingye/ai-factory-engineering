@@ -1,0 +1,12 @@
+flowchart LR
+  Upload["uploaded media object"] --> Admit["media workload admission\nquota / type / retention"]
+  Admit --> Scan["virus / policy scan"]
+  Scan --> Decode["decode / render\npages / frames / audio chunks"]
+  Decode --> Extract["OCR / ASR / layout / embedding"]
+  Extract --> Manifest["media_artifact_manifest"]
+  Manifest --> Model["multimodal model serving"]
+  Manifest --> Index["RAG / vector index"]
+  Scan --> Meter["multimodal_metering_event"]
+  Decode --> Meter
+  Extract --> Meter
+  Model --> Meter

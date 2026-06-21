@@ -1,0 +1,13 @@
+flowchart LR
+  U["用户问题"] --> Q["query rewrite / intent"]
+  Q --> E["online embedding"]
+  E --> VDB["vector database"]
+  Q --> KW["keyword search"]
+  VDB --> C["候选 chunks"]
+  KW --> C
+  C --> F["metadata / ACL filter"]
+  F --> R["rerank"]
+  R --> P["context assembly"]
+  P --> LLM["LLM 推理"]
+  LLM --> A["答案 + 引用"]
+  Docs["文档 / 网页 / PDF / 工单"] --> Parse["解析清洗"] --> Chunk["chunking"] --> Embed["离线 embedding"] --> VDB

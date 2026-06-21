@@ -1,0 +1,13 @@
+stateDiagram-v2
+  [*] --> Planned
+  Planned --> Installed: rack / power / cooling / cabling complete
+  Installed --> Bootstrapped: BMC / PXE / OS / driver ready
+  Bootstrapped --> Accepted: physical + network + storage + workload tests pass
+  Accepted --> Allocatable: resource pool activation
+  Accepted --> Limited: partial acceptance
+  Allocatable --> Degraded: health or power/cooling/fabric signal
+  Degraded --> Maintenance: repair or planned change
+  Limited --> Maintenance: fix constraint
+  Maintenance --> Bootstrapped: reinitialize
+  Allocatable --> Retired: lifecycle end
+  Limited --> Retired: not economical to repair

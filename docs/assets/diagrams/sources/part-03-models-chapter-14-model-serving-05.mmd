@@ -1,0 +1,8 @@
+flowchart LR
+  Request["multimodal request"] --> Contract["multimodal_serving_contract"]
+  Manifest["media_artifact_manifest"] --> Contract
+  Contract --> Processor["processor / encoder\nOCR refs / image tiles / audio chunks"]
+  Processor --> Runtime["multimodal runtime\nprefill / decode"]
+  Runtime --> Output["answer + citations\npage / region / timestamp"]
+  Runtime --> Meter["multimodal_metering_event"]
+  Contract --> Gate["multimodal_quality_gate_execution"]

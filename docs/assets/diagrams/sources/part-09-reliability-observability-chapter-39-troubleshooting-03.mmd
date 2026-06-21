@@ -1,0 +1,14 @@
+flowchart TB
+  H["NCCL hang / step 无前进"] --> R{是否有 rank 退出?}
+  R -->|是| Exit["检查 Pod exit / OOM / container log / node event"]
+  R -->|否| G{GPU 是否有 Xid/ECC/NVLink 异常?}
+  G -->|是| GPUFix["隔离 GPU 或节点，跑 GPU/NVLink/NCCL 回归"]
+  G -->|否| N{RDMA / NIC / switch port 是否异常?}
+  N -->|是| B{rail 是否失衡或拥塞?}
+  B -->|是| NetFix["采集 rail_balance_report / congestion_event，降级 fabric 或避让拓扑"]
+  B -->|否| NetBase["运行同拓扑 NCCL/RDMA baseline，确认是否 fabric 退化"]
+  N -->|否| C{容器与运行时配置是否一致?}
+  C -->|否| RuntimeFix["检查 NCCL env / interface / RDMA device / image / OFED"]
+  C -->|是| Code{collective 调用是否一致?}
+  Code -->|否| ModelFix["检查训练代码分支、rank 条件和框架版本"]
+  Code -->|是| Unknown["保留现场，扩大采样，运行同拓扑基线复测"]

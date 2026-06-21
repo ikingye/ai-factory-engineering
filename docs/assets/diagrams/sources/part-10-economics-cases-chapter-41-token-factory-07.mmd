@@ -1,0 +1,12 @@
+flowchart LR
+  Fault["container_gpu_runtime_fault_tree_execution"] --> Cost["container_runtime_incident_cost_record"]
+  Change["container_runtime_change_record"] --> Cost
+  Accept["container runtime acceptance matrix"] --> Cost
+  OCI["OCI / CDI injection diff"] --> Cost
+  Visible["GPU visibility reconciliation"] --> Cost
+  Meter["DCGM / metering label reconciliation"] --> Cost
+  Cost --> Reliability["reliability_cost_ledger"]
+  Cost --> Runtime["inference_runtime_cost_ledger if serving affected"]
+  Cost --> Security["security_cost_ledger if isolation risk"]
+  Cost --> Token["token ledger correction / billing hold"]
+  Cost --> PRR["container runtime PRR gate update"]

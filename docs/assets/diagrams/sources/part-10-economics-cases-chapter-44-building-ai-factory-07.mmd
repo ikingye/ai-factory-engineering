@@ -1,0 +1,11 @@
+flowchart TB
+  PRR["private delivery PRR"] --> Bundle["offline_release_bundle_manifest"]
+  Bundle --> Import["offline_import_record\nregistry / artifact / chart / config"]
+  Import --> Rehearsal["offline_upgrade_rehearsal\nsmoke / migration / rollback"]
+  Rehearsal --> Patch["field_patch_execution_record\nif emergency path"]
+  Rehearsal --> Export["private_delivery_diagnostic_export"]
+  Rehearsal --> Cost["private_delivery_incident_cost_record"]
+  Patch --> Cost
+  Export --> Support["support_ticket_taxonomy\ncustomer communication"]
+  Cost --> PNL["commercial_pnl_ledger"]
+  Cost --> Gate["PRR gate update\nblock / conditional / approve"]

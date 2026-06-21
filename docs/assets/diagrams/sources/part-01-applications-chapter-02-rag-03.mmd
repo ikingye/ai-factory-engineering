@@ -1,0 +1,6 @@
+flowchart LR
+  Case["eval case\nquestion + acl + golden evidence"] --> Retrieval["retrieval gate\nrecall / ACL / no-answer"]
+  Retrieval --> Context["context gate\nselected chunks / truncation / citations"]
+  Context --> Generation["generation gate\nfaithfulness / answer / refusal"]
+  Generation --> Regression["rag_regression_case"]
+  Regression --> Index["chunking / embedding / rerank / prompt update"]

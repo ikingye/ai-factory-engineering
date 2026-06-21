@@ -1,0 +1,17 @@
+flowchart TB
+  Change["fabric change"] --> Matrix["fabric_change_acceptance_matrix"]
+  Matrix --> Host["host RDMA"]
+  Matrix --> Container["container RDMA"]
+  Matrix --> K8s["Kubernetes NCCL job"]
+  Matrix --> Cong["PFC / ECN / QoS counters"]
+  Matrix --> Workload["checkpoint + NCCL + mixed traffic"]
+  Matrix --> Scheduler["scheduler labels / pool state"]
+  Host --> Decision{all required evidence pass?}
+  Container --> Decision
+  K8s --> Decision
+  Cong --> Decision
+  Workload --> Decision
+  Scheduler --> Decision
+  Decision -->|yes| Baseline["publish refreshed fabric_baseline"]
+  Decision -->|no| Limited["keep limited / quarantine"]
+  Limited --> FaultTree["congestion_fault_tree_execution"]

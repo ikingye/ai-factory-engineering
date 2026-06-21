@@ -1,0 +1,9 @@
+flowchart TB
+  Drill["quality_gate_freshness_prr_drill"] --> Contract["quality_gate_freshness_contract"]
+  Contract --> Graph["quality_evidence_dependency_graph"]
+  Drill --> Change["inject dependency change"]
+  Change --> Event["quality_evidence_invalidation_event"]
+  Event --> Affected["affected gates / releases / experiments / routes"]
+  Affected --> Fault["quality_fault_tree_execution"]
+  Fault --> Cost["quality_incident_cost_record"]
+  Cost --> Gate["PRR quality gate\napprove / conditional / block"]

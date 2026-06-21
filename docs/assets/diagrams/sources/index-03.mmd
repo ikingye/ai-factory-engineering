@@ -1,0 +1,4 @@
+flowchart LR
+  Submit["训练任务提交"] --> Queue["队列"] --> Quota["配额"] --> Gang["gang scheduling"] --> GPU["GPU 分配"]
+  GPU --> Image["镜像启动"] --> Data["数据读取"] --> NCCL["NCCL 初始化"] --> Train["forward / backward"]
+  Train --> Grad["gradient communication"] --> Ckpt["checkpoint"] --> Eval["evaluation"] --> Registry["model registry"] --> Serving["model serving"]

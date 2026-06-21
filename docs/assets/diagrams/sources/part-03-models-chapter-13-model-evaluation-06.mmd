@@ -1,0 +1,12 @@
+flowchart TB
+  Gate["quality_gate_execution"] --> Guardrail["online_experiment_guardrail"]
+  Contract["serving_quality_contract"] --> Guardrail
+  Guardrail --> Experiment["online_experiment_record"]
+  Experiment --> Telemetry["quality_telemetry_event by variant"]
+  Telemetry --> Stop{"guardrail breached?"}
+  Stop -->|no| Ramp["continue / ramp"]
+  Stop -->|yes| Freeze["freeze traffic expansion"]
+  Freeze --> Bundle["quality_evidence_bundle"]
+  Freeze --> Rollback["serving_rollback_record if needed"]
+  Bundle --> Regression["quality_regression_record"]
+  Regression --> Dataset["eval_slice_contract / golden set update"]

@@ -61,20 +61,7 @@ Token 是推理服务最常见的计量单位，但不是唯一单位。Chat 请
 
 这条链路还需要处理延迟和补偿。某些事件会迟到，某些模型服务会重试上报，某些请求会在网关成功但模型服务失败。事件流应支持幂等写入、去重、补偿事件和重放。账单系统不能假设所有事件按顺序、一次性、完整到达。AI 计量链路越接近分布式日志系统，越要重视事件一致性和可重放能力。
 
-```mermaid
-flowchart LR
-  Req["模型请求"] --> Gateway["AI Gateway"]
-  Gateway --> Meter["metering event"]
-  Model["模型服务"] --> Meter
-  Agent["Agent / Tools"] --> Meter
-  RAG["Embedding / Rerank"] --> Meter
-  Meter --> Stream["事件流"]
-  Stream --> Usage["用量聚合"]
-  Usage --> Cost["成本分摊"]
-  Usage --> Bill["账单"]
-  Cost --> Margin["毛利分析"]
-  Bill --> Tenant["租户 / 项目"]
-```
+![图：7.2.2 系统架构](../assets/diagrams/part-02-platform-chapter-07-metering-billing-01.svg)
 
 
 ## 7.3 关键技术

@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2446 608" width="2446" height="608">
+  <defs>
+    <marker id="arrowA" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#7c3aed"/>
+    </marker>
+    <marker id="arrowB" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#10b981"/>
+    </marker>
+    <marker id="arrowC" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2563eb"/>
+    </marker>
+    <marker id="arrowE" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#f97316"/>
+    </marker>
+    <marker id="arrowF" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#7c3aed"/>
+    </marker>
+    <marker id="arrowG" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#ef4444"/>
+    </marker>
+    <marker id="arrowH" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#6b7280"/>
+    </marker>
+    <filter id="shadowSoft" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="3" stdDeviation="6" flood-color="#0f172a" flood-opacity="0.12"/>
+    </filter>
+    <filter id="shadowGlass" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="10" stdDeviation="16" flood-color="#020617" flood-opacity="0.28"/>
+    </filter>
+    <style>
+    text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', 'Microsoft JhengHei', 'SimHei', sans-serif; }
+    .title { font-size: 30px; font-weight: 700; fill: #111827; }
+    .subtitle { font-size: 14px; font-weight: 500; fill: #6b7280; }
+    .section { font-size: 13px; font-weight: 700; fill: #2563eb; letter-spacing: 1.4px; }
+    .section-sub { font-size: 12px; font-weight: 500; fill: #94a3b8; }
+    .node-title { font-size: 18px; font-weight: 700; fill: #111827; }
+    .node-sub { font-size: 12px; font-weight: 500; fill: #6b7280; }
+    .node-type { font-size: 12px; font-weight: 700; fill: #9ca3af; letter-spacing: 0.08em; }
+    .arrow-label { font-size: 12px; font-weight: 600; fill: #6b7280; }
+    .legend { font-size: 12px; font-weight: 500; fill: #6b7280; }
+    .footnote { font-size: 12px; font-weight: 500; fill: #94a3b8; }
+    </style>
+  </defs>
+  <rect width="2446.0" height="608.0" fill="#ffffff"/>
+  <text x="1223.0" y="56" text-anchor="middle" class="title">1.4.2 常见故障</text>
+  <text x="1223.0" y="82" text-anchor="middle" class="subtitle">part-01-applications/chapter-01-chat-request.md:447</text>
+  <path d="M 1223.0,212.0 L 1223.0,232.4 L 907.0,263.6 L 907.0,284.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 1223.0,212.0 L 1223.0,232.4 L 1117.0,263.6 L 1117.0,284.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 1223.0,212.0 L 1223.0,232.4 L 1327.0,263.6 L 1327.0,284.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 1223.0,212.0 L 1223.0,232.4 L 1538.0,263.6 L 1538.0,284.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 907.0,342.0 L 907.0,362.4 L 142.0,393.6 L 142.0,414.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 907.0,342.0 L 907.0,362.4 L 352.0,393.6 L 352.0,414.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 1117.0,342.0 L 1117.0,362.4 L 562.0,393.6 L 562.0,414.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 1117.0,342.0 L 1117.0,362.4 L 772.0,393.6 L 772.0,414.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 1117.0,342.0 L 1117.0,362.4 L 982.0,393.6 L 982.0,414.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 1327.0,342.0 L 1327.0,362.4 L 1192.0,393.6 L 1192.0,414.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 1327.0,342.0 L 1327.0,362.4 L 1402.0,393.6 L 1402.0,414.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 1327.0,342.0 L 1327.0,362.4 L 1623.5,393.6 L 1623.5,414.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 1538.0,342.0 L 1538.0,362.4 L 1845.0,393.6 L 1845.0,414.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 1538.0,342.0 L 1538.0,362.4 L 2063.0,393.6 L 2063.0,414.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 1538.0,342.0 L 1538.0,362.4 L 2292.5,393.6 L 2292.5,414.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <rect x="1141.0" y="154.0" width="164.0" height="58.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
+  <text x="1223.0" y="183.0" text-anchor="middle" class="node-title">症状: TTFT 升高</text>
+  <rect x="825.0" y="284.0" width="164.0" height="58.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
+  <text x="907.0" y="313.0" text-anchor="middle" class="node-title">入口阶段</text>
+  <rect x="1035.0" y="284.0" width="164.0" height="58.0" rx="10.0" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.8"/>
+  <text x="1117.0" y="313.0" text-anchor="middle" class="node-title">Gateway 阶段</text>
+  <rect x="1245.0" y="284.0" width="164.0" height="58.0" rx="10.0" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.8"/>
+  <text x="1327.0" y="313.0" text-anchor="middle" class="node-title">模型服务阶段</text>
+  <rect x="1455.0" y="284.0" width="166.0" height="58.0" rx="10.0" fill="#f0fdfa" stroke="#99f6e4" stroke-width="1.8"/>
+  <text x="1538.0" y="313.0" text-anchor="middle" class="node-title">Runtime / GPU 阶段</text>
+  <rect x="60.0" y="414.0" width="164.0" height="58.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8"/>
+  <text x="142.0" y="443.0" text-anchor="middle" class="node-title">客户端网络慢</text>
+  <rect x="270.0" y="414.0" width="164.0" height="58.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
+  <text x="352.0" y="443.0" text-anchor="middle" class="node-title">请求体过大</text>
+  <rect x="480.0" y="414.0" width="164.0" height="58.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
+  <text x="562.0" y="443.0" text-anchor="middle" class="node-title">认证/配额服务慢</text>
+  <rect x="690.0" y="414.0" width="164.0" height="58.0" rx="10.0" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.8"/>
+  <text x="772.0" y="443.0" text-anchor="middle" class="node-title">路由到拥挤资源池</text>
+  <rect x="900.0" y="414.0" width="164.0" height="58.0" rx="10.0" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.8"/>
+  <text x="982.0" y="443.0" text-anchor="middle" class="node-title">streaming 被代理缓冲</text>
+  <rect x="1110.0" y="414.0" width="164.0" height="58.0" rx="10.0" fill="#f0fdfa" stroke="#99f6e4" stroke-width="1.8"/>
+  <text x="1192.0" y="443.0" text-anchor="middle" class="node-title">队列等待过长</text>
+  <rect x="1320.0" y="414.0" width="164.0" height="58.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8"/>
+  <text x="1402.0" y="443.0" text-anchor="middle" class="node-title">tokenizer 或模板异常</text>
+  <rect x="1530.0" y="414.0" width="187.0" height="58.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
+  <text x="1623.5" y="443.0" text-anchor="middle" class="node-title">长 prompt prefill 阻塞</text>
+  <rect x="1763.0" y="414.0" width="164.0" height="58.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
+  <text x="1845.0" y="443.0" text-anchor="middle" class="node-title">KV Cache 分配紧张</text>
+  <rect x="1973.0" y="414.0" width="180.0" height="58.0" rx="10.0" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.8"/>
+  <text x="2063.0" y="443.0" text-anchor="middle" class="node-title">prefill batch 配置不当</text>
+  <rect x="2199.0" y="414.0" width="187.0" height="58.0" rx="10.0" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.8"/>
+  <text x="2292.5" y="443.0" text-anchor="middle" class="node-title">GPU/HBM 或 kernel 退化</text>
+  <text x="2166.0" y="592.0" class="footnote">Rendered with fireworks-tech-graph</text>
+</svg>

@@ -1,0 +1,13 @@
+flowchart LR
+  Gateway["AI Gateway"] --> Endpoint["Model Endpoint"]
+  Endpoint --> R1["Replica 1"]
+  Endpoint --> R2["Replica 2"]
+  R1 --> Engine1["Inference Engine"]
+  R2 --> Engine2["Inference Engine"]
+  Engine1 --> GPU1["GPU / HBM"]
+  Engine2 --> GPU2["GPU / HBM"]
+  Endpoint --> Metrics["metrics / logs / traces"]
+  Metrics --> Autoscaler["autoscaler"]
+  Autoscaler --> Control["serving control plane"]
+  Control --> Endpoint
+  Control --> Rollout["canary / rollback"]

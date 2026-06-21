@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1464 738" width="1464" height="738">
+  <defs>
+    <marker id="arrowA" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#7c3aed"/>
+    </marker>
+    <marker id="arrowB" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#10b981"/>
+    </marker>
+    <marker id="arrowC" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2563eb"/>
+    </marker>
+    <marker id="arrowE" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#f97316"/>
+    </marker>
+    <marker id="arrowF" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#7c3aed"/>
+    </marker>
+    <marker id="arrowG" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#ef4444"/>
+    </marker>
+    <marker id="arrowH" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#6b7280"/>
+    </marker>
+    <filter id="shadowSoft" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="3" stdDeviation="6" flood-color="#0f172a" flood-opacity="0.12"/>
+    </filter>
+    <filter id="shadowGlass" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="10" stdDeviation="16" flood-color="#020617" flood-opacity="0.28"/>
+    </filter>
+    <style>
+    text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', 'Microsoft JhengHei', 'SimHei', sans-serif; }
+    .title { font-size: 30px; font-weight: 700; fill: #111827; }
+    .subtitle { font-size: 14px; font-weight: 500; fill: #6b7280; }
+    .section { font-size: 13px; font-weight: 700; fill: #2563eb; letter-spacing: 1.4px; }
+    .section-sub { font-size: 12px; font-weight: 500; fill: #94a3b8; }
+    .node-title { font-size: 18px; font-weight: 700; fill: #111827; }
+    .node-sub { font-size: 12px; font-weight: 500; fill: #6b7280; }
+    .node-type { font-size: 12px; font-weight: 700; fill: #9ca3af; letter-spacing: 0.08em; }
+    .arrow-label { font-size: 12px; font-weight: 600; fill: #6b7280; }
+    .legend { font-size: 12px; font-weight: 500; fill: #6b7280; }
+    .footnote { font-size: 12px; font-weight: 500; fill: #94a3b8; }
+    </style>
+  </defs>
+  <rect width="1464.0" height="738.0" fill="#ffffff"/>
+  <text x="732.0" y="56" text-anchor="middle" class="title">41.3.7 推理毛利</text>
+  <text x="732.0" y="82" text-anchor="middle" class="subtitle">part-10-economics-cases/chapter-41-token-factory.md:1087</text>
+  <path d="M 142.0,212.0 L 142.0,232.4 L 627.0,263.6 L 627.0,284.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 142.0,212.0 L 142.0,232.4 L 837.0,263.6 L 837.0,284.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 627.0,342.0 L 627.0,362.4 L 732.0,393.6 L 732.0,414.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 837.0,342.0 L 837.0,362.4 L 732.0,393.6 L 732.0,414.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 381.0,212.0 L 381.0,232.4 L 837.0,263.6 L 837.0,284.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 620.0,212.0 L 620.0,232.4 L 837.0,263.6 L 837.0,284.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 866.0,212.0 L 866.0,232.4 L 627.0,263.6 L 627.0,284.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 1112.0,212.0 L 1112.0,232.4 L 627.0,263.6 L 627.0,284.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 1322.0,212.0 L 1322.0,232.4 L 837.0,263.6 L 837.0,284.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 732.0,472.0 L 732.0,544.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <rect x="60.0" y="154.0" width="164.0" height="58.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
+  <text x="142.0" y="183.0" text-anchor="middle" class="node-title">billable tokens</text>
+  <rect x="270.0" y="154.0" width="222.0" height="58.0" rx="10.0" fill="#f0fdfa" stroke="#99f6e4" stroke-width="1.8"/>
+  <text x="381.0" y="183.0" text-anchor="middle" class="node-title">GPU / HBM / KV Cache 利用率</text>
+  <rect x="538.0" y="154.0" width="164.0" height="58.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8"/>
+  <text x="620.0" y="183.0" text-anchor="middle" class="node-title">tokens/W</text>
+  <rect x="748.0" y="154.0" width="236.0" height="58.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
+  <text x="866.0" y="183.0" text-anchor="middle" class="node-title">TTFT / TPOT / error budget</text>
+  <rect x="1030.0" y="154.0" width="164.0" height="58.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
+  <text x="1112.0" y="183.0" text-anchor="middle" class="node-title">模型质量 / 安全</text>
+  <rect x="1240.0" y="154.0" width="164.0" height="58.0" rx="10.0" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.8"/>
+  <text x="1322.0" y="183.0" text-anchor="middle" class="node-title">失败重试 / 冷启动 / 空闲</text>
+  <rect x="545.0" y="284.0" width="164.0" height="58.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
+  <text x="627.0" y="313.0" text-anchor="middle" class="node-title">revenue/token</text>
+  <rect x="755.0" y="284.0" width="164.0" height="58.0" rx="10.0" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.8"/>
+  <text x="837.0" y="313.0" text-anchor="middle" class="node-title">cost/token</text>
+  <rect x="649.0" y="414.0" width="166.0" height="58.0" rx="10.0" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.8"/>
+  <text x="732.0" y="443.0" text-anchor="middle" class="node-title">inference margin</text>
+  <rect x="645.5" y="544.0" width="173.0" height="58.0" rx="10.0" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.8"/>
+  <text x="732.0" y="573.0" text-anchor="middle" class="node-title">扩容 / 调价 / 路由 / 优化</text>
+  <text x="1184.0" y="722.0" class="footnote">Rendered with fireworks-tech-graph</text>
+</svg>

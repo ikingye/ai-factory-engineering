@@ -1,0 +1,14 @@
+flowchart TB
+  Raw["Raw Dataset"] --> Object["Object Storage"]
+  Object --> Process["Data Processing / Tokenization"]
+  Process --> Dataset["Processed Dataset / Shards"]
+  Dataset --> Cache["Dataset Cache / Local NVMe"]
+  Cache --> Train["Training Workers"]
+  Train --> CKPT["Checkpoint Storage"]
+  CKPT --> Eval["Evaluation"]
+  Eval --> Registry["Model Registry"]
+  Registry --> Serving["Model Serving"]
+  Serving --> WeightCache["Weight Cache / Local NVMe"]
+  Metrics["Storage Metrics / Labels"] --> Object
+  Metrics --> CKPT
+  Metrics --> WeightCache

@@ -1,0 +1,16 @@
+stateDiagram-v2
+  [*] --> Accepted: auth / quota passed
+  Accepted --> Tokenized: tokenizer finished
+  Tokenized --> Queued: admitted by model server
+  Queued --> Prefilling: scheduler starts prefill
+  Prefilling --> Decoding: first token ready
+  Decoding --> Streaming: chunks sent
+  Streaming --> Completed: finish_reason stop/length/tool_calls
+  Streaming --> ClientCancelled: client disconnect/cancel
+  Queued --> Rejected: timeout or budget exceeded
+  Prefilling --> Failed: runtime error
+  Decoding --> Failed: runtime error
+  ClientCancelled --> Metered: record generated/sent tokens
+  Completed --> Metered: record usage
+  Failed --> Metered: record failure stage and partial usage
+  Metered --> [*]

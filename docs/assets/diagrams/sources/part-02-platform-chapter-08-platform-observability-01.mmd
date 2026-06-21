@@ -1,0 +1,14 @@
+flowchart LR
+  App["应用"] --> GW["AI Gateway"] --> RAG["RAG / Tools"] --> MS["模型服务"] --> Engine["推理引擎"] --> GPU["GPU"]
+  GW --> Trace["Trace"]
+  RAG --> Trace
+  MS --> Trace
+  Engine --> Metrics["Token / Runtime Metrics"]
+  GPU --> Infra["GPU / Node Metrics"]
+  Trace --> O11y["Observability Backend"]
+  Metrics --> O11y
+  Infra --> O11y
+  O11y --> Dash["Dashboards"]
+  O11y --> Alert["Alerts"]
+  O11y --> Billing["Metering / Billing"]
+  O11y --> SRE["SRE / Capacity"]

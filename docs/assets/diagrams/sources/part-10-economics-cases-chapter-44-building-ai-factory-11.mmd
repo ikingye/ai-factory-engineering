@@ -1,0 +1,11 @@
+flowchart LR
+  Drill["fabric_change_prr_drill"] --> Change["fabric_change_record"]
+  Change --> Invalidate["baseline_invalidation_record"]
+  Invalidate --> Gate["fabric_change_regression_gate"]
+  Gate --> Matrix["fabric_change_acceptance_matrix"]
+  Matrix --> Diag["network_diagnostic_bundle"]
+  Diag --> Fault["congestion_fault_tree_execution"]
+  Fault --> Cost["network_incident_cost_record"]
+  Gate --> Scheduler["scheduler limited / restored"]
+  Cost --> PRR["PRR fabric gate update"]
+  Scheduler --> PRR

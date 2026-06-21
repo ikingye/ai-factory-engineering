@@ -1,0 +1,14 @@
+stateDiagram-v2
+  [*] --> Draft: release scope defined
+  Draft --> EvidenceCollecting: workload + business + resource scope
+  EvidenceCollecting --> Blocked: required evidence missing
+  Blocked --> EvidenceCollecting: evidence gap closed
+  EvidenceCollecting --> ConditionalApprove: non-critical risk accepted with owner
+  EvidenceCollecting --> ApproveCanary: all hard gates pass
+  ConditionalApprove --> Canary: stop conditions machine-enforced
+  ApproveCanary --> Canary
+  Canary --> Scale: SLO + quality + cost + support stable
+  Canary --> Rollback: guardrail breach
+  Scale --> Review: drift / incident / cost overrun
+  Review --> EvidenceCollecting: PRR re-opened
+  Rollback --> EvidenceCollecting: rollback evidence + new gate

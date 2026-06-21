@@ -12,44 +12,17 @@ AI Factory 不是单一 GPU 集群，也不是一个 MaaS API。它是一套把 
 
 ## 2. 一张图理解 AI Factory
 
-```mermaid
-flowchart TB
-  A["Application 层
-Chat / Agent / RAG / 行业应用"] --> B["Platform 层
-MaaS / AI Gateway / Observability / Billing"]
-  B --> C["Model 层
-训练 / 后训练 / 微调 / 评测 / 服务"]
-  C --> D["AI Runtime 层
-CUDA / NCCL / RDMA / 推理引擎 / 训练框架"]
-  D --> E["资源编排与作业调度层
-Container / Kubernetes / Slurm / Volcano / Kueue / Ray"]
-  E --> F["GPU IaaS 层
-裸金属 / 虚拟化 / GPU 资源池 / 镜像 / 驱动"]
-  F --> G["网络与存储层
-NVLink / NVSwitch / InfiniBand / RoCE / Object Storage / PFS / NVMe"]
-  G --> H["物理基础设施层
-机房 / 电力 / 制冷 / GPU / NIC / Switch / Storage"]
-```
+![图：2. 一张图理解 AI Factory](assets/diagrams/index-01.svg)
 
 ## 3. 两条主线
 
 推理请求路径：
 
-```mermaid
-flowchart LR
-  U["用户请求"] --> GW["AI Gateway"] --> Auth["认证鉴权"] --> Limit["租户限流"] --> Route["模型路由"]
-  Route --> Serve["推理服务"] --> Prefill["prefill"] --> Decode["decode"] --> KV["KV Cache"]
-  KV --> Kernel["CUDA kernel"] --> GPU["GPU / HBM"] --> Stream["token streaming"] --> Meter["token 计量"] --> Bill["billing / observability"]
-```
+![图：3. 两条主线](assets/diagrams/index-02.svg)
 
 训练任务路径：
 
-```mermaid
-flowchart LR
-  Submit["训练任务提交"] --> Queue["队列"] --> Quota["配额"] --> Gang["gang scheduling"] --> GPU["GPU 分配"]
-  GPU --> Image["镜像启动"] --> Data["数据读取"] --> NCCL["NCCL 初始化"] --> Train["forward / backward"]
-  Train --> Grad["gradient communication"] --> Ckpt["checkpoint"] --> Eval["evaluation"] --> Registry["model registry"] --> Serving["model serving"]
-```
+![图：3. 两条主线](assets/diagrams/index-03.svg)
 
 ## 4. 适合谁读
 

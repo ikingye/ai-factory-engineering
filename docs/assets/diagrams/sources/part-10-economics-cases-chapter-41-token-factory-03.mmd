@@ -1,0 +1,9 @@
+flowchart LR
+  Activation["capacity_activation_record"] --> Cost["capacity_activation_cost_record"]
+  Gate["workload_fit_capacity_gate"] --> Cost
+  Facility["facility_capacity_evidence_bundle"] --> Cost
+  Energy["energy_ledger"] --> Cost
+  Cost --> Reliability["reliability_cost_ledger"]
+  Cost --> PNL["commercial_pnl_ledger"]
+  Cost --> Capacity["capacity_commitment_guard"]
+  Cost --> PRR["production_readiness_review"]

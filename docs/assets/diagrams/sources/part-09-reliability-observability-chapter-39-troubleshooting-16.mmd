@@ -1,0 +1,15 @@
+flowchart TB
+  Incident["supply chain symptom"] --> Tree["supply_chain_fault_tree_execution"]
+  Tree --> Data["dataset lineage branch"]
+  Tree --> Restore["checkpoint restore branch"]
+  Tree --> Artifact["artifact provenance branch"]
+  Tree --> Cache["cache / distribution branch"]
+  Tree --> RAG["RAG index / ACL branch"]
+  Tree --> Bill["accounting branch"]
+  Cache --> Contain["block / drain / rewarm"]
+  Artifact --> Contain
+  RAG --> Contain
+  Bill --> Hold["billing hold / replay"]
+  Contain --> Cost["supply_chain_incident_cost_record"]
+  Hold --> Cost
+  Cost --> PRR["supply chain PRR gate update"]

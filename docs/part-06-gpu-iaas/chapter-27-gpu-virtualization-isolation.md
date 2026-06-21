@@ -73,23 +73,7 @@ GPU 虚拟化与隔离架构通常从资源产品层开始：平台定义 bare m
 
 状态变化应同步到调度、监控和计费。
 
-```mermaid
-flowchart TB
-  Tenant["租户 / workload"] --> Class["GPU resource class"]
-  Class --> BM["bare metal dedicated"]
-  Class --> VM["VM + PCIe passthrough"]
-  Class --> MIG["MIG instance"]
-  Class --> VGPU["vGPU profile"]
-  Class --> Container["container full-card / shared"]
-  Class --> Remote["remote GPU access"]
-  BM --> Policy["SLA / 安全 / 计费"]
-  VM --> Policy
-  MIG --> Policy
-  VGPU --> Policy
-  Container --> Policy
-  Remote --> Policy
-  Policy --> Monitor["监控 / 审计 / 成本"]
-```
+![图：27.2.2 系统架构](../assets/diagrams/part-06-gpu-iaas-chapter-27-gpu-virtualization-isolation-01.svg)
 
 远程 GPU 访问是另一类资源池化架构。它可以通过本地 API proxy 拦截 CUDA/OpenCL 调用并转发到远端 GPU，也可以在本地模拟虚拟设备，由驱动或代理把命令、内存和状态同步到远端，还可以由上层分布式框架把任务拆分到远端 GPU。它的价值是突破单机 GPU 数量、提高集中资源利用和支持跨地域/跨池调用；代价是网络延迟、带宽、错误传播、状态一致性、安全审计和调试复杂度。对低延迟在线推理和强同步训练，远程 GPU 必须谨慎验证；对批处理、离线推理和弹性开发环境，远程访问可能有较好利用率收益。
 
@@ -321,19 +305,7 @@ resource_classes:
 
 `clean_to_reuse_record` 是资源从一个租户回到可分配池之前的证据对象。它不保证硬件不存在任何理论残留风险，但它能证明平台执行了约定清理和复验步骤。对于裸金属和高敏租户，它应包含本地盘擦除、BMC 访问回收、镜像重装和准入复测；对于容器和 MIG，它应包含进程、显存、MIG profile、临时卷、缓存、凭据和观测标签清理。
 
-```mermaid
-stateDiagram-v2
-  [*] --> Allocated
-  Allocated --> Released: workload finished / lease ended
-  Released --> Draining: stop traffic / checkpoint / terminate
-  Draining --> Cleaning: kill residual process / revoke secret / wipe cache
-  Cleaning --> Resetting: GPU reset / MIG restore / node reboot if needed
-  Resetting --> Retesting: container GPU / NCCL / storage smoke test
-  Retesting --> Allocatable: clean_to_reuse_record passed
-  Retesting --> Quarantine: failed verification
-  Quarantine --> Maintenance: investigation / repair
-  Maintenance --> Retesting
-```
+![图：27.4.1 工程实现](../assets/diagrams/part-06-gpu-iaas-chapter-27-gpu-virtualization-isolation-02.svg)
 
 ```yaml
 clean_to_reuse_record:

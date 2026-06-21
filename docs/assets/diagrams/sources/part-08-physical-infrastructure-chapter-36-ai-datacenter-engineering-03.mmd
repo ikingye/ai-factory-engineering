@@ -1,0 +1,10 @@
+flowchart LR
+  Planned["planned GPU"] --> Installed["installed"]
+  Installed --> Accepted["accepted baseline"]
+  Accepted --> Allocatable["allocatable"]
+  Allocatable --> Gate["workload_fit_capacity_gate"]
+  Gate -->|premium inference pass| Inference["resource label\nworkload_fit/premium_inference"]
+  Gate -->|large training pass| Training["resource label\nworkload_fit/large_distributed_training"]
+  Gate -->|blocked| Limited["limited / no reservation"]
+  Limited --> Evidence["close evidence gap\npower / cooling / fabric / storage"]
+  Evidence --> Gate

@@ -26,6 +26,7 @@ REQUIRED_HEADINGS = {
 
 HEADING_RE = re.compile(r"^#{2,3}\s+(.+?)\s*$", re.MULTILINE)
 HEADING_NUMBER_RE = re.compile(r"^(?:\d+\.\d+\.\d+|\d+\.\d+|\d+\.)\s+")
+STATIC_DIAGRAM_RE = re.compile(r"!\[[^\]]*\]\((?:\.\./)*assets/diagrams/[^)]+\.svg\)")
 
 
 @dataclass
@@ -46,8 +47,8 @@ def audit_file(path: Path) -> list[Finding]:
         if heading not in headings:
             findings.append(Finding(path, f"missing heading: {heading}"))
 
-    if "```mermaid" not in text:
-        findings.append(Finding(path, "missing Mermaid diagram"))
+    if "```mermaid" not in text and not STATIC_DIAGRAM_RE.search(text):
+        findings.append(Finding(path, "missing technical diagram"))
 
     if "```yaml" not in text and "```bash" not in text and "```python" not in text:
         findings.append(Finding(path, "missing executable/config code block"))

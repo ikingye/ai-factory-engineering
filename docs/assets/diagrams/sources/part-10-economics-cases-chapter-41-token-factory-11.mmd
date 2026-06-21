@@ -1,0 +1,11 @@
+flowchart TB
+  Tokens["billable tokens"] --> Rev["revenue/token"]
+  Tokens --> Cost["cost/token"]
+  Rev --> Margin["inference margin"]
+  Cost --> Margin
+  Util["GPU / HBM / KV Cache 利用率"] --> Cost
+  Power["tokens/W"] --> Cost
+  SLO["TTFT / TPOT / error budget"] --> Rev
+  Quality["模型质量 / 安全"] --> Rev
+  Waste["失败重试 / 冷启动 / 空闲"] --> Cost
+  Margin --> Action["扩容 / 调价 / 路由 / 优化"]

@@ -1,0 +1,15 @@
+flowchart TB
+  Tenant["租户 / workload"] --> Class["GPU resource class"]
+  Class --> BM["bare metal dedicated"]
+  Class --> VM["VM + PCIe passthrough"]
+  Class --> MIG["MIG instance"]
+  Class --> VGPU["vGPU profile"]
+  Class --> Container["container full-card / shared"]
+  Class --> Remote["remote GPU access"]
+  BM --> Policy["SLA / 安全 / 计费"]
+  VM --> Policy
+  MIG --> Policy
+  VGPU --> Policy
+  Container --> Policy
+  Remote --> Policy
+  Policy --> Monitor["监控 / 审计 / 成本"]

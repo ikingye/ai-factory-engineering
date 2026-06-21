@@ -100,23 +100,7 @@ MaaS 不应把所有逻辑都堆在网关里。模型目录、租户、配额、
 
 架构验收时，应检查控制面配置是否真的影响数据面行为。模型目录标记某模型 deprecated 后，调用是否告警或拒绝；租户配额调整后，网关是否立即生效；服务等级变更后，路由是否进入正确资源池；账单价格变更后，usage 是否按版本生效。若控制面只是管理页面，数据面仍靠手工配置，MaaS 很快会出现目录、路由和账单不一致。
 
-```mermaid
-flowchart TB
-  Dev["开发者 / 应用"] --> API["OpenAI-compatible API / SDK"]
-  API --> Key["API Key / Auth"]
-  Key --> Tenant["租户 / 项目 / 配额"]
-  Tenant --> Catalog["模型目录"]
-  Tenant --> Router["请求路由"]
-  Router --> EndpointA["模型服务 A"]
-  Router --> EndpointB["模型服务 B"]
-  Router --> EndpointC["私有模型服务"]
-  Router --> Meter["token 计量"]
-  Meter --> Billing["计费 / 成本分摊"]
-  Router --> Obs["日志 / 指标 / Trace"]
-  EndpointA --> GPU["推理资源池"]
-  EndpointB --> GPU
-  EndpointC --> GPU
-```
+![图：5.2.2 系统架构](../assets/diagrams/part-02-platform-chapter-05-maas-01.svg)
 
 
 ## 5.3 关键技术

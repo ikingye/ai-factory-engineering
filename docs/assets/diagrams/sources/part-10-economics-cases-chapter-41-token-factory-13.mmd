@@ -1,0 +1,8 @@
+flowchart LR
+  Fault["rag_agent_fault_tree_execution"] --> Record["rag_agent_incident_cost_record"]
+  Evidence["rag_agent_evidence_bundle"] --> Record
+  Attribution["rag_agent_cost_attribution"] --> Record
+  Record --> QCost["quality_cost_ledger"]
+  Record --> Ledger["Token Factory ledger"]
+  Record --> PRR["agent_tool_policy_prr_drill / PRR gate"]
+  Ledger --> Decision["route / budget / tool policy / pricing"]

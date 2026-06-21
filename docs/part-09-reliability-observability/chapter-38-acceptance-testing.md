@@ -71,21 +71,7 @@
 
 准入系统还应保留依赖关系。某个 rack 的验收可能依赖上游 spine、存储池、镜像仓库和 BMC 网络都可用。依赖未满足时，测试失败不能简单归咎于节点，应输出 blocked 或 external_dependency 状态。
 
-```mermaid
-flowchart LR
-  Trigger["交付 / 维修 / 升级 / 变更"] --> Inventory["资产与拓扑采集"]
-  Inventory --> Burn["GPU burn-in"]
-  Burn --> HPL["HPL / 计算基准"]
-  HPL --> NVBW["nvbandwidth"]
-  NVBW --> Runtime["container GPU runtime test"]
-  Runtime --> NCCL["NCCL test"]
-  NCCL --> Storage["storage benchmark"]
-  Storage --> Network["network benchmark"]
-  Network --> Baseline["acceptance baseline"]
-  Baseline --> Decision["pass / limited / quarantine"]
-  Decision --> Pool["资源池状态更新"]
-  Decision --> Ticket["维修 / 复测工单"]
-```
+![图：38.2.2 系统架构](../assets/diagrams/part-09-reliability-observability-chapter-38-acceptance-testing-01.svg)
 
 
 ## 38.3 关键技术
@@ -316,18 +302,7 @@ checkpoint_restore_acceptance_matrix:
 
 这个矩阵能发现非常隐蔽的故障：checkpoint manifest 完整，但 reader 版本变了；rank 文件齐全，但 world size 变化后恢复脚本错误地复用旧 partition；optimizer state 缺失，训练能继续但学习率轨迹错误；KMS 权限在训练任务中有效，在恢复任务中失效；恢复后第一步执行成功，但 loss continuity probe 异常。恢复验收的本质是训练状态一致性，不是进程能否启动。
 
-```mermaid
-flowchart LR
-  Manifest["checkpoint_manifest"] --> Matrix["checkpoint_restore_acceptance_matrix"]
-  Runtime["framework_runtime_matrix"] --> Matrix
-  Reader["reader / image / KMS"] --> Matrix
-  Matrix --> Restore["restore run"]
-  Restore --> First["first effective step"]
-  First --> Probe["loss / state continuity probe"]
-  Probe --> Result{"accept?"}
-  Result -->|pass| Pool["long training schedulable"]
-  Result -->|fail| Block["block long training\nkeep older valid checkpoint"]
-```
+![图：38.3.6 storage benchmark](../assets/diagrams/part-09-reliability-observability-chapter-38-acceptance-testing-02.svg)
 
 供应链准入还应验证 `supply_chain_release_contract`。契约中声明的 dataset lineage、checkpoint restore、artifact provenance、cache residency、storage boundary、route contract 和 usage schema 必须能在当前环境中被解析和执行。验收时应故意注入一次 tokenizer digest recall、artifact signature revoke 或 RAG ACL rebuild，确认 registry、scheduler、running replica、local NVMe、rack cache、Gateway route 和 billing hold 都会按契约动作。只检查契约字段完整，不能证明系统真的执行契约。
 
@@ -599,16 +574,7 @@ heterogeneous_pool_acceptance_matrix:
 
 矩阵的输出必须进入调度和路由。若 `b200-canary` 对 premium chat 只是 canary，不应因为 GPU 空闲就承载高价值租户；若 `h100-full-card-prod` 对长上下文是 limited，Gateway 可以在短上下文走 H100、长上下文走 H200，而不是按平均成本路由。矩阵还应给出失败分类：是硬件、runtime、质量、能效、调度标签还是回滚路径不足。不同失败分类对应不同 owner。
 
-```mermaid
-flowchart LR
-  Classes["GPU classes\nH100 / H200 / B200"] --> Matrix["heterogeneous_pool_acceptance_matrix"]
-  Slices["workload slices\nshort / long / batch / train / multimodal"] --> Matrix
-  Evidence["runtime + quality + energy + physical + communication evidence"] --> Matrix
-  Matrix --> Labels["schedulable labels\npass / limited / canary / block"]
-  Labels --> Pool["GPU resource pool"]
-  Labels --> Route["Gateway / Serving route policy"]
-  Matrix --> PRR["production_readiness_review evidence"]
-```
+![图：38.3.7 network benchmark](../assets/diagrams/part-09-reliability-observability-chapter-38-acceptance-testing-03.svg)
 
 这张图强调矩阵不是报告，而是控制面输入。异构池真正可控，取决于矩阵能否把不同 GPU class 对不同 workload 的适配状态写回资源池、路由策略和 PRR。没有这一步，异构资源池会变成“更多可选项”，而不是“更精确的生产能力”。
 
@@ -667,18 +633,7 @@ resource_claim_acceptance_matrix:
 
 这份矩阵的关键是从“资源能申请”推进到“资源能证明”。`DeviceClass` 选择器匹配资源池画像，只说明候选范围正确；`ResourceClaim` 绑定，只说明调度和驱动完成声明分配；`gpu_assignment_record` 和 `gpu_device_visibility_reconciliation` 证明容器内事实与 claim 一致；计量标签连续性证明 Token Factory 能把这次分配归到租户和资源产品。只有这些证据连起来，资源声明才适合生产。
 
-```mermaid
-flowchart LR
-  Mode{"claim mode"} --> ER["extended resource\nnvidia.com/gpu"]
-  Mode --> DRA["DRA\nDeviceClass / ResourceClaim"]
-  ER --> Assign["gpu_assignment_record"]
-  DRA --> Admit["resource_claim_admission_record"]
-  Admit --> Assign
-  Assign --> Diff["oci_runtime_injection_diff"]
-  Diff --> Recon["gpu_device_visibility_reconciliation"]
-  Recon --> Meter["metering label continuity"]
-  Meter --> Baseline["acceptance_baseline"]
-```
+![图：38.3.7 network benchmark](../assets/diagrams/part-09-reliability-observability-chapter-38-acceptance-testing-04.svg)
 
 当这类矩阵失败时，准入系统应直接改变资源池状态。`claim_bound_to_wrong_gpu_class` 应阻断目标 DeviceClass 或标签发布；`mig_claim_exposes_whole_gpu` 应让节点进入 quarantine；`entitlement_or_quota_not_enforced` 应阻断相关租户或队列使用；`metering_label_missing_after_claim` 应阻止商业化流量。资源声明错误不是小问题，它可能同时影响隔离、SLO 和收入。
 
@@ -813,17 +768,7 @@ baseline_invalidation_record:
 
 这个记录是变更系统、准入系统和资源池之间的接口。变更开始时，它把受影响资源降级；复测通过后，它恢复能力标签；复测失败时，它让资源停留在 limited、quarantine 或 maintenance。它也为事故复盘提供证据：如果某次 driver 升级后出现 NCCL hang，SRE 可以直接检查相关 baseline 是否被失效、复测是否覆盖容器内 RDMA、调度器是否在失效期间阻止大训练。许多“升级后随机故障”的根因，不是升级本身，而是基线失效没有进入调度控制面。
 
-```mermaid
-flowchart LR
-  Change["change / repair / incident"] --> Invalidate["baseline_invalidation_record"]
-  Invalidate --> Limit["resource pool: limited / deny high-risk workload"]
-  Invalidate --> Retest["required retest plan"]
-  Retest --> Pass{all required tests pass?}
-  Pass -->|yes| Restore["restore capabilities\nallocatable / workload-fit"]
-  Pass -->|no| Quarantine["quarantine / maintenance / vendor fix"]
-  Restore --> PRR["production readiness review can consume evidence"]
-  Quarantine --> Incident["incident / remediation backlog"]
-```
+![图：38.3.8 acceptance baseline](../assets/diagrams/part-09-reliability-observability-chapter-38-acceptance-testing-05.svg)
 
 网络 fabric 的失效规则还应绑定 `fabric_change_record`。交换机 QoS、RoCE profile、ECN/PFC 阈值、NIC firmware、OFED、CNI、NCCL 默认参数或调度 rail 标签变化后，不应只验证节点连通性，而要重跑与影响范围匹配的 host/container/Kubernetes 路径。一个可执行的回归门禁可以这样定义：
 
@@ -923,25 +868,7 @@ fabric_change_acceptance_matrix:
 
 这张矩阵强调三个容易漏掉的点。第一，host 通过不代表容器通过，容器通过不代表 Kubernetes 训练模板走了正确接口；因此必须把测试放到生产运行位置。第二，NCCL test 通过不代表 checkpoint 与通信叠加通过；高优训练池必须测组合窗口。第三，回滚不是把配置文件恢复，而是恢复后同拓扑基线也通过，并且调度状态同步回正确能力。没有这三点，fabric 变更验收会留下大量“轻载正常、生产失败”的空间。
 
-```mermaid
-flowchart TB
-  Change["fabric change"] --> Matrix["fabric_change_acceptance_matrix"]
-  Matrix --> Host["host RDMA"]
-  Matrix --> Container["container RDMA"]
-  Matrix --> K8s["Kubernetes NCCL job"]
-  Matrix --> Cong["PFC / ECN / QoS counters"]
-  Matrix --> Workload["checkpoint + NCCL + mixed traffic"]
-  Matrix --> Scheduler["scheduler labels / pool state"]
-  Host --> Decision{all required evidence pass?}
-  Container --> Decision
-  K8s --> Decision
-  Cong --> Decision
-  Workload --> Decision
-  Scheduler --> Decision
-  Decision -->|yes| Baseline["publish refreshed fabric_baseline"]
-  Decision -->|no| Limited["keep limited / quarantine"]
-  Limited --> FaultTree["congestion_fault_tree_execution"]
-```
+![图：38.3.8 acceptance baseline](../assets/diagrams/part-09-reliability-observability-chapter-38-acceptance-testing-06.svg)
 
 准入平台还应保留矩阵的原始证据，而不只是汇总状态。事故发生时，SRE 需要知道当时是哪组节点、哪组 rail、哪版 OFED、哪个 NCCL 环境、哪个 checkpoint overlap 用例通过了测试；否则无法判断生产症状是新退化、测试覆盖不足，还是 workload 形态变化。矩阵越接近真实 workload，后续异常检测越有依据。
 
@@ -1018,21 +945,7 @@ container_gpu_runtime_acceptance_matrix:
 
 矩阵还应输出可机器消费的复测动作。`runtime_handler_missing` 触发 runtime 配置修复和 kubelet/containerd 重启验证；`visible_device_mismatch` 触发节点 cordon、`gpu_device_visibility_reconciliation` 复跑和调度隔离；`rdma_gpu_nic_topology_mismatch` 触发 RDMA device plugin、CNI、Topology Manager 和调度标签检查；`oci_injection_diff_unexpected` 触发 NVIDIA Toolkit/CDI/NRI 变更审计。准入报告如果只给 pass/fail，无法自动改变资源池状态；失败分类必须足够具体，才能驱动修复。
 
-```mermaid
-flowchart TB
-  Matrix["container_gpu_runtime_acceptance_matrix"] --> Evidence["evidence set\nruntime config + OCI diff + assignment + visibility"]
-  Evidence --> Classify{"failure class"}
-  Classify --> Runtime["runtime_handler_missing\nfix CRI/runtime baseline"]
-  Classify --> CDI["cdi_spec_missing_or_stale\nregenerate spec / retest"]
-  Classify --> Visible["visible_device_mismatch\ncordon + reconciliation"]
-  Classify --> RDMA["rdma_gpu_nic_topology_mismatch\nCNI/RDMA/topology repair"]
-  Runtime --> Retest["targeted retest"]
-  CDI --> Retest
-  Visible --> Retest
-  RDMA --> Retest
-  Retest --> Baseline["acceptance_baseline refresh"]
-  Baseline --> PRR["production_readiness_review"]
-```
+![图：38.4.1 工程实现](../assets/diagrams/part-09-reliability-observability-chapter-38-acceptance-testing-07.svg)
 
 这张图说明准入失败不是一个终点，而是自动修复和门禁的入口。失败分类必须足够具体，才能决定修 runtime、修 CDI、隔离节点还是修 RDMA/拓扑。复测通过后刷新 baseline，PRR 才能消费新的证据；如果只保留一份失败报告，不改变资源池状态，准入就没有真正保护生产。
 

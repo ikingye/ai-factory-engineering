@@ -1,0 +1,16 @@
+stateDiagram-v2
+  [*] --> Submitted
+  Submitted --> Admitted: quota / gang / topology ok
+  Admitted --> Starting: nodes allocated
+  Starting --> Preflight: image / data / env checks
+  Preflight --> Rendezvous: ranks start + NCCL init
+  Rendezvous --> Running: first effective step
+  Running --> Checkpointing: checkpoint interval
+  Checkpointing --> Running: manifest verified
+  Running --> Paused: anomaly or operator pause
+  Paused --> Recovering: choose checkpoint
+  Recovering --> Rendezvous
+  Running --> Completed: target tokens / stop condition
+  Running --> Failed: unrecoverable error
+  Failed --> [*]
+  Completed --> [*]

@@ -1,0 +1,11 @@
+flowchart TB
+  Incident["用户反馈 / 告警"] --> TraceQ["按 trace_id 查请求路径"]
+  TraceQ --> Stage["定位异常阶段"]
+  Stage --> Gateway["Gateway: policy / quota / route"]
+  Stage --> Serving["Serving: queue / prefill / decode"]
+  Stage --> Runtime["Runtime: KV / batch / GPU"]
+  Stage --> Meter["Metering: usage / close reason"]
+  Gateway --> Fix1["策略或配额修复"]
+  Serving --> Fix2["扩容 / 隔离 / 发布回滚"]
+  Runtime --> Fix3["引擎参数 / 节点隔离"]
+  Meter --> Fix4["账单修正 / 事件补偿"]

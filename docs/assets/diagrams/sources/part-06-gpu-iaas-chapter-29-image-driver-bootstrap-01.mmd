@@ -1,0 +1,13 @@
+flowchart TB
+  Golden["golden OS image"] --> Host["host baseline"]
+  Host --> Kernel["kernel / sysctl / security"]
+  Host --> Driver["NVIDIA driver / DCGM"]
+  Host --> RDMA["OFED / RDMA stack"]
+  Host --> Runtime["container runtime / toolkit"]
+  Runtime --> Image["AI container image"]
+  Image --> Workload["training / inference workload"]
+  Host --> Validate["bootstrap validation"]
+  Validate --> Pool["resource pool"]
+  Matrix["compatibility matrix"] --> Golden
+  Matrix --> Image
+  Matrix --> Validate

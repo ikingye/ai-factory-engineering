@@ -1,0 +1,19 @@
+flowchart TB
+  subgraph Control["Kubernetes 控制面"]
+    API["API Server"] --> Sched["Scheduler / scheduler plugin"]
+    API --> Operator["GPU Operator"]
+  end
+  subgraph Node["GPU 节点"]
+    Kubelet["kubelet"] --> DP["GPU Device Plugin"]
+    Kubelet --> RDMA["RDMA / SR-IOV Device Plugin"]
+    Kubelet --> Runtime["container runtime"]
+    Operator --> Driver["NVIDIA Driver"]
+    Operator --> Toolkit["NVIDIA Container Toolkit"]
+    Operator --> DCGM["DCGM Exporter"]
+    DP --> GPU["GPU / MIG"]
+    RDMA --> NIC["RDMA NIC"]
+    Runtime --> Pod["AI Pod"]
+    Pod --> GPU
+    Pod --> NIC
+  end
+  Sched --> Kubelet

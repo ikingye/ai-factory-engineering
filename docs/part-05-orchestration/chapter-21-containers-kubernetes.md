@@ -58,42 +58,13 @@ GPU 容器的关键点是：容器内应用需要看到 GPU 设备文件、drive
 
 Kubernetes 的控制流从 API Server 开始，到节点上的 kubelet 结束；容器运行时的数据面从 kubelet 进入 CRI，再进入 containerd 或 CRI-O，最后由 runc 创建容器。AI Factory 在这条链路上叠加了模型、GPU、网络、存储和队列语义。一个在线模型服务至少涉及 Deployment 或上层 ModelService、Pod、Service、Gateway、Secret、ConfigMap、PVC 或对象存储挂载、GPU 资源请求、节点标签、探针、日志、metrics 和 trace；一个训练任务还会涉及 Job 或 TrainingJob、PodGroup、queue、quota、gang scheduling、checkpoint 和数据集。
 
-```mermaid
-flowchart TB
-  User["用户 / AI 平台 API"] --> API["Kubernetes API Server"]
-  API --> Controllers["Controllers<br/>Deployment / Job / StatefulSet"]
-  API --> Scheduler["Scheduler<br/>filter / score / bind"]
-  Scheduler --> Node["目标 Node"]
-  Controllers --> API
-  Node --> Kubelet["kubelet"]
-  Kubelet --> CRI["CRI<br/>containerd / CRI-O"]
-  Kubelet --> CNI["CNI<br/>Pod 网络"]
-  Kubelet --> CSI["CSI<br/>Volume 挂载"]
-  CRI --> Runtime["OCI Runtime<br/>runc / NVIDIA runtime"]
-  Runtime --> Pod["Pod containers"]
-  CNI --> Pod
-  CSI --> Pod
-  Pod --> App["AI workload<br/>inference / training / eval"]
-```
+![图：21.2.2 系统架构](../assets/diagrams/part-05-orchestration-chapter-21-containers-kubernetes-01.svg)
 
 控制流和数据流要分开看。控制流回答“对象如何被创建、调度、启动、重启、升级、删除”；数据流回答“请求、token、模型权重、数据集、checkpoint、日志和指标如何流动”。很多 AI 故障来自两条路径不一致：控制面认为 Pod 已经 Ready，数据面上的模型权重还在下载；调度器认为 GPU 数量满足，训练数据面上的 RDMA rail 不通；Deployment rollout 成功，Gateway streaming timeout 却导致长回答中断。只看 Kubernetes 对象状态，无法解释完整 AI 体验。
 
 GPU 容器运行时链路是本章必须掌握的一条底层路径。最早的做法是手动把 `/dev/nvidia0`、`/dev/nvidiactl`、`/dev/nvidia-uvm` 和 driver library bind mount 进容器，或者使用 `--privileged` 把过多宿主能力暴露给容器。前者难维护，后者风险高。NVIDIA 先后提供过 `nvidia-docker`、`nvidia-docker2` 和 NVIDIA Container Toolkit。当前主线是 NVIDIA Container Toolkit：通过 `nvidia-container-runtime`、runtime hook、`nvidia-container-cli` 和 `libnvidia-container` 在 OCI runtime 生命周期中完成设备和库注入。
 
-```mermaid
-flowchart TB
-  Docker["docker / containerd / CRI-O"] --> Spec["OCI runtime spec<br/>config.json"]
-  Spec --> NVRuntime["nvidia-container-runtime"]
-  NVRuntime --> Patch["修改 spec<br/>加入 NVIDIA hook"]
-  Patch --> Runc["runc"]
-  Runc --> NS["创建 namespace / cgroup<br/>尚未启动用户进程"]
-  NS --> Hook["nvidia-container-runtime-hook<br/>prestart hook"]
-  Hook --> CLI["nvidia-container-cli"]
-  CLI --> Lib["libnvidia-container"]
-  Lib --> Mounts["bind mount GPU devices<br/>driver libs / binaries"]
-  Mounts --> Start["runc 启动容器进程"]
-  Start --> App["CUDA / NCCL / AI app"]
-```
+![图：21.2.2 系统架构](../assets/diagrams/part-05-orchestration-chapter-21-containers-kubernetes-02.svg)
 
 在 Kubernetes 中，GPU 还多一层资源发现和分配。NVIDIA device plugin 向 kubelet 注册 `nvidia.com/gpu` 或 MIG 资源，Scheduler 根据 Pod resource request 选择节点，kubelet 在创建容器时把分配结果传给 CRI，NVIDIA Container Toolkit 再在 runtime 链路中注入设备和库。也就是说，device plugin 解决“哪些 GPU 分给这个 Pod”，container toolkit 解决“这些 GPU 如何出现在容器里”。把两者混为一谈，会导致排障时不知道该看 kubelet/device plugin，还是看 runtime hook/libnvidia-container。
 
@@ -281,19 +252,7 @@ NVIDIA Container Toolkit 的组件职责要记清楚。`libnvidia-container` 是
 
 这并不意味着 legacy hook 模式立刻消失。很多生产集群仍会同时存在 Docker `--gpus`、containerd `nvidia` runtime handler、Kubernetes device plugin 的 envvar strategy、CDI strategy、GPU Operator 管理的 Toolkit 和不同版本的容器运行时。平台文档如果只写“安装 NVIDIA Container Toolkit 即可”，读者遇到 RuntimeClass、CDI spec、device plugin strategy 或 hook 日志时就会断层。更准确的表达是：GPU 容器链路有多个实现路径，但每条路径都要回答同样的问题：设备由谁分配，设备描述由谁生成，CRI 如何传递，runtime 如何消费，容器内如何验证。
 
-```mermaid
-flowchart TB
-  DP["GPU Device Plugin\n发现 / 分配 GPU"] --> Strategy{"device list strategy"}
-  Strategy --> Env["envvar / volume / legacy path\nNVIDIA_VISIBLE_DEVICES"]
-  Strategy --> CDI["CDI spec\nvendor.com/device=GPU-uuid"]
-  Env --> CRI["kubelet -> CRI\ncontainerd / CRI-O"]
-  CDI --> CRI
-  CRI --> Handler{"runtime handler"}
-  Handler --> Hook["nvidia runtime / OCI hook\nlegacy injection"]
-  Handler --> Native["OCI runtime consumes CDI\nstandard device injection"]
-  Hook --> Container["container\n/dev/nvidia* + driver libs"]
-  Native --> Container
-```
+![图：21.3.10 GPU 容器运行时与 NVIDIA Container Toolkit](../assets/diagrams/part-05-orchestration-chapter-21-containers-kubernetes-03.svg)
 
 排障时必须先识别当前节点使用哪条路径。若集群使用 RuntimeClass `nvidia`，但 Pod 没写 runtimeClassName，可能落到默认 runc，导致 device plugin 分配了 GPU 但 runtime 没有执行 NVIDIA 注入。若 device plugin 使用 CDI strategy，但 containerd 或 CRI-O 没启用 CDI 支持，Pod 事件可能显示设备解析失败。若集群使用 legacy envvar strategy，镜像里残留 `NVIDIA_VISIBLE_DEVICES=all` 可能使非 GPU Pod 触发 NVIDIA hook。路径不同，日志入口也不同：legacy hook 看 `nvidia-container-runtime-hook`、`nvidia-container-cli` 和 containerd stderr；CDI 看 CDI spec 文件、CRI 传递的 device name 和 runtime CDI 解析错误；RuntimeClass 问题则看 Pod spec、RuntimeClass 对象、containerd runtime handler 和 kubelet CRI 配置。
 
@@ -339,17 +298,7 @@ oci_runtime_injection_diff:
 
 这个 diff 的关键不是记录所有实现细节，而是建立“分配事实到运行时事实”的桥。若 device plugin 分配了 1 张 GPU，而 diff 中出现 8 张设备，问题在 runtime 注入或镜像默认值；若 diff 中有 CDI device name，但容器创建失败提示无法解析 CDI，问题在 containerd/CRI-O 的 CDI 支持或 spec 文件；若 diff 没有任何 NVIDIA 相关变化，说明 RuntimeClass、runtime handler 或 device plugin strategy 没有接上。它应被第 38 章的容器 GPU runtime 准入和第 39 章的故障诊断消费。
 
-```mermaid
-flowchart TB
-  Symptom["Pod Running\nbut GPU wrong / unavailable"] --> Assign["gpu_assignment_record\nkubelet + device plugin"]
-  Assign --> Diff["oci_runtime_injection_diff\nOCI spec / CDI / hook"]
-  Diff --> Recon["gpu_device_visibility_reconciliation\ninside container facts"]
-  Recon --> Verdict{"facts match?"}
-  Verdict -->|yes| App["move upward\nCUDA / NCCL / app readiness"]
-  Verdict -->|no| Runtime["runtime investigation\nRuntimeClass / CDI / hook / env"]
-  Runtime --> Baseline["container_gpu_runtime_acceptance_matrix\nretest node pool"]
-  Baseline --> Pool["resource pool state\nallocatable / limited / quarantine"]
-```
+![图：21.3.10 GPU 容器运行时与 NVIDIA Container Toolkit](../assets/diagrams/part-05-orchestration-chapter-21-containers-kubernetes-04.svg)
 
 这张图的价值在于明确“先对账，再归因”。容器内 `nvidia-smi` 成功只是一个观察点，不是最终结论；真正要比较的是调度分配、OCI 注入和容器内事实是否一致。若三者一致，再进入 CUDA、NCCL、模型服务或应用 readiness；若三者不一致，就应先处理 runtime 基线，而不是让业务团队继续改镜像或模型代码。
 
@@ -587,21 +536,7 @@ container_runtime_change_record:
 
 这个记录要和普通变更单区分开。普通变更单关注谁批准、何时执行；`container_runtime_change_record` 关注运行时路径是否仍然能证明“分配事实、注入事实、容器内事实一致”。从 legacy hook 迁移到 CDI，或从 RuntimeClass handler 迁移到 runtime 原生 CDI 注入时，不能只跑一个 `nvidia-smi` Pod。平台应至少验证：非 GPU Pod 不会看到 GPU，单 GPU Pod 只看到被分配 GPU，MIG Pod 不会看到整卡，多 GPU/RDMA Pod 的 GPU/NIC 拓扑仍匹配，失败时资源池会自动从 allocatable 降级为 limited 或 quarantine。
 
-```mermaid
-flowchart TB
-  Change["container_runtime_change_record"] --> Scope["scope\nnode pool / runtime path / strategy"]
-  Scope --> Canary["canary node pool"]
-  Canary --> Diff["oci_runtime_injection_diff"]
-  Canary --> Recon["gpu_device_visibility_reconciliation"]
-  Canary --> Matrix["container_gpu_runtime_acceptance_matrix"]
-  Matrix --> Verdict{pass?}
-  Diff --> Verdict
-  Recon --> Verdict
-  Verdict -->|pass| Rollout["expand rollout"]
-  Verdict -->|fail| Quarantine["cordon / rollback / retest"]
-  Quarantine --> Cost["reliability_cost_ledger"]
-  Rollout --> Baseline["acceptance baseline refresh"]
-```
+![图：21.4.1 工程实现](../assets/diagrams/part-05-orchestration-chapter-21-containers-kubernetes-05.svg)
 
 这条闭环也解释了为什么“CDI 是新方向”不等于“可以直接全量切换”。官方 NVIDIA 文档已经把 Container Toolkit 描述为包含 runtime、hook、library/CLI 的组件栈，并且 GPU Operator 较新版本开始把 CDI 作为 Kubernetes workload 容器 GPU 注入的默认路径；同时 NRI 插件提供了不依赖 `nvidia` runtime class 的注入方式。生产平台应该跟随标准化方向，但必须以资源池为单位迁移、以准入矩阵证明、以 PRR 门禁约束，而不是把官方默认值当成自己的生产验收结论。
 
@@ -609,20 +544,7 @@ flowchart TB
 
 一个 GPU workload 的准入链可以这样组织：
 
-```mermaid
-flowchart LR
-  Submit["Pod / Job / ModelService"] --> Namespace["namespace / tenant check"]
-  Namespace --> Image["image digest / vulnerability gate"]
-  Image --> Security["runtime_privilege_profile"]
-  Security --> Resource["GPU / RDMA resource request"]
-  Resource --> Labels["owner / cost / model labels"]
-  Labels --> Baseline["node pool acceptance baseline"]
-  Baseline --> Admit["admit"]
-  Namespace -->|deny| Reject["typed rejection"]
-  Image -->|deny| Reject
-  Security -->|deny| Reject
-  Resource -->|deny| Reject
-```
+![图：21.4.1 工程实现](../assets/diagrams/part-05-orchestration-chapter-21-containers-kubernetes-06.svg)
 
 准入失败要给出 typed rejection，而不是只告诉用户 “forbidden”。例如 `privileged_not_allowed`、`hostpath_denied`、`gpu_request_missing`、`image_digest_required`、`tenant_label_missing`、`node_pool_not_accepted`。这些拒绝原因既能提升用户体验，也能进入平台指标，帮助团队判断是文档问题、镜像治理问题、权限模型过严，还是用户在绕过平台。
 

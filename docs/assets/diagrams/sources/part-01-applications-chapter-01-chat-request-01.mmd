@@ -1,0 +1,12 @@
+flowchart LR
+  Client["Chat Client"] --> API["Chat Completion API"]
+  API --> Gateway["AI Gateway"]
+  Gateway --> Router["模型路由 / 限流"]
+  Router --> Server["Model Server"]
+  Server --> Engine["Inference Engine"]
+  Engine --> Prefill["Prefill"]
+  Engine --> Decode["Decode"]
+  Decode --> KV["KV Cache"]
+  KV --> GPU["GPU / HBM"]
+  Decode --> Stream["Streaming Tokens"]
+  Stream --> Meter["Token Metering"]

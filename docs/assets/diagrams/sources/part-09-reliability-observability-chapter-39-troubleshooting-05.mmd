@@ -1,0 +1,12 @@
+flowchart TB
+  S["GPU idle / checkpoint slow / model load slow"] --> P{是哪类路径?}
+  P -->|dataset| D["检查 dataset_manifest / shard / data loader wait / cache hit"]
+  P -->|checkpoint| C["检查 manifest commit / metadata ops / rank 写入长尾"]
+  P -->|artifact| A["检查 registry / digest verify / weight cache / local NVMe"]
+  P -->|cache| K["检查容量水位 / eviction / 版本键 / 预热状态"]
+  D --> E{是否与 baseline 偏离?}
+  C --> E
+  A --> E
+  K --> E
+  E -->|是| Fix["reshard / prewarm / throttle / repair backend / adjust schedule"]
+  E -->|否| Next["继续检查网络、runtime、模型配置"]

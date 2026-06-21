@@ -67,21 +67,7 @@ PyTorch 提供通用深度学习生态、动态图、autograd 和 torch.distribu
 
 架构评审时，应检查每条路径是否有 owner：镜像由平台维护，训练代码由模型团队维护，通信和拓扑由基础设施团队验证，checkpoint 和产物由模型平台管理，指标由可观测性系统承接。职责不清时，分布式训练故障会在团队之间来回转移。
 
-```mermaid
-flowchart TB
-  Model["模型代码"] --> Framework["训练框架"]
-  Data["DataLoader"] --> Framework
-  Framework --> Autograd["autograd / backward"]
-  Framework --> Dist["distributed runtime"]
-  Framework --> Optim["optimizer"]
-  Framework --> Ckpt["checkpoint"]
-  Dist --> NCCL["NCCL / collectives"]
-  Framework --> CUDA["CUDA kernels"]
-  NCCL --> GPU["GPU 集群"]
-  CUDA --> GPU
-  Ckpt --> Storage["checkpoint storage"]
-  Framework --> Metrics["training metrics"]
-```
+![图：16.2.2 系统架构](../assets/diagrams/part-04-runtime-chapter-16-training-frameworks-01.svg)
 
 生产环境还需要一张训练运行时矩阵。它不是传统意义上的兼容表，而是把“这个框架组合是否可以进入某个资源池”写成可审计事实。矩阵至少包含框架版本、CUDA/NCCL/driver、launcher、并行能力、checkpoint 格式、已验证 GPU 拓扑、已知限制和回滚版本。没有这张矩阵，平台会把用户提交的训练任务直接扔给集群，用真实 GPU 时间替代本该在准入阶段完成的验证。
 

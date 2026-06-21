@@ -1,0 +1,10 @@
+flowchart TB
+  Symptom["症状\n任务 pending / 延迟长尾 / 成本失控 / 业务无价值"] --> Target["目标层检查\n服务对象和价值单位是否清楚"]
+  Target -->|不清楚| FixTarget["补 workload_profile\n补 business_model_profile\n收缩范围"]
+  Target -->|清楚| Production["生产层检查\n应用-平台-模型-runtime-调度-资源是否闭环"]
+  Production -->|断裂| FixProduction["补缺口\nGateway / serving / queue / resource pool / data path"]
+  Production -->|闭环| Ops["运营层检查\n准入 / baseline / telemetry / runbook / change"]
+  Ops -->|缺证据| FixOps["建立 acceptance baseline\n补观测标签和诊断包"]
+  Ops -->|证据完整| Economics["经济层检查\ncost / value / margin / ROI"]
+  Economics -->|倒挂| FixEconomics["调整路由、价格、容量或下线场景"]
+  Economics -->|成立| Scale["进入规模化\n扩大资源或商业覆盖"]

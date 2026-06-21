@@ -8,7 +8,7 @@
 
 - 一个真实工程场景：从故障、需求或上线压力切入，而不是从定义切入。
 - 一组核心概念：首次出现的术语给出中文解释和英文原词。
-- 一张系统关系图：能用 Mermaid 表达组件关系、数据流或控制流时，优先画图。
+- 一张系统关系图：能表达组件关系、数据流或控制流时，优先画图；公开正文统一引用 `docs/assets/diagrams/` 下的静态 SVG 图。
 - 一条工程路径：说明请求、任务、数据、模型或资源如何穿过系统。
 - 一组常见故障：列出真实生产中会遇到的错配、瓶颈和排障入口。
 - 一组指标：区分体验指标、资源指标、稳定性指标和成本指标。
@@ -112,7 +112,14 @@ python3 tools/audit_consistency.py
 
 ## 6. 图表规范
 
-Mermaid 图应服务于论证，不做装饰。推荐使用三类图：
+图表应服务于论证，不做装饰。全书统一使用 `fireworks-tech-graph` 生成的静态 SVG/PNG 资产：SVG 用于正文引用，PNG 用于渲染复核，原始 Mermaid 源保存在 `docs/assets/diagrams/sources/`，清单保存在 `docs/assets/diagrams/manifest.json`。新增或修改图时运行：
+
+```bash
+python3 tools/render_mermaid_diagrams.py --write
+python3 tools/audit_diagrams.py
+```
+
+推荐使用三类图：
 
 - `flowchart`：表达请求路径、训练链路、控制面和数据面关系。
 - `sequenceDiagram`：表达一次 API 调用、流式返回、多轮 Agent 调用。

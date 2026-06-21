@@ -1,0 +1,13 @@
+flowchart TB
+  Change["container_runtime_change_record"] --> Scope["scope\nnode pool / runtime path / strategy"]
+  Scope --> Canary["canary node pool"]
+  Canary --> Diff["oci_runtime_injection_diff"]
+  Canary --> Recon["gpu_device_visibility_reconciliation"]
+  Canary --> Matrix["container_gpu_runtime_acceptance_matrix"]
+  Matrix --> Verdict{pass?}
+  Diff --> Verdict
+  Recon --> Verdict
+  Verdict -->|pass| Rollout["expand rollout"]
+  Verdict -->|fail| Quarantine["cordon / rollback / retest"]
+  Quarantine --> Cost["reliability_cost_ledger"]
+  Rollout --> Baseline["acceptance baseline refresh"]

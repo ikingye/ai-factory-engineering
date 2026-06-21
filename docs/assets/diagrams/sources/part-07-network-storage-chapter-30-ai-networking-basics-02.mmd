@@ -1,0 +1,7 @@
+flowchart LR
+  Job["job / request"] --> Placement["placement: rank / replica / node"]
+  Placement --> Device["GPU / NIC / NUMA / container"]
+  Device --> Path["rail / leaf / spine / storage path"]
+  Path --> Counters["RDMA / ECN / PFC / errors / latency"]
+  Counters --> Baseline["acceptance baseline / historical baseline"]
+  Baseline --> Action["isolate / reroute / reschedule / repair"]

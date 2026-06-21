@@ -1,0 +1,8 @@
+flowchart LR
+  Detect["detect\nkey anomaly / policy deny spike / audit alert"] --> Contain["contain\nrevoke / freeze / isolate / route block"]
+  Contain --> Impact["tenant impact\nusage / data / model / resource"]
+  Impact --> Evidence["freeze evidence\npolicy_decision / trace / audit"]
+  Evidence --> Notify["notify\ntenant / security / legal / owner"]
+  Notify --> Eradicate["eradicate\nfix policy / rotate / clean"]
+  Eradicate --> Postmortem["postmortem\ncontrols / runbook / cost"]
+  Postmortem --> Guardrail["new guardrail\nadmission / monitoring / budget"]

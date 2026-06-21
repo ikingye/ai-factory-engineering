@@ -1,0 +1,10 @@
+flowchart LR
+  Mode{"claim mode"} --> ER["extended resource\nnvidia.com/gpu"]
+  Mode --> DRA["DRA\nDeviceClass / ResourceClaim"]
+  ER --> Assign["gpu_assignment_record"]
+  DRA --> Admit["resource_claim_admission_record"]
+  Admit --> Assign
+  Assign --> Diff["oci_runtime_injection_diff"]
+  Diff --> Recon["gpu_device_visibility_reconciliation"]
+  Recon --> Meter["metering label continuity"]
+  Meter --> Baseline["acceptance_baseline"]

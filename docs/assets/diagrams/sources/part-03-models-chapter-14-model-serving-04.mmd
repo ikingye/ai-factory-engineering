@@ -1,0 +1,10 @@
+stateDiagram-v2
+  [*] --> Missing
+  Missing --> Pulling: schedule prewarm or replica start
+  Pulling --> Verifying: artifact downloaded
+  Verifying --> Cached: digest and manifest ok
+  Cached --> Warming: load weights / tokenizer / engine
+  Warming --> Ready: warmup probe passed
+  Cached --> Invalid: manifest revoked or digest mismatch
+  Ready --> Draining: release rollback or node maintenance
+  Draining --> Cached

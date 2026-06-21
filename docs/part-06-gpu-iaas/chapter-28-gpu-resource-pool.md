@@ -153,17 +153,7 @@ heterogeneous_gpu_pool_profile:
 
 异构池的核心风险是“隐性降级”。同一模型在成熟 GPU 上满足 TPOT，在新 GPU canary 上因为 runtime 未适配反而更慢；某个旧 GPU 单卡吞吐低，但对低价批量任务毛利更好；某个高 HBM 资源池适合长上下文，却被短请求抢占。资源池要把这些差异暴露给模型路由和容量系统，否则优化会被平均值掩盖。
 
-```mermaid
-flowchart LR
-  ModelReq["model requirements\ncontext / precision / engine / SLO"] --> Fit["model_hardware_fit_record"]
-  Pool["heterogeneous_gpu_pool_profile\nclasses / baselines / entitlement"] --> Fit
-  Fit --> Route["gpu_generation_route_decision"]
-  Route --> Serving["serving placement / endpoint"]
-  Serving --> Meter["metering events"]
-  Meter --> Cost["heterogeneous_gpu_cost_scorecard"]
-  Cost --> Pool
-  Fit --> PRR["production_readiness_review"]
-```
+![图：28.2.2 系统架构](../assets/diagrams/part-06-gpu-iaas-chapter-28-gpu-resource-pool-01.svg)
 
 这条链路能解释为什么“有 GPU”不等于“适合这个模型”。模型要求先和硬件能力匹配，匹配结果再进入路由、服务、计量和成本 scorecard。PRR 消费的是匹配证据，而不是只消费库存数量。后续第 35 章会说明模型硬件匹配，第 38 章会说明异构池验收，第 41 章会说明不同 GPU class 的经济比较，第 44 章会把它们纳入上线门禁。
 
@@ -239,19 +229,7 @@ remote_gpu_access_contract:
     bill_gpu_time_and_network_egress: true
 ```
 
-```mermaid
-flowchart LR
-  Inventory["inventory / asset"] --> State["health & maintenance state"]
-  Telemetry["DCGM / BMC / network"] --> State
-  State --> Pool["GPU resource pool"]
-  Pool --> Reservation["reservation"]
-  Pool --> Allocation["allocation"]
-  Allocation --> Scheduler["Kubernetes / Slurm"]
-  Scheduler --> Usage["usage / accounting"]
-  Usage --> Pool
-  Pool --> Capacity["capacity planning"]
-  Pool --> Ops["repair / reclaim / retire"]
-```
+![图：28.2.2 系统架构](../assets/diagrams/part-06-gpu-iaas-chapter-28-gpu-resource-pool-02.svg)
 
 
 ## 28.3 关键技术

@@ -1,0 +1,11 @@
+flowchart LR
+  Base["基础模型"] --> SFT["SFT\n指令/格式"]
+  SFT --> Pref["偏好优化\nRLHF / DPO / RLAIF"]
+  Pref --> Safety["安全与对齐"]
+  Safety --> Eval["多维评测"]
+  Eval --> Registry["模型注册"]
+  Registry --> Serving["模型服务 / MaaS"]
+  Serving --> Feedback["线上反馈 / 红队 / 工具失败"]
+  Feedback --> Data["数据回流与治理"]
+  Data --> SFT
+  Eval --> Decision["灰度 / 回滚 / 继续迭代"]

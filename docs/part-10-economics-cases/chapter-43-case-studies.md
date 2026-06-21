@@ -69,18 +69,7 @@
 
 案例图不是为了画出漂亮层级，而是为了强迫每个结论落到证据：它服务谁、跑什么 workload、依赖哪些平台能力、需要哪些基础设施、如何运营、如何证明价值。缺少证据的部分，应明确标注为假设。
 
-```mermaid
-flowchart TB
-  Case["案例类型"] --> Goal["目标 / 服务对象"]
-  Goal --> Unit["价值单位"]
-  Unit --> Workload["核心 workload"]
-  Workload --> Platform["平台能力"]
-  Workload --> Infra["基础设施能力"]
-  Platform --> Ops["可靠性 / 安全 / 运维"]
-  Infra --> Ops
-  Ops --> Economics["成本 / 产能 / ROI"]
-  Economics --> Lesson["可复用经验 / 风险"]
-```
+![图：43.2.2 系统架构](../assets/diagrams/part-10-economics-cases-chapter-43-case-studies-01.svg)
 
 
 ## 43.3 关键技术
@@ -346,18 +335,7 @@ case_study_evidence_pack:
 
 失败案例也应按证据链诊断。下面的路径适合用在“GPU 买了但平台产出差”的复盘中。它从业务症状开始，逐层追到 profile、商业承诺、生产路径和运营证据，避免直接把问题归咎于“GPU 不够”或“模型不行”。
 
-```mermaid
-flowchart TB
-  Symptom["症状\n任务 pending / 延迟长尾 / 成本失控 / 业务无价值"] --> Target["目标层检查\n服务对象和价值单位是否清楚"]
-  Target -->|不清楚| FixTarget["补 workload_profile\n补 business_model_profile\n收缩范围"]
-  Target -->|清楚| Production["生产层检查\n应用-平台-模型-runtime-调度-资源是否闭环"]
-  Production -->|断裂| FixProduction["补缺口\nGateway / serving / queue / resource pool / data path"]
-  Production -->|闭环| Ops["运营层检查\n准入 / baseline / telemetry / runbook / change"]
-  Ops -->|缺证据| FixOps["建立 acceptance baseline\n补观测标签和诊断包"]
-  Ops -->|证据完整| Economics["经济层检查\ncost / value / margin / ROI"]
-  Economics -->|倒挂| FixEconomics["调整路由、价格、容量或下线场景"]
-  Economics -->|成立| Scale["进入规模化\n扩大资源或商业覆盖"]
-```
+![图：43.4.1 工程实现](../assets/diagrams/part-10-economics-cases-chapter-43-case-studies-02.svg)
 
 这个诊断路径还要求区分事实和推断。比如“任务 pending 很久”是事实，“GPU 不够”只是可能推断；还需要检查 quota、gang、topology、image、data path、node baseline 和队列优先级。“推理毛利下降”是事实，“模型太贵”也只是可能推断；还需要检查 output token、cache miss、低质量重试、安全拦截、失败计费和支持成本。案例研究要训练这种证据纪律。
 

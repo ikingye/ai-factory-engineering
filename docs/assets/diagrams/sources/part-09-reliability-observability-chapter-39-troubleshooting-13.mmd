@@ -1,0 +1,15 @@
+flowchart TB
+  Symptom["ResourceClaim / GPU request symptom"] --> Contract["gpu_resource_claim_contract"]
+  Contract --> Admission["resource_claim_admission_record"]
+  Admission --> Spec["claim spec\nDeviceClass / ResourceClaim / resource name"]
+  Admission --> Policy["entitlement / quota / cost"]
+  Admission --> Pool["ResourceSlice / inventory / acceptance"]
+  Admission --> Topo["topology / RDMA / rank contract"]
+  Admission --> Runtime["assignment -> OCI/CDI"]
+  Runtime --> ContainerTree["container_gpu_runtime_fault_tree"]
+  Admission --> Meter["metering labels"]
+  Spec --> Verdict["fault domain + action"]
+  Policy --> Verdict
+  Pool --> Verdict
+  Topo --> Verdict
+  Meter --> Verdict

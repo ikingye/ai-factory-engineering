@@ -1,0 +1,10 @@
+flowchart LR
+  Submit["训练提交"] --> Queue["队列 / 配额"]
+  Queue --> Gang["gang scheduling"]
+  Gang --> Place["拓扑放置"]
+  Place --> Start["多 worker 启动"]
+  Start --> NCCL["NCCL 初始化"]
+  NCCL --> Loop["forward / backward"]
+  Loop --> Comm["gradient communication"]
+  Loop --> Ckpt["checkpoint"]
+  Ckpt --> Recover["failure recovery"]

@@ -1,0 +1,12 @@
+flowchart TB
+  Trigger["artifact / tokenizer / RAG / data revoke"] --> Bundle["supply_chain_invalidation_evidence_bundle"]
+  Contract["supply_chain_release_contract"] --> Bundle
+  Registry["registry pointer history"] --> Bundle
+  Scheduler["scheduler / autoscaler decisions"] --> Bundle
+  Cache["local NVMe / rack cache scans"] --> Bundle
+  Runtime["loaded digest / trace replay"] --> Bundle
+  Meter["usage schema / billing hold"] --> Bundle
+  Bundle --> Verdict{"old object reachable?"}
+  Verdict -->|yes| Incident["supply_chain_fault_tree_execution"]
+  Verdict -->|no| Gate["PRR / release gate evidence"]
+  Incident --> Cost["supply_chain_incident_cost_record"]

@@ -1,0 +1,10 @@
+flowchart TB
+  Contract["gpu_resource_claim_contract"] --> Admission["resource_claim_admission_record"]
+  Ent["entitlement"] --> Admission
+  Quota["queue quota / gang"] --> Admission
+  Device["DeviceClass / ResourceSlice\nor extended resource inventory"] --> Admission
+  Topo["rank topology / GPU-NIC / fabric"] --> Admission
+  Baseline["runtime + acceptance baseline"] --> Admission
+  Admission -->|accept| Placement["placement_commit_record"]
+  Admission -->|wait| Pending["pending reason\nquota / gang / topology / flavor"]
+  Admission -->|reject| User["actionable error"]

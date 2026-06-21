@@ -1,0 +1,13 @@
+flowchart LR
+  Text["文本 / prompt"] --> Tok["Tokenizer"]
+  Tok --> IDs["token ids"]
+  IDs --> Prefill["prefill: 处理输入上下文"]
+  Prefill --> KV["KV Cache"]
+  KV --> Decode["decode loop"]
+  Decode --> Next["next token"]
+  Next --> Stream["token streaming"]
+  Decode --> KV
+  Weights["模型权重"] --> Prefill
+  Weights --> Decode
+  Prefill --> HBM["GPU HBM"]
+  Decode --> HBM

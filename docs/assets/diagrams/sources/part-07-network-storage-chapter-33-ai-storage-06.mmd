@@ -1,0 +1,15 @@
+flowchart TB
+  Original["original media object"] --> Manifest["media_artifact_manifest"]
+  Original --> Pipeline["media_processing_pipeline_record"]
+  Pipeline --> Pages["page images / frames"]
+  Pipeline --> Text["OCR / ASR text"]
+  Pipeline --> Layout["layout / tables / regions"]
+  Pipeline --> Embed["visual/audio embeddings"]
+  Pages --> Manifest
+  Text --> Manifest
+  Layout --> Manifest
+  Embed --> Manifest
+  Manifest --> Serving["multimodal serving"]
+  Manifest --> Eval["multimodal_quality_gate_execution"]
+  Manifest --> Meter["multimodal_metering_event"]
+  Manifest --> Delete["retention / delete / audit"]

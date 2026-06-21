@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1349 916" width="1349" height="916">
+  <defs>
+    <marker id="arrowA" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#7c3aed"/>
+    </marker>
+    <marker id="arrowB" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#10b981"/>
+    </marker>
+    <marker id="arrowC" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2563eb"/>
+    </marker>
+    <marker id="arrowE" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#f97316"/>
+    </marker>
+    <marker id="arrowF" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#7c3aed"/>
+    </marker>
+    <marker id="arrowG" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#ef4444"/>
+    </marker>
+    <marker id="arrowH" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#6b7280"/>
+    </marker>
+    <filter id="shadowSoft" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="3" stdDeviation="6" flood-color="#0f172a" flood-opacity="0.12"/>
+    </filter>
+    <filter id="shadowGlass" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="10" stdDeviation="16" flood-color="#020617" flood-opacity="0.28"/>
+    </filter>
+    <style>
+    text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', 'Microsoft JhengHei', 'SimHei', sans-serif; }
+    .title { font-size: 30px; font-weight: 700; fill: #111827; }
+    .subtitle { font-size: 14px; font-weight: 500; fill: #6b7280; }
+    .section { font-size: 13px; font-weight: 700; fill: #2563eb; letter-spacing: 1.4px; }
+    .section-sub { font-size: 12px; font-weight: 500; fill: #94a3b8; }
+    .node-title { font-size: 18px; font-weight: 700; fill: #111827; }
+    .node-sub { font-size: 12px; font-weight: 500; fill: #6b7280; }
+    .node-type { font-size: 12px; font-weight: 700; fill: #9ca3af; letter-spacing: 0.08em; }
+    .arrow-label { font-size: 12px; font-weight: 600; fill: #6b7280; }
+    .legend { font-size: 12px; font-weight: 500; fill: #6b7280; }
+    .footnote { font-size: 12px; font-weight: 500; fill: #94a3b8; }
+    </style>
+  </defs>
+  <rect width="1349.0" height="916.0" fill="#ffffff"/>
+  <text x="674.5" y="56" text-anchor="middle" class="title">37.4.1 工程实现</text>
+  <text x="674.5" y="82" text-anchor="middle" class="subtitle">part-09-reliability-observability/chapter-37-ai-factory-observability.md:1200</text>
+  <path d="M 674.5,224.0 L 674.5,296.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 674.5,366.0 L 674.5,386.4 L 164.0,423.6 L 164.0,444.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 674.5,366.0 L 674.5,386.4 L 414.5,417.6 L 414.5,438.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 674.5,366.0 L 674.5,386.4 L 679.0,423.6 L 679.0,444.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 674.5,366.0 L 674.5,386.4 L 961.0,423.6 L 961.0,444.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 674.5,366.0 L 674.5,386.4 L 1207.0,423.6 L 1207.0,444.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 164.0,502.0 L 164.0,522.4 L 540.5,559.6 L 540.5,580.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 414.5,508.0 L 414.5,528.4 L 540.5,559.6 L 540.5,580.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 961.0,502.0 L 961.0,522.4 L 540.5,559.6 L 540.5,580.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 1207.0,502.0 L 1207.0,522.4 L 784.0,559.6 L 784.0,580.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 540.5,650.0 L 540.5,670.4 L 674.5,701.6 L 674.5,722.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <rect x="567.0" y="154.0" width="215.0" height="70.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
+  <text x="674.5" y="189.0" text-anchor="middle" class="node-title">tokens</text>
+  <text x="674.5" y="211.0" text-anchor="middle" class="node-sub">W drop or capacity drop</text>
+  <rect x="556.5" y="296.0" width="236.0" height="70.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
+  <text x="674.5" y="331.0" text-anchor="middle" class="node-title">facility_capacity_evidence</text>
+  <text x="674.5" y="353.0" text-anchor="middle" class="node-sub">bundle</text>
+  <rect x="60.0" y="444.0" width="208.0" height="58.0" rx="10.0" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.8"/>
+  <text x="164.0" y="473.0" text-anchor="middle" class="node-title">rack power / PDU / PSU</text>
+  <rect x="314.0" y="438.0" width="201.0" height="70.0" rx="10.0" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.8"/>
+  <text x="414.5" y="473.0" text-anchor="middle" class="node-title">cooling / liquid loop</text>
+  <text x="414.5" y="495.0" text-anchor="middle" class="node-sub">thermal</text>
+  <rect x="561.0" y="444.0" width="236.0" height="58.0" rx="10.0" fill="#f0fdfa" stroke="#99f6e4" stroke-width="1.8"/>
+  <text x="679.0" y="473.0" text-anchor="middle" class="node-title">capacity_activation_record</text>
+  <rect x="843.0" y="444.0" width="236.0" height="58.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8"/>
+  <text x="961.0" y="473.0" text-anchor="middle" class="node-title">workload_fit_capacity_gate</text>
+  <rect x="1125.0" y="444.0" width="164.0" height="58.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
+  <text x="1207.0" y="473.0" text-anchor="middle" class="node-title">energy_ledger</text>
+  <rect x="454.0" y="580.0" width="173.0" height="70.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
+  <text x="540.5" y="615.0" text-anchor="middle" class="node-title">degrade / reroute</text>
+  <text x="540.5" y="637.0" text-anchor="middle" class="node-sub">block reservation</text>
+  <rect x="673.0" y="580.0" width="222.0" height="70.0" rx="10.0" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.8"/>
+  <text x="784.0" y="615.0" text-anchor="middle" class="node-title">capacity_activation_cost</text>
+  <text x="784.0" y="637.0" text-anchor="middle" class="node-sub">record</text>
+  <rect x="563.5" y="722.0" width="222.0" height="58.0" rx="10.0" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.8"/>
+  <text x="674.5" y="751.0" text-anchor="middle" class="node-title">PRR capacity gate update</text>
+  <text x="1069.0" y="900.0" class="footnote">Rendered with fireworks-tech-graph</text>
+</svg>

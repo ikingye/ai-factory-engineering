@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1581 892" width="1581" height="892">
+  <defs>
+    <marker id="arrowA" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#7c3aed"/>
+    </marker>
+    <marker id="arrowB" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#10b981"/>
+    </marker>
+    <marker id="arrowC" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2563eb"/>
+    </marker>
+    <marker id="arrowE" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#f97316"/>
+    </marker>
+    <marker id="arrowF" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#7c3aed"/>
+    </marker>
+    <marker id="arrowG" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#ef4444"/>
+    </marker>
+    <marker id="arrowH" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#6b7280"/>
+    </marker>
+    <filter id="shadowSoft" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="3" stdDeviation="6" flood-color="#0f172a" flood-opacity="0.12"/>
+    </filter>
+    <filter id="shadowGlass" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="10" stdDeviation="16" flood-color="#020617" flood-opacity="0.28"/>
+    </filter>
+    <style>
+    text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', 'Microsoft JhengHei', 'SimHei', sans-serif; }
+    .title { font-size: 30px; font-weight: 700; fill: #111827; }
+    .subtitle { font-size: 14px; font-weight: 500; fill: #6b7280; }
+    .section { font-size: 13px; font-weight: 700; fill: #2563eb; letter-spacing: 1.4px; }
+    .section-sub { font-size: 12px; font-weight: 500; fill: #94a3b8; }
+    .node-title { font-size: 18px; font-weight: 700; fill: #111827; }
+    .node-sub { font-size: 12px; font-weight: 500; fill: #6b7280; }
+    .node-type { font-size: 12px; font-weight: 700; fill: #9ca3af; letter-spacing: 0.08em; }
+    .arrow-label { font-size: 12px; font-weight: 600; fill: #6b7280; }
+    .legend { font-size: 12px; font-weight: 500; fill: #6b7280; }
+    .footnote { font-size: 12px; font-weight: 500; fill: #94a3b8; }
+    </style>
+  </defs>
+  <rect width="1581.0" height="892.0" fill="#ffffff"/>
+  <text x="790.5" y="56" text-anchor="middle" class="title">25.2.2 系统架构</text>
+  <text x="790.5" y="82" text-anchor="middle" class="subtitle">part-05-orchestration/chapter-25-multi-cluster.md:62</text>
+  <path d="M 790.5,212.0 L 790.5,284.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 790.5,342.0 L 790.5,362.4 L 142.0,399.6 L 142.0,420.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 790.5,342.0 L 790.5,362.4 L 352.0,399.6 L 352.0,420.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 790.5,342.0 L 790.5,362.4 L 562.0,399.6 L 562.0,420.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 790.5,342.0 L 790.5,362.4 L 772.0,393.6 L 772.0,414.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 790.5,342.0 L 790.5,362.4 L 1000.5,399.6 L 1000.5,420.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 790.5,342.0 L 790.5,362.4 L 1229.0,399.6 L 1229.0,420.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 790.5,342.0 L 790.5,362.4 L 1439.0,399.6 L 1439.0,420.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 772.0,484.0 L 772.0,504.4 L 685.5,535.6 L 685.5,556.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 1229.0,478.0 L 1229.0,498.4 L 685.5,535.6 L 685.5,556.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 767.5,591.0 L 787.9,591.0 L 1121.4,449.0 L 1101.0,449.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 772.0,484.0 L 772.0,504.4 L 895.5,541.6 L 895.5,562.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 1000.5,478.0 L 1000.5,498.4 L 895.5,541.6 L 895.5,562.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 1229.0,478.0 L 1229.0,498.4 L 895.5,541.6 L 895.5,562.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 1439.0,478.0 L 1439.0,498.4 L 895.5,541.6 L 895.5,562.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 895.5,620.0 L 895.5,640.4 L 790.5,677.6 L 790.5,698.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <rect x="708.5" y="154.0" width="164.0" height="58.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
+  <text x="790.5" y="183.0" text-anchor="middle" class="node-title">用户 / 平台 API</text>
+  <rect x="708.5" y="284.0" width="164.0" height="58.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
+  <text x="790.5" y="313.0" text-anchor="middle" class="node-title">统一平台面</text>
+  <rect x="60.0" y="420.0" width="164.0" height="58.0" rx="10.0" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.8"/>
+  <text x="142.0" y="449.0" text-anchor="middle" class="node-title">身份 / 租户 / 配额</text>
+  <rect x="270.0" y="420.0" width="164.0" height="58.0" rx="10.0" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.8"/>
+  <text x="352.0" y="449.0" text-anchor="middle" class="node-title">集群能力目录</text>
+  <rect x="480.0" y="420.0" width="164.0" height="58.0" rx="10.0" fill="#f0fdfa" stroke="#99f6e4" stroke-width="1.8"/>
+  <text x="562.0" y="449.0" text-anchor="middle" class="node-title">策略 / 成本 / 准入</text>
+  <rect x="690.0" y="414.0" width="164.0" height="70.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8"/>
+  <text x="772.0" y="449.0" text-anchor="middle" class="node-title">训练集群&lt;br/&gt;Slurm</text>
+  <text x="772.0" y="471.0" text-anchor="middle" class="node-sub">Kubernetes</text>
+  <rect x="900.0" y="420.0" width="201.0" height="58.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
+  <text x="1000.5" y="449.0" text-anchor="middle" class="node-title">生产推理集群&lt;br/&gt;Kubernetes</text>
+  <rect x="1147.0" y="420.0" width="164.0" height="58.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
+  <text x="1229.0" y="449.0" text-anchor="middle" class="node-title">批量与评测集群</text>
+  <rect x="1357.0" y="420.0" width="164.0" height="58.0" rx="10.0" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.8"/>
+  <text x="1439.0" y="449.0" text-anchor="middle" class="node-title">实验 / 验收集群</text>
+  <rect x="603.5" y="556.0" width="164.0" height="70.0" rx="10.0" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.8"/>
+  <text x="685.5" y="591.0" text-anchor="middle" class="node-title">model registry</text>
+  <text x="685.5" y="613.0" text-anchor="middle" class="node-sub">checkpoint</text>
+  <rect x="813.5" y="562.0" width="164.0" height="58.0" rx="10.0" fill="#f0fdfa" stroke="#99f6e4" stroke-width="1.8"/>
+  <text x="895.5" y="591.0" text-anchor="middle" class="node-title">统一观测</text>
+  <rect x="708.5" y="698.0" width="164.0" height="58.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8"/>
+  <text x="790.5" y="727.0" text-anchor="middle" class="node-title">成本与利用率</text>
+  <text x="1301.0" y="876.0" class="footnote">Rendered with fireworks-tech-graph</text>
+</svg>

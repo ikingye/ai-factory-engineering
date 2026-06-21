@@ -1,0 +1,9 @@
+flowchart LR
+  Workload["job / endpoint / evaluation"] --> Path["dataset / checkpoint / artifact path"]
+  Path --> Manifest["manifest / digest / version"]
+  Manifest --> Client["client node / pod / rank / replica"]
+  Client --> Cache["local NVMe / rack cache / remote cache"]
+  Cache --> Backend["PFS / Object Storage / Registry"]
+  Backend --> Telemetry["latency / metadata ops / throttle / errors"]
+  Telemetry --> Impact["GPU idle / TTFT / recovery time / cost"]
+  Impact --> Action["prewarm / reshard / isolate / throttle / repair"]

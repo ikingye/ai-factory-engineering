@@ -1,0 +1,22 @@
+flowchart TB
+  Symptom["communication regression / congestion signal"] --> Bundle["network_diagnostic_bundle"]
+  Bundle --> Tree["congestion_fault_tree_execution"]
+  Tree --> Placement["workload / rank placement"]
+  Tree --> Fabric["fabric path / rail"]
+  Tree --> QoS["PFC / ECN / QoS"]
+  Tree --> RDMA["RDMA / NIC stack"]
+  Tree --> Runtime["NCCL / runtime env"]
+  Tree --> Storage["checkpoint / storage overlap"]
+  Tree --> Mixed["concurrent workload"]
+  Tree --> Gap["telemetry gap"]
+  Placement --> Action["action + owner + confidence"]
+  Fabric --> Action
+  QoS --> Action
+  RDMA --> Action
+  Runtime --> Action
+  Storage --> Action
+  Mixed --> Action
+  Gap --> Action
+  Action --> Cost["network_incident_cost_record"]
+  Action --> Gate["fabric_change_acceptance_matrix update"]
+  Action --> PRR["fabric_change_prr_drill update"]

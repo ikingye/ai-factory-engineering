@@ -1,0 +1,8 @@
+flowchart LR
+  Energy["energy_ledger\npower + tokens"] --> Score["heterogeneous_gpu_cost_scorecard"]
+  Meter["metering events\nshape + model + tenant"] --> Score
+  Quality["quality gate\nsuccessful answer"] --> Score
+  SLO["TTFT / TPOT / errors"] --> Score
+  Route["gpu_generation_route_decision"] --> Score
+  Score --> Actions["route weight / price / canary cap / capacity purchase"]
+  Actions --> Route

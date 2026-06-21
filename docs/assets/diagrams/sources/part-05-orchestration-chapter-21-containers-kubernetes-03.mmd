@@ -1,0 +1,11 @@
+flowchart TB
+  DP["GPU Device Plugin\n发现 / 分配 GPU"] --> Strategy{"device list strategy"}
+  Strategy --> Env["envvar / volume / legacy path\nNVIDIA_VISIBLE_DEVICES"]
+  Strategy --> CDI["CDI spec\nvendor.com/device=GPU-uuid"]
+  Env --> CRI["kubelet -> CRI\ncontainerd / CRI-O"]
+  CDI --> CRI
+  CRI --> Handler{"runtime handler"}
+  Handler --> Hook["nvidia runtime / OCI hook\nlegacy injection"]
+  Handler --> Native["OCI runtime consumes CDI\nstandard device injection"]
+  Hook --> Container["container\n/dev/nvidia* + driver libs"]
+  Native --> Container

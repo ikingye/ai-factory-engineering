@@ -1,0 +1,11 @@
+flowchart TB
+  Feedback["quality_feedback_event"] --> Correlate["correlate\ntrace / contract / route / experiment"]
+  Correlate --> Privacy["redact / reference\nprompt and context"]
+  Privacy --> Triage["triage severity + failure layer"]
+  Triage --> Replay{"replayable?"}
+  Replay -->|yes| Review["human_feedback_evidence\nrubric review"]
+  Replay -->|no| Aggregate["aggregate signal\nmissing evidence action"]
+  Review --> Regression["quality_regression_record"]
+  Regression --> Dataset["eval_dataset_lineage_record update"]
+  Regression --> Cost["quality_cost_ledger update"]
+  Aggregate --> Observability["quality evidence completeness metric"]

@@ -1,0 +1,10 @@
+flowchart LR
+  Framework["训练框架"] --> Ops["collective / P2P ops"]
+  Ops --> NCCL["NCCL runtime"]
+  NCCL --> Intra["NVLink / NVSwitch / PCIe"]
+  NCCL --> Inter["IB / RoCE / RDMA"]
+  Intra --> GPU["GPU ranks"]
+  Inter --> NIC["NIC / Switch / Fabric"]
+  NCCL --> Logs["NCCL logs"]
+  Framework --> Profiler["framework profiler"]
+  NIC --> Telemetry["network telemetry"]

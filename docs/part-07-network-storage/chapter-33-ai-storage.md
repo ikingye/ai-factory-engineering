@@ -65,55 +65,17 @@ AI 存储架构通常从数据生命周期出发。Raw data 进入 object storag
 
 控制面负责把这些路径产品化。训练平台应生成标准目录、注入数据集版本、创建 checkpoint manifest、设置 cache 策略，并把 storage policy 写入作业元数据；模型平台应把模型 artifact、tokenizer、配置和安全状态作为一个版本发布。数据面则负责实际读写和缓存。控制面和数据面分离后，用户仍然使用熟悉的路径或 API，但平台可以统一做审计、清理、迁移和回放。
 
-```mermaid
-flowchart TB
-  Raw["Raw Dataset"] --> Object["Object Storage"]
-  Object --> Process["Data Processing / Tokenization"]
-  Process --> Dataset["Processed Dataset / Shards"]
-  Dataset --> Cache["Dataset Cache / Local NVMe"]
-  Cache --> Train["Training Workers"]
-  Train --> CKPT["Checkpoint Storage"]
-  CKPT --> Eval["Evaluation"]
-  Eval --> Registry["Model Registry"]
-  Registry --> Serving["Model Serving"]
-  Serving --> WeightCache["Weight Cache / Local NVMe"]
-  Metrics["Storage Metrics / Labels"] --> Object
-  Metrics --> CKPT
-  Metrics --> WeightCache
-```
+![图：33.2.2 系统架构](../assets/diagrams/part-07-network-storage-chapter-33-ai-storage-01.svg)
 
 AI 存储架构还需要一条证据链，把“GPU 在等”映射到具体数据路径。训练任务慢时，平台应能从 job id 找到 dataset manifest、shard、client node、cache state、storage backend、metadata service、network path 和 checkpoint 事件；推理冷启动慢时，平台应能从 endpoint 找到 model artifact、digest、registry、weight cache、节点本地 NVMe 和 replica readiness。没有这条链，存储团队看到的是系统吞吐，模型团队看到的是 GPU idle，平台团队只能猜测中间发生了什么。
 
-```mermaid
-flowchart LR
-  Workload["job / endpoint / evaluation"] --> Path["dataset / checkpoint / artifact path"]
-  Path --> Manifest["manifest / digest / version"]
-  Manifest --> Client["client node / pod / rank / replica"]
-  Client --> Cache["local NVMe / rack cache / remote cache"]
-  Cache --> Backend["PFS / Object Storage / Registry"]
-  Backend --> Telemetry["latency / metadata ops / throttle / errors"]
-  Telemetry --> Impact["GPU idle / TTFT / recovery time / cost"]
-  Impact --> Action["prewarm / reshard / isolate / throttle / repair"]
-```
+![图：33.2.2 系统架构](../assets/diagrams/part-07-network-storage-chapter-33-ai-storage-02.svg)
 
 这条链路的关键是 manifest。路径只是位置，manifest 才是契约：它说明哪些 shard、哪些对象、哪些 checkpoint 分片、哪个模型权重 digest、哪个 tokenizer、哪些 checksum 和生命周期策略构成一次可复现的数据访问。路径可以迁移，manifest 不应丢失。AI Factory 应尽量让训练、评测和服务都引用 manifest，而不是让脚本自由扫描目录。
 
 可以把 AI 存储理解成四类生产路径的组合，而不是一个统一文件系统。Dataset path 负责持续供给训练样本；checkpoint path 负责保存和恢复训练状态；artifact path 负责发布模型和扩容副本；cache path 负责把热数据靠近 GPU。每条路径都有不同 owner、指标、失败语义和成本口径。
 
-```mermaid
-flowchart TB
-  Intent["workload_storage_intent"] --> Dataset["dataset_manifest\nshards / lineage / permissions"]
-  Intent --> Ckpt["checkpoint_manifest\ncommit / restore / retention"]
-  Intent --> Artifact["model_artifact_distribution\ndigest / rollout / rollback"]
-  Intent --> Cache["cache_residency\nnode / rack / pool state"]
-  Dataset --> Evidence["storage_evidence"]
-  Ckpt --> Evidence
-  Artifact --> Evidence
-  Cache --> Evidence
-  Evidence --> Diagnose["storage diagnosis\nGPU idle / checkpoint slow / cold start"]
-  Evidence --> Cost["storage_cost_ledger"]
-  Evidence --> Admission["storage_acceptance_matrix"]
-```
+![图：33.2.2 系统架构](../assets/diagrams/part-07-network-storage-chapter-33-ai-storage-03.svg)
 
 这张图的重点是 intent 和 evidence。Intent 让平台在任务启动前知道需要什么数据路径；evidence 让平台在任务运行后证明发生了什么。没有 intent，调度器无法预热和准入；没有 evidence，事故和成本只能靠存储后端平均指标解释。存储系统的工程深度，取决于这两类对象是否贯穿训练和推理生命周期。
 
@@ -179,21 +141,7 @@ Checkpoint 还承担组织协作语义。训练团队需要知道哪个 checkpoi
 
 Checkpoint 写入还应采用两阶段提交语义。第一阶段写入临时分片和局部 metadata，第二阶段校验所有 rank 分片并提交 manifest。只有 manifest 提交成功，checkpoint 才能被标记为 valid。训练恢复逻辑必须读取 latest valid，而不是最新目录。
 
-```mermaid
-sequenceDiagram
-  participant Rank as Training Ranks
-  participant Tmp as Temporary Checkpoint Path
-  participant Validator as Checkpoint Validator
-  participant Manifest as Manifest Store
-  participant Index as Checkpoint Index
-
-  Rank->>Tmp: write sharded states
-  Rank->>Tmp: write local checksums
-  Validator->>Tmp: verify all shards and metadata
-  Validator->>Manifest: commit checkpoint_manifest
-  Manifest->>Index: mark latest_valid
-  Index-->>Rank: resume candidates available
-```
+![图：33.3.2 checkpoint storage](../assets/diagrams/part-07-network-storage-chapter-33-ai-storage-04.svg)
 
 这个协议能避免最常见的隐性事故：目录存在但分片不完整，最新 checkpoint 覆盖了旧健康版本，恢复时才发现 optimizer 或 scheduler state 缺失。Checkpoint 的可用性必须由 manifest 和校验定义，而不是由文件夹是否存在定义。
 
@@ -485,20 +433,7 @@ supply_chain_release_contract:
 
 这个契约把“能加载”提升为“能生产”。模型服务只要能读到权重就能启动，但这不证明权重来自批准的 checkpoint，也不证明 tokenizer 和 template 与计量一致，更不证明 cache 可以被撤销。`supply_chain_release_contract` 应由 release control plane 生成，并被 Gateway、scheduler、model registry、cache prewarmer、billing replay 和 PRR 消费。若某个数据删除请求影响了训练 lineage，契约能列出受影响 checkpoint、artifact 和 release；若某个 tokenizer digest 需要撤销，契约能告诉调度器哪些热 cache 不能再作为 ready 条件。
 
-```mermaid
-flowchart LR
-  Lineage["dataset_lineage_record"] --> Contract["supply_chain_release_contract"]
-  Manifest["dataset_manifest"] --> Contract
-  Restore["checkpoint_restore_drill"] --> Contract
-  Prov["model_artifact_provenance"] --> Contract
-  Dist["model_artifact_distribution"] --> Contract
-  Boundary["storage_security_boundary"] --> Contract
-  Contract --> Gateway["Gateway route eligibility"]
-  Contract --> Scheduler["scheduler cache eligibility"]
-  Contract --> Cache["cache prewarm / invalidation"]
-  Contract --> Billing["usage schema / billing hold"]
-  Contract --> PRR["production readiness review"]
-```
+![图：33.4.1 工程实现](../assets/diagrams/part-07-network-storage-chapter-33-ai-storage-05.svg)
 
 实现上，契约应尽量小而硬。它不需要复制完整训练日志，也不需要包含每个对象的全部元数据；它需要保存不可变引用、摘要、状态、适用范围和失效策略。这样做的好处是发布时可以快速验证契约是否闭合，事故时可以快速计算影响面，审计时可以证明“线上 release 为什么被允许”。如果契约只存在于人工发布说明中，后续 cache、billing、rollback 和安全撤销都会重新依赖人工记忆。
 
@@ -632,23 +567,7 @@ media_processing_pipeline_record:
     cleanup_required: true_or_false
 ```
 
-```mermaid
-flowchart TB
-  Original["original media object"] --> Manifest["media_artifact_manifest"]
-  Original --> Pipeline["media_processing_pipeline_record"]
-  Pipeline --> Pages["page images / frames"]
-  Pipeline --> Text["OCR / ASR text"]
-  Pipeline --> Layout["layout / tables / regions"]
-  Pipeline --> Embed["visual/audio embeddings"]
-  Pages --> Manifest
-  Text --> Manifest
-  Layout --> Manifest
-  Embed --> Manifest
-  Manifest --> Serving["multimodal serving"]
-  Manifest --> Eval["multimodal_quality_gate_execution"]
-  Manifest --> Meter["multimodal_metering_event"]
-  Manifest --> Delete["retention / delete / audit"]
-```
+![图：33.4.1 工程实现](../assets/diagrams/part-07-network-storage-chapter-33-ai-storage-06.svg)
 
 媒体 manifest 还必须进入安全边界。原始文件和派生产物的敏感度不一定相同：缩略图可能暴露个人信息，OCR 文本可能比原 PDF 更容易被搜索和泄露，embedding 可能泄露语义信息，抽帧可能包含人脸或工牌。删除原始文件但保留 OCR、embedding 或帧索引，通常不满足真实删除要求。因此，`storage_security_boundary` 应要求 `derived_artifact_delete_with_source`、训练使用默认拒绝、导出审批、不可变审计和按租户 KMS key 加密。多模态系统最危险的地方，常常不是模型，而是派生产物被当成普通缓存长期留存。
 
@@ -759,22 +678,7 @@ offline_import_record:
 
 这个记录能把离线交付从“现场师傅装好了”变成可审计事实。若升级后出现模型加载旧权重，先对比 bundle manifest、import record、model registry pointer 和节点 cache residency；若 RAG 答案越权，先对比 RAG index digest、ACL snapshot 和导入时的迁移脚本；若回滚失败，先看 rollback plan 是否覆盖 schema、artifact pointer 和 cache rewarm。离线环境排障的第一原则是少猜，多对账。
 
-```mermaid
-flowchart TB
-  Bundle["offline_release_bundle_manifest"] --> Import["offline_import_record"]
-  Import --> Registry["offline registry\nimage digests"]
-  Import --> Artifact["model artifact store\nweights / tokenizer / template"]
-  Import --> RAG["RAG index + ACL snapshot"]
-  Import --> DB["database migration state"]
-  Registry --> Smoke["runtime smoke"]
-  Artifact --> Smoke
-  RAG --> Smoke
-  DB --> Smoke
-  Smoke --> Rehearsal["offline_upgrade_rehearsal"]
-  Rehearsal --> Cache["cache_residency / invalidation"]
-  Rehearsal --> Rollback["rollback drill"]
-  Rehearsal --> Support["redacted diagnostic export"]
-```
+![图：33.4.1 工程实现](../assets/diagrams/part-07-network-storage-chapter-33-ai-storage-07.svg)
 
 这个边界对象能防止很多“存储便利性”演变成安全事故。研究人员不应直接从生产 checkpoint 目录复制权重到个人路径；推理节点不应加载未签名 artifact；RAG 索引构建不应把受限文档写进共享缓存；事故排查不应把未脱敏 trace 导出到普通对象桶。存储安全边界不是阻碍效率，而是让高价值数据的访问、复制、删除和导出可审计、可撤销、可解释。
 
@@ -810,23 +714,7 @@ secret_boundary_evidence:
 
 把数据和模型产物串起来，可以形成一条供应链图。它从 raw dataset 进入 dataset lineage 和 manifest，经过训练生成 checkpoint 和 restore drill，再经过转换、评测和签名生成 model artifact provenance，最终通过 artifact distribution、cache residency 和 cache invalidation 进入 serving。任何一个环节缺证据，模型发布就不可证明。
 
-```mermaid
-flowchart LR
-  Raw["raw data / private data"] --> Lineage["dataset_lineage_record"]
-  Lineage --> Manifest["dataset_manifest"]
-  Manifest --> Train["TrainingJob"]
-  Train --> Ckpt["checkpoint_manifest"]
-  Ckpt --> Drill["checkpoint_restore_drill"]
-  Drill --> Prov["model_artifact_provenance"]
-  Prov --> Dist["model_artifact_distribution"]
-  Dist --> Cache["cache_residency"]
-  Cache --> Serve["serving release"]
-  Dist --> Invalid["cache_invalidation_record"]
-  Boundary["storage_security_boundary"] -. governs .-> Lineage
-  Boundary -. governs .-> Ckpt
-  Boundary -. governs .-> Prov
-  Boundary -. governs .-> Cache
-```
+![图：33.4.1 工程实现](../assets/diagrams/part-07-network-storage-chapter-33-ai-storage-08.svg)
 
 这张图的读法是：存储层不是被动保存文件，而是保存供应链状态。训练异常、模型质量退化、安全撤销、缓存失效和成本归因，都沿这条链路查证。AI Factory 如果能让每个产物回答“来自哪里、谁批准、在哪里缓存、何时失效、能否恢复、成本归谁”，模型上线就从文件复制变成工程发布。
 

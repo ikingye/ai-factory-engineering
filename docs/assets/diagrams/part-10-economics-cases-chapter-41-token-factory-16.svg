@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1331 698" width="1331" height="698">
+  <defs>
+    <marker id="arrowA" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#7c3aed"/>
+    </marker>
+    <marker id="arrowB" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#10b981"/>
+    </marker>
+    <marker id="arrowC" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2563eb"/>
+    </marker>
+    <marker id="arrowE" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#f97316"/>
+    </marker>
+    <marker id="arrowF" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#7c3aed"/>
+    </marker>
+    <marker id="arrowG" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#ef4444"/>
+    </marker>
+    <marker id="arrowH" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#6b7280"/>
+    </marker>
+    <filter id="shadowSoft" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="3" stdDeviation="6" flood-color="#0f172a" flood-opacity="0.12"/>
+    </filter>
+    <filter id="shadowGlass" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="10" stdDeviation="16" flood-color="#020617" flood-opacity="0.28"/>
+    </filter>
+    <style>
+    text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', 'Microsoft JhengHei', 'SimHei', sans-serif; }
+    .title { font-size: 30px; font-weight: 700; fill: #111827; }
+    .subtitle { font-size: 14px; font-weight: 500; fill: #6b7280; }
+    .section { font-size: 13px; font-weight: 700; fill: #2563eb; letter-spacing: 1.4px; }
+    .section-sub { font-size: 12px; font-weight: 500; fill: #94a3b8; }
+    .node-title { font-size: 18px; font-weight: 700; fill: #111827; }
+    .node-sub { font-size: 12px; font-weight: 500; fill: #6b7280; }
+    .node-type { font-size: 12px; font-weight: 700; fill: #9ca3af; letter-spacing: 0.08em; }
+    .arrow-label { font-size: 12px; font-weight: 600; fill: #6b7280; }
+    .legend { font-size: 12px; font-weight: 500; fill: #6b7280; }
+    .footnote { font-size: 12px; font-weight: 500; fill: #94a3b8; }
+    </style>
+  </defs>
+  <rect width="1331.0" height="698.0" fill="#ffffff"/>
+  <text x="665.5" y="56" text-anchor="middle" class="title">41.4.1 工程实现</text>
+  <text x="665.5" y="82" text-anchor="middle" class="subtitle">part-10-economics-cases/chapter-41-token-factory.md:1802</text>
+  <path d="M 328.5,161.0 L 348.9,161.0 L 474.6,211.0 L 495.0,211.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 349.5,267.0 L 369.9,267.0 L 446.6,329.0 L 467.0,329.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 395.0,385.0 L 415.4,385.0 L 479.1,435.0 L 499.5,435.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 342.5,497.0 L 362.9,497.0 L 479.1,435.0 L 499.5,435.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 668.0,211.0 L 688.4,211.0 L 747.6,323.0 L 768.0,323.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 696.0,329.0 L 716.4,329.0 L 747.6,323.0 L 768.0,323.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 663.5,435.0 L 683.9,435.0 L 747.6,323.0 L 768.0,323.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 955.0,323.0 L 975.4,323.0 L 1010.1,211.0 L 1030.5,211.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 955.0,323.0 L 1030.5,323.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 955.0,323.0 L 975.4,323.0 L 1006.6,435.0 L 1027.0,435.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <rect x="162.5" y="126.0" width="166.0" height="70.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
+  <text x="245.5" y="161.0" text-anchor="middle" class="node-title">generated</text>
+  <text x="245.5" y="183.0" text-anchor="middle" class="node-sub">delivered tokens</text>
+  <rect x="141.5" y="238.0" width="208.0" height="58.0" rx="10.0" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.8"/>
+  <text x="245.5" y="267.0" text-anchor="middle" class="node-title">quality_feedback_event</text>
+  <rect x="96.0" y="350.0" width="299.0" height="70.0" rx="10.0" fill="#f0fdfa" stroke="#99f6e4" stroke-width="1.8"/>
+  <text x="245.5" y="385.0" text-anchor="middle" class="node-title">eval / labeling</text>
+  <text x="245.5" y="407.0" text-anchor="middle" class="node-sub">regression / slice / golden / drill</text>
+  <rect x="148.5" y="462.0" width="194.0" height="70.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
+  <text x="245.5" y="497.0" text-anchor="middle" class="node-title">experiment guardrail</text>
+  <text x="245.5" y="519.0" text-anchor="middle" class="node-sub">rollback drill</text>
+  <rect x="495.0" y="182.0" width="173.0" height="58.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
+  <text x="581.5" y="211.0" text-anchor="middle" class="node-title">base request cost</text>
+  <rect x="467.0" y="294.0" width="229.0" height="70.0" rx="10.0" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.8"/>
+  <text x="581.5" y="329.0" text-anchor="middle" class="node-title">quality losses</text>
+  <text x="581.5" y="351.0" text-anchor="middle" class="node-sub">handoff / refund / rework</text>
+  <rect x="499.5" y="406.0" width="164.0" height="58.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8"/>
+  <text x="581.5" y="435.0" text-anchor="middle" class="node-title">prevention cost</text>
+  <rect x="768.0" y="294.0" width="187.0" height="58.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
+  <text x="861.5" y="323.0" text-anchor="middle" class="node-title">quality_cost_ledger</text>
+  <rect x="1030.5" y="182.0" width="201.0" height="58.0" rx="10.0" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.8"/>
+  <text x="1131.0" y="211.0" text-anchor="middle" class="node-title">quality-aware routing</text>
+  <rect x="1030.5" y="294.0" width="201.0" height="58.0" rx="10.0" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.8"/>
+  <text x="1131.0" y="323.0" text-anchor="middle" class="node-title">pricing / plan design</text>
+  <rect x="1027.0" y="406.0" width="208.0" height="58.0" rx="10.0" fill="#f0fdfa" stroke="#99f6e4" stroke-width="1.8"/>
+  <text x="1131.0" y="435.0" text-anchor="middle" class="node-title">model and training ROI</text>
+  <text x="1051.0" y="682.0" class="footnote">Rendered with fireworks-tech-graph</text>
+</svg>

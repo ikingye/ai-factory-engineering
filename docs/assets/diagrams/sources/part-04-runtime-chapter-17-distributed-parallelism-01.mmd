@@ -1,0 +1,16 @@
+flowchart TB
+  Model["模型结构"] --> Split["并行切分策略"]
+  Split --> DP["Data Parallel"]
+  Split --> TP["Tensor Parallel"]
+  Split --> PP["Pipeline Parallel"]
+  Split --> EP["Expert Parallel"]
+  Split --> SP["Sequence Parallel"]
+  DP --> Comm["collective / P2P 通信"]
+  TP --> Comm
+  PP --> Comm
+  EP --> Comm
+  SP --> Comm
+  Comm --> Placement["拓扑感知放置"]
+  Placement --> Intra["节点内 NVLink / NVSwitch"]
+  Placement --> Inter["跨节点 IB / RoCE / RDMA"]
+  Placement --> Metrics["rank / group / topology metrics"]

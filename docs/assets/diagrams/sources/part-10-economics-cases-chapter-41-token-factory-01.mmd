@@ -1,0 +1,17 @@
+flowchart TB
+  Demand["业务需求 / 用户任务"] --> Gateway["AI Gateway / 认证 / 限流"]
+  Gateway --> Routing["模型路由 / 产品计划"]
+  Routing --> Serving["推理服务"]
+  Serving --> Prefill["prefill / input tokens"]
+  Serving --> Decode["decode / output tokens"]
+  Decode --> Stream["token streaming"]
+  Prefill --> Metering["token 计量"]
+  Decode --> Metering
+  Metering --> Billing["billing / revenue/token"]
+  Serving --> GPU["GPU / HBM / 功耗"]
+  GPU --> Cost["cost/token / tokens/W"]
+  SLO["TTFT / TPOT / 可用性"] --> Routing
+  Quality["质量 / 安全 / 评测"] --> Routing
+  Billing --> Margin["推理毛利"]
+  Cost --> Margin
+  Margin --> Decisions["定价 / 扩容 / 路由 / 优化"]

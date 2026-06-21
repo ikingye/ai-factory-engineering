@@ -1,0 +1,17 @@
+flowchart TB
+  Symptom["release / fallback / rollback symptom"] --> Bundle["serving_release_evidence_bundle"]
+  Bundle --> Tree["serving_release_fault_tree_execution"]
+  Tree --> Integrity["bundle integrity\nweights / tokenizer / template / config"]
+  Tree --> Route["Gateway route + fallback contract"]
+  Tree --> Cache["artifact distribution + cache"]
+  Tree --> Runtime["runtime / protocol / usage schema"]
+  Tree --> Rollback["rollback path + drain + warm capacity"]
+  Tree --> Meter["metering + billing replay"]
+  Integrity --> Action["freeze / route patch / full bundle rollback"]
+  Route --> Action
+  Cache --> Action
+  Runtime --> Action
+  Rollback --> Action
+  Meter --> Action
+  Action --> Cost["serving_release_cost_record"]
+  Action --> PRR["serving_release_prr_drill update"]

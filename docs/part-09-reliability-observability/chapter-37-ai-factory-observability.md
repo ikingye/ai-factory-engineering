@@ -69,25 +69,7 @@ AI Factory 可观测性架构可以分为采集层、关联层、分析层和行
 
 最后，架构要允许不同数据系统协同。时序库适合指标，日志系统适合文本和事件，对象存储适合诊断包，trace backend 适合调用链，数据仓库适合成本和容量分析。不要强迫所有观测数据进入同一种系统，而要统一身份、时间和关联键。
 
-```mermaid
-flowchart TB
-  Request["Inference Request / Training Job"] --> App["App / Platform Metrics"]
-  App --> Runtime["Inference Engine / Training Framework"]
-  Runtime --> GPU["GPU / DCGM"]
-  Runtime --> Comm["NCCL / RDMA"]
-  Runtime --> Storage["Storage Metrics"]
-  GPU --> Node["node exporter / OS"]
-  Comm --> Network["Network Telemetry"]
-  Node --> Facility["BMC / Power / Cooling"]
-  Labels["Unified Labels: tenant / model / job / node / gpu / rack"] --> App
-  Labels --> Runtime
-  Labels --> GPU
-  Labels --> Network
-  Trace["Trace / Log / Event / Baseline"] --> Correlate["Correlation Layer"]
-  App --> Correlate
-  Network --> Correlate
-  Storage --> Correlate
-```
+![图：37.2.2 系统架构](../assets/diagrams/part-09-reliability-observability-chapter-37-ai-factory-observability-01.svg)
 
 
 ## 37.3 关键技术
@@ -418,20 +400,7 @@ supply_chain_invalidation_evidence_bundle:
 
 这个 bundle 的价值是给事故和 PRR 一个共同事实源。若 artifact 召回后仍出现旧权重回答，oncall 不需要在 registry、节点、cache、trace 和计费系统之间手工拼图；bundle 应能直接说明旧对象是否还可被调度、是否还在副本内存、是否还在本地 NVMe、是否仍被计量系统当成有效版本。若证据不完整，结论也应是“撤销证据不足”，而不是“没有发现问题”。对于高敏租户，证据不足本身就应阻断放量或触发人工复核。
 
-```mermaid
-flowchart TB
-  Trigger["artifact / tokenizer / RAG / data revoke"] --> Bundle["supply_chain_invalidation_evidence_bundle"]
-  Contract["supply_chain_release_contract"] --> Bundle
-  Registry["registry pointer history"] --> Bundle
-  Scheduler["scheduler / autoscaler decisions"] --> Bundle
-  Cache["local NVMe / rack cache scans"] --> Bundle
-  Runtime["loaded digest / trace replay"] --> Bundle
-  Meter["usage schema / billing hold"] --> Bundle
-  Bundle --> Verdict{"old object reachable?"}
-  Verdict -->|yes| Incident["supply_chain_fault_tree_execution"]
-  Verdict -->|no| Gate["PRR / release gate evidence"]
-  Incident --> Cost["supply_chain_incident_cost_record"]
-```
+![图：37.3.7 storage metrics](../assets/diagrams/part-09-reliability-observability-chapter-37-ai-factory-observability-02.svg)
 
 观测系统还应把撤销时间线做成查询入口。一次撤销从 record 创建、registry 指针切换、调度阻断、旧副本 drain、cache scan、替代 cache 预热到 billing hold，可能持续数分钟到数小时。每个阶段都有不同 owner。若时间线缺失，团队只能看到最后状态，无法判断事故窗口内哪些请求可能受影响。成熟做法是把撤销事件作为 span 或 event graph 写入观测系统，让 request trace、model registry event、node cache event 和 billing event 能按同一个 `bundle_id` 聚合。
 
@@ -452,14 +421,7 @@ Network telemetry 还要进入容量和变更管理。新增 rack、交换机升
 
 网络观测还应明确从“设备事件”到“业务影响”的转换规则。交换机端口错误本身不是 incident，只有当它影响某个 job、模型、租户或资源池等级时，才成为生产事件；反过来，训练 step time 上升也不必然是网络问题，只有当 rank placement、端口计数和 baseline 同时支持时，才能归入网络域。这个转换规则应写入告警和诊断系统。
 
-```mermaid
-flowchart LR
-  Port["switch / NIC counters"] --> Topology["port-to-node-to-rank mapping"]
-  Topology --> Workload["job / model / tenant impact"]
-  Workload --> Baseline["baseline drift"]
-  Baseline --> Severity["severity and owner"]
-  Severity --> Action["degrade fabric / isolate node / reroute / repair"]
-```
+![图：37.3.8 network telemetry](../assets/diagrams/part-09-reliability-observability-chapter-37-ai-factory-observability-03.svg)
 
 这样做可以避免两类极端：网络团队每天处理大量无业务影响的端口噪音，或业务团队在任务变慢时无法拿到网络层证据。可观测性应该减少争论，而不是制造更多告警。
 
@@ -512,17 +474,7 @@ Trace 还应与发布事件关联。模型版本、网关策略、runtime 参数
 
 观测系统必须有 `telemetry_data_classification`。AI Factory 的观测数据可能包含 prompt、response、tool payload、RAG 文档片段、API Key 前缀、用户 ID、GPU 进程、节点拓扑、账单明细和故障诊断包。它们的敏感级别不同，不能全部进入同一个日志系统，也不能全部对所有 SRE 可见。观测越强，越需要数据边界；否则可观测性会成为新的泄露面。
 
-```mermaid
-flowchart LR
-  Raw["raw telemetry"] --> Classify["classify\nprompt / response / infra / billing"]
-  Classify --> Redact["redact / tokenize / hash"]
-  Redact --> Store["tiered storage\nhot / cold / evidence"]
-  Store --> TenantView["tenant view\nown workload only"]
-  Store --> AdminView["admin view\nneed-to-know"]
-  TenantView --> QueryAudit["query_audit_event"]
-  AdminView --> QueryAudit
-  QueryAudit --> Review["periodic access review"]
-```
+![图：37.3.9 distributed tracing](../assets/diagrams/part-09-reliability-observability-chapter-37-ai-factory-observability-04.svg)
 
 ```yaml
 telemetry_data_classification:
@@ -583,16 +535,7 @@ quality_telemetry_event:
 
 质量 telemetry 的关键是关联键。它必须能连到 `quality_feedback_event`、`prompt_context_snapshot`、`eval_dataset_manifest`、`quality_regression_record`、`online_experiment_record` 和 `quality_cost_ledger`。如果这些对象各自用不同 id，质量闭环就会断裂。工程上可以把 `trace_id`、`request_id`、`run_id`、`serving_quality_contract`、`experiment_id` 和 `task_slice` 作为最小关联键集，并要求 Gateway、model server、Agent orchestrator 和 observability pipeline 共同写入。
 
-```mermaid
-flowchart LR
-  Trace["request / run trace"] --> QTE["quality_telemetry_event"]
-  Feedback["quality_feedback_event"] --> QTE
-  Experiment["online_experiment_record"] --> QTE
-  Contract["serving_quality_contract"] --> QTE
-  QTE --> Regression["quality_regression_record"]
-  QTE --> Dashboard["quality dashboard\n长尾 / 切片 / 版本"]
-  QTE --> Cost["quality_cost_ledger"]
-```
+![图：37.3.9 distributed tracing](../assets/diagrams/part-09-reliability-observability-chapter-37-ai-factory-observability-05.svg)
 
 质量 dashboard 不应只展示平均满意度。它应按 task slice、租户、模型版本、prompt 模板、RAG 索引、Agent 工具、Gateway 路由、experiment variant 和 release contract 切分，展示点踩率、人工接管率、重新生成率、引用失败率、工具失败率、误拒/漏拒、安全拦截、质量回归重开和低质量 token 成本。只有这样，团队才能判断质量问题是模型、RAG、Agent、Gateway 还是 runtime 引入的。
 
@@ -714,21 +657,7 @@ quality_evidence_invalidation_event:
 
 这个事件的关键不是告警，而是状态传播。一次 judge 漂移校准失败，如果只发到质量团队频道，Gateway 仍可能继续使用旧 scorecard，PRR 仍可能引用旧 gate，线上实验仍可能扩大流量。事件应直接进入控制面：把相关 gate 标为 invalidated，把实验 ramp 变成 frozen，把高价值发布变成 blocked 或 conditional，把成本账本打开 prevention cost 记录。这样质量证据失效才是工程状态，而不是会议结论。
 
-```mermaid
-flowchart TB
-  Source["contamination / judge drift / feedback gap / contract change"] --> Event["quality_evidence_invalidation_event"]
-  Event --> Graph["quality_evidence_dependency_graph"]
-  Graph --> Gates["affected quality_gate_execution"]
-  Graph --> Release["affected serving_quality_contract"]
-  Graph --> Exp["affected online_experiment_guardrail"]
-  Graph --> Route["affected routing_quality_scorecard"]
-  Gates --> Action["rerun / degrade / block"]
-  Release --> Action
-  Exp --> Action
-  Route --> Action
-  Action --> Cost["quality_evidence_validity_cost"]
-  Action --> PRR["PRR gate update"]
-```
+![图：37.3.9 distributed tracing](../assets/diagrams/part-09-reliability-observability-chapter-37-ai-factory-observability-06.svg)
 
 观测系统应给这类事件设置单独的 SLO：失效事件从产生到控制面生效的传播延迟、受影响 gate 查询完整率、误阻断率、漏阻断率和手工豁免关闭时长。质量证据失效不是低优后台任务；如果 gate 已经不可信，高价值流量仍继续放量，平台就在用过期证据承担生产风险。成熟团队会像对待证书吊销、镜像召回和 cache invalidation 一样对待 quality evidence invalidation。
 
@@ -770,19 +699,7 @@ serving_release_evidence_bundle:
     evidence_completeness: sufficient_or_gap
 ```
 
-```mermaid
-flowchart TB
-  Alert["release / quality / SLO / billing alert"] --> Bundle["serving_release_evidence_bundle"]
-  Rel["serving_release_bundle"] --> Bundle
-  Route["serving_route_release_contract"] --> Bundle
-  Quality["serving_quality_contract"] --> Bundle
-  Cache["cache_residency / invalidation"] --> Bundle
-  Runtime["engine_canary / admission health"] --> Bundle
-  Meter["usage schema / metering events"] --> Bundle
-  Bundle --> Fault["serving_release_fault_tree_execution"]
-  Bundle --> Cost["serving_release_cost_record"]
-  Bundle --> PRR["serving release PRR drill / gate update"]
-```
+![图：37.3.9 distributed tracing](../assets/diagrams/part-09-reliability-observability-chapter-37-ai-factory-observability-07.svg)
 
 这类 bundle 的重点是“组合事实”。例如回滚后质量仍未恢复，bundle 能证明 Gateway route 是否真的回到 baseline bundle、RAG/tool policy 是否仍指向新模板、cache 是否仍在服务旧 tokenizer、计量系统是否仍按新 usage schema 解释请求。对资深工程师来说，这比“回滚命令执行成功”更重要。发布系统每改一次 route、canary weight、fallback target 或 usage schema，都应让 bundle 能回放当时的组合状态。
 
@@ -820,18 +737,7 @@ multimodal_evidence_bundle:
     evidence_completeness: sufficient_or_gap
 ```
 
-```mermaid
-flowchart TB
-  Alert["quality / cost / privacy alert"] --> Bundle["multimodal_evidence_bundle"]
-  Manifest["media_artifact_manifest"] --> Bundle
-  Pipeline["media_processing_pipeline_record"] --> Bundle
-  Contract["multimodal_serving_contract"] --> Bundle
-  Gate["multimodal_quality_gate_execution"] --> Bundle
-  Meter["multimodal_metering_event"] --> Bundle
-  Bundle --> Fault["failure layer\npreprocess / model / render / policy"]
-  Bundle --> Cost["multimodal_cost_ledger"]
-  Bundle --> PRR["multimodal_prr_drill / gate update"]
-```
+![图：37.3.9 distributed tracing](../assets/diagrams/part-09-reliability-observability-chapter-37-ai-factory-observability-08.svg)
 
 这个 bundle 的作用是把多模态事故从“模型看错了”拆成可验证层级。若 source region replay 失败但 OCR 和 layout 正常，可能是模型或 prompt；若 layout digest 与 gate execution 不一致，可能是预处理版本漂移；若客户端展示的坐标和 manifest 坐标系不一致，可能是渲染层错误；若成本异常但请求质量正常，可能是重复 OCR、重复 embedding 或派生产物未清理。多模态观测必须包含媒体 lineage，否则质量、隐私和成本都无法可靠归因。
 
@@ -892,17 +798,7 @@ rag_agent_evidence_completeness:
 
 观测系统应把这些完整性结果作为质量信号。引用错误但缺少 `rag_context_replay_bundle`，说明 RAG 平台不可复现；工具越权但缺少 `agent_tool_policy_contract`，说明策略发布不可审计；成本失控但缺少 `agent_budget_ledger`，说明任务级计费口径不完整。这些不是事故的次要细节，而是平台治理缺陷。长期看，证据缺口数量和重复类型比单次投诉更能说明 AI Factory 的成熟度。
 
-```mermaid
-flowchart TB
-  QTE["quality_telemetry_event"] --> QEB["quality_evidence_bundle"]
-  QEB --> RAEB["rag_agent_evidence_bundle"]
-  RAEB --> RAGReplay["rag_context_replay_bundle"]
-  RAEB --> AgentReplay["agent_trajectory_replay_bundle"]
-  RAEB --> Cost["rag_agent_cost_attribution"]
-  RAGReplay --> Fault["rag_agent_fault_tree_execution"]
-  AgentReplay --> Fault
-  Cost --> IncidentCost["rag_agent_incident_cost_record"]
-```
+![图：37.3.9 distributed tracing](../assets/diagrams/part-09-reliability-observability-chapter-37-ai-factory-observability-09.svg)
 
 
 ## 37.4 工程落地
@@ -1025,17 +921,7 @@ private_delivery_diagnostic_export:
 
 这类导出对象能把私有化支持从“能不能进现场”转成“证据是否足以判断”。如果运行 digest 与导入记录不一致，先处理现场漂移；如果导入记录缺少某个镜像或 artifact，先修交付包；如果 GPU runtime report 与验收记录不一致，进入容器运行时或节点基线故障树；如果所有包和运行时一致，再看应用、数据和客户环境变更。诊断包的结构化程度越高，现场沟通越少依赖个人经验。
 
-```mermaid
-flowchart LR
-  Trigger["TTFT / TPOT / KV release / canary breach"] --> Bundle["inference_runtime_diagnostic_bundle"]
-  Bundle --> Admission["endpoint_admission_decision"]
-  Bundle --> KV["kv_block_leak_forensic_record"]
-  Bundle --> PD["pd_transfer_evidence"]
-  Bundle --> Spec["speculative_decoding_regression_record"]
-  Bundle --> Action["engine_canary_guardrail_action"]
-  Action --> Cost["inference_runtime_cost_ledger"]
-  Bundle --> Incident["incident_record / runbook"]
-```
+![图：37.4.1 工程实现](../assets/diagrams/part-09-reliability-observability-chapter-37-ai-factory-observability-10.svg)
 
 这张图的含义是：观测系统不只收集“慢了多少”，还要收集“为什么接入、哪里泄漏、状态如何传输、优化是否回归、系统做了什么”。当这些对象都存在时，一次推理事故可以被重放；当它们缺失时，团队只能从聚合曲线猜测。
 
@@ -1197,20 +1083,7 @@ facility_capacity_evidence_bundle:
 
 这个 bundle 的关键是同时面向 SRE、设施、容量和业务。设施团队能看到具体 PDU/CDU/温度证据，平台团队能看到资源标签和调度动作，容量团队能看到 workload-fit capacity 损失，商业团队能看到 reservation 和 token 影响。没有这类证据包，物理问题很容易被低估为“某个 rack 暂时不稳定”，而不是会影响承诺产能、毛利和上线节奏的生产事件。
 
-```mermaid
-flowchart TB
-  Alert["tokens/W drop or capacity drop"] --> Bundle["facility_capacity_evidence_bundle"]
-  Bundle --> Power["rack power / PDU / PSU"]
-  Bundle --> Cooling["cooling / liquid loop / thermal"]
-  Bundle --> Capacity["capacity_activation_record"]
-  Bundle --> Gate["workload_fit_capacity_gate"]
-  Bundle --> Energy["energy_ledger"]
-  Power --> Action["degrade / reroute / block reservation"]
-  Cooling --> Action
-  Gate --> Action
-  Energy --> Cost["capacity_activation_cost_record"]
-  Action --> PRR["PRR capacity gate update"]
-```
+![图：37.4.1 工程实现](../assets/diagrams/part-09-reliability-observability-chapter-37-ai-factory-observability-11.svg)
 
 第四步是建立数据质量检查。指标缺失、标签为空、时间戳漂移、重复采集和单位不一致，都会让看板和告警失真。可观测性平台本身也要有 SLO，例如关键指标采集延迟、丢失率和查询可用性。否则事故中最先失效的可能就是观测系统。
 
@@ -1256,20 +1129,7 @@ security_evidence_bundle:
 
 denial-of-wallet 事故需要比普通安全告警多冻结经济证据。一次 key 泄露可能还没有造成数据外流，却已经烧掉大量 provider cost；一次免费额度刷量可能没有突破租户边界，却挤占 premium capacity；一次 Agent 循环可能每一步都符合权限，却在任务层面完全失控。因此 `security_evidence_bundle` 应包含 spend velocity、free quota burn、provider call count、max output、Agent step、route pool、budget action、billing hold 和受影响高价值请求。没有这些字段，安全团队只能说“key 异常”，财务团队却无法判断应正常计费、退款、内部吸收还是追偿。
 
-```mermaid
-flowchart LR
-  Gateway["AI Gateway\npolicy + budget"] --> PDR["policy_decision_record"]
-  Gateway --> EPD["egress_provider_decision"]
-  Gateway --> Guard["denial_of_wallet_admission_guard"]
-  Guard --> Bundle["security_evidence_bundle"]
-  PDR --> Bundle
-  EPD --> Bundle
-  Meter["metering events\ninput/output/provider"] --> Bundle
-  Bundle --> Hold["billing hold"]
-  Bundle --> Cost["abuse_cost_ledger"]
-  Bundle --> Tree["security_policy_fault_tree_execution"]
-  Bundle --> Audit["security_audit_event"]
-```
+![图：37.4.1 工程实现](../assets/diagrams/part-09-reliability-observability-chapter-37-ai-factory-observability-12.svg)
 
 观测系统还应把 denial-of-wallet 作为 SLO 旁路信号。传统可用性告警可能完全不触发，因为服务响应正常；真正异常的是单位时间成本、free quota 消耗、provider route 比例、长上下文占比、同一 credential 的 geography/ASN 扩散、Agent step 分布和 premium queue displacement。SRE 看板应把这些指标和普通 TTFT、TPOT、错误率放在一起，尤其要按 tenant、credential、project、model、provider 和 route_pool 切分。经济异常常常比 5xx 更早暴露滥用，也比月度账单更适合止血。
 

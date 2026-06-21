@@ -1,0 +1,12 @@
+flowchart TB
+  Facility["Facility: Space / Power / Cooling"] --> Rack["Rack / PDU / CDU"]
+  Rack --> Server["GPU Server / Compute Tray"]
+  Rack --> Network["Switch / Cabling / Rail"]
+  Server --> Provision["Bare Metal Provisioning"]
+  Network --> Provision
+  Provision --> Acceptance["Burn-in / NCCL / RDMA / Storage"]
+  Acceptance --> Pool["GPU Resource Pool"]
+  Pool --> Scheduler["Kubernetes / Slurm"]
+  Telemetry["Power / Thermal / Liquid / Link Telemetry"] --> Facility
+  Telemetry --> Rack
+  Telemetry --> Pool

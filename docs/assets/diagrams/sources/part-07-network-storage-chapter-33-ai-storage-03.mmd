@@ -1,0 +1,12 @@
+flowchart TB
+  Intent["workload_storage_intent"] --> Dataset["dataset_manifest\nshards / lineage / permissions"]
+  Intent --> Ckpt["checkpoint_manifest\ncommit / restore / retention"]
+  Intent --> Artifact["model_artifact_distribution\ndigest / rollout / rollback"]
+  Intent --> Cache["cache_residency\nnode / rack / pool state"]
+  Dataset --> Evidence["storage_evidence"]
+  Ckpt --> Evidence
+  Artifact --> Evidence
+  Cache --> Evidence
+  Evidence --> Diagnose["storage diagnosis\nGPU idle / checkpoint slow / cold start"]
+  Evidence --> Cost["storage_cost_ledger"]
+  Evidence --> Admission["storage_acceptance_matrix"]

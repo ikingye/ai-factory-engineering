@@ -1,0 +1,18 @@
+sequenceDiagram
+  participant App as 应用
+  participant GW as AI Gateway
+  participant S as 推理服务
+  participant E as 推理引擎
+  participant G as GPU
+  App->>GW: Chat 请求(messages, stream=true)
+  GW->>S: 鉴权、限流、路由后转发
+  S->>E: tokenizer + 入队
+  E->>G: prefill 输入上下文
+  G-->>E: KV Cache 初始化完成
+  loop 每个输出 token
+    E->>G: decode step
+    G-->>E: next token
+    E-->>S: token
+    S-->>App: streaming chunk
+  end
+  S->>GW: token 计量与 trace

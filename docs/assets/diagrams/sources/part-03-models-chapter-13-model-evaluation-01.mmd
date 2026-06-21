@@ -1,0 +1,14 @@
+flowchart LR
+  Candidate["候选模型"] --> Offline["离线能力评测"]
+  Candidate --> Domain["领域评测"]
+  Candidate --> Safety["安全 / 红队"]
+  Candidate --> Perf["性能 / 成本评测"]
+  Offline --> Gate["上线门禁"]
+  Domain --> Gate
+  Safety --> Gate
+  Perf --> Gate
+  Gate --> Canary["灰度 / A-B"]
+  Canary --> Decision["上线 / 回滚 / 继续训练"]
+  Decision --> Registry["模型注册 / 模型目录"]
+  Canary --> Feedback["线上反馈回流"]
+  Feedback --> Domain

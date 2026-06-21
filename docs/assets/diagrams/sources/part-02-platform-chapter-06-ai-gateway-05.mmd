@@ -1,0 +1,12 @@
+flowchart TB
+  Req["request"] --> Identity["identity check"]
+  Identity --> Boundary["tenant_boundary"]
+  Boundary --> Credential["credential_lifecycle"]
+  Credential --> DataPolicy["data_boundary_policy"]
+  DataPolicy --> Budget["quota / budget"]
+  Budget --> Capability["model capability"]
+  Capability --> Route["route / fallback"]
+  Route --> Decision["policy_decision_record"]
+  Decision --> Audit["security_audit_event"]
+  Decision --> Metering["metering event"]
+  Decision --> Trace["trace context"]

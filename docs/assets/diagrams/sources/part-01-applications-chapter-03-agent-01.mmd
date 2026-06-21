@@ -1,0 +1,12 @@
+flowchart TB
+  U["用户目标"] --> Orchestrator["Agent Orchestrator"]
+  Orchestrator --> Planner["planning / policy context"]
+  Planner --> LLM["LLM"]
+  LLM --> ToolCall["tool / function call"]
+  ToolCall --> Policy["权限 / 预算 / 风险检查"]
+  Policy --> Tools["外部工具 / API / 沙箱"]
+  Tools --> Obs["observation"]
+  Obs --> Memory["memory / state"]
+  Memory --> Orchestrator
+  Orchestrator --> Answer["最终回答 / 动作结果"]
+  Orchestrator --> Trace["trace / metering / billing"]

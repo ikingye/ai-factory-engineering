@@ -1,0 +1,26 @@
+flowchart TB
+  Hardware["硬件 / 节点 / 网络 / 存储"] --> Acceptance["acceptance baseline\nGPU / NCCL / RDMA / storage"]
+  Acceptance -->|pass| ResourcePool["accepted resource pool"]
+  Acceptance -->|fail| Remediation["remediation\nrepair / config / vendor"]
+  Remediation --> Acceptance
+  ResourcePool --> ModelGate["model quality gate\nquality / safety / cost"]
+  ModelGate -->|pass| ServingRelease["serving release\nweights + tokenizer + runtime"]
+  ModelGate -->|fail| ModelFix["model / prompt / eval fix"]
+  ServingRelease --> QualityEvidenceGate["quality evidence gate\nslice / golden / experiment guardrail / rollback drill"]
+  ModelFix --> QualityEvidenceGate
+  QualityEvidenceGate -->|pass| SupplyChainGate["supply chain gate\ndataset / checkpoint / provenance / cache"]
+  QualityEvidenceGate -->|fail| QualityFix["fix slice / golden / guardrail / rollback"]
+  QualityFix --> SupplyChainGate
+  SupplyChainGate -->|pass| RAGAgentGate["RAG / Agent gate\npermission / context / tools / budget"]
+  SupplyChainGate -->|fail| SupplyFix["fix lineage / restore / provenance / cache"]
+  SupplyFix --> RAGAgentGate
+  RAGAgentGate -->|pass| PRR["production readiness review"]
+  RAGAgentGate -->|fail| AppFix["fix retrieval / tool policy / budget"]
+  AppFix --> PRR
+  PRR -->|approve_canary| Canary["canary\nlimited tenants / traffic"]
+  PRR -->|block| FixGap["close evidence gaps"]
+  FixGap --> Canary
+  Canary -->|healthy| Production["production scale"]
+  Canary -->|breach| Rollback["rollback / drain / incident"]
+  Rollback --> Telemetry["telemetry + cost + feedback"]
+  Production --> Telemetry

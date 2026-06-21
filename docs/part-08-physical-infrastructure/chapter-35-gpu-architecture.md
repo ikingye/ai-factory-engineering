@@ -69,19 +69,7 @@ GPU 系统架构可以从模型算子开始向下看。Transformer 中的 matmul
 
 这也决定了组织分工。硬件团队提供规格和基线，runtime 团队验证 kernel 和 engine，模型团队验证质量，平台团队验证调度和容量，SRE 团队验证可观测和回滚。GPU 架构只有穿过这些环节，才算进入生产。
 
-```mermaid
-flowchart TB
-  Model["Model: matmul / attention / KV Cache"] --> Framework["Framework / Engine"]
-  Framework --> Kernel["CUDA Kernels / Compiler"]
-  Kernel --> SM["SM Scheduler"]
-  SM --> TensorCore["Tensor Core"]
-  SM --> CUDACore["CUDA Core"]
-  TensorCore --> HBM["HBM Capacity / Bandwidth"]
-  CUDACore --> HBM
-  HBM --> Interconnect["NVLink / NVSwitch / PCIe"]
-  Interconnect --> MultiGPU["Multi-GPU Parallelism"]
-  MultiGPU --> Metrics["tokens/s / step time / tokens/W"]
-```
+![图：35.2.2 系统架构](../assets/diagrams/part-08-physical-infrastructure-chapter-35-gpu-architecture-01.svg)
 
 
 ## 35.3 关键技术
@@ -442,19 +430,7 @@ gpu_generation_route_decision:
 
 这个对象把“新 GPU 上线”从资源运维问题拉回产品控制面。Gateway 或 Serving 可以根据请求形态选择 GPU class，但每次选择都要能回放：当延迟变差、质量回退、客户质疑价格或成本异常时，团队能看到当时为什么选择这类硬件，哪些候选被拒绝，是否存在更便宜但不满足 SLO 的选择，是否存在更快但不满足数据边界的选择。
 
-```mermaid
-flowchart TB
-  Artifact["model artifact\nprecision / context / engine"] --> Fit["model_hardware_fit_record"]
-  Score["gpu_capability_scorecard"] --> Fit
-  Gate["gpu_generation_readiness_gate"] --> Fit
-  Fit --> Decision["gpu_generation_route_decision"]
-  Ent["resource_pool_entitlement"] --> Decision
-  Health["engine_admission_health"] --> Decision
-  Cost["heterogeneous_gpu_cost_scorecard"] --> Decision
-  Decision --> Endpoint["endpoint placement / request route"]
-  Endpoint --> Metrics["TTFT / TPOT / quality / tokens/W / cost"]
-  Metrics --> Score
-```
+![图：35.4.1 工程实现](../assets/diagrams/part-08-physical-infrastructure-chapter-35-gpu-architecture-02.svg)
 
 这张图说明，硬件能力、模型要求和经济结果必须形成反馈环。新 GPU 不是一次性通过验收后永久可用；当 runtime 升级、模型 context 增长、精度策略改变或机房降额时，fit record 和 route decision 都要重新计算。异构 GPU 管理的成熟度，不在于标签数量，而在于这些标签是否能驱动模型路由并接受生产指标校正。
 

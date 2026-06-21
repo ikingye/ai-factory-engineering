@@ -1,0 +1,16 @@
+flowchart TB
+  CPU0["CPU Socket 0 / NUMA 0"] --- PCIe0["PCIe Root Complex 0"]
+  CPU1["CPU Socket 1 / NUMA 1"] --- PCIe1["PCIe Root Complex 1"]
+  PCIe0 --- NIC0["NIC / DPU 0"]
+  PCIe1 --- NIC1["NIC / DPU 1"]
+  PCIe0 --- GPU0["GPU 0"]
+  PCIe0 --- GPU1["GPU 1"]
+  PCIe1 --- GPU2["GPU 2"]
+  PCIe1 --- GPU3["GPU 3"]
+  GPU0 <--> NVSW["NVSwitch / NVLink Domain"]
+  GPU1 <--> NVSW
+  GPU2 <--> NVSW
+  GPU3 <--> NVSW
+  NVSW --> MP["Tensor / Pipeline / Expert Parallel"]
+  NIC0 --> SO["Scale-out Fabric"]
+  NIC1 --> SO

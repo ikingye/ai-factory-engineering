@@ -1,0 +1,12 @@
+flowchart LR
+  Candidate["candidate release"] --> Drill["serving_rollback_drill"]
+  Baseline["baseline release"] --> Drill
+  Drill --> Route["Gateway route restore"]
+  Drill --> Artifact["weights / tokenizer / template restore"]
+  Drill --> Runtime["runtime / engine config restore"]
+  Drill --> Cache["cache invalidation and warmup"]
+  Drill --> Meter["usage and billing reconciliation"]
+  Drill --> Probe["quality and protocol recovery probes"]
+  Probe --> Verdict{"drill pass?"}
+  Verdict -->|yes| PRR["production readiness review"]
+  Verdict -->|no| Block["block release / fix rollback path"]

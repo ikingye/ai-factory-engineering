@@ -1,0 +1,11 @@
+flowchart TB
+  Artifact["model artifact\nprecision / context / engine"] --> Fit["model_hardware_fit_record"]
+  Score["gpu_capability_scorecard"] --> Fit
+  Gate["gpu_generation_readiness_gate"] --> Fit
+  Fit --> Decision["gpu_generation_route_decision"]
+  Ent["resource_pool_entitlement"] --> Decision
+  Health["engine_admission_health"] --> Decision
+  Cost["heterogeneous_gpu_cost_scorecard"] --> Decision
+  Decision --> Endpoint["endpoint placement / request route"]
+  Endpoint --> Metrics["TTFT / TPOT / quality / tokens/W / cost"]
+  Metrics --> Score

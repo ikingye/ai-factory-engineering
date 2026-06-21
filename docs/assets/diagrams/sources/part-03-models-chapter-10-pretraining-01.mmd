@@ -1,0 +1,13 @@
+flowchart LR
+  Raw["原始数据"] --> Clean["清洗 / 去重 / 过滤"]
+  Clean --> Tok["tokenization"]
+  Tok --> Dataset["训练数据 shard"]
+  Dataset --> Queue["训练队列 / 配额"]
+  Queue --> Job["分布式训练任务"]
+  Job --> GPU["GPU 集群"]
+  GPU --> Loss["loss / throughput / health"]
+  GPU --> Ckpt["checkpoint"]
+  Ckpt --> Eval["阶段评测"]
+  Eval --> Registry["model registry"]
+  Loss --> Decision["继续 / 暂停 / 恢复 / 回滚"]
+  Decision --> Job

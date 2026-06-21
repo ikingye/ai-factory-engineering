@@ -63,21 +63,7 @@
 
 另外，预训练架构应把评测放进主链路，而不是训练结束后的临时脚本。阶段 checkpoint 只有经过固定评测和质量记录，才知道是否值得继续投入。训练、评测和注册三者断开，会让模型生命周期缺少可信节点。
 
-```mermaid
-flowchart LR
-  Raw["原始数据"] --> Clean["清洗 / 去重 / 过滤"]
-  Clean --> Tok["tokenization"]
-  Tok --> Dataset["训练数据 shard"]
-  Dataset --> Queue["训练队列 / 配额"]
-  Queue --> Job["分布式训练任务"]
-  Job --> GPU["GPU 集群"]
-  GPU --> Loss["loss / throughput / health"]
-  GPU --> Ckpt["checkpoint"]
-  Ckpt --> Eval["阶段评测"]
-  Eval --> Registry["model registry"]
-  Loss --> Decision["继续 / 暂停 / 恢复 / 回滚"]
-  Decision --> Job
-```
+![图：10.2.2 系统架构](../assets/diagrams/part-03-models-chapter-10-pretraining-01.svg)
 
 
 ## 10.3 关键技术
@@ -262,24 +248,7 @@ training_job:
 
 训练任务还应有明确状态机。作业 pending、Pod running 或 Slurm running 都不是训练有效进展。真正的状态应覆盖数据就绪、资源准入、runtime 自检、NCCL rendezvous、有效 step、checkpoint、异常暂停、恢复和完成。
 
-```mermaid
-stateDiagram-v2
-  [*] --> Submitted
-  Submitted --> Admitted: quota / gang / topology ok
-  Admitted --> Starting: nodes allocated
-  Starting --> Preflight: image / data / env checks
-  Preflight --> Rendezvous: ranks start + NCCL init
-  Rendezvous --> Running: first effective step
-  Running --> Checkpointing: checkpoint interval
-  Checkpointing --> Running: manifest verified
-  Running --> Paused: anomaly or operator pause
-  Paused --> Recovering: choose checkpoint
-  Recovering --> Rendezvous
-  Running --> Completed: target tokens / stop condition
-  Running --> Failed: unrecoverable error
-  Failed --> [*]
-  Completed --> [*]
-```
+![图：10.4.1 工程实现](../assets/diagrams/part-03-models-chapter-10-pretraining-02.svg)
 
 状态机里的 `Rendezvous` 和 `Running` 必须有可审计证据。Rendezvous 不是日志中出现 “init process group” 就算通过，而是所有预期 rank 在同一 world size、同一 rendezvous endpoint、同一 NCCL/env contract、同一 rank topology contract 下成功建立通信，并且没有 rank 迟到、重号、缺号或落到错误节点。平台应生成 `rendezvous_evidence`，把 launcher、调度放置、rank 映射和通信初始化绑定起来：
 

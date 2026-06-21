@@ -1,0 +1,12 @@
+flowchart LR
+  Change["fabric_change_record"] --> Invalidate["invalidate fabric_baseline"]
+  Invalidate --> Limit["resource pool state: limited"]
+  Limit --> Evidence["collect config + path + workload evidence"]
+  Evidence --> Gate["fabric_change_regression_gate"]
+  Gate -->|pass| NewBase["publish new fabric_baseline"]
+  Gate -->|block| Downgrade["keep limited / quarantine"]
+  Gate -->|conditional| Canary["small topology canary only"]
+  NewBase --> Scheduler["restore scheduler labels"]
+  Downgrade --> FaultTree["congestion_fault_tree_execution if incident"]
+  Canary --> Monitor["telemetry watch window"]
+  Monitor --> Gate

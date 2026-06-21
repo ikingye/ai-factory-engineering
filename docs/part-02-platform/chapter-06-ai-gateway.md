@@ -77,20 +77,7 @@ AI Gateway 通常分为控制面和数据面。控制面接收模型目录、租
 
 检查失败应阻止继续放量。
 
-```mermaid
-flowchart LR
-  Client["应用 / SDK"] --> GW["AI Gateway"]
-  GW --> Auth["认证鉴权"]
-  Auth --> Quota["租户限流 / 配额"]
-  Quota --> Policy["策略\n灰度 / fallback / 安全"]
-  Policy --> Router["模型路由"]
-  Router --> M1["Model Endpoint A"]
-  Router --> M2["Model Endpoint B"]
-  Router --> M3["Private Endpoint"]
-  GW --> Meter["token 计量"]
-  GW --> Trace["trace / logs / metrics"]
-  Meter --> Billing["Billing"]
-```
+![图：6.2.2 系统架构](../assets/diagrams/part-02-platform-chapter-06-ai-gateway-01.svg)
 
 
 ## 6.3 关键技术
@@ -233,20 +220,7 @@ AI Gateway 工程实现应把路由、配额、fallback 和能力校验表达为
 
 生产 Gateway 的核心不是“路由规则多”，而是 admission chain 清楚。每个请求都应按稳定顺序经过 identity、capability、budget、policy、route、commit 六个阶段。identity 绑定租户和项目；capability 确认模型是否支持请求参数；budget 检查 token、并发和费用上限；policy 执行安全、灰度和 fallback 约束；route 选择 endpoint；commit 写入开始事件和 trace。顺序固定后，拒绝原因才稳定，指标才能按阶段解释。
 
-```mermaid
-flowchart LR
-  Req["HTTP Chat Request"] --> Id["1 identity\nkey / tenant / user"]
-  Id --> Cap["2 capability\nmodel supports features"]
-  Cap --> Budget["3 budget\ntoken / rpm / tpm / cost"]
-  Budget --> Policy["4 policy\nsafety / canary / fallback"]
-  Policy --> Route["5 route\nendpoint / pool / provider"]
-  Route --> Commit["6 commit\ntrace / metering start"]
-  Commit --> Upstream["Model Endpoint"]
-  Id -->|deny| Err["typed error"]
-  Cap -->|deny| Err
-  Budget -->|deny| Err
-  Policy -->|deny| Err
-```
+![图：6.4.1 工程实现](../assets/diagrams/part-02-platform-chapter-06-ai-gateway-02.svg)
 
 Gateway 还应维护“可路由健康”而不是普通 upstream 健康。模型 endpoint 的 HTTP 端口可用，只说明进程活着；能否接收请求还要看模型是否 loaded、queue 是否过长、KV Cache 是否接近上限、TTFT/TPOT 是否越界、是否处于 draining、是否命中 canary 冻结。Gateway 不需要执行 runtime 调度，但必须消费这些摘要信号，否则路由会把压力推给已经拥塞的副本。
 
@@ -386,20 +360,7 @@ serving_route_release_contract:
 
 这个合同把 fallback 从“后端失败时换一个服务”变成“在同一业务语义下换一个可证明等价或可接受降级的 release”。例如一个支持 tool calling 的请求，不能 fallback 到不支持同一 tool schema 的模型；一个已经开始 streaming 的请求，不能换模型继续输出；一个使用新 tokenizer 的 canary release，如果 usage schema 与稳定版不同，必须在计量系统完成兼容后才允许进商业流量。Gateway 的路由选择应引用合同，而不是把这些规则散落在代码分支里。
 
-```mermaid
-flowchart LR
-  Req["request\nmodel alias + tenant + task slice"] --> Contract["serving_route_release_contract"]
-  Contract --> Primary["primary release bundle"]
-  Contract --> Canary["canary release bundle"]
-  Contract --> Fallback["fallback release bundle"]
-  Primary --> Health["engine_admission_health"]
-  Canary --> Guard["quality / protocol / cost guardrails"]
-  Fallback --> Compat["capability + usage + data boundary compatibility"]
-  Health --> Decision["endpoint_admission_decision"]
-  Guard --> Decision
-  Compat --> Decision
-  Decision --> Trace["trace + metering + audit"]
-```
+![图：6.4.1 工程实现](../assets/diagrams/part-02-platform-chapter-06-ai-gateway-03.svg)
 
 排障时，这个对象也能缩小范围。若 fallback 后质量下降，先检查 fallback release 是否通过同一 `serving_quality_contract` 和 capability gate；若回滚后仍未恢复，检查 route restore 是否真的指向 baseline release bundle，而不是只改了 Kubernetes Service；若账单争议出现在 canary 流量，检查 `require_same_usage_schema` 是否被豁免。Gateway 不应只回答“请求去了哪个 endpoint”，还应回答“它基于哪个 release 合同被允许去那里”。
 
@@ -498,38 +459,11 @@ rag_agent_admission_context:
 
 这个约束让 Gateway 成为 RAG/Agent release 的入口门禁，而不是只做普通鉴权。RAG 索引、Agent 工具策略和模型 release 一样，都可能改变用户可见结果和安全边界。Gateway 不需要理解 chunk 细节或工具实现，但必须检查 contract 状态、失效事件和 PRR 阻断标记。若 `retrieval_acl_invalidation_event` 未完成，或者 `agent_tool_policy_contract` 的高风险工具演练未通过，Gateway 可以直接拒绝高风险流量、降级到只读模式或要求人工确认。
 
-```mermaid
-flowchart TB
-  Req["RAG / Agent request"] --> GW["AI Gateway"]
-  GW --> RAAC["rag_agent_admission_context"]
-  RAAC --> RIRC["rag_index_release_contract"]
-  RAAC --> ATPC["agent_tool_policy_contract"]
-  RIRC --> RAG["RAG retrieval service"]
-  ATPC --> Agent["Agent Orchestrator"]
-  RAG --> RPD["retrieval_permission_decision"]
-  RAG --> RCS["rag_context_snapshot"]
-  Agent --> ATER["agent_tool_execution_record"]
-  Agent --> ABL["agent_budget_ledger"]
-  RPD --> Trace["trace / evidence bundle"]
-  ATER --> Trace
-```
+![图：6.4.1 工程实现](../assets/diagrams/part-02-platform-chapter-06-ai-gateway-04.svg)
 
 `policy_decision_record` 是 Gateway 最关键的安全证据对象。它记录一次请求在 identity、capability、budget、data boundary、safety、route 和 commit 阶段的输入事实、命中规则、决策结果和策略版本。它不应包含完整 prompt 或敏感响应，而应包含足够解释策略的引用和摘要。这样既能保护数据边界，又能回答“为什么这个请求被允许、拒绝、限流、fallback 或路由到某个资源池”。
 
-```mermaid
-flowchart TB
-  Req["request"] --> Identity["identity check"]
-  Identity --> Boundary["tenant_boundary"]
-  Boundary --> Credential["credential_lifecycle"]
-  Credential --> DataPolicy["data_boundary_policy"]
-  DataPolicy --> Budget["quota / budget"]
-  Budget --> Capability["model capability"]
-  Capability --> Route["route / fallback"]
-  Route --> Decision["policy_decision_record"]
-  Decision --> Audit["security_audit_event"]
-  Decision --> Metering["metering event"]
-  Decision --> Trace["trace context"]
-```
+![图：6.4.1 工程实现](../assets/diagrams/part-02-platform-chapter-06-ai-gateway-05.svg)
 
 一个简化记录如下。注意这里使用 `prompt_ref` 和 `policy_inputs_hash`，避免把原始敏感内容复制到审计系统；使用 `matched_rules` 和 `effective_policy_versions`，保证策略能回放；使用 `owner_stage`，让拒绝或异常能进入正确团队的队列。
 
@@ -609,24 +543,7 @@ egress_provider_decision:
 
 外联决策还要能解释拒绝后的行为。一个 provider 被拒绝后，Gateway 可以选择内部模型、低风险小模型、异步批量队列、人工确认或直接失败；这些动作的用户体验和成本不同。比如高敏客服请求不能外发给第三方，但可以路由到内部模型；公开文档摘要可以外发，但需要低成本模型和 token 预算；跨区域请求可以失败并提示用户切换区域。`egress_provider_decision` 因此不只是审计日志，而是后续 fallback、计费、支持和客户沟通的事实来源。
 
-```mermaid
-flowchart TB
-  Req["request"] --> Id["identity / tenant"]
-  Id --> Classify["data classification\nprompt / file / RAG context"]
-  Classify --> Contract["provider contract\nregion / no training / logging"]
-  Contract --> Cost["provider cost guard\nbudget / price / quota"]
-  Cost --> Internal{internal model usable?}
-  Internal -->|yes| RouteInternal["route internal endpoint"]
-  Internal -->|no| Egress{egress allowed?}
-  Egress -->|yes| RouteProvider["route provider endpoint"]
-  Egress -->|no| DenyOrDegrade["deny / degrade / async / human approval"]
-  RouteInternal --> EPD["egress_provider_decision"]
-  RouteProvider --> EPD
-  DenyOrDegrade --> EPD
-  EPD --> PDR["policy_decision_record"]
-  EPD --> Billing["metering / provider cost"]
-  EPD --> Audit["security_audit_event"]
-```
+![图：6.4.1 工程实现](../assets/diagrams/part-02-platform-chapter-06-ai-gateway-06.svg)
 
 公共 MaaS 或开放试用场景还必须把 denial-of-wallet 作为入口治理问题。Denial-of-wallet 指攻击者或误配置调用者通过合法 API 消耗大量昂贵资源，让平台、租户或受害 key 承担成本。它不一定表现为 5xx，也不一定让服务不可用：请求可能都是 2xx，只是每个请求都带超长 context、强制长输出、触发昂贵 provider、制造 Agent 循环或绕过缓存。若 Gateway 只看 QPS、可用性和鉴权，通过的流量仍可能在经济上构成事故。
 
@@ -707,16 +624,7 @@ routing_quality_scorecard:
 
 Scorecard 的输入来自多处：第 13 章的 eval report、第 14 章的 serving release、第 15 章的 runtime qualification、第 37 章的线上质量 telemetry、第 41 章的质量成本账本。Gateway 不应在请求路径上实时计算复杂质量模型，而应消费已发布、版本化、可回放的 scorecard。请求进入时，Gateway 根据任务特征、租户、能力要求和当前健康状态选择候选模型，并把命中的 scorecard id 写入 `policy_decision_record`。这样，线上质量争议可以追溯到当时采用的质量证据。
 
-```mermaid
-flowchart LR
-  Req["request features\n任务 / 租户 / 风险 / 能力"] --> Score["routing_quality_scorecard"]
-  Eval["offline eval"] --> Score
-  Online["online quality telemetry"] --> Score
-  Cost["quality_cost_ledger"] --> Score
-  Health["serving health / SLO"] --> Score
-  Score --> Route["route model / pool / fallback"]
-  Route --> PDR["policy_decision_record"]
-```
+![图：6.4.1 工程实现](../assets/diagrams/part-02-platform-chapter-06-ai-gateway-07.svg)
 
 在高价值场景中，还应生成 `routing_quality_decision_record`。它比普通 `policy_decision_record` 更关注质量和业务结果：请求被识别成哪个 task slice，哪些候选模型被排除，最终模型为什么在质量、SLO、成本、数据边界和 capability 约束下胜出，fallback 是否仍满足同一质量门槛。没有这个记录，线上出现“为什么这个客户被路由到小模型”的争议时，团队只能查路由代码和当时的配置快照。
 
@@ -784,21 +692,7 @@ online_experiment_record:
     feedback_to_eval_dataset: enabled_with_review
 ```
 
-```mermaid
-stateDiagram-v2
-  [*] --> Designed
-  Designed --> DryRun: policy replay
-  DryRun --> Canary: eligibility and guardrails pass
-  Canary --> Observe: collect quality / SLO / cost
-  Observe --> Expand: guardrails pass
-  Observe --> Freeze: weak signal or insufficient sample
-  Observe --> Rollback: severe guardrail breach
-  Expand --> RolledOut: decision approved
-  Freeze --> Observe: extend window or adjust
-  Rollback --> Harvest: collect regression samples
-  RolledOut --> Harvest
-  Harvest --> [*]
-```
+![图：6.4.1 工程实现](../assets/diagrams/part-02-platform-chapter-06-ai-gateway-08.svg)
 
 Gateway 的计量事件应采用 append-only 设计。请求开始、首 token、完成、取消和失败是不同事件，不应只在成功完成时写一条 usage。Append-only 事件能处理 streaming 中断、重试和补账，也便于审计。
 

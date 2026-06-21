@@ -1,0 +1,12 @@
+flowchart LR
+  SLOEvent["SLO / training failure / cost anomaly"] --> Evidence["reliability_evidence"]
+  Evidence --> Incident["incident_record"]
+  Evidence --> Health["resource_health_record"]
+  Evidence --> ChangeCase["change_safety_case"]
+  Evidence --> Baseline["acceptance baseline"]
+  Evidence --> FaultDomain["fault_domain_map"]
+  Incident --> Budget["slo_budget_ledger"]
+  Budget --> Policy["freeze / canary / isolate / reroute / add capacity"]
+  Policy --> Scheduler["scheduler / gateway / resource pool"]
+  Scheduler --> Metrics["observability and cost feedback"]
+  Metrics --> SLOEvent

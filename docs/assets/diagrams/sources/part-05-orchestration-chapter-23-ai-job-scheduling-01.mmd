@@ -1,0 +1,12 @@
+flowchart LR
+  Submit["作业提交"] --> Queue["队列"]
+  Queue --> Quota["quota / borrowing"]
+  Quota --> Admit["admission"]
+  Admit --> Gang["gang scheduling"]
+  Gang --> Place["topology placement"]
+  Place --> Run["运行 / 控制器"]
+  Run --> Metrics["metrics / accounting"]
+  Metrics --> Queue
+  Admin["平台策略"] --> Queue
+  Admin --> Priority["priority / preemption"]
+  Priority --> Admit

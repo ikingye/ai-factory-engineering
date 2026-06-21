@@ -69,21 +69,7 @@
 
 还应覆盖多副本一致性。同一 endpoint 下不同 replica 的引擎版本、配置和模型状态必须一致，否则灰度之外也会出现行为差异。引擎架构不是单进程结构，而是副本集合的运行规则。
 
-```mermaid
-flowchart LR
-  Req["请求队列"] --> Scheduler["engine scheduler"]
-  Scheduler --> Batch["continuous batching"]
-  Batch --> Prefill["prefill executor"]
-  Batch --> Decode["decode executor"]
-  Prefill --> KV["KV Cache manager"]
-  Decode --> KV
-  Prefill --> Kernels["CUDA kernels"]
-  Decode --> Kernels
-  Kernels --> GPU["GPU / HBM"]
-  Decode --> Sampler["sampler"]
-  Sampler --> Stream["token streaming"]
-  Scheduler --> Metrics["metrics / traces"]
-```
+![图：15.2.2 系统架构](../assets/diagrams/part-04-runtime-chapter-15-inference-engines-01.svg)
 
 
 ## 15.3 关键技术
@@ -385,19 +371,7 @@ engine_admission:
 
 引擎执行时应把请求分成清晰阶段。Tokenized 请求先进入 waiting queue；调度器选择一批进入 prefill；prefill 完成后生成 KV Cache；decode 阶段逐步加入 active set；请求完成、取消或失败后释放 block 并写出 close event。这些状态必须可观测，否则 continuous batching 和 KV Cache 会成为黑盒。
 
-```mermaid
-flowchart TB
-  Tokenized["tokenized request"] --> Waiting["waiting queue"]
-  Waiting --> Admit{"capacity + priority"}
-  Admit -->|admit| Prefill["prefill batch"]
-  Admit -->|reject/backpressure| Reject["typed reject"]
-  Prefill --> KVAlloc["allocate KV blocks"]
-  KVAlloc --> Active["active decode set"]
-  Active --> Step["decode step"]
-  Step --> Active
-  Active -->|finish/cancel/error| Release["release KV blocks"]
-  Release --> Usage["emit usage + close reason"]
-```
+![图：15.4.1 工程实现](../assets/diagrams/part-04-runtime-chapter-15-inference-engines-02.svg)
 
 这条生命周期还应沉淀为 `engine_request_state_ledger`。它不是业务请求日志，而是推理引擎内部状态账本：请求什么时候被接入，是否进入 prefill，分配了多少 KV block，何时开始 decode，stream 是否打开，关闭原因是什么，usage 是否和 streaming 交付一致。没有这张账本，`kv_block_ledger`、`endpoint_admission_decision`、`metering event` 和用户 trace 很难对齐。
 
@@ -509,19 +483,7 @@ runtime_quality_gate:
 
 Engine qualification 的核心是把 runtime 变化拆成四类影响。第一类是正确性：同一输入在确定性设置下是否仍满足答案、格式和安全要求。第二类是协议：streaming chunk、usage、finish reason、错误码、取消语义是否兼容。第三类是性能：TTFT、TPOT、tokens/s、KV Cache、OOM 和 queue 是否改善或保持。第四类是经济性：单位成功任务成本是否下降，额外 draft 模型、缓存和资源占用是否值得。只要其中一类没有证据，引擎变更就不应全量上线。
 
-```mermaid
-flowchart LR
-  Change["engine/config change"] --> Correct["quality regression"]
-  Change --> Protocol["serving protocol contract"]
-  Change --> Perf["performance benchmark"]
-  Change --> Cost["cost per successful task"]
-  Correct --> Gate["runtime_quality_gate"]
-  Protocol --> Gate
-  Perf --> Gate
-  Cost --> Gate
-Gate --> Canary["engine canary"]
-  Canary --> SQC["serving_quality_contract update"]
-```
+![图：15.4.1 工程实现](../assets/diagrams/part-04-runtime-chapter-15-inference-engines-03.svg)
 
 `engine_canary_record` 是这条门禁在生产流量中的证据。它把 `runtime_quality_gate` 的离线/压测结论和线上 canary 观测连接起来，并要求每次 engine profile 变化都带上可回滚目标。若 canary 中只有 TTFT/TPOT，没有 protocol、token drift、KV allocation、quality feedback 和 cost 指标，就不能证明 runtime 变更适合全量发布。
 
@@ -553,16 +515,7 @@ engine_canary_record:
 
 Runtime 门禁还应定义自动止血动作。推理引擎问题的窗口很短，等人工确认后再调路由，往往已经消耗大量 token、产生用户可见失败或污染质量反馈。`engine_canary_guardrail_action` 应作为 canary 的配套对象：当 token drift、KV allocation failure、JSON failure、draft overhead、PD transfer timeout 或 cost per successful answer 越界时，系统应能冻结放量、关闭特性、降权 endpoint 或回滚 engine profile，并把动作写回 Gateway、Serving 和成本账本。
 
-```mermaid
-flowchart LR
-  Canary["engine_canary_record"] --> Guard{"guardrail breach?"}
-  Guard -->|no| Promote["continue / promote"]
-  Guard -->|yes| Action["engine_canary_guardrail_action"]
-  Action --> GW["patch Gateway route / admission"]
-  Action --> Runtime["disable feature or rollback profile"]
-  Action --> Bundle["freeze diagnostic evidence"]
-  Action --> Cost["record rollback and prevention cost"]
-```
+![图：15.4.1 工程实现](../assets/diagrams/part-04-runtime-chapter-15-inference-engines-04.svg)
 
 止血动作要足够细。Speculative decoding 失败时，不一定要回滚整个模型服务，可以只按 workload slice 关闭 speculative；KV 泄漏时，可能需要冻结长上下文 admission，而不是停止短请求；PD transfer 超时时，可以把新请求切回 monolithic endpoint，同时让已开始 streaming 的请求按合同结束。自动动作越接近真实故障边界，越能减少爆炸半径。
 

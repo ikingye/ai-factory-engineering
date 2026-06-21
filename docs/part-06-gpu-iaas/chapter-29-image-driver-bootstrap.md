@@ -67,34 +67,11 @@ Container image 封装训练或推理应用环境，包括 Python、框架、CUD
 
 架构还应包含漂移检测。节点运行一段时间后，包版本、内核、配置、驱动状态和 runtime 配置可能被手工操作或自动更新改变。周期性检测可以把漂移节点隔离或重新初始化，避免它们长期混在生产池中。
 
-```mermaid
-flowchart TB
-  Golden["golden OS image"] --> Host["host baseline"]
-  Host --> Kernel["kernel / sysctl / security"]
-  Host --> Driver["NVIDIA driver / DCGM"]
-  Host --> RDMA["OFED / RDMA stack"]
-  Host --> Runtime["container runtime / toolkit"]
-  Runtime --> Image["AI container image"]
-  Image --> Workload["training / inference workload"]
-  Host --> Validate["bootstrap validation"]
-  Validate --> Pool["resource pool"]
-  Matrix["compatibility matrix"] --> Golden
-  Matrix --> Image
-  Matrix --> Validate
-```
+![图：29.2.2 系统架构](../assets/diagrams/part-06-gpu-iaas-chapter-29-image-driver-bootstrap-01.svg)
 
 对 GPU IaaS 来说，container runtime 不是 Kubernetes 团队的“上层细节”，而是节点交付基线的一部分。节点如果只安装 driver，但没有正确配置 NVIDIA Container Toolkit、containerd runtime handler、device plugin 依赖和容器内 GPU smoke test，就不能算完成交付。因为大多数 AI workload 最终都在容器里运行，主机 `nvidia-smi` 通过只证明硬件和 driver 基础可用，不证明生产 workload 可用。
 
-```mermaid
-flowchart LR
-  OS["OS / kernel baseline"] --> Driver["NVIDIA Driver"]
-  Driver --> Toolkit["NVIDIA Container Toolkit"]
-  Toolkit --> Runtime["containerd / Docker runtime config"]
-  Runtime --> Smoke["GPU container smoke test"]
-  Smoke --> K8s["Kubernetes device plugin test"]
-  K8s --> NCCL["containerized NCCL / RDMA test"]
-  NCCL --> Pool["GPU resource pool"]
-```
+![图：29.2.2 系统架构](../assets/diagrams/part-06-gpu-iaas-chapter-29-image-driver-bootstrap-02.svg)
 
 
 ## 29.3 关键技术
@@ -269,21 +246,7 @@ release_train_record:
 
 Release train 必须和 LTS 支持策略配套。LTS（Long-Term Support，长期支持）不是承诺所有旧版本永远可用，而是说明哪些 baseline 仍接受安全补丁，哪些问题只在新版本修复，哪些升级路径被支持，哪些客户或资源池已经接近 EOL（End of Life，生命周期结束）。AI Factory 的 LTS 策略要同时保护生产稳定性和工程可维护性：高 SLA 推理池不能频繁承受底层变更，但平台也不能为每个私有化客户无限维护独立 driver、runtime 和镜像组合。
 
-```mermaid
-flowchart LR
-  Build["Release train\nbaseline + runtime + images"] --> Lab["lab"]
-  Lab --> Gate1["compatibility\nbootstrap\ncontainer GPU"]
-  Gate1 --> Canary["canary pool"]
-  Canary --> Gate2["NCCL / RDMA\ntraining / inference"]
-  Gate2 --> Standard["production standard"]
-  Standard --> Gate3["SLO / cost\nincident readiness"]
-  Gate3 --> Premium["premium / private delivery"]
-  Gate1 -.fail.-> Rollback["rollback\nprevious baseline"]
-  Gate2 -.fail.-> Rollback
-  Gate3 -.fail.-> Rollback
-  Rollback --> Invalidate["baseline_invalidation_record"]
-  Premium --> LTS["lts_support_policy\nEOL + backport + upgrade path"]
-```
+![图：29.3.8 golden image](../assets/diagrams/part-06-gpu-iaas-chapter-29-image-driver-bootstrap-03.svg)
 
 这张图强调 release train 的推进单位不是“节点批次”，而是“证据门禁”。每个 ring 都要产生或刷新基线证据，失败后要生成 baseline invalidation，而不是继续把节点标成可调度。LTS 位于最后，是因为只有经过生产和私有化交付验证的组合，才值得承诺长期支持；未经充分验证的实验组合不应进入客户合同。
 
@@ -355,18 +318,7 @@ offline_release_bundle_manifest:
 
 这个 manifest 的关键价值是让现场交付可对账。供应方能证明“我交付了什么”，客户能证明“现场导入了什么”，SRE 能证明“运行中的版本来自哪个包”，商业团队能把支持边界和成本归因到具体交付物。若现场有人手工替换镜像、修改 chart、覆盖模型权重或跳过迁移脚本，下一次支持工单就不能只看版本号，而要比较 manifest、客户导入记录和运行时快照。对 AI Factory 来说，离线包是供应链、版本治理、客户支持和经济账本的共同对象。
 
-```mermaid
-flowchart LR
-  Train["release_train_record"] --> Bundle["offline_release_bundle_manifest"]
-  Bundle --> Verify["signature / digest / SBOM verification"]
-  Verify --> Import["offline import\nregistry / charts / models / configs"]
-  Import --> Migrate["schema / artifact / cache migration"]
-  Migrate --> Validate["bootstrap + GPU runtime + endpoint smoke"]
-  Validate --> Rehearsal["offline_upgrade_rehearsal"]
-  Rehearsal --> Acceptance["private_deployment_acceptance_record"]
-  Rehearsal --> Rollback["rollback bundle verified"]
-  Rehearsal --> Support["diagnostic_bundle_sla"]
-```
+![图：29.3.8 golden image](../assets/diagrams/part-06-gpu-iaas-chapter-29-image-driver-bootstrap-04.svg)
 
 
 ## 29.4 工程落地

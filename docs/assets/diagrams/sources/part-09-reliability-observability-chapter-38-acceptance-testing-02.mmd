@@ -1,0 +1,10 @@
+flowchart LR
+  Manifest["checkpoint_manifest"] --> Matrix["checkpoint_restore_acceptance_matrix"]
+  Runtime["framework_runtime_matrix"] --> Matrix
+  Reader["reader / image / KMS"] --> Matrix
+  Matrix --> Restore["restore run"]
+  Restore --> First["first effective step"]
+  First --> Probe["loss / state continuity probe"]
+  Probe --> Result{"accept?"}
+  Result -->|pass| Pool["long training schedulable"]
+  Result -->|fail| Block["block long training\nkeep older valid checkpoint"]

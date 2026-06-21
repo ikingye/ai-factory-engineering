@@ -1,0 +1,18 @@
+flowchart TB
+  S["behavior drift / rollback fail / old weights / restore fail"] --> Kind{"供应链路径?"}
+  Kind --> Data["dataset lineage"]
+  Kind --> Ckpt["checkpoint restore"]
+  Kind --> Artifact["artifact provenance"]
+  Kind --> Cache["cache invalidation"]
+  Data --> D1["dataset_lineage_record\nsource / transform / deletion"]
+  Data --> D2["dataset_manifest\nshard checksum / tokenizer"]
+  Ckpt --> C1["checkpoint_manifest\nstate / shard / dataloader"]
+  Ckpt --> C2["checkpoint_restore_drill\nfirst effective step after restore"]
+  Artifact --> A1["model_artifact_provenance\nsource checkpoint / build / gate / signature"]
+  Artifact --> A2["model_artifact_distribution\ndigest / registry / readiness"]
+  Cache --> K1["cache_residency\nnode / rack / warmup / state"]
+  Cache --> K2["cache_invalidation_record\nrevoked / evicted / replaced"]
+  D1 --> Verdict["supply_chain_verdict"]
+  C2 --> Verdict
+  A1 --> Verdict
+  K2 --> Verdict

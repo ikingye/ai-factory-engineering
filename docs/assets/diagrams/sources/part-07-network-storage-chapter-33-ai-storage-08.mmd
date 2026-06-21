@@ -1,0 +1,15 @@
+flowchart LR
+  Raw["raw data / private data"] --> Lineage["dataset_lineage_record"]
+  Lineage --> Manifest["dataset_manifest"]
+  Manifest --> Train["TrainingJob"]
+  Train --> Ckpt["checkpoint_manifest"]
+  Ckpt --> Drill["checkpoint_restore_drill"]
+  Drill --> Prov["model_artifact_provenance"]
+  Prov --> Dist["model_artifact_distribution"]
+  Dist --> Cache["cache_residency"]
+  Cache --> Serve["serving release"]
+  Dist --> Invalid["cache_invalidation_record"]
+  Boundary["storage_security_boundary"] -. governs .-> Lineage
+  Boundary -. governs .-> Ckpt
+  Boundary -. governs .-> Prov
+  Boundary -. governs .-> Cache

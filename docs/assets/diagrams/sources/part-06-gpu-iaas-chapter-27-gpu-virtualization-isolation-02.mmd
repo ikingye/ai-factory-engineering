@@ -1,0 +1,11 @@
+stateDiagram-v2
+  [*] --> Allocated
+  Allocated --> Released: workload finished / lease ended
+  Released --> Draining: stop traffic / checkpoint / terminate
+  Draining --> Cleaning: kill residual process / revoke secret / wipe cache
+  Cleaning --> Resetting: GPU reset / MIG restore / node reboot if needed
+  Resetting --> Retesting: container GPU / NCCL / storage smoke test
+  Retesting --> Allocatable: clean_to_reuse_record passed
+  Retesting --> Quarantine: failed verification
+  Quarantine --> Maintenance: investigation / repair
+  Maintenance --> Retesting

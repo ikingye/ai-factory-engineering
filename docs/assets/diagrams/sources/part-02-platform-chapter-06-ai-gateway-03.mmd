@@ -1,0 +1,12 @@
+flowchart LR
+  Req["request\nmodel alias + tenant + task slice"] --> Contract["serving_route_release_contract"]
+  Contract --> Primary["primary release bundle"]
+  Contract --> Canary["canary release bundle"]
+  Contract --> Fallback["fallback release bundle"]
+  Primary --> Health["engine_admission_health"]
+  Canary --> Guard["quality / protocol / cost guardrails"]
+  Fallback --> Compat["capability + usage + data boundary compatibility"]
+  Health --> Decision["endpoint_admission_decision"]
+  Guard --> Decision
+  Compat --> Decision
+  Decision --> Trace["trace + metering + audit"]

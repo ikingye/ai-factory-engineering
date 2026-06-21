@@ -1,0 +1,9 @@
+flowchart LR
+  ModelReq["model requirements\ncontext / precision / engine / SLO"] --> Fit["model_hardware_fit_record"]
+  Pool["heterogeneous_gpu_pool_profile\nclasses / baselines / entitlement"] --> Fit
+  Fit --> Route["gpu_generation_route_decision"]
+  Route --> Serving["serving placement / endpoint"]
+  Serving --> Meter["metering events"]
+  Meter --> Cost["heterogeneous_gpu_cost_scorecard"]
+  Cost --> Pool
+  Fit --> PRR["production_readiness_review"]

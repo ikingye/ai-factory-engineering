@@ -1,0 +1,8 @@
+flowchart LR
+  Bundle["serving_release_evidence_bundle"] --> Fault["serving_release_fault_tree_execution"]
+  Fault --> Cost["serving_release_cost_record"]
+  Cost --> Quality["quality_cost_ledger"]
+  Cost --> Runtime["inference_runtime_cost_ledger"]
+  Cost --> Storage["storage_cost_ledger"]
+  Cost --> Billing["billing hold / dispute replay"]
+  Cost --> PRR["serving release PRR gate update"]

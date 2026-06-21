@@ -63,19 +63,7 @@ Full fine-tuning 更新模型全部或大部分参数，能力强但成本高、
 
 架构还要支持失败闭环。数据未通过校验时返回可修复报告，训练失败时保留日志和资源快照，评测未通过时说明失败维度，发布失败时能回滚到上一版本。没有这些状态，用户只会看到“任务失败”，平台也无法改进流程。微调平台的体验来自全链路反馈。
 
-```mermaid
-flowchart LR
-  Data["租户私有数据"] --> Guard["校验 / 脱敏 / 权限"]
-  Guard --> Split["训练集 / 验证集"]
-  Base["基础模型"] --> Job["微调任务"]
-  Split --> Job
-  Job --> Artifact["checkpoint / LoRA / adapter"]
-  Artifact --> Eval["质量 + 安全评测"]
-  Eval --> Registry["模型注册"]
-  Registry --> Serving["模型服务 / MaaS"]
-  Serving --> Metrics["线上指标 / 反馈"]
-  Metrics --> Guard
-```
+![图：12.2.2 系统架构](../assets/diagrams/part-03-models-chapter-12-fine-tuning-01.svg)
 
 
 ## 12.3 关键技术

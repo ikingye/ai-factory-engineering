@@ -6,64 +6,7 @@
 
 ## 1. 一张图串起全书
 
-```mermaid
-flowchart TB
-  subgraph Demand["目标与需求"]
-    WP["workload_profile\n应用如何消耗能力"]
-    BMP["business_model_profile\n能力如何商业化或结算"]
-    COE["customer_onboarding_evidence\n客户接入证据"]
-    BP["ai_factory_build_plan\n建设阶段与停止条件"]
-  end
-
-  subgraph Production["生产路径"]
-    Req["推理请求链路\nGateway -> Serving -> Runtime -> GPU -> Billing"]
-    Train["训练任务链路\nQueue -> Gang -> NCCL -> Checkpoint -> Registry"]
-    Data["数据链路\nDataset / Artifact / Cache / Checkpoint"]
-  end
-
-  subgraph Resource["资源与基础设施"]
-    Runtime["AI Runtime\nCUDA / NCCL / Engine / Framework"]
-    Sched["Orchestration\nKubernetes / Slurm / Kueue / Volcano"]
-    Pool["GPU Resource Pool\nhealth / quota / topology / isolation"]
-    Fabric["Network & Storage\nNVLink / RDMA / PFS / NVMe"]
-    Physical["Physical\nrack / power / cooling / server"]
-  end
-
-  subgraph Evidence["证据与治理"]
-    Baseline["acceptance_baseline\n准入与验收"]
-    Quality["quality_evidence_bundle\n质量证据包"]
-    Telemetry["telemetry_event\n观测事实"]
-    Incident["incident_record\n故障复盘"]
-    Ledger["Token Factory ledger\n成本与价值"]
-    PNL["commercial_pnl_ledger\n商业 P&L"]
-    Risk["launch_risk_register\n上线风险登记"]
-    PRR["production_readiness_review\n上线门禁"]
-  end
-
-  WP --> Req
-  WP --> Train
-  BMP --> Ledger
-  BMP --> COE
-  COE --> PRR
-  BP --> PRR
-  Risk --> PRR
-  Req --> Runtime --> Sched --> Pool --> Fabric --> Physical
-  Train --> Runtime
-  Train --> Data --> Fabric
-  Physical --> Baseline --> Pool
-  Pool --> Telemetry
-  Runtime --> Telemetry
-  Req --> Quality
-  Quality --> Incident
-  Quality --> Ledger
-  Req --> Ledger
-  Train --> Ledger
-  Ledger --> PNL
-  PNL --> BMP
-  Telemetry --> Incident --> BP
-  Ledger --> BMP
-  PRR --> Req
-```
+![图：1. 一张图串起全书](assets/diagrams/system-map-01.svg)
 
 这张图的读法是：需求对象先定义系统要生产什么，生产路径把请求和任务落到运行时与资源池，资源层用准入和观测证明自己可用，SRE 与经济账本再把运行结果反哺到建设计划和商业模式。若某个项目只有中间的 GPU 和 Runtime，而缺少两端的 profile、baseline、telemetry 和 ledger，它还不是完整 AI Factory。
 

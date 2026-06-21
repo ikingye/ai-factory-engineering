@@ -1,0 +1,16 @@
+flowchart LR
+  Sample["真实样本\nprompt / documents / traces"] --> Profile["workload_profile"]
+  Business["业务目标\nvalue metric / failure impact"] --> Profile
+  Data["数据边界\npermission / retention / audit"] --> Profile
+  Profile --> Review["application_readiness_review"]
+  Review --> Gateway["Gateway policy\nrate limit / context budget / authz"]
+  Review --> Model["Model routing\nquality scorecard / fallback"]
+  Review --> Runtime["Runtime policy\nbatching / cache / timeout"]
+  Review --> Pool["Resource pool\nlatency / topology / isolation"]
+  Review --> Cost["Cost ledger\nvalue unit / chargeback"]
+  Gateway --> Telemetry["production telemetry"]
+  Model --> Telemetry
+  Runtime --> Telemetry
+  Pool --> Telemetry
+  Cost --> Telemetry
+  Telemetry -->|"profile drift / SLO breach / cost anomaly"| Profile

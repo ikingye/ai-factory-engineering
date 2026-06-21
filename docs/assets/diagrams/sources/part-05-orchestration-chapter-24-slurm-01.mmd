@@ -1,0 +1,10 @@
+flowchart LR
+  User["用户 / 训练脚本"] --> Submit["sbatch / srun"]
+  Submit --> Controller["slurmctld"]
+  Controller --> Queue["partition / priority / fairshare"]
+  Queue --> Nodes["compute nodes"]
+  Nodes --> Step["job steps"]
+  Nodes --> GPU["GPU / RDMA"]
+  Controller --> Accounting["slurmdbd / accounting"]
+  Step --> Registry["model registry / artifacts"]
+  Step --> Metrics["logs / metrics / checkpoint"]

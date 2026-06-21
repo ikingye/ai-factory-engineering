@@ -1,0 +1,14 @@
+flowchart LR
+  Drill["security_prr_abuse_drill"] --> Gateway["Gateway guard\nidentity / policy / budget"]
+  Gateway --> PDR["policy_decision_record"]
+  Gateway --> EPD["egress_provider_decision"]
+  Gateway --> Guard["denial_of_wallet_admission_guard"]
+  PDR --> Bundle["security_evidence_bundle"]
+  EPD --> Bundle
+  Guard --> Bundle
+  Bundle --> Fault["security_policy_fault_tree_execution"]
+  Fault --> DOW["denial_of_wallet_incident_record"]
+  DOW --> Abuse["abuse_cost_ledger"]
+  DOW --> Replay["billing_dispute_replay"]
+  Abuse --> PRR["PRR gate update"]
+  Replay --> PRR

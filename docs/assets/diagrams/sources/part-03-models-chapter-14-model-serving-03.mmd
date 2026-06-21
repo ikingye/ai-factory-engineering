@@ -1,0 +1,13 @@
+flowchart TB
+  Bundle["serving_release_bundle"] --> Release["serving_release"]
+  Bundle --> Provenance["model_artifact_provenance"]
+  Bundle --> Dist["model_artifact_distribution"]
+  Bundle --> Quality["serving_quality_contract"]
+  Bundle --> Route["serving_route_release_contract"]
+  Bundle --> Runtime["runtime_quality_gate\nengine_canary_record"]
+  Bundle --> Usage["usage schema\nmetering"]
+  Bundle --> Rollback["serving_rollback_drill\nrollback bundle"]
+  Route --> Gateway["AI Gateway"]
+  Runtime --> Serving["Model Serving"]
+  Usage --> Billing["Billing"]
+  Rollback --> PRR["production readiness review"]

@@ -1,0 +1,12 @@
+flowchart LR
+  Client["应用 / SDK"] --> GW["AI Gateway"]
+  GW --> Auth["认证鉴权"]
+  Auth --> Quota["租户限流 / 配额"]
+  Quota --> Policy["策略\n灰度 / fallback / 安全"]
+  Policy --> Router["模型路由"]
+  Router --> M1["Model Endpoint A"]
+  Router --> M2["Model Endpoint B"]
+  Router --> M3["Private Endpoint"]
+  GW --> Meter["token 计量"]
+  GW --> Trace["trace / logs / metrics"]
+  Meter --> Billing["Billing"]

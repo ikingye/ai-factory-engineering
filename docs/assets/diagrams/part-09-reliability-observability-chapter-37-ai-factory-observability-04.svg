@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2064 404" width="2064" height="404">
+  <defs>
+    <marker id="arrowA" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#7c3aed"/>
+    </marker>
+    <marker id="arrowB" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#10b981"/>
+    </marker>
+    <marker id="arrowC" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2563eb"/>
+    </marker>
+    <marker id="arrowE" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#f97316"/>
+    </marker>
+    <marker id="arrowF" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#7c3aed"/>
+    </marker>
+    <marker id="arrowG" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#ef4444"/>
+    </marker>
+    <marker id="arrowH" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#6b7280"/>
+    </marker>
+    <filter id="shadowSoft" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="3" stdDeviation="6" flood-color="#0f172a" flood-opacity="0.12"/>
+    </filter>
+    <filter id="shadowGlass" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="10" stdDeviation="16" flood-color="#020617" flood-opacity="0.28"/>
+    </filter>
+    <style>
+    text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', 'Microsoft JhengHei', 'SimHei', sans-serif; }
+    .title { font-size: 30px; font-weight: 700; fill: #111827; }
+    .subtitle { font-size: 14px; font-weight: 500; fill: #6b7280; }
+    .section { font-size: 13px; font-weight: 700; fill: #2563eb; letter-spacing: 1.4px; }
+    .section-sub { font-size: 12px; font-weight: 500; fill: #94a3b8; }
+    .node-title { font-size: 18px; font-weight: 700; fill: #111827; }
+    .node-sub { font-size: 12px; font-weight: 500; fill: #6b7280; }
+    .node-type { font-size: 12px; font-weight: 700; fill: #9ca3af; letter-spacing: 0.08em; }
+    .arrow-label { font-size: 12px; font-weight: 600; fill: #6b7280; }
+    .legend { font-size: 12px; font-weight: 500; fill: #6b7280; }
+    .footnote { font-size: 12px; font-weight: 500; fill: #94a3b8; }
+    </style>
+  </defs>
+  <rect width="2064.0" height="404.0" fill="#ffffff"/>
+  <text x="1032.0" y="56" text-anchor="middle" class="title">37.3.9 distributed tracing</text>
+  <text x="1032.0" y="82" text-anchor="middle" class="subtitle">part-09-reliability-observability/chapter-37-ai-factory-observability.md:515</text>
+  <path d="M 260.0,211.0 L 280.4,211.0 L 311.6,217.0 L 332.0,217.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 631.0,217.0 L 651.4,217.0 L 682.6,211.0 L 703.0,211.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 925.0,211.0 L 945.4,211.0 L 976.6,217.0 L 997.0,217.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 1198.0,217.0 L 1218.4,217.0 L 1249.6,161.0 L 1270.0,161.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 1198.0,217.0 L 1218.4,217.0 L 1254.1,273.0 L 1274.5,273.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 1443.0,161.0 L 1463.4,161.0 L 1494.6,211.0 L 1515.0,211.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 1438.5,273.0 L 1458.9,273.0 L 1494.6,211.0 L 1515.0,211.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 1688.0,211.0 L 1760.0,211.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <rect x="96.0" y="182.0" width="164.0" height="58.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
+  <text x="178.0" y="211.0" text-anchor="middle" class="node-title">raw telemetry</text>
+  <rect x="332.0" y="182.0" width="299.0" height="70.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
+  <text x="481.5" y="217.0" text-anchor="middle" class="node-title">classify</text>
+  <text x="481.5" y="239.0" text-anchor="middle" class="node-sub">prompt / response / infra / billing</text>
+  <rect x="703.0" y="182.0" width="222.0" height="58.0" rx="10.0" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.8"/>
+  <text x="814.0" y="211.0" text-anchor="middle" class="node-title">redact / tokenize / hash</text>
+  <rect x="997.0" y="182.0" width="201.0" height="70.0" rx="10.0" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.8"/>
+  <text x="1097.5" y="217.0" text-anchor="middle" class="node-title">tiered storage</text>
+  <text x="1097.5" y="239.0" text-anchor="middle" class="node-sub">hot / cold / evidence</text>
+  <rect x="1270.0" y="126.0" width="173.0" height="70.0" rx="10.0" fill="#f0fdfa" stroke="#99f6e4" stroke-width="1.8"/>
+  <text x="1356.5" y="161.0" text-anchor="middle" class="node-title">tenant view</text>
+  <text x="1356.5" y="183.0" text-anchor="middle" class="node-sub">own workload only</text>
+  <rect x="1274.5" y="238.0" width="164.0" height="70.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8"/>
+  <text x="1356.5" y="273.0" text-anchor="middle" class="node-title">admin view</text>
+  <text x="1356.5" y="295.0" text-anchor="middle" class="node-sub">need-to-know</text>
+  <rect x="1515.0" y="182.0" width="173.0" height="58.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
+  <text x="1601.5" y="211.0" text-anchor="middle" class="node-title">query_audit_event</text>
+  <rect x="1760.0" y="182.0" width="208.0" height="58.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
+  <text x="1864.0" y="211.0" text-anchor="middle" class="node-title">periodic access review</text>
+  <text x="1784.0" y="388.0" class="footnote">Rendered with fireworks-tech-graph</text>
+</svg>

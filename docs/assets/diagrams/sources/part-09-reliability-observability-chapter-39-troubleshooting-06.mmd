@@ -1,0 +1,15 @@
+flowchart TB
+  Symptom["TTFT / TPOT / streaming gap"] --> Shape["request shape\ninput/output/context/tenant"]
+  Shape --> Gateway["Gateway queue / route"]
+  Shape --> Serving["engine_admission_health"]
+  Serving --> Prefill["prefill queue / cache miss / cold load"]
+  Serving --> Decode["decode active sequences / batch"]
+  Serving --> KV["kv_block_ledger\npressure / leak / fragmentation"]
+  Serving --> Canary["engine_canary_record\nruntime regression"]
+  Serving --> PD["pd_disaggregation_contract\nKV transfer / pool ratio"]
+  Gateway --> Action["route / shed / fallback"]
+  Prefill --> Action
+  Decode --> Action
+  KV --> Action
+  Canary --> Action
+  PD --> Action

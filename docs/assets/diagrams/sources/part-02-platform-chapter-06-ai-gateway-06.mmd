@@ -1,0 +1,16 @@
+flowchart TB
+  Req["request"] --> Id["identity / tenant"]
+  Id --> Classify["data classification\nprompt / file / RAG context"]
+  Classify --> Contract["provider contract\nregion / no training / logging"]
+  Contract --> Cost["provider cost guard\nbudget / price / quota"]
+  Cost --> Internal{internal model usable?}
+  Internal -->|yes| RouteInternal["route internal endpoint"]
+  Internal -->|no| Egress{egress allowed?}
+  Egress -->|yes| RouteProvider["route provider endpoint"]
+  Egress -->|no| DenyOrDegrade["deny / degrade / async / human approval"]
+  RouteInternal --> EPD["egress_provider_decision"]
+  RouteProvider --> EPD
+  DenyOrDegrade --> EPD
+  EPD --> PDR["policy_decision_record"]
+  EPD --> Billing["metering / provider cost"]
+  EPD --> Audit["security_audit_event"]

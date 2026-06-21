@@ -1,0 +1,11 @@
+flowchart LR
+  Change["engine/config change"] --> Correct["quality regression"]
+  Change --> Protocol["serving protocol contract"]
+  Change --> Perf["performance benchmark"]
+  Change --> Cost["cost per successful task"]
+  Correct --> Gate["runtime_quality_gate"]
+  Protocol --> Gate
+  Perf --> Gate
+  Cost --> Gate
+Gate --> Canary["engine canary"]
+  Canary --> SQC["serving_quality_contract update"]

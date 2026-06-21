@@ -1,0 +1,8 @@
+flowchart LR
+  OS["OS / kernel baseline"] --> Driver["NVIDIA Driver"]
+  Driver --> Toolkit["NVIDIA Container Toolkit"]
+  Toolkit --> Runtime["containerd / Docker runtime config"]
+  Runtime --> Smoke["GPU container smoke test"]
+  Smoke --> K8s["Kubernetes device plugin test"]
+  K8s --> NCCL["containerized NCCL / RDMA test"]
+  NCCL --> Pool["GPU resource pool"]

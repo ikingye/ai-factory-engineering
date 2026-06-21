@@ -1,0 +1,11 @@
+stateDiagram-v2
+  [*] --> Idea
+  Idea --> EvidenceReady: value unit / workload / cost model defined
+  EvidenceReady --> Pilot: metering + support + SLO draft ready
+  Pilot --> Commercial: readiness matrix passed
+  Commercial --> Scale: margin + SLO + support cost stable
+  Scale --> Revise: cost drift / SLA breach / customer segment change
+  Revise --> Pilot: new profile requires validation
+  Commercial --> Deprecating: strategy exit / unprofitable / unsupported
+  Deprecating --> Retired: migration + data exit + contract closure
+  Pilot --> Stopped: no value / no cost control / unacceptable risk

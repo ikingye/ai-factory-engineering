@@ -59,25 +59,7 @@ AI Factory 的多集群架构通常分为统一平台面和多个执行集群。
 
 还要设计控制路径和故障路径。控制路径包括创建集群、注册能力、分配 quota、提交任务、路由到集群、同步状态和回收资源。故障路径包括集群不可用、API server 抖动、Slurm 控制面异常、跨集群网络中断、镜像同步失败和模型产物不可达。多集群架构的成熟度，取决于这些异常是否被显式建模，而不是正常路径画得多整齐。
 
-```mermaid
-flowchart TB
-  User["用户 / 平台 API"] --> Control["统一平台面"]
-  Control --> IAM["身份 / 租户 / 配额"]
-  Control --> Catalog["集群能力目录"]
-  Control --> Policy["策略 / 成本 / 准入"]
-  Control --> Train["训练集群<br/>Slurm / Kubernetes"]
-  Control --> Infer["生产推理集群<br/>Kubernetes"]
-  Control --> Batch["批量与评测集群"]
-  Control --> Exp["实验 / 验收集群"]
-  Train --> Registry["model registry / checkpoint"]
-  Batch --> Registry
-  Registry --> Infer
-  Train --> Obs["统一观测"]
-  Infer --> Obs
-  Batch --> Obs
-  Exp --> Obs
-  Obs --> Cost["成本与利用率"]
-```
+![图：25.2.2 系统架构](../assets/diagrams/part-05-orchestration-chapter-25-multi-cluster-01.svg)
 
 
 ## 25.3 关键技术

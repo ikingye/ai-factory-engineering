@@ -1,0 +1,11 @@
+flowchart TB
+  App["多模态应用\nPDF / image / audio / video"] --> Profile["multimodal_workload_profile"]
+  Profile --> Upload["upload policy\nsize / type / tenant / retention"]
+  Upload --> Pipeline["media_processing_pipeline_record\nscan / decode / OCR / ASR / frames"]
+  Pipeline --> Manifest["media_artifact_manifest\noriginal + derived artifacts"]
+  Manifest --> Serving["model serving\nvision / audio / text fusion"]
+  Serving --> Quality["multimodal_quality_gate_execution"]
+  Serving --> Metering["multimodal_metering_event"]
+  Metering --> Cost["multimodal_cost_ledger"]
+  Quality --> PRR["multimodal_prr_drill"]
+  Cost --> PRR

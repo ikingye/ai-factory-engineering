@@ -1,0 +1,8 @@
+flowchart LR
+  UX["用户反馈 / 重新生成 / 人工接管"] --> QFE["quality_feedback_event"]
+  QFE --> Triage["triage\n模型 / RAG / prompt / route / runtime / UI"]
+  Triage --> Replay["trace replay\nprompt + context + params"]
+  Replay --> Label["human label / judge rubric"]
+  Label --> Eval["eval case / regression set"]
+  Eval --> Gate["quality gate"]
+  Gate --> Release["serving / gateway release"]

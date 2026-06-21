@@ -1,0 +1,8 @@
+flowchart LR
+  Trace["request / run trace"] --> QTE["quality_telemetry_event"]
+  Feedback["quality_feedback_event"] --> QTE
+  Experiment["online_experiment_record"] --> QTE
+  Contract["serving_quality_contract"] --> QTE
+  QTE --> Regression["quality_regression_record"]
+  QTE --> Dashboard["quality dashboard\n长尾 / 切片 / 版本"]
+  QTE --> Cost["quality_cost_ledger"]
