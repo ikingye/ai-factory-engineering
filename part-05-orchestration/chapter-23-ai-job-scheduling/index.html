@@ -12,6 +12,8 @@
         <meta name="author" content="king ye">
       
       
+        <link rel="canonical" href="https://kingye.me/ai-factory-engineering/part-05-orchestration/chapter-23-ai-job-scheduling/">
+      
       
         <link rel="prev" href="../chapter-22-gpu-on-kubernetes/">
       
@@ -188,92 +190,16 @@
   
   
   
-    <li class="md-tabs__item">
-      <a href="../.." class="md-tabs__link">
-        
-  
-  
-    
-  
-  首页
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../../preface/" class="md-tabs__link">
-        
-  
-  
-    
-  
-  前言
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../../roadmap/" class="md-tabs__link">
-        
-  
-  
-    
-  
-  写作路线图
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../../glossary/" class="md-tabs__link">
-        
-  
-  
-    
-  
-  术语表
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-  
     
     
       <li class="md-tabs__item">
-        <a href="../../part-00-introduction/chapter-00-from-datacenter-to-ai-factory/" class="md-tabs__link">
+        <a href="../.." class="md-tabs__link">
           
   
   
     
   
-  Part 0：导论 —— 什么是 AI Factory
+  导论
 
         </a>
       </li>
@@ -282,6 +208,13 @@
 
       
         
+  
+  
+  
+  
+    
+    
+      
   
   
   
@@ -295,10 +228,13 @@
   
     
   
-  Part 1：Application 层 —— AI 应用如何消耗 token
+  应用与平台
 
         </a>
       </li>
+    
+  
+
     
   
 
@@ -310,22 +246,7 @@
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../part-02-platform/chapter-05-maas/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Part 2：Platform 层 —— MaaS、网关、计费与应用平台
-
-        </a>
-      </li>
-    
-  
-
       
-        
   
   
   
@@ -339,10 +260,13 @@
   
     
   
-  Part 3：Model 层 —— 模型如何被训练、后训练、评测和服务化
+  模型与运行时
 
         </a>
       </li>
+    
+  
+
     
   
 
@@ -351,25 +275,12 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../part-04-runtime/chapter-15-inference-engines/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Part 4：AI Runtime 层 —— 训练推理运行时
-
-        </a>
-      </li>
-    
-  
-
       
-        
   
   
   
@@ -385,10 +296,13 @@
   
     
   
-  Part 5：资源编排与作业调度层
+  调度与基础设施
 
         </a>
       </li>
+    
+  
+
     
   
 
@@ -400,66 +314,7 @@
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../part-06-gpu-iaas/chapter-26-bare-metal-gpu-cloud/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Part 6：GPU IaaS 层
-
-        </a>
-      </li>
-    
-  
-
       
-        
-  
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../../part-07-network-storage/chapter-30-ai-networking-basics/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Part 7：网络与存储层
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../../part-08-physical-infrastructure/chapter-34-gpu-server/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Part 8：物理层 —— 机房、电力、制冷、硬件
-
-        </a>
-      </li>
-    
-  
-
-      
-        
   
   
   
@@ -473,10 +328,13 @@
   
     
   
-  Part 9：可靠性、观测与验收
+  运行与经济性
 
         </a>
       </li>
+    
+  
+
     
   
 
@@ -489,13 +347,13 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../part-10-economics-cases/chapter-41-token-factory/" class="md-tabs__link">
+        <a href="../../system-map/" class="md-tabs__link">
           
   
   
     
   
-  Part 10：AI Factory 经济学与产业案例
+  参考
 
         </a>
       </li>
@@ -554,15 +412,46 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../.." class="md-nav__link">
+    
+    
+      
         
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../.." class="md-nav__link ">
+              
   
   
   <span class="md-ellipsis">
     
   
-    首页
+    导论
   
 
     
@@ -570,13 +459,30 @@
   
   
 
-      </a>
-    </li>
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    导论
   
 
-    
-      
-      
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
   
   
   
@@ -601,9 +507,10 @@
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -628,36 +535,10 @@
     </li>
   
 
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../glossary/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    术语表
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -682,17 +563,17 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_1_4" >
         
           
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_1_4" id="__nav_1_4_label" tabindex="0">
             
   
   
   <span class="md-ellipsis">
     
   
-    Part 0：导论 —— 什么是 AI Factory
+    Part 0：导论
   
 
     
@@ -703,12 +584,12 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_1_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1_4">
             <span class="md-nav__icon md-icon"></span>
             
   
-    Part 0：导论 —— 什么是 AI Factory
+    Part 0：导论
   
 
           </label>
@@ -748,9 +629,77 @@
     </li>
   
 
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
     
       
       
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    应用与平台
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    应用与平台
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
   
   
   
@@ -781,17 +730,17 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2_1" >
         
           
-          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_2_1" id="__nav_2_1_label" tabindex="0">
             
   
   
   <span class="md-ellipsis">
     
   
-    Part 1：Application 层 —— AI 应用如何消耗 token
+    Part 1：Application 层
   
 
     
@@ -802,12 +751,12 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_1">
             <span class="md-nav__icon md-icon"></span>
             
   
-    Part 1：Application 层 —— AI 应用如何消耗 token
+    Part 1：Application 层
   
 
           </label>
@@ -931,9 +880,10 @@
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -964,17 +914,17 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2_2" >
         
           
-          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
             
   
   
   <span class="md-ellipsis">
     
   
-    Part 2：Platform 层 —— MaaS、网关、计费与应用平台
+    Part 2：Platform 层
   
 
     
@@ -985,12 +935,12 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_7">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2">
             <span class="md-nav__icon md-icon"></span>
             
   
-    Part 2：Platform 层 —— MaaS、网关、计费与应用平台
+    Part 2：Platform 层
   
 
           </label>
@@ -1114,9 +1064,77 @@
     </li>
   
 
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
     
       
       
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模型与运行时
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    模型与运行时
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
   
   
   
@@ -1151,17 +1169,17 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_1" >
         
           
-          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_3_1" id="__nav_3_1_label" tabindex="0">
             
   
   
   <span class="md-ellipsis">
     
   
-    Part 3：Model 层 —— 模型如何被训练、后训练、评测和服务化
+    Part 3：Model 层
   
 
     
@@ -1172,12 +1190,12 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_8">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_1">
             <span class="md-nav__icon md-icon"></span>
             
   
-    Part 3：Model 层 —— 模型如何被训练、后训练、评测和服务化
+    Part 3：Model 层
   
 
           </label>
@@ -1357,9 +1375,10 @@
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -1392,17 +1411,17 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_9" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_2" >
         
           
-          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_3_2" id="__nav_3_2_label" tabindex="0">
             
   
   
   <span class="md-ellipsis">
     
   
-    Part 4：AI Runtime 层 —— 训练推理运行时
+    Part 4：AI Runtime 层
   
 
     
@@ -1413,12 +1432,12 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_9">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_2">
             <span class="md-nav__icon md-icon"></span>
             
   
-    Part 4：AI Runtime 层 —— 训练推理运行时
+    Part 4：AI Runtime 层
   
 
           </label>
@@ -1570,6 +1589,14 @@
     </li>
   
 
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
     
       
       
@@ -1581,10 +1608,6 @@
   
     
     
-      
-        
-      
-        
       
         
       
@@ -1610,10 +1633,81 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
         
           
-          <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="">
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    调度与基础设施
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    调度与基础设施
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4_1" id="__nav_4_1_label" tabindex="">
             
   
   
@@ -1631,8 +1725,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_10">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_1_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4_1">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1793,211 +1887,318 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#_1" class="md-nav__link">
+  <a href="#231" class="md-nav__link">
     <span class="md-ellipsis">
       
-        本章回答的问题
+        23.1 导读
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="23.1 导读">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#2311" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        23.1.1 本章回答的问题
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#_2" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2312" class="md-nav__link">
     <span class="md-ellipsis">
       
-        一个真实场景
+        23.1.2 本章上下文
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#_3" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2313" class="md-nav__link">
     <span class="md-ellipsis">
       
-        核心概念
+        23.1.3 读者测试
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#_4" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2314" class="md-nav__link">
     <span class="md-ellipsis">
       
-        系统架构
+        23.1.4 一个真实场景
       
     </span>
   </a>
   
 </li>
+        
+      </ul>
+    </nav>
+  
+</li>
       
         <li class="md-nav__item">
-  <a href="#231-kubernetes-scheduler" class="md-nav__link">
+  <a href="#232" class="md-nav__link">
     <span class="md-ellipsis">
       
-        23.1 为什么默认 Kubernetes Scheduler 不够
+        23.2 基础模型
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="23.2 基础模型">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#2321" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        23.2.1 核心概念
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#232-gang-scheduling" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2322" class="md-nav__link">
     <span class="md-ellipsis">
       
-        23.2 gang scheduling
+        23.2.2 系统架构
       
     </span>
   </a>
   
 </li>
+        
+      </ul>
+    </nav>
+  
+</li>
       
         <li class="md-nav__item">
-  <a href="#233-queue" class="md-nav__link">
+  <a href="#233" class="md-nav__link">
     <span class="md-ellipsis">
       
-        23.3 queue
+        23.3 关键技术
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="23.3 关键技术">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#2331-kubernetes-scheduler" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        23.3.1 为什么默认 Kubernetes Scheduler 不够
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#234-quota" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2332-gang-scheduling" class="md-nav__link">
     <span class="md-ellipsis">
       
-        23.4 quota
+        23.3.2 gang scheduling
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#235-priority" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2333-queue" class="md-nav__link">
     <span class="md-ellipsis">
       
-        23.5 priority
+        23.3.3 queue
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#236-preemption" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2334-quota" class="md-nav__link">
     <span class="md-ellipsis">
       
-        23.6 preemption
+        23.3.4 quota
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#237-volcano" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2335-priority" class="md-nav__link">
     <span class="md-ellipsis">
       
-        23.7 Volcano
+        23.3.5 priority
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#238-kueue" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2336-preemption" class="md-nav__link">
     <span class="md-ellipsis">
       
-        23.8 Kueue
+        23.3.6 preemption
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#239-raykubeflow-argo-workflows" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2337-volcano" class="md-nav__link">
     <span class="md-ellipsis">
       
-        23.9 Ray、Kubeflow 与 Argo Workflows
+        23.3.7 Volcano
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#_5" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2338-kueue" class="md-nav__link">
     <span class="md-ellipsis">
       
-        工程实现
+        23.3.8 Kueue
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#_6" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2339-raykubeflow-argo-workflows" class="md-nav__link">
     <span class="md-ellipsis">
       
-        常见故障
+        23.3.9 Ray、Kubeflow 与 Argo Workflows
       
     </span>
   </a>
   
 </li>
+        
+      </ul>
+    </nav>
+  
+</li>
       
         <li class="md-nav__item">
-  <a href="#_7" class="md-nav__link">
+  <a href="#234" class="md-nav__link">
     <span class="md-ellipsis">
       
-        性能指标
+        23.4 工程落地
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="23.4 工程落地">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#2341" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        23.4.1 工程实现
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#_8" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2342" class="md-nav__link">
     <span class="md-ellipsis">
       
-        设计取舍
+        23.4.2 常见故障
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#_9" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2343" class="md-nav__link">
     <span class="md-ellipsis">
       
-        小结
+        23.4.3 性能指标
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#_10" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2344" class="md-nav__link">
     <span class="md-ellipsis">
       
-        延伸阅读
+        23.4.4 设计取舍
       
     </span>
   </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#235" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        23.5 小结与延伸阅读
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="23.5 小结与延伸阅读">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#2351" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        23.5.1 小结
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2352" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        23.5.2 延伸阅读
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -2072,9 +2273,10 @@
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -2096,19 +2298,22 @@
       
       
         
+          
+          
+        
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_11" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4_2" >
         
           
-          <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_2" id="__nav_4_2_label" tabindex="">
             
   
   
@@ -2126,8 +2331,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_11">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2255,9 +2460,10 @@
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -2279,19 +2485,22 @@
       
       
         
+          
+          
+        
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_12" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4_3" >
         
           
-          <label class="md-nav__link" for="__nav_12" id="__nav_12_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_3" id="__nav_4_3_label" tabindex="">
             
   
   
@@ -2309,8 +2518,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_12_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_12">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_3">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2438,9 +2647,10 @@
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -2460,26 +2670,29 @@
       
       
         
+          
+          
+        
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_13" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4_4" >
         
           
-          <label class="md-nav__link" for="__nav_13" id="__nav_13_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_4" id="__nav_4_4_label" tabindex="">
             
   
   
   <span class="md-ellipsis">
     
   
-    Part 8：物理层 —— 机房、电力、制冷、硬件
+    Part 8：物理层
   
 
     
@@ -2490,12 +2703,12 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_13_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_13">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_4">
             <span class="md-nav__icon md-icon"></span>
             
   
-    Part 8：物理层 —— 机房、电力、制冷、硬件
+    Part 8：物理层
   
 
           </label>
@@ -2591,9 +2804,77 @@
     </li>
   
 
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
     
       
       
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    运行与经济性
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    运行与经济性
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
   
   
   
@@ -2624,10 +2905,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_14" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_1" >
         
           
-          <label class="md-nav__link" for="__nav_14" id="__nav_14_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5_1" id="__nav_5_1_label" tabindex="0">
             
   
   
@@ -2645,8 +2926,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_14_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_14">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_1">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2774,9 +3055,10 @@
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -2807,17 +3089,17 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_15" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_2" >
         
           
-          <label class="md-nav__link" for="__nav_15" id="__nav_15_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5_2" id="__nav_5_2_label" tabindex="0">
             
   
   
   <span class="md-ellipsis">
     
   
-    Part 10：AI Factory 经济学与产业案例
+    Part 10：经济学与产业案例
   
 
     
@@ -2828,12 +3110,12 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_15_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_15">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2">
             <span class="md-nav__icon md-icon"></span>
             
   
-    Part 10：AI Factory 经济学与产业案例
+    Part 10：经济学与产业案例
   
 
           </label>
@@ -2957,6 +3239,227 @@
     </li>
   
 
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    参考
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    参考
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../system-map/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    系统地图与工程索引
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    术语表
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../style-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    写作规范
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../depth-standard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    深度标准与覆盖矩阵
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../doc-coauthoring-review/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Doc Coauthoring 审稿标准
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
     
   </ul>
 </nav>
@@ -2985,211 +3488,318 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#_1" class="md-nav__link">
+  <a href="#231" class="md-nav__link">
     <span class="md-ellipsis">
       
-        本章回答的问题
+        23.1 导读
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="23.1 导读">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#2311" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        23.1.1 本章回答的问题
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#_2" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2312" class="md-nav__link">
     <span class="md-ellipsis">
       
-        一个真实场景
+        23.1.2 本章上下文
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#_3" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2313" class="md-nav__link">
     <span class="md-ellipsis">
       
-        核心概念
+        23.1.3 读者测试
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#_4" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2314" class="md-nav__link">
     <span class="md-ellipsis">
       
-        系统架构
+        23.1.4 一个真实场景
       
     </span>
   </a>
   
 </li>
+        
+      </ul>
+    </nav>
+  
+</li>
       
         <li class="md-nav__item">
-  <a href="#231-kubernetes-scheduler" class="md-nav__link">
+  <a href="#232" class="md-nav__link">
     <span class="md-ellipsis">
       
-        23.1 为什么默认 Kubernetes Scheduler 不够
+        23.2 基础模型
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="23.2 基础模型">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#2321" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        23.2.1 核心概念
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#232-gang-scheduling" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2322" class="md-nav__link">
     <span class="md-ellipsis">
       
-        23.2 gang scheduling
+        23.2.2 系统架构
       
     </span>
   </a>
   
 </li>
+        
+      </ul>
+    </nav>
+  
+</li>
       
         <li class="md-nav__item">
-  <a href="#233-queue" class="md-nav__link">
+  <a href="#233" class="md-nav__link">
     <span class="md-ellipsis">
       
-        23.3 queue
+        23.3 关键技术
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="23.3 关键技术">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#2331-kubernetes-scheduler" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        23.3.1 为什么默认 Kubernetes Scheduler 不够
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#234-quota" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2332-gang-scheduling" class="md-nav__link">
     <span class="md-ellipsis">
       
-        23.4 quota
+        23.3.2 gang scheduling
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#235-priority" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2333-queue" class="md-nav__link">
     <span class="md-ellipsis">
       
-        23.5 priority
+        23.3.3 queue
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#236-preemption" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2334-quota" class="md-nav__link">
     <span class="md-ellipsis">
       
-        23.6 preemption
+        23.3.4 quota
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#237-volcano" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2335-priority" class="md-nav__link">
     <span class="md-ellipsis">
       
-        23.7 Volcano
+        23.3.5 priority
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#238-kueue" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2336-preemption" class="md-nav__link">
     <span class="md-ellipsis">
       
-        23.8 Kueue
+        23.3.6 preemption
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#239-raykubeflow-argo-workflows" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2337-volcano" class="md-nav__link">
     <span class="md-ellipsis">
       
-        23.9 Ray、Kubeflow 与 Argo Workflows
+        23.3.7 Volcano
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#_5" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2338-kueue" class="md-nav__link">
     <span class="md-ellipsis">
       
-        工程实现
+        23.3.8 Kueue
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#_6" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2339-raykubeflow-argo-workflows" class="md-nav__link">
     <span class="md-ellipsis">
       
-        常见故障
+        23.3.9 Ray、Kubeflow 与 Argo Workflows
       
     </span>
   </a>
   
 </li>
+        
+      </ul>
+    </nav>
+  
+</li>
       
         <li class="md-nav__item">
-  <a href="#_7" class="md-nav__link">
+  <a href="#234" class="md-nav__link">
     <span class="md-ellipsis">
       
-        性能指标
+        23.4 工程落地
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="23.4 工程落地">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#2341" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        23.4.1 工程实现
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#_8" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2342" class="md-nav__link">
     <span class="md-ellipsis">
       
-        设计取舍
+        23.4.2 常见故障
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#_9" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2343" class="md-nav__link">
     <span class="md-ellipsis">
       
-        小结
+        23.4.3 性能指标
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#_10" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2344" class="md-nav__link">
     <span class="md-ellipsis">
       
-        延伸阅读
+        23.4.4 设计取舍
       
     </span>
   </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#235" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        23.5 小结与延伸阅读
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="23.5 小结与延伸阅读">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#2351" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        23.5.1 小结
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2352" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        23.5.2 延伸阅读
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -3214,66 +3824,358 @@
 
 
 <h1 id="23-ai">第 23 章：AI 作业队列与调度<a class="headerlink" href="#23-ai" title="Permanent link">&para;</a></h1>
-<h2 id="_1">本章回答的问题<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h2>
+<h2 id="231">23.1 导读<a class="headerlink" href="#231" title="Permanent link">&para;</a></h2>
+<h3 id="2311">23.1.1 本章回答的问题<a class="headerlink" href="#2311" title="Permanent link">&para;</a></h3>
 <ul>
-<li>AI 作业队列与调度 在 AI Factory 中解决什么工程问题？</li>
-<li>它和应用、平台、模型、运行时、调度或基础设施之间是什么关系？</li>
-<li>生产环境中应如何落地、观测、验收和排障？</li>
+<li>为什么默认 Kubernetes Scheduler 无法单独满足大规模 AI workload？</li>
+<li>gang scheduling、queue、quota、priority、preemption 如何解决训练和批处理作业问题？</li>
+<li>Volcano、Kueue、Ray、Kubeflow 和 Argo Workflows 在 AI Factory 中分别适合什么位置？</li>
 </ul>
-<h2 id="_2">一个真实场景<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h2>
-<p>一个团队在建设 AI Factory 时，常会遇到和“AI 作业队列与调度”相关的边界问题：业务侧希望更快上线，平台侧要控制成本和稳定性，基础设施侧则要保证资源可交付、可观测、可回收。本章后续会用具体场景把这些约束串起来。</p>
-<h2 id="_3">核心概念<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h2>
-<p>本章涉及的术语会按“定义、位置、输入输出、工程约束”的顺序展开。第一版先保留结构化骨架，后续扩写时补充真实配置、命令、指标和案例。</p>
-<h2 id="_4">系统架构<a class="headerlink" href="#_4" title="Permanent link">&para;</a></h2>
+<h3 id="2312">23.1.2 本章上下文<a class="headerlink" href="#2312" title="Permanent link">&para;</a></h3>
+<ul>
+<li>层级定位：本章属于 <code>资源编排与作业调度层</code>，重点讨论容器、Kubernetes、GPU 调度、队列、Slurm 和多集群资源治理。</li>
+<li>前置依赖：建议先理解 第 22 章：GPU on Kubernetes 中的核心对象和路径。</li>
+<li>后续关联：本章内容会继续连接到 第 24 章：Slurm 与 HPC 调度，并在系统地图、深度标准和读者测试中被交叉引用。</li>
+<li>读完能力：读完本章后，读者应能把《AI 作业队列与调度》中的概念映射到 AI Factory 的生产路径、工程对象、观测证据和设计取舍。</li>
+</ul>
+<h3 id="2313">23.1.3 读者测试<a class="headerlink" href="#2313" title="Permanent link">&para;</a></h3>
+<ul>
+<li>机制题：读者能否解释 为什么默认 Kubernetes Scheduler 不够、gang scheduling、queue、quota 的核心机制，以及它们如何共同支撑《AI 作业队列与调度》？</li>
+<li>边界题：读者能否区分 资源编排与作业调度、GPU IaaS、Platform 层和 AI Runtime 层 的责任边界，并说明哪些问题不能简单归因到本章组件？</li>
+<li>路径题：读者能否从 workload 提交追到队列、配额、调度、容器启动、GPU 分配和拓扑证据，并指出本章对象在路径中的位置？</li>
+<li>排障题：当《AI 作业队列与调度》相关生产症状出现时，读者能否列出第一层证据、下一跳证据、可能 owner 和止血动作？</li>
+</ul>
+<h3 id="2314">23.1.4 一个真实场景<a class="headerlink" href="#2314" title="Permanent link">&para;</a></h3>
+<p>一个 64 卡训练任务提交后，先启动了 40 个 worker Pod，剩下 24 个因为资源不足一直 pending。已经启动的 worker 占住 GPU 等待其它 rank，训练无法进入第一步，集群可用 GPU 反而更少。与此同时，一个在线推理服务遇到流量高峰需要扩容，却被低优先级训练任务占住资源。平台看到的是大量 Pod 状态变化，用户看到的是任务 pending，业务看到的是推理延迟升高。</p>
+<p>事故复盘发现，问题不是 Kubernetes 完全不能调度 GPU，而是默认 Pod 级调度缺少作业级语义。分布式训练需要“要么一起启动，要么一个都不要启动”；批量任务需要队列、并发和重试；生产推理需要保留容量和优先级；研究任务需要 fairshare 和可解释等待。把所有任务拆成独立 Pod，会让调度器做出局部正确、整体错误的决策。</p>
+<p>AI 作业队列与调度的目标，是把资源分配从单 Pod 决策提升到 workload、queue、tenant 和业务优先级维度。它不只是“谁先运行”的问题，还包括谁有保底、谁能借用、谁能抢占、哪些任务必须整体准入、哪些拓扑必须满足、失败后如何恢复。GPU 稀缺时，调度系统就是 AI Factory 的资源治理系统。</p>
+<p>这个场景还说明，调度系统必须同时服务效率和秩序。只追求效率，可能让大作业永远得不到连续资源；只追求公平，可能让 GPU 长时间空闲；只追求生产优先，可能让研究任务没有可预期窗口。调度策略本质上是把组织价值观写进系统，因此必须有可审计规则和可解释结果。</p>
+<p>如果平台无法解释一次调度决策，用户就会绕过系统寻求人工协调。人工协调可以解决一次冲突，却会破坏长期公平。作业调度系统的工程目标，是让资源冲突尽量在规则内解决，并把例外变成可审计事件。</p>
+<h2 id="232">23.2 基础模型<a class="headerlink" href="#232" title="Permanent link">&para;</a></h2>
+<h3 id="2321">23.2.1 核心概念<a class="headerlink" href="#2321" title="Permanent link">&para;</a></h3>
+<p>AI 作业调度属于资源编排与作业调度层。它管理训练、微调、批量推理、评测、数据处理和 HPC-style job 何时运行、在哪些节点运行、使用多少 GPU、是否满足拓扑、能否被抢占以及如何计入配额。它不同于 MaaS 层的模型路由，也不同于 GPU IaaS 层的裸金属交付。它负责把业务需求转化为集群资源决策。</p>
+<p>核心对象包括 queue、quota、priority、preemption、gang 和 admission。Queue 是等待和公平共享的组织单元；quota 定义队列或租户可用资源；priority 表示任务重要性；preemption 允许高优先级任务回收资源；gang scheduling 确保一组 Pod 整体启动；admission 在任务进入执行前判断是否允许消耗资源。这些对象共同表达组织策略和系统约束。</p>
+<p>还要区分调度器、队列系统和执行框架。Scheduler 决定 Pod 或任务放到哪里；Kueue 更偏作业准入和队列配额；Volcano 提供批调度、PodGroup 和 gang 等能力；Ray 是分布式执行框架；Kubeflow 提供 ML 训练和流水线组件；Argo Workflows 提供 DAG 编排。它们可以组合，不应被混为一个层次。</p>
+<p>这些概念的共同目标是避免“局部最优”。单个 Pod 被成功放置，未必代表训练任务可运行；单个队列利用率高，未必代表全局资源公平；单个高优先级任务成功，未必代表抢占成本可接受。AI 作业调度要在作业、队列、租户和集群之间持续权衡。</p>
+<p>调度策略也要和经济性连接。GPU 小时、排队时间、抢占浪费、空转时间和任务价值都应进入同一套分析。否则调度系统只是在移动等待队列，而不是提高 AI Factory 的产出效率。</p>
+<p>因此，调度概念要同时服务工程、组织和财务三类决策。</p>
+<h3 id="2322">23.2.2 系统架构<a class="headerlink" href="#2322" title="Permanent link">&para;</a></h3>
+<p>AI 作业调度架构通常由提交入口、队列准入、资源配额、调度放置、执行控制器和观测反馈组成。用户提交 TrainingJob、RayJob、BatchInferenceJob 或 Workflow；控制面根据租户、workload 类型和优先级放入 queue；准入系统检查 quota、资源池、gang、拓扑、镜像和数据权限；调度器把任务放到节点；执行控制器维护生命周期；观测系统反馈等待、运行、失败和资源使用。</p>
+<p>这是一条控制循环，而不是一次性决策。任务等待时，系统需要解释 pending 原因；资源释放时，系统要重新评估队列；高优先级任务到来时，系统可能触发抢占；节点故障时，系统要重新入队或恢复；任务完成后，quota 和成本要更新。若调度只发生在 Pod 创建瞬间，就无法表达 AI 作业的生命周期。</p>
+<p>架构上最重要的是“准入”和“放置”的分离。准入回答“这个 workload 现在是否允许消耗资源”，放置回答“它应该放到哪些节点”。Kueue 更强调准入和配额，Volcano 更强调批式调度和 gang，默认 Scheduler 更强调 Pod 放置。成熟平台会把这些能力组合起来，而不是期望一个组件解决所有问题。</p>
+<p>这套架构还需要统一状态模型。queued、admitted、scheduling、running、preempting、recovering、completed 和 failed 应有明确含义。用户不应只看到 Kubernetes Pod 状态，而应看到作业状态和等待原因。状态模型越清楚，平台越容易解释资源争议，也越容易做容量运营。</p>
+<p>统一状态还要跨工具。一个 RayJob、Kubeflow TrainingJob、Argo Workflow 和 Volcano PodGroup 都应能映射到平台统一状态。用户关心的是任务是否排队、运行、失败或恢复，不应被迫理解每个工具的内部状态机。</p>
+<p>状态统一也是计费和审计的前提。</p>
+<p>没有统一状态，就没有统一责任。</p>
 <pre class="mermaid"><code>flowchart LR
-  Goal["业务目标"] --&gt; Capability["本章能力"]
-  Capability --&gt; Components["平台 / 运行时 / 基础设施组件"]
-  Components --&gt; Metrics["指标、验收与反馈"]</code></pre>
-<h2 id="231-kubernetes-scheduler">23.1 为什么默认 Kubernetes Scheduler 不够<a class="headerlink" href="#231-kubernetes-scheduler" title="Permanent link">&para;</a></h2>
-<p>为什么默认 Kubernetes Scheduler 不够 是本章后续扩写的关键主题。写作时需要说明它解决什么问题、位于 AI Factory 的哪一层、和上下游组件如何交互，以及在生产环境中如何配置、观测和诊断。</p>
-<h2 id="232-gang-scheduling">23.2 gang scheduling<a class="headerlink" href="#232-gang-scheduling" title="Permanent link">&para;</a></h2>
-<p>gang scheduling 是本章后续扩写的关键主题。写作时需要说明它解决什么问题、位于 AI Factory 的哪一层、和上下游组件如何交互，以及在生产环境中如何配置、观测和诊断。</p>
-<h2 id="233-queue">23.3 queue<a class="headerlink" href="#233-queue" title="Permanent link">&para;</a></h2>
-<p>queue 是本章后续扩写的关键主题。写作时需要说明它解决什么问题、位于 AI Factory 的哪一层、和上下游组件如何交互，以及在生产环境中如何配置、观测和诊断。</p>
-<h2 id="234-quota">23.4 quota<a class="headerlink" href="#234-quota" title="Permanent link">&para;</a></h2>
-<p>quota 是本章后续扩写的关键主题。写作时需要说明它解决什么问题、位于 AI Factory 的哪一层、和上下游组件如何交互，以及在生产环境中如何配置、观测和诊断。</p>
-<h2 id="235-priority">23.5 priority<a class="headerlink" href="#235-priority" title="Permanent link">&para;</a></h2>
-<p>priority 是本章后续扩写的关键主题。写作时需要说明它解决什么问题、位于 AI Factory 的哪一层、和上下游组件如何交互，以及在生产环境中如何配置、观测和诊断。</p>
-<h2 id="236-preemption">23.6 preemption<a class="headerlink" href="#236-preemption" title="Permanent link">&para;</a></h2>
-<p>preemption 是本章后续扩写的关键主题。写作时需要说明它解决什么问题、位于 AI Factory 的哪一层、和上下游组件如何交互，以及在生产环境中如何配置、观测和诊断。</p>
-<h2 id="237-volcano">23.7 Volcano<a class="headerlink" href="#237-volcano" title="Permanent link">&para;</a></h2>
-<p>Volcano 是本章后续扩写的关键主题。写作时需要说明它解决什么问题、位于 AI Factory 的哪一层、和上下游组件如何交互，以及在生产环境中如何配置、观测和诊断。</p>
-<h2 id="238-kueue">23.8 Kueue<a class="headerlink" href="#238-kueue" title="Permanent link">&para;</a></h2>
-<p>Kueue 是本章后续扩写的关键主题。写作时需要说明它解决什么问题、位于 AI Factory 的哪一层、和上下游组件如何交互，以及在生产环境中如何配置、观测和诊断。</p>
-<h2 id="239-raykubeflow-argo-workflows">23.9 Ray、Kubeflow 与 Argo Workflows<a class="headerlink" href="#239-raykubeflow-argo-workflows" title="Permanent link">&para;</a></h2>
-<p>Ray、Kubeflow 与 Argo Workflows 是本章后续扩写的关键主题。写作时需要说明它解决什么问题、位于 AI Factory 的哪一层、和上下游组件如何交互，以及在生产环境中如何配置、观测和诊断。</p>
-<h2 id="_5">工程实现<a class="headerlink" href="#_5" title="Permanent link">&para;</a></h2>
-<p>后续扩写时应提供可复用的配置、命令、YAML、伪代码或操作流程。实现描述需要区分开发测试、单集群生产、多租户生产和跨集群生产等不同复杂度。</p>
-<h2 id="_6">常见故障<a class="headerlink" href="#_6" title="Permanent link">&para;</a></h2>
+  Submit["作业提交"] --&gt; Queue["队列"]
+  Queue --&gt; Quota["quota / borrowing"]
+  Quota --&gt; Admit["admission"]
+  Admit --&gt; Gang["gang scheduling"]
+  Gang --&gt; Place["topology placement"]
+  Place --&gt; Run["运行 / 控制器"]
+  Run --&gt; Metrics["metrics / accounting"]
+  Metrics --&gt; Queue
+  Admin["平台策略"] --&gt; Queue
+  Admin --&gt; Priority["priority / preemption"]
+  Priority --&gt; Admit</code></pre>
+<h2 id="233">23.3 关键技术<a class="headerlink" href="#233" title="Permanent link">&para;</a></h2>
+<h3 id="2331-kubernetes-scheduler">23.3.1 为什么默认 Kubernetes Scheduler 不够<a class="headerlink" href="#2331-kubernetes-scheduler" title="Permanent link">&para;</a></h3>
+<p>默认 Kubernetes Scheduler 以 Pod 为主要调度对象，适合大量无状态服务和普通控制面组件。它能处理资源请求、亲和性、污点容忍、拓扑扩展约束和插件评分。但大规模 AI workload 常常不是独立 Pod：分布式训练需要多个 worker 同时启动，批量任务需要队列和并发控制，微调需要租户配额，评测需要版本和报告，在线推理需要保留容量。</p>
+<p>默认调度器缺少作业级准入语义。一个训练任务需要 64 张 GPU，如果只按 Pod 调度，前 40 个 Pod 可能先占住 GPU，剩下 24 个等待，整个任务无法前进。这种半启动会浪费资源，也会阻塞其它任务。默认调度器也不会天然理解队列保底、租户借用、作业级优先级和 checkpoint-aware preemption。这些需要额外系统补足。</p>
+<p>这不意味着 Kubernetes 不适合 AI，而是说明需要在 Kubernetes 之上增加 AI 作业语义。Volcano、Kueue、Kubeflow Training Operator、Ray Operator、Argo Workflows 和自定义控制器，都是围绕作业级管理补齐能力。正确问题不是“默认 Scheduler 能不能调度 GPU”，而是“平台是否能把 AI workload 的生命周期和组织策略转化为调度决策”。</p>
+<p>默认 Scheduler 仍然可以处理大量基础组件和在线服务副本。问题在于不要让它独自承担批式训练和多租户 GPU 治理。平台应按 workload 类型选择调度路径：普通服务走默认调度，训练和大批任务走队列与 gang，特殊拓扑任务走扩展插件。分流比一刀切更可靠。</p>
+<p>这种分流还可以降低风险。把所有 Pod 都交给复杂批调度器，可能影响控制面和在线服务；把所有 Pod 都交给默认调度器，又会伤害训练效率。调度路径本身应是平台策略的一部分。</p>
+<h3 id="2332-gang-scheduling">23.3.2 gang scheduling<a class="headerlink" href="#2332-gang-scheduling" title="Permanent link">&para;</a></h3>
+<p>Gang scheduling 要求一组 Pod 作为整体被调度。只有当训练任务需要的 worker、launcher、parameter server 或其它角色都能获得资源时，才允许启动。它解决的是同步型作业的半启动问题。对分布式训练而言，少一个 rank，整个任务就无法进入训练循环；让部分 worker 先占住 GPU，只会制造资源浪费。</p>
+<p>Gang scheduling 的难点是资源碎片和等待。一个 64 卡任务可能需要同型号 GPU、同网络 fabric、甚至特定拓扑；集群总空闲 GPU 足够，不代表能满足整体约束。调度器要在大作业等待和小作业填空之间取舍。过度偏向大作业会让资源空闲，过度填小作业会让大作业永远排不到连续资源。这是队列策略和资源整理问题。</p>
+<p>工程上，gang 不应只是“Pod 数量满足”。它还要关联超时、回滚和失败清理。如果 gang 准入后某个 Pod 启动失败，已启动 Pod 应被清理或整体重试，避免占用资源。平台应记录 gang 等待时间、准入失败原因、半启动避免次数和资源碎片。Gang scheduling 是训练平台的基本能力，但它必须和 quota、priority、topology 和 checkpoint 一起设计。</p>
+<p>Gang 还要考虑启动阶段的真实依赖。所有 worker Pod 创建成功，不代表 NCCL 初始化成功；所有容器 Running，不代表数据和 checkpoint 可访问。对关键训练任务，gang 准入后仍需要 runtime 自检和失败回滚。否则系统只是避免了调度半启动，却可能陷入运行时半启动。</p>
+<p>因此，gang 成功率不能只按 Pod 创建统计，还要看训练是否进入有效 step。平台应把调度 gang 和运行时 rendezvous 区分记录。前者由调度系统负责，后者由训练 runtime 和网络存储共同决定。</p>
+<p>这样才能区分调度问题和运行时问题。</p>
+<h3 id="2333-queue">23.3.3 queue<a class="headerlink" href="#2333-queue" title="Permanent link">&para;</a></h3>
+<p>Queue 是作业等待、排序和公平共享的基本单元。队列可以按团队、项目、业务线、workload 类型、优先级或环境划分，例如 <code>training-prod</code>、<code>research</code>、<code>batch-inference</code>、<code>evaluation</code>。每个队列可以有保底、上限、权重、借用策略、抢占策略和准入规则。没有队列，所有任务直接争抢全局 GPU，用户体验和组织治理都会失控。</p>
+<p>队列的价值是把组织策略变成系统规则。生产任务有保底，研究任务可以借用空闲资源，低优先级批任务可以被抢占，关键评测可以插队。队列还提供可解释等待：用户可以看到自己排在什么队列、前面有哪些任务、等待原因是 quota、gang、拓扑还是资源池不足。可解释等待比单纯 pending 更重要。</p>
+<p>队列设计也会带来取舍。队列太多会造成资源碎片和策略复杂，队列太少又无法表达业务差异。平台应从少量主队列开始，按 workload 和业务等级划分，再根据数据调整。队列不是组织架构的简单映射，而是资源治理工具。它应服务 GPU 利用率、SLO、成本和公平性，而不是复制部门边界。</p>
+<p>Queue 还应有可视化。用户需要看到队列深度、预计等待、前序作业、保底使用、借用资源和阻塞原因；平台需要看到队列长期趋势。没有可视化，队列会被认为是黑箱，用户会通过线下沟通绕过系统。透明度是队列制度能否落地的关键。</p>
+<p>预计等待时间不一定要非常精确，但要解释主要约束。比如“等待 32 张同型号 GPU”比“pending”更有用。随着历史数据积累，平台可以逐步改进等待时间预测。</p>
+<p>队列体验的核心是可解释，而不是承诺绝对准确。</p>
+<p>解释能降低无效沟通。</p>
+<h3 id="2334-quota">23.3.4 quota<a class="headerlink" href="#2334-quota" title="Permanent link">&para;</a></h3>
+<p>Quota 定义租户、队列或项目可使用的资源。AI quota 不应只包含 CPU 和 memory，还应包含 GPU 型号、GPU 数量、MIG profile、RDMA 节点、本地 NVMe、存储吞吐、并发任务数和优先级额度。不同 GPU 不能简单相加，H100、L40S、A10 或 MIG 实例代表的能力不同。Quota 必须按资源能力维度管理。</p>
+<p>Quota 可以有 guaranteed、max、borrowed 和 best-effort 等语义。Guaranteed 提供保底，max 限制最大使用，borrowing 允许队列借用空闲资源，best-effort 用于可抢占或低优先级任务。严格静态 quota 隔离强，但容易让资源闲置；完全共享利用率高，但容易让关键团队没有保障。AI Factory 需要在隔离和利用率之间找平衡。</p>
+<p>工程上，quota 必须可见、可解释、可审计。用户应能看到自己有哪些 quota、已用多少、借用了多少、为什么不能准入。平台应能看到 quota 使用率、借用率、欠账、抢占影响和闲置资源。Quota 不是审批表，而是调度系统的实时输入。没有可执行 quota，就无法把组织资源策略落到 GPU 集群上。</p>
+<p>Quota 还要定期校准。业务增长、模型规模变化、硬件扩容和优先级调整都会改变资源需求。长期不变的 quota 会逐渐脱离现实，导致某些队列长期饥饿，另一些队列长期闲置。平台应通过历史使用和业务计划调整 quota，而不是只在冲突发生后临时改配置。</p>
+<p>Quota 调整也要可审计。谁增加了保底，谁降低了上限，是否影响其它队列，都应记录。GPU 资源昂贵，quota 变更本质上是资源承诺变更，不能只作为技术配置处理。</p>
+<p>配额记录应能回溯到业务理由。</p>
+<p>否则 quota 会变成黑箱。</p>
+<p>黑箱 quota 会削弱平台信任，也会鼓励线下协调。</p>
+<p>规则必须透明。</p>
+<h3 id="2335-priority">23.3.5 priority<a class="headerlink" href="#2335-priority" title="Permanent link">&para;</a></h3>
+<p>Priority 表示作业重要性，影响排序、准入和抢占。高优先级任务通常与生产服务、发布阻塞、紧急修复或高价值训练相关；低优先级任务可能是实验、批量回填或可重试数据处理。Priority 让平台在资源不足时按业务价值做决策，而不是完全先来先服务。</p>
+<p>优先级必须被治理。如果所有用户都能随意提交最高优先级，系统很快退化为无优先级。平台应限制高优先级使用权限，记录谁提升了优先级、为什么提升、影响了哪些任务。优先级还应与 quota 结合：高优先级不应无限绕过租户边界，否则会破坏公平性。关键任务可以插队，但插队必须可审计。</p>
+<p>工程上，priority 不只是一个整数。它应映射到 queue、preemption、SLO、告警和成本。某些高优先级任务允许抢占，某些只允许提前准入；某些低优先级任务可被暂停，某些只能等待完成。平台需要定义优先级等级及其行为，而不是让用户猜测数字含义。优先级的目标是可解释地服务业务价值。</p>
+<p>Priority 还应防止“优先级通胀”。如果团队为了缩短等待时间不断提高优先级，系统会失去排序能力。平台可以通过配额限制高优先级提交次数，或要求高优先级任务绑定审批、事故编号、发布窗口等理由。优先级是稀缺资源，也需要治理。</p>
+<p>优先级还要与用户体验一致。高优先级任务如果仍然长时间 pending，平台应说明是资源物理不足、拓扑不足还是被更高优先级任务阻塞。否则优先级会失去可信度。</p>
+<p>优先级不能替代真实容量。</p>
+<p>它只能改变排序。</p>
+<p>容量不足仍需要扩容、借用或降级策略。</p>
+<h3 id="2336-preemption">23.3.6 preemption<a class="headerlink" href="#2336-preemption" title="Permanent link">&para;</a></h3>
+<p>Preemption 是抢占低优先级任务释放资源给高优先级任务。它能保障生产服务、关键训练或紧急评测，但也会浪费被抢占任务已经消耗的计算。对于长时间训练，抢占没有 checkpoint 就意味着大量 GPU 小时被丢弃；对于批量推理，抢占可能只需要重跑部分 shard；对于数据处理，抢占通常更容易恢复。</p>
+<p>抢占策略必须理解 workload 恢复能力。可抢占任务应定期 checkpoint、分片输出或具备幂等重试；不可恢复任务应尽量避免被抢占，除非业务价值确实较低。平台应支持 graceful preemption：提前通知任务保存状态，等待安全点，再释放资源。粗暴删除 Pod 虽然简单，但会把调度成本转移给用户和 GPU 账单。</p>
+<p>工程上，应记录抢占原因、被抢占任务、浪费 GPU 小时、恢复成功率和影响范围。抢占不能只看高优先级任务是否成功，还要看整体成本是否可接受。如果抢占频繁发生，说明 quota、保留容量或队列策略需要调整。Preemption 是资源治理工具，不是容量不足的长期替代品。</p>
+<p>抢占还应有用户体验设计。被抢占任务应收到明确事件：谁抢占、为何抢占、何时释放、是否会自动恢复、已保留哪个 checkpoint。没有这些信息，用户会认为平台随机杀任务。可解释抢占比静默删除更容易被接受，也更利于成本归因。</p>
+<p>抢占策略还可以分层。在线生产任务通常不可抢占，低优先级 batch 可以随时抢占，长训练只能在 checkpoint 后抢占，评测任务根据发布窗口决定。不同 workload 的抢占点不同，不能只用一个全局开关。</p>
+<p>抢占点应写入 workload spec。</p>
+<p>这样恢复逻辑才可预期。</p>
+<h3 id="2337-volcano">23.3.7 Volcano<a class="headerlink" href="#2337-volcano" title="Permanent link">&para;</a></h3>
+<p>Volcano 是 Kubernetes 生态中的批调度系统，面向 AI、HPC 和大数据等批式任务，提供 queue、PodGroup、gang scheduling、priority、preemption 等能力。它适合需要多 Pod 同步启动、作业级调度和批处理语义的场景。对于分布式训练，Volcano 的 PodGroup 能表达一组 Pod 的整体准入需求。</p>
+<p>使用 Volcano 时，平台通常不会让用户直接写底层对象，而是由 TrainingJob、MPIJob、PyTorchJob 或自定义 CRD 生成 PodGroup、Queue 和相关 Pod。这样用户提交的是训练任务，平台负责转换为调度对象。Volcano 解决调度层问题，不负责模型注册、数据权限、评测报告和计费；这些仍需要 AI 平台控制面。</p>
+<p>工程上，要关注 Volcano 与默认 Scheduler、队列系统和控制器的边界。哪些 Pod 走 Volcano，哪些走默认 Scheduler，哪些队列可抢占，哪些任务需要 gang，都要清晰。若所有 workload 都强行走批调度，在线服务可能受影响；若训练任务不走批调度，又会出现半启动。Volcano 的价值在于为批式 AI 作业提供正确语义，而不是替代整个 Kubernetes 控制面。</p>
+<p>Volcano 落地还需要作业模板。用户不应手写复杂 PodGroup 和调度参数，而应提交训练任务或批任务，由平台生成底层对象。模板应包含队列、资源、gang、日志、checkpoint 和失败处理。否则 Volcano 能力存在，但用户难以正确使用。</p>
+<p>同时要关注生态兼容。Volcano、默认 Scheduler、Kueue 和上层控制器都可能参与同一集群。平台应明确哪些资源池和 workload 使用 Volcano，避免多个调度控制面争抢同一批 Pod。</p>
+<p>Volcano 的队列也要和租户 quota、成本标签和监控标签打通。否则调度成功了，平台仍然无法回答谁用了资源、是否越过配额、抢占影响了哪个项目。批调度组件只有接入平台治理，才能成为 AI Factory 能力。</p>
+<h3 id="2338-kueue">23.3.8 Kueue<a class="headerlink" href="#2338-kueue" title="Permanent link">&para;</a></h3>
+<p>Kueue 关注 Kubernetes 原生 workload 的队列和准入控制。它更像是在作业真正消耗资源前，判断是否允许进入执行。它可以管理 ClusterQueue、LocalQueue、ResourceFlavor、cohort、borrowing 和 quota 等概念，与 Job、Kubeflow Training Operator、RayJob 等工作负载集成。Kueue 的核心价值是把队列和配额前置到作业级。</p>
+<p>Kueue 不一定替代调度器。它回答“这个 workload 是否被准入”，默认 Scheduler 或其它调度器仍负责 Pod 放置。这个分层很重要：准入控制可以避免任务过早创建大量 Pod，减少半启动和资源争抢；调度器则根据节点和拓扑完成具体放置。对于多租户 AI 平台，Kueue 提供了组织资源策略的清晰入口。</p>
+<p>工程上，Kueue 适合与上层训练、批量推理和评测控制器结合。平台应把租户队列、资源 flavor、GPU 型号、借用策略和 pending 原因展示给用户。Kueue 的挑战是需要与实际调度能力、拓扑约束和工作负载控制器协调。准入成功不应意味着任何节点都合适，准入失败也应给出可解释原因。Kueue 是队列治理组件，不是完整 AI 平台。</p>
+<p>Kueue 的 ResourceFlavor 特别适合表达 GPU 型号、节点池、地域或软件栈差异。但 flavor 设计过细会增加管理复杂度，过粗又无法避免错误放置。平台应把 flavor 与真实资源能力绑定，并定期清理不再使用的组合。队列抽象必须跟随资源现实。</p>
+<p>Kueue 落地时还要处理用户沟通。准入失败应该说明缺少哪个 flavor 或 quota，而不是让用户阅读底层对象状态。队列系统的体验决定它是否能替代人工排队。</p>
+<p>如果用户仍然需要找管理员问原因，队列系统就没有真正完成产品化。</p>
+<p>产品化要求自解释。</p>
+<h3 id="2339-raykubeflow-argo-workflows">23.3.9 Ray、Kubeflow 与 Argo Workflows<a class="headerlink" href="#2339-raykubeflow-argo-workflows" title="Permanent link">&para;</a></h3>
+<p>Ray 是分布式执行框架，适合 Python 生态中的分布式训练、批量推理、数据处理和 serving。它关心任务、actor、资源和执行图，可以在 Kubernetes 上通过 Ray Operator 管理 RayCluster 和 RayJob。Ray 解决的是应用执行和分布式编程问题，不直接替代底层队列、quota 和 GPU 拓扑调度。</p>
+<p>Kubeflow 是机器学习平台组件集合，包含训练算子、Pipeline、模型相关工作流等能力。它适合把训练、调参、评测和发布流程产品化。Argo Workflows 是通用 DAG 工作流引擎，适合数据处理、评测流水线、批处理和多步骤自动化。二者都可以运行在 Kubernetes 上，但它们解决的是工作流和 ML 生命周期问题，不等同于 GPU 调度器。</p>
+<p>在 AI Factory 中，这些工具应按层次组合。Ray 负责某些分布式执行，Kubeflow 负责 ML 工作流和训练任务抽象，Argo 负责编排 DAG，Kueue 或 Volcano 负责队列和批调度，Scheduler 负责放置，GPU Operator 和 Device Plugin 负责设备暴露。工具之间不是简单替代关系。选型时要问：它解决的是提交入口、执行框架、队列准入、调度放置，还是生命周期管理。</p>
+<p>工具组合的风险是状态分散。Ray 有自己的任务状态，Kubeflow 有训练状态，Argo 有 workflow 状态，Kubernetes 有 Pod 状态，队列系统有准入状态。平台需要统一展示，否则用户要在多个系统之间查原因。统一状态视图比工具数量更重要。</p>
+<p>工具选型还要看团队维护能力。引入一个框架就引入升级、权限、观测和故障处理成本。AI Factory 不应因为某个工具流行就全部纳入，而应围绕 workload 选择最少但足够的组件。</p>
+<p>少而清晰的工具链，通常比多而重叠的工具链更可靠。</p>
+<p>工具边界要能被团队维护。</p>
+<h2 id="234">23.4 工程落地<a class="headerlink" href="#234" title="Permanent link">&para;</a></h2>
+<h3 id="2341">23.4.1 工程实现<a class="headerlink" href="#2341" title="Permanent link">&para;</a></h3>
+<p>工程实现应先定义作业模型。一个 AI job 至少应包含 workload type、tenant、queue、priority、resource、runtime、data、checkpoint、preemption policy 和 observability 标签。训练任务还要包含 worker 数、gang、拓扑和恢复策略；批量推理要包含 shard、输出和幂等；评测要包含模型版本、数据集和报告。没有这些字段，调度系统只能做低层资源匹配。</p>
+<p>示例队列配置如下：</p>
+<div class="highlight"><pre><span></span><code><span class="nt">queue</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">training-prod</span>
+<span class="w">  </span><span class="nt">cohort</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ai-factory</span>
+<span class="w">  </span><span class="nt">quota</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">guaranteed_gpu</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">128</span>
+<span class="w">    </span><span class="nt">max_gpu</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">256</span>
+<span class="w">  </span><span class="nt">policy</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">allow_borrowing</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">preemptible</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="w">    </span><span class="nt">priority_class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">production</span>
+</code></pre></div>
+<p>训练作业的 admission 事件应结构化。一次作业能否进入运行，不只是资源数量问题，还包括 quota、gang、拓扑、镜像、数据权限、checkpoint、节点健康和准入基线。把这些检查写成事件，用户才能理解 pending，平台才能做容量分析。</p>
+<div class="highlight"><pre><span></span><code><span class="nt">job_admission_event</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">job_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">exp-20260619-001</span>
+<span class="w">  </span><span class="nt">workload_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">distributed-training</span>
+<span class="w">  </span><span class="nt">queue</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">training-prod</span>
+<span class="w">  </span><span class="nt">requested</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">gpu_count</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">512</span>
+<span class="w">    </span><span class="nt">gpu_flavor</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">h100</span>
+<span class="w">    </span><span class="nt">topology</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">same_fabric_required</span>
+<span class="w">  </span><span class="nt">checks</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">quota</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed</span>
+<span class="w">    </span><span class="nt">gang_capacity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">blocked</span>
+<span class="w">    </span><span class="nt">topology</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">waiting_for_contiguous_nodes</span>
+<span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed</span>
+<span class="w">    </span><span class="nt">dataset_permission</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed</span>
+<span class="w">    </span><span class="nt">checkpoint_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed</span>
+<span class="w">    </span><span class="nt">node_acceptance_baseline</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed</span>
+<span class="w">    </span><span class="nt">framework_runtime_matrix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed</span>
+<span class="w">    </span><span class="nt">parallelism_plan_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed</span>
+<span class="w">    </span><span class="nt">rank_topology_contract</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">unsatisfied</span>
+<span class="w">    </span><span class="nt">nccl_env_contract</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed</span>
+<span class="w">  </span><span class="nt">decision</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">admitted</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="w">    </span><span class="nt">reason</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">topology_unsatisfied</span>
+<span class="w">    </span><span class="nt">next_recheck</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scheduled</span>
+</code></pre></div>
+<p>Pending reason 应是枚举，而不是自由文本。建议至少区分 <code>quota_insufficient</code>、<code>gang_capacity</code>、<code>topology_unsatisfied</code>、<code>resource_flavor_unavailable</code>、<code>node_health_blocked</code>、<code>image_unavailable</code>、<code>data_permission_denied</code>、<code>checkpoint_path_invalid</code>、<code>preemption_in_progress</code>。这些原因应进入 UI、CLI、事件、指标和容量报表。否则用户看到 pending，只能找管理员问。</p>
+<p>对大规模训练，admission 不能只检查 GPU 数量。它还要检查第 16 章的 <code>framework_runtime_matrix</code> 是否覆盖当前镜像和框架，第 17 章的 <code>parallelism_plan_record</code> 是否能解释 GPU 数、batch 和 checkpoint 语义，<code>rank_topology_contract</code> 是否能在当前资源池满足，第 18 章的 <code>nccl_env_contract</code> 是否与资源池 RDMA/fabric baseline 匹配。若这些检查缺失，任务可能顺利进入 running，却在 rendezvous、first effective step 或 checkpoint 阶段浪费大量 GPU。</p>
+<p>更稳妥的 admission 结果应区分 <code>reject</code>、<code>wait</code>、<code>conditional_accept</code> 和 <code>accept</code>。例如 Tensor Parallel group 的 same-node hard constraint 不满足，应 <code>reject</code> 或继续 <code>wait</code>；Pipeline 相邻 stage 的 same-rack soft constraint 不满足，可以在用户接受降级后 <code>conditional_accept</code>；NCCL contract 与资源池 baseline 版本不一致，应先触发通信回归。调度系统的质量，体现在它能在 GPU 分配前暴露这些风险，而不是让训练任务替平台做验证。</p>
+<p>当平台支持 DRA、MIG、CDI 或异构 GPU class 时，admission 还要为资源声明生成 <code>resource_claim_admission_record</code>。它回答的不是“Pod 能不能被调度到某个节点”，而是“这个 ResourceClaim 或 extended resource request 是否符合租户 entitlement、queue quota、DeviceClass、MIG profile、runtime baseline、拓扑和成本策略”。传统调度事件往往只显示节点不满足条件；资源声明准入记录必须把不满足条件拆成可行动原因。</p>
+<div class="highlight"><pre><span></span><code><span class="nt">resource_claim_admission_record</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">record_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rcar-20260620-001</span>
+<span class="w">  </span><span class="nt">workload</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">job_or_pod</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">training-job/pretrain-exp-20260620</span>
+<span class="w">    </span><span class="nt">tenant</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">foundation-model-team</span>
+<span class="w">    </span><span class="nt">queue</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">training-prod</span>
+<span class="w">    </span><span class="nt">workload_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">distributed_training</span>
+<span class="w">  </span><span class="nt">claim_contract</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">gpu_resource_claim_contract</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">grcc-pretrain-h100-20260620</span>
+<span class="w">    </span><span class="nt">kubernetes_mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dra</span>
+<span class="w">    </span><span class="nt">device_class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu.ai-factory/h100-rdma</span>
+<span class="w">    </span><span class="nt">resource_claim_template</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rct-pretrain-worker</span>
+<span class="w">    </span><span class="nt">requested_claims</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">512</span>
+<span class="w">  </span><span class="nt">policy_checks</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">resource_pool_entitlement</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed</span>
+<span class="w">    </span><span class="nt">queue_quota</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed</span>
+<span class="w">    </span><span class="nt">gang_capacity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">wait</span>
+<span class="w">    </span><span class="nt">device_class_available</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed</span>
+<span class="w">    </span><span class="nt">mig_profile_compatible</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">not_applicable</span>
+<span class="w">    </span><span class="nt">runtime_baseline</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed</span>
+<span class="w">    </span><span class="nt">fabric_baseline</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed</span>
+<span class="w">    </span><span class="nt">rank_topology_contract</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">blocked</span>
+<span class="w">    </span><span class="nt">heterogeneous_pool_acceptance_matrix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed</span>
+<span class="w">    </span><span class="nt">cost_budget</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed</span>
+<span class="w">  </span><span class="nt">decision</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">state</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">wait</span>
+<span class="w">    </span><span class="nt">reason</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rank_topology_contract_unsatisfied</span>
+<span class="w">    </span><span class="nt">pending_reason</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">topology_unsatisfied</span>
+<span class="w">    </span><span class="nt">retry_when</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">contiguous_nodes_available</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">lower_priority_borrowed_capacity_reclaimed</span>
+<span class="w">  </span><span class="nt">evidence</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">resource_slices_or_inventory_snapshot</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">linked</span>
+<span class="w">    </span><span class="nt">acceptance_baseline</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">h100-rdma-prod-202606</span>
+<span class="w">    </span><span class="nt">queue_fairness_ledger_window</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">qfl-20260620-00</span>
+</code></pre></div>
+<p>这个记录把资源声明从 Kubernetes 对象提升为平台可解释事件。若 <code>DeviceClass</code> 不存在或没有匹配 <code>ResourceSlice</code>，这是资源发现或 inventory 问题；若 entitlement 失败，是租户授权问题；若 quota 失败，是组织资源策略问题；若 rank topology 失败，是调度和资源碎片问题；若 runtime baseline 失败，是节点基线或准入问题。用户看到的 pending reason 应来自这个记录，而不是从多处事件里人工猜测。</p>
+<pre class="mermaid"><code>flowchart TB
+  Contract["gpu_resource_claim_contract"] --&gt; Admission["resource_claim_admission_record"]
+  Ent["entitlement"] --&gt; Admission
+  Quota["queue quota / gang"] --&gt; Admission
+  Device["DeviceClass / ResourceSlice\nor extended resource inventory"] --&gt; Admission
+  Topo["rank topology / GPU-NIC / fabric"] --&gt; Admission
+  Baseline["runtime + acceptance baseline"] --&gt; Admission
+  Admission --&gt;|accept| Placement["placement_commit_record"]
+  Admission --&gt;|wait| Pending["pending reason\nquota / gang / topology / flavor"]
+  Admission --&gt;|reject| User["actionable error"]</code></pre>
+<p>资源声明准入还应进入容量运营。若大量任务卡在 <code>device_class_available</code>，说明 GPU class 供应不足或标签过细；若卡在 <code>rank_topology_contract_unsatisfied</code>，说明碎片、抢占或预留策略有问题；若卡在 <code>runtime_baseline</code>，说明准入或变更流程阻断了资源；若卡在 <code>cost_budget</code>，说明任务预算和资源产品不匹配。调度系统的作用不是只把任务排队，而是把稀缺资源缺口转成可治理信号。</p>
+<p>平台还应实现 pending reason 和调度审计。用户提交作业后，应看到当前状态是 queued、admitted、scheduling、running、preempted、failed 还是 completed；pending 原因应区分 quota 不足、gang 不满足、GPU 型号不匹配、拓扑不满足、镜像不可用、数据无权限或节点健康不足。调度审计记录每次准入、抢占、放置和失败原因，为容量规划和争议处理提供证据。</p>
+<p>实现还要把调度策略版本化。队列规则、quota、priority class、preemption policy 和拓扑策略变化后，应能解释某个历史作业使用的是哪一版策略。否则调度结果无法复盘，用户也无法理解为什么同样任务在不同时间等待不同。策略版本化是调度系统走向生产治理的标志。</p>
+<p>实现还应支持模拟和 dry-run。用户提交作业前，平台可以返回将进入哪个队列、消耗哪些 quota、是否满足 gang、可能被哪些约束阻塞。管理员调整 quota 或优先级前，也可以模拟影响范围。调度策略越复杂，越需要在执行前预估后果。</p>
+<p>实现还应有事件模型。准入、借用、抢占、恢复、失败和完成都要产生结构化事件，事件进入 UI、审计、告警和成本系统。没有事件模型，调度系统只能靠日志排障。</p>
+<p>训练作业事件应沿着统一生命周期记录，而不是散落在队列、Pod、launcher 和训练日志里。<code>training_lifecycle_event</code> 把作业从 submitted、admitted、placement committed、gang started、rendezvous、first effective step、checkpoint、preempting、recovering 到 completed 的关键点串起来。它让用户看到任务卡在哪个阶段，也让成本系统区分等待、启动浪费和有效训练。</p>
+<div class="highlight"><pre><span></span><code><span class="nt">training_lifecycle_event</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">event_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tle-20260620-001</span>
+<span class="w">  </span><span class="nt">job_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">exp-20260619-001</span>
+<span class="w">  </span><span class="nt">tenant</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">foundation-model-team</span>
+<span class="w">  </span><span class="nt">queue</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">training-prod</span>
+<span class="w">  </span><span class="nt">phase</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">first_effective_step</span>
+<span class="w">  </span><span class="nt">timestamps</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">submitted_at</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
+<span class="w">    </span><span class="nt">admitted_at</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
+<span class="w">    </span><span class="nt">placement_committed_at</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
+<span class="w">    </span><span class="nt">gang_started_at</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
+<span class="w">    </span><span class="nt">rendezvous_completed_at</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
+<span class="w">    </span><span class="nt">first_effective_step_at</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
+<span class="w">  </span><span class="nt">references</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">job_admission_event</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">jae-exp-20260619-001</span>
+<span class="w">    </span><span class="nt">placement_commit_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pcr-exp-20260619-001</span>
+<span class="w">    </span><span class="nt">rank_mapping</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rank-mapping-exp-20260619-001</span>
+<span class="w">    </span><span class="nt">parallelism_plan_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ppr-llm-20260620-001</span>
+<span class="w">    </span><span class="nt">rank_topology_contract</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rtc-llm-20260620-001</span>
+<span class="w">    </span><span class="nt">nccl_env_contract</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nec-h100-rdma-20260620</span>
+<span class="w">    </span><span class="nt">checkpoint_manifest</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">latest_valid_if_resumed</span>
+<span class="w">  </span><span class="nt">accounting</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">allocated_gpu_seconds_so_far</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
+<span class="w">    </span><span class="nt">effective_training_gpu_seconds_so_far</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
+<span class="w">    </span><span class="nt">startup_waste_gpu_seconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
+</code></pre></div>
+<p>这个事件让“任务 pending”“任务 running”“任务开始训练”变成三个不同事实。很多 GPU 浪费发生在 admitted 之后、first effective step 之前：镜像拉取、数据预检、NCCL rendezvous、checkpoint 恢复都可能消耗资源但不产生训练 token。调度系统若只记录 running，会把这些浪费平均摊进训练成本，无法指导优化。</p>
+<p>事件模型还应支持订阅。用户订阅作业事件，SRE 订阅异常事件，平台运营订阅 quota 和抢占事件。不同角色看到不同视图，但底层事件源一致。这样调度系统既能服务人机交互，也能服务自动化。</p>
+<p>队列治理还需要 <code>queue_fairness_ledger</code>。它不是简单的队列长度统计，而是记录每个队列在一个窗口内的 guaranteed、borrowed、lent、preempted、starved 和 effective GPU hours。这样平台才能回答：某队列等待长是因为它超出配额、拓扑不可满足、资源被别人借用，还是策略配置不合理。</p>
+<div class="highlight"><pre><span></span><code><span class="nt">queue_fairness_ledger</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">window</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2026-06-20T00:00Z/2026-06-20T01:00Z</span>
+<span class="w">  </span><span class="nt">cohort</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ai-factory-training</span>
+<span class="w">  </span><span class="nt">queues</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">queue</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">training-prod</span>
+<span class="w">      </span><span class="nt">guaranteed_gpus</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">512</span>
+<span class="w">      </span><span class="nt">used_gpu_hours</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
+<span class="w">      </span><span class="nt">borrowed_gpu_hours</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
+<span class="w">      </span><span class="nt">lent_gpu_hours</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
+<span class="w">      </span><span class="nt">pending_reasons</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">gang_capacity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
+<span class="w">        </span><span class="nt">topology_unsatisfied</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
+<span class="w">        </span><span class="nt">quota_insufficient</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
+<span class="w">      </span><span class="nt">starvation</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">longest_waiting_job_age</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
+<span class="w">        </span><span class="nt">starvation_policy_breached</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">queue</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">research</span>
+<span class="w">      </span><span class="nt">guaranteed_gpus</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">256</span>
+<span class="w">      </span><span class="nt">preempted_gpu_hours</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
+<span class="w">      </span><span class="nt">effective_gpu_hours</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
+<span class="w">  </span><span class="nt">decisions</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">rebalance_quota</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">evaluate</span>
+<span class="w">    </span><span class="nt">adjust_borrowing_policy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">optional</span>
+</code></pre></div>
+<p>这个 ledger 能把调度争议变成数据问题。若 research 长期借出资源但在生产高峰被频繁抢占，说明 borrowing 策略要调；若 training-prod 长期 pending 是拓扑不可满足，而不是 quota 不足，扩容方向应是同 fabric 连续资源，不是单纯增加 GPU；若某队列长期饥饿，应触发运营评审。公平不是平均等待，而是规则、承诺和实际效果一致。</p>
+<p>抢占也需要 checkpoint-aware policy。调度器不应只知道某个任务优先级低，还要知道它能否安全释放资源。对于训练任务，抢占点通常是 checkpoint 完成后；对于 batch inference，抢占点是 shard 完成后；对于 online inference，抢占通常应通过 drain 而不是 kill。</p>
+<div class="highlight"><pre><span></span><code><span class="nt">preemption_policy</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">workload_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">distributed-training</span>
+<span class="w">  </span><span class="nt">allowed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">safe_points</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">checkpoint_committed</span>
+<span class="w">  </span><span class="nt">max_notice_seconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">600</span>
+<span class="w">  </span><span class="nt">on_preempt</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">emit_event</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">preserve_checkpoint</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">requeue</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">accounting</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">record_wasted_gpu_hours</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</code></pre></div>
+<p>每次抢占还应形成 <code>preemption_record</code>。Policy 说明允许怎么抢占，record 说明这一次实际发生了什么。它要记录 notice、safe point、checkpoint、释放资源、浪费 GPU 小时、恢复结果和受影响队列。没有 record，抢占会被视为调度器内部动作，用户只能看到任务被杀。</p>
+<div class="highlight"><pre><span></span><code><span class="nt">preemption_record</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">preemption_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">preempt-20260620-001</span>
+<span class="w">  </span><span class="nt">victim_job</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">exp-lowprio-042</span>
+<span class="w">  </span><span class="nt">requester</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">job_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">exp-prod-urgent-017</span>
+<span class="w">    </span><span class="nt">queue</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">training-prod</span>
+<span class="w">    </span><span class="nt">reason</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">production_release_blocker</span>
+<span class="w">  </span><span class="nt">policy</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">safe_point</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">checkpoint_committed</span>
+<span class="w">    </span><span class="nt">notice_seconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">600</span>
+<span class="w">  </span><span class="nt">execution</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">checkpoint_before_release</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ckpt-step-80000</span>
+<span class="w">    </span><span class="nt">released_gpus</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">128</span>
+<span class="w">    </span><span class="nt">victim_requeued</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">recovery_started_at</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
+<span class="w">  </span><span class="nt">cost</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">wasted_gpu_hours</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
+<span class="w">    </span><span class="nt">lost_progress_since_checkpoint</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
+<span class="w">    </span><span class="nt">requester_wait_time_reduced</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
+</code></pre></div>
+<p>抢占记录应进入 queue fairness ledger 和 training ROI ledger。这样平台才能判断抢占是不是净收益：高优任务提前启动带来的收益，是否大于低优任务损失、重跑和用户体验成本。没有这个账本，抢占会被滥用为容量不足的补丁。</p>
+<h3 id="2342">23.4.2 常见故障<a class="headerlink" href="#2342" title="Permanent link">&para;</a></h3>
+<p>第一类故障是半启动。分布式训练的部分 worker 启动后等待其余 worker，既不能训练，又占住 GPU。解决方向是 gang scheduling 和作业级准入。第二类故障是队列不可见。用户只看到 pending，不知道是 quota、拓扑、优先级还是资源碎片。没有 pending reason，平台支持成本会显著上升。</p>
+<p>第三类故障是抢占没有恢复。低优先级训练被抢占后没有 checkpoint，浪费大量 GPU；批量任务被抢占后重复写输出；评测被抢占后报告不完整。抢占必须和恢复能力绑定。第四类故障是 quota 设计过细或过死，资源闲置但任务无法借用；或者借用过度，关键任务无法回收资源。Quota 需要数据驱动调整。</p>
+<p>第五类故障是工具层次混乱。用 Argo 解决 GPU gang scheduling，用 Ray 解决租户 quota，用默认 Scheduler 解决多节点训练整体准入，都会把问题推到错误层。第六类故障是拓扑被忽视。任务准入成功，但放置跨越不合适网络，训练启动后 NCCL 性能差。调度系统必须把准入、放置和运行指标关联起来。</p>
+<p>第七类故障是调度策略没有回看机制。某个队列长期饥饿，某类作业频繁被抢占，某种 GPU 长期碎片化，但平台没有定期分析，问题会积累成组织冲突。调度系统需要运营，而不是一次配置后长期不动。</p>
+<p>还有一类故障是账实不一致。调度系统认为某队列仍有 quota，实际资源因节点维护或故障不可用；库存系统显示 GPU 空闲，调度器因拓扑无法使用。解决方向是让库存、调度和健康状态使用同一事实源。</p>
+<p>事实源不统一时，调度争议无法被数据解决。</p>
+<p>最终只能回到人工仲裁。</p>
+<p>第八类故障是 pending reason 与真实阻塞不一致。用户看到 quota 不足，实际是节点健康被准入系统阻断；调度器看到有 GPU，实际这些 GPU 属于不同 topology domain，无法组成 gang。解决方向是把库存、健康、拓扑和队列准入合成同一 admission decision，而不是让各系统分别给出局部解释。</p>
+<h3 id="2343">23.4.3 性能指标<a class="headerlink" href="#2343" title="Permanent link">&para;</a></h3>
+<p>作业队列指标包括队列等待时间、准入时间、pending 原因分布、各队列 GPU 使用率、quota 使用率、borrowed quota、资源碎片率和饥饿任务数量。它们回答平台是否公平、是否高效、是否可解释。只看整体 GPU 利用率无法判断某个团队是否长期排不到资源，也无法判断某个队列是否配置过大。</p>
+<p>调度和抢占指标包括 gang 成功率、半启动避免次数、抢占次数、抢占浪费 GPU 小时、恢复成功率、优先级使用分布、拓扑放置成功率和调度失败原因。它们回答策略是否健康。抢占次数高可能说明保留容量不足，gang 失败多可能说明资源碎片严重，拓扑失败多可能说明节点池规划不合理。</p>
+<p>作业运行指标包括作业成功率、失败率、平均运行时长、重试次数、checkpoint 恢复时间、训练 step time、批处理完成时间、评测报告产出时间和成本。队列指标和运行指标必须结合：一个任务排队短但运行失败，不算平台体验好；一个任务排队长但原因清晰且资源稀缺，用户更容易接受。调度指标最终要服务 workload 成功和资源经济性。</p>
+<p>指标还应按租户和业务等级聚合。平台负责人需要知道生产任务是否被保障，研究任务是否有可预期窗口，低优先级任务是否充分利用空闲资源。GPU 调度不是纯技术指标，它直接反映资源分配是否符合组织承诺。</p>
+<p>指标必须进入运营节奏。每周或每月回看队列等待、抢占浪费、quota 闲置、失败原因和 GPU 有效产出，才能持续改进策略。调度系统不是部署后自动变好，它需要数据驱动的治理。</p>
+<p>调度指标还应区分“已分配”和“有效运行”。一个 512 卡训练作业 allocated 不代表产生有效训练 token；它可能卡在 rendezvous、数据预检或 checkpoint 恢复。队列报表应展示 allocated GPU hours、effective GPU hours、preflight waste、rendezvous waste 和 preemption waste。这样调度平台才能知道资源浪费发生在调度前、启动中还是运行中。</p>
+<h3 id="2344">23.4.4 设计取舍<a class="headerlink" href="#2344" title="Permanent link">&para;</a></h3>
+<p>第一个取舍是公平与利用率。严格 quota 能保证团队边界，但会造成闲置；激进 borrowing 能提高利用率，但需要回收和抢占。平台应允许保底和借用并存，并用数据观察借用是否影响关键任务。公平不是所有人等待时间相同，而是资源按约定和业务价值可解释分配。</p>
+<p>第二个取舍是简单性与调度精度。统一使用默认 Scheduler 简单，但无法表达 gang、queue 和 quota；引入 Volcano、Kueue 或自定义插件能提高精度，但增加组件和运维成本。平台应按 workload 风险逐步引入复杂能力。大规模训练和生产批任务值得复杂调度，普通控制面服务不一定需要。</p>
+<p>第三个取舍是抢占力度与浪费成本。抢占保障高优先级任务，但会浪费低优先级任务已消耗资源。若 checkpoint 足够频繁，抢占成本低；若任务不可恢复，抢占成本高。抢占策略应按 workload 设计，而不是全局一刀切。AI 作业调度的目标不是让所有任务最快，而是让稀缺 GPU 按业务价值、恢复能力和系统约束被分配。</p>
+<p>第四个取舍是平台统一与团队自治。统一队列和 quota 有利于公平与成本治理，但研究团队可能需要灵活实验，生产团队需要严格保障。平台可以提供统一底座和少量可配置策略，而不是让每个团队自建调度系统。自治应发生在受控边界内，否则全局资源效率会下降。</p>
+<p>第五个取舍是吞吐最优与体验可预测。为了最大化利用率，平台可以不断填小作业，但大训练会长期等待；为了保障大训练，平台可能保留资源导致短期空闲。调度系统要选择的是可解释的长期效率，而不是某一分钟的利用率峰值。</p>
+<h2 id="235">23.5 小结与延伸阅读<a class="headerlink" href="#235" title="Permanent link">&para;</a></h2>
+<h3 id="2351">23.5.1 小结<a class="headerlink" href="#2351" title="Permanent link">&para;</a></h3>
 <ul>
-<li>配置口径不一致，导致平台、运行时和基础设施团队看到的状态不同。</li>
-<li>指标缺失或标签设计不完整，导致问题只能靠日志和人工经验定位。</li>
-<li>容量、配额、拓扑或版本约束没有前置表达，导致任务在上线后暴露稳定性问题。</li>
+<li>AI 作业调度要从 Pod 级决策提升到作业、队列、租户和业务优先级维度。</li>
+<li>Gang scheduling 是分布式训练避免半启动和资源浪费的基础。</li>
+<li>Queue、quota、priority 和 preemption 共同表达组织资源策略。</li>
+<li>Volcano、Kueue、Ray、Kubeflow 和 Argo 解决不同层次的问题，不应混用边界。</li>
+<li>调度系统必须提供 pending reason、调度审计和运行指标反馈。</li>
 </ul>
-<h2 id="_7">性能指标<a class="headerlink" href="#_7" title="Permanent link">&para;</a></h2>
+<h3 id="2352">23.5.2 延伸阅读<a class="headerlink" href="#2352" title="Permanent link">&para;</a></h3>
 <ul>
-<li>延迟、吞吐、错误率和资源利用率。</li>
-<li>GPU、CPU、内存、网络、存储和队列等待时间。</li>
-<li>与本章主题相关的验收基线、SLO 或成本指标。</li>
-</ul>
-<h2 id="_8">设计取舍<a class="headerlink" href="#_8" title="Permanent link">&para;</a></h2>
-<p>设计时需要在易用性、隔离性、性能、成本和运维复杂度之间取舍。后续正文会说明不同方案适合的组织规模、 workload 类型和可靠性要求。</p>
-<h2 id="_9">小结<a class="headerlink" href="#_9" title="Permanent link">&para;</a></h2>
-<ul>
-<li>本章把主题放回 AI Factory 的端到端链路中理解。</li>
-<li>后续扩写会补充真实工程场景、架构图、配置示例和排障方法。</li>
-<li>判断方案优劣时，应同时看功能、性能、可观测性、验收和成本。</li>
-</ul>
-<h2 id="_10">延伸阅读<a class="headerlink" href="#_10" title="Permanent link">&para;</a></h2>
-<ul>
-<li>TODO: 官方文档</li>
-<li>TODO: 经典论文</li>
-<li>TODO: 工程案例</li>
+<li><a href="https://volcano.sh/en/docs/">Volcano documentation</a></li>
+<li><a href="https://kueue.sigs.k8s.io/docs/">Kueue documentation</a></li>
+<li><a href="https://kubernetes.io/docs/concepts/scheduling-eviction/scheduling-framework/">Kubernetes Scheduling Framework documentation</a></li>
+<li><a href="https://docs.ray.io/">Ray documentation</a>；<a href="https://www.kubeflow.org/docs/">Kubeflow documentation</a>；<a href="https://argo-workflows.readthedocs.io/">Argo Workflows documentation</a></li>
 </ul>
 
 

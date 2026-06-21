@@ -12,6 +12,8 @@
         <meta name="author" content="king ye">
       
       
+        <link rel="canonical" href="https://kingye.me/ai-factory-engineering/part-05-orchestration/chapter-21-containers-kubernetes/">
+      
       
         <link rel="prev" href="../chapter-20-ai-workloads/">
       
@@ -188,92 +190,16 @@
   
   
   
-    <li class="md-tabs__item">
-      <a href="../.." class="md-tabs__link">
-        
-  
-  
-    
-  
-  首页
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../../preface/" class="md-tabs__link">
-        
-  
-  
-    
-  
-  前言
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../../roadmap/" class="md-tabs__link">
-        
-  
-  
-    
-  
-  写作路线图
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../../glossary/" class="md-tabs__link">
-        
-  
-  
-    
-  
-  术语表
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-  
     
     
       <li class="md-tabs__item">
-        <a href="../../part-00-introduction/chapter-00-from-datacenter-to-ai-factory/" class="md-tabs__link">
+        <a href="../.." class="md-tabs__link">
           
   
   
     
   
-  Part 0：导论 —— 什么是 AI Factory
+  导论
 
         </a>
       </li>
@@ -282,6 +208,13 @@
 
       
         
+  
+  
+  
+  
+    
+    
+      
   
   
   
@@ -295,10 +228,13 @@
   
     
   
-  Part 1：Application 层 —— AI 应用如何消耗 token
+  应用与平台
 
         </a>
       </li>
+    
+  
+
     
   
 
@@ -310,22 +246,7 @@
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../part-02-platform/chapter-05-maas/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Part 2：Platform 层 —— MaaS、网关、计费与应用平台
-
-        </a>
-      </li>
-    
-  
-
       
-        
   
   
   
@@ -339,10 +260,13 @@
   
     
   
-  Part 3：Model 层 —— 模型如何被训练、后训练、评测和服务化
+  模型与运行时
 
         </a>
       </li>
+    
+  
+
     
   
 
@@ -351,25 +275,12 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../part-04-runtime/chapter-15-inference-engines/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Part 4：AI Runtime 层 —— 训练推理运行时
-
-        </a>
-      </li>
-    
-  
-
       
-        
   
   
   
@@ -385,10 +296,13 @@
   
     
   
-  Part 5：资源编排与作业调度层
+  调度与基础设施
 
         </a>
       </li>
+    
+  
+
     
   
 
@@ -400,66 +314,7 @@
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../part-06-gpu-iaas/chapter-26-bare-metal-gpu-cloud/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Part 6：GPU IaaS 层
-
-        </a>
-      </li>
-    
-  
-
       
-        
-  
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../../part-07-network-storage/chapter-30-ai-networking-basics/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Part 7：网络与存储层
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../../part-08-physical-infrastructure/chapter-34-gpu-server/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Part 8：物理层 —— 机房、电力、制冷、硬件
-
-        </a>
-      </li>
-    
-  
-
-      
-        
   
   
   
@@ -473,10 +328,13 @@
   
     
   
-  Part 9：可靠性、观测与验收
+  运行与经济性
 
         </a>
       </li>
+    
+  
+
     
   
 
@@ -489,13 +347,13 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../part-10-economics-cases/chapter-41-token-factory/" class="md-tabs__link">
+        <a href="../../system-map/" class="md-tabs__link">
           
   
   
     
   
-  Part 10：AI Factory 经济学与产业案例
+  参考
 
         </a>
       </li>
@@ -554,15 +412,46 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../.." class="md-nav__link">
+    
+    
+      
         
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../.." class="md-nav__link ">
+              
   
   
   <span class="md-ellipsis">
     
   
-    首页
+    导论
   
 
     
@@ -570,13 +459,30 @@
   
   
 
-      </a>
-    </li>
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    导论
   
 
-    
-      
-      
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
   
   
   
@@ -601,9 +507,10 @@
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -628,36 +535,10 @@
     </li>
   
 
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../glossary/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    术语表
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -682,17 +563,17 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_1_4" >
         
           
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_1_4" id="__nav_1_4_label" tabindex="0">
             
   
   
   <span class="md-ellipsis">
     
   
-    Part 0：导论 —— 什么是 AI Factory
+    Part 0：导论
   
 
     
@@ -703,12 +584,12 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_1_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1_4">
             <span class="md-nav__icon md-icon"></span>
             
   
-    Part 0：导论 —— 什么是 AI Factory
+    Part 0：导论
   
 
           </label>
@@ -748,9 +629,77 @@
     </li>
   
 
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
     
       
       
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    应用与平台
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    应用与平台
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
   
   
   
@@ -781,17 +730,17 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2_1" >
         
           
-          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_2_1" id="__nav_2_1_label" tabindex="0">
             
   
   
   <span class="md-ellipsis">
     
   
-    Part 1：Application 层 —— AI 应用如何消耗 token
+    Part 1：Application 层
   
 
     
@@ -802,12 +751,12 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_1">
             <span class="md-nav__icon md-icon"></span>
             
   
-    Part 1：Application 层 —— AI 应用如何消耗 token
+    Part 1：Application 层
   
 
           </label>
@@ -931,9 +880,10 @@
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -964,17 +914,17 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2_2" >
         
           
-          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
             
   
   
   <span class="md-ellipsis">
     
   
-    Part 2：Platform 层 —— MaaS、网关、计费与应用平台
+    Part 2：Platform 层
   
 
     
@@ -985,12 +935,12 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_7">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2">
             <span class="md-nav__icon md-icon"></span>
             
   
-    Part 2：Platform 层 —— MaaS、网关、计费与应用平台
+    Part 2：Platform 层
   
 
           </label>
@@ -1114,9 +1064,77 @@
     </li>
   
 
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
     
       
       
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模型与运行时
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    模型与运行时
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
   
   
   
@@ -1151,17 +1169,17 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_1" >
         
           
-          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_3_1" id="__nav_3_1_label" tabindex="0">
             
   
   
   <span class="md-ellipsis">
     
   
-    Part 3：Model 层 —— 模型如何被训练、后训练、评测和服务化
+    Part 3：Model 层
   
 
     
@@ -1172,12 +1190,12 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_8">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_1">
             <span class="md-nav__icon md-icon"></span>
             
   
-    Part 3：Model 层 —— 模型如何被训练、后训练、评测和服务化
+    Part 3：Model 层
   
 
           </label>
@@ -1357,9 +1375,10 @@
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -1392,17 +1411,17 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_9" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_2" >
         
           
-          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_3_2" id="__nav_3_2_label" tabindex="0">
             
   
   
   <span class="md-ellipsis">
     
   
-    Part 4：AI Runtime 层 —— 训练推理运行时
+    Part 4：AI Runtime 层
   
 
     
@@ -1413,12 +1432,12 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_9">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_2">
             <span class="md-nav__icon md-icon"></span>
             
   
-    Part 4：AI Runtime 层 —— 训练推理运行时
+    Part 4：AI Runtime 层
   
 
           </label>
@@ -1570,6 +1589,14 @@
     </li>
   
 
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
     
       
       
@@ -1581,10 +1608,6 @@
   
     
     
-      
-        
-      
-        
       
         
       
@@ -1610,10 +1633,81 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
         
           
-          <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="">
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    调度与基础设施
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    调度与基础设施
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4_1" id="__nav_4_1_label" tabindex="">
             
   
   
@@ -1631,8 +1725,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_10">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_1_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4_1">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1737,134 +1831,329 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#_1" class="md-nav__link">
+  <a href="#211" class="md-nav__link">
     <span class="md-ellipsis">
       
-        本章回答的问题
+        21.1 导读
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="21.1 导读">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#2111" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21.1.1 本章回答的问题
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#211-container-runtime" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2112" class="md-nav__link">
     <span class="md-ellipsis">
       
-        21.1 container runtime
+        21.1.2 本章上下文
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#212-image" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2113" class="md-nav__link">
     <span class="md-ellipsis">
       
-        21.2 image
+        21.1.3 读者测试
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#213-pod" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2114" class="md-nav__link">
     <span class="md-ellipsis">
       
-        21.3 pod
+        21.1.4 一个真实场景
       
     </span>
   </a>
   
 </li>
+        
+      </ul>
+    </nav>
+  
+</li>
       
         <li class="md-nav__item">
-  <a href="#214-deployment" class="md-nav__link">
+  <a href="#212" class="md-nav__link">
     <span class="md-ellipsis">
       
-        21.4 deployment
+        21.2 基础模型
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="21.2 基础模型">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#2121" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21.2.1 核心概念
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#215-job" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2122" class="md-nav__link">
     <span class="md-ellipsis">
       
-        21.5 job
+        21.2.2 系统架构
       
     </span>
   </a>
   
 </li>
+        
+      </ul>
+    </nav>
+  
+</li>
       
         <li class="md-nav__item">
-  <a href="#216-statefulset" class="md-nav__link">
+  <a href="#213" class="md-nav__link">
     <span class="md-ellipsis">
       
-        21.6 statefulset
+        21.3 关键技术
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="21.3 关键技术">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#2131-container-runtime" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21.3.1 container runtime
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#217-service" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2132-image" class="md-nav__link">
     <span class="md-ellipsis">
       
-        21.7 service
+        21.3.2 image
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#218-scheduler" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2133-pod" class="md-nav__link">
     <span class="md-ellipsis">
       
-        21.8 scheduler
+        21.3.3 pod
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#219-cnicsicri" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2134-deployment" class="md-nav__link">
     <span class="md-ellipsis">
       
-        21.9 CNI、CSI、CRI
+        21.3.4 deployment
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#_2" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2135-job" class="md-nav__link">
     <span class="md-ellipsis">
       
-        小结
+        21.3.5 job
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#_3" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2136-statefulset" class="md-nav__link">
     <span class="md-ellipsis">
       
-        延伸阅读
+        21.3.6 statefulset
       
     </span>
   </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2137-service" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21.3.7 service
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2138-scheduler" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21.3.8 scheduler
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2139-cnicsicri" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21.3.9 CNI、CSI、CRI
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#21310-gpu-nvidia-container-toolkit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21.3.10 GPU 容器运行时与 NVIDIA Container Toolkit
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#214" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21.4 工程落地
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="21.4 工程落地">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#2141" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21.4.1 工程实现
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2142" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21.4.2 常见故障
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2143" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21.4.3 性能指标
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2144" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21.4.4 设计取舍
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#215" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21.5 小结与延伸阅读
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="21.5 小结与延伸阅读">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#2151" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21.5.1 小结
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2152" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21.5.2 延伸阅读
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1995,9 +2284,10 @@
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -2019,19 +2309,22 @@
       
       
         
+          
+          
+        
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_11" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4_2" >
         
           
-          <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_2" id="__nav_4_2_label" tabindex="">
             
   
   
@@ -2049,8 +2342,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_11">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2178,9 +2471,10 @@
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -2202,19 +2496,22 @@
       
       
         
+          
+          
+        
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_12" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4_3" >
         
           
-          <label class="md-nav__link" for="__nav_12" id="__nav_12_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_3" id="__nav_4_3_label" tabindex="">
             
   
   
@@ -2232,8 +2529,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_12_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_12">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_3">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2361,9 +2658,10 @@
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -2383,26 +2681,29 @@
       
       
         
+          
+          
+        
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_13" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4_4" >
         
           
-          <label class="md-nav__link" for="__nav_13" id="__nav_13_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_4" id="__nav_4_4_label" tabindex="">
             
   
   
   <span class="md-ellipsis">
     
   
-    Part 8：物理层 —— 机房、电力、制冷、硬件
+    Part 8：物理层
   
 
     
@@ -2413,12 +2714,12 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_13_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_13">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_4">
             <span class="md-nav__icon md-icon"></span>
             
   
-    Part 8：物理层 —— 机房、电力、制冷、硬件
+    Part 8：物理层
   
 
           </label>
@@ -2514,9 +2815,77 @@
     </li>
   
 
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
     
       
       
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    运行与经济性
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    运行与经济性
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
   
   
   
@@ -2547,10 +2916,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_14" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_1" >
         
           
-          <label class="md-nav__link" for="__nav_14" id="__nav_14_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5_1" id="__nav_5_1_label" tabindex="0">
             
   
   
@@ -2568,8 +2937,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_14_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_14">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_1">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2697,9 +3066,10 @@
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -2730,17 +3100,17 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_15" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_2" >
         
           
-          <label class="md-nav__link" for="__nav_15" id="__nav_15_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5_2" id="__nav_5_2_label" tabindex="0">
             
   
   
   <span class="md-ellipsis">
     
   
-    Part 10：AI Factory 经济学与产业案例
+    Part 10：经济学与产业案例
   
 
     
@@ -2751,12 +3121,12 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_15_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_15">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2">
             <span class="md-nav__icon md-icon"></span>
             
   
-    Part 10：AI Factory 经济学与产业案例
+    Part 10：经济学与产业案例
   
 
           </label>
@@ -2880,6 +3250,227 @@
     </li>
   
 
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    参考
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    参考
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../system-map/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    系统地图与工程索引
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    术语表
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../style-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    写作规范
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../depth-standard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    深度标准与覆盖矩阵
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../doc-coauthoring-review/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Doc Coauthoring 审稿标准
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
     
   </ul>
 </nav>
@@ -2908,134 +3499,329 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#_1" class="md-nav__link">
+  <a href="#211" class="md-nav__link">
     <span class="md-ellipsis">
       
-        本章回答的问题
+        21.1 导读
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="21.1 导读">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#2111" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21.1.1 本章回答的问题
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#211-container-runtime" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2112" class="md-nav__link">
     <span class="md-ellipsis">
       
-        21.1 container runtime
+        21.1.2 本章上下文
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#212-image" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2113" class="md-nav__link">
     <span class="md-ellipsis">
       
-        21.2 image
+        21.1.3 读者测试
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#213-pod" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2114" class="md-nav__link">
     <span class="md-ellipsis">
       
-        21.3 pod
+        21.1.4 一个真实场景
       
     </span>
   </a>
   
 </li>
+        
+      </ul>
+    </nav>
+  
+</li>
       
         <li class="md-nav__item">
-  <a href="#214-deployment" class="md-nav__link">
+  <a href="#212" class="md-nav__link">
     <span class="md-ellipsis">
       
-        21.4 deployment
+        21.2 基础模型
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="21.2 基础模型">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#2121" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21.2.1 核心概念
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#215-job" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2122" class="md-nav__link">
     <span class="md-ellipsis">
       
-        21.5 job
+        21.2.2 系统架构
       
     </span>
   </a>
   
 </li>
+        
+      </ul>
+    </nav>
+  
+</li>
       
         <li class="md-nav__item">
-  <a href="#216-statefulset" class="md-nav__link">
+  <a href="#213" class="md-nav__link">
     <span class="md-ellipsis">
       
-        21.6 statefulset
+        21.3 关键技术
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="21.3 关键技术">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#2131-container-runtime" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21.3.1 container runtime
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#217-service" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2132-image" class="md-nav__link">
     <span class="md-ellipsis">
       
-        21.7 service
+        21.3.2 image
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#218-scheduler" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2133-pod" class="md-nav__link">
     <span class="md-ellipsis">
       
-        21.8 scheduler
+        21.3.3 pod
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#219-cnicsicri" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2134-deployment" class="md-nav__link">
     <span class="md-ellipsis">
       
-        21.9 CNI、CSI、CRI
+        21.3.4 deployment
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#_2" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2135-job" class="md-nav__link">
     <span class="md-ellipsis">
       
-        小结
+        21.3.5 job
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#_3" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2136-statefulset" class="md-nav__link">
     <span class="md-ellipsis">
       
-        延伸阅读
+        21.3.6 statefulset
       
     </span>
   </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2137-service" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21.3.7 service
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2138-scheduler" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21.3.8 scheduler
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2139-cnicsicri" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21.3.9 CNI、CSI、CRI
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#21310-gpu-nvidia-container-toolkit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21.3.10 GPU 容器运行时与 NVIDIA Container Toolkit
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#214" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21.4 工程落地
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="21.4 工程落地">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#2141" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21.4.1 工程实现
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2142" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21.4.2 常见故障
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2143" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21.4.3 性能指标
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2144" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21.4.4 设计取舍
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#215" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21.5 小结与延伸阅读
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="21.5 小结与延伸阅读">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#2151" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21.5.1 小结
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2152" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21.5.2 延伸阅读
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -3060,62 +3846,506 @@
 
 
 <h1 id="21-kubernetes">第 21 章：容器与 Kubernetes<a class="headerlink" href="#21-kubernetes" title="Permanent link">&para;</a></h1>
-<h2 id="_1">本章回答的问题<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h2>
+<h2 id="211">21.1 导读<a class="headerlink" href="#211" title="Permanent link">&para;</a></h2>
+<h3 id="2111">21.1.1 本章回答的问题<a class="headerlink" href="#2111" title="Permanent link">&para;</a></h3>
 <ul>
-<li>容器和 Kubernetes 在 AI Factory 中承担什么职责？</li>
-<li>Pod、Deployment、Job、StatefulSet、Service、Scheduler、CNI、CSI、CRI 如何协同？</li>
-<li>为什么 Kubernetes 是资源编排与作业调度层的一部分，而不是简单的 AI PaaS？</li>
+<li>容器到底隔离了什么，没有隔离什么？</li>
+<li>为什么 AI 镜像不是一个普通业务镜像，而是 runtime 基线的一部分？</li>
+<li>Kubernetes 如何把一个期望状态变成运行中的 Pod？</li>
+<li>Pod、Deployment、Job、StatefulSet、Service、Scheduler、CNI、CSI、CRI 的边界分别是什么？</li>
+<li>GPU 容器运行时的真实链路是什么：Docker/containerd、OCI spec、runc hook、nvidia-container-runtime、nvidia-container-runtime-hook、nvidia-container-cli 和 libnvidia-container 如何协同？</li>
+<li>为什么 Kubernetes 属于“资源编排与作业调度层”，而不是 MaaS 或 GPU IaaS？</li>
 </ul>
-<h2 id="211-container-runtime">21.1 container runtime<a class="headerlink" href="#211-container-runtime" title="Permanent link">&para;</a></h2>
-<p>Container runtime 负责拉取镜像、创建容器、挂载文件系统、设置 namespace/cgroup，并启动进程。Kubernetes 通过 CRI 与 containerd、CRI-O 等 runtime 交互。AI workload 对 runtime 的要求更高，因为容器需要访问 GPU、RDMA 设备、共享内存、模型权重和高速存储。</p>
-<p>推理和训练容器通常包含 Python、CUDA 用户态库、框架、推理引擎和业务代码。runtime 层必须和主机驱动、NVIDIA Container Toolkit、设备插件配合，才能把 GPU 设备和必要库正确注入容器。</p>
-<h2 id="212-image">21.2 image<a class="headerlink" href="#212-image" title="Permanent link">&para;</a></h2>
-<p>Image 是容器运行环境的不可变封装。AI 镜像通常比普通服务镜像大得多，包含 CUDA、cuDNN、NCCL、PyTorch、vLLM、SGLang、TensorRT-LLM 或业务依赖。镜像版本会直接影响可复现性和故障定位。</p>
-<p>生产环境应建立镜像基线：OS、Python、CUDA、NCCL、框架和推理引擎版本要可追溯。训练和推理镜像最好分层管理，避免每个团队复制一套大型基础镜像，导致漏洞修复和兼容性治理失控。</p>
-<h2 id="213-pod">21.3 pod<a class="headerlink" href="#213-pod" title="Permanent link">&para;</a></h2>
-<p>Pod 是 Kubernetes 的最小调度单元。一个 Pod 可以包含一个或多个容器，共享网络 namespace 和部分存储卷。在线推理通常以 Pod 承载模型服务副本，训练任务则可能用多个 Pod 构成 worker group。</p>
-<p>Pod 的资源请求不仅包括 CPU 和 memory，还可以包括 <code>nvidia.com/gpu</code>、MIG 资源、RDMA 设备和本地存储。AI 场景下，Pod 的启动并不等于服务可用；模型权重下载、GPU 初始化、NCCL 建连和健康检查都可能需要额外时间。</p>
-<h2 id="214-deployment">21.4 deployment<a class="headerlink" href="#214-deployment" title="Permanent link">&para;</a></h2>
-<p>Deployment 管理无状态副本，适合在线 API、网关、控制面和部分模型服务。它提供滚动升级、回滚和副本数控制。对于在线推理，Deployment 常和 HPA、KEDA 或自定义 autoscaler 配合，根据 QPS、队列长度、GPU 利用率或 token 指标扩缩容。</p>
-<p>但大型模型服务不一定适合频繁滚动升级。模型加载慢、显存占用高、冷启动成本大，升级时需要更谨慎的 canary、流量切换和容量预留。</p>
-<h2 id="215-job">21.5 job<a class="headerlink" href="#215-job" title="Permanent link">&para;</a></h2>
-<p>Job 表示运行到完成的任务，适合批量推理、数据处理、评测、微调和单机训练。Job 失败后可以重试，但对分布式训练来说，普通 Job 的语义不够，需要更高层控制器管理多角色 worker、launcher 和 gang scheduling。</p>
-<p>AI 平台常用 Job 作为底层抽象，再在上层封装训练任务、评测任务或数据处理任务。这样可以让用户提交领域化任务，同时保留 Kubernetes 的生命周期和状态管理能力。</p>
-<h2 id="216-statefulset">21.6 statefulset<a class="headerlink" href="#216-statefulset" title="Permanent link">&para;</a></h2>
-<p>StatefulSet 提供稳定网络标识和有状态副本管理。它适合需要固定身份、固定存储或有序启动的服务。某些模型服务、向量数据库、缓存系统、参数服务器或控制面组件会使用 StatefulSet。</p>
-<p>不过，StatefulSet 不等同于分布式训练调度。它能提供稳定身份，但不能自动解决队列、配额、gang scheduling 和拓扑感知问题。AI Factory 需要在工作负载控制器和调度器层补足这些语义。</p>
-<h2 id="217-service">21.7 service<a class="headerlink" href="#217-service" title="Permanent link">&para;</a></h2>
-<p>Service 为 Pod 提供稳定访问入口和负载均衡。在线推理服务通常通过 Service 被网关或内部调用方访问。Service 解决的是服务发现问题，不解决模型路由、租户限流、token 计量和灰度策略，这些通常属于 AI Gateway 或 Platform 层。</p>
-<p>对于 streaming 响应，Service 和上游网关还要正确处理长连接、超时和连接中断。负载均衡策略也会影响 KV Cache 命中率、会话亲和性和模型实例压力。</p>
-<h2 id="218-scheduler">21.8 scheduler<a class="headerlink" href="#218-scheduler" title="Permanent link">&para;</a></h2>
-<p>Kubernetes Scheduler 负责把 Pod 放到合适节点。默认调度器根据资源请求、亲和性、污点容忍、拓扑约束等规则做决策。AI workload 往往需要更复杂的调度：GPU 型号、MIG 粒度、NUMA、NVLink、RDMA NIC、队列、配额、gang 和优先级。</p>
-<p>因此，AI Factory 中的 Kubernetes 通常会扩展调度能力：使用 Volcano、Kueue、自定义 scheduler plugin，或结合 Slurm/Ray/Kubeflow 管理不同类型作业。Kubernetes 是资源编排与作业调度层的一部分，而不是 MaaS 本身。</p>
-<h2 id="219-cnicsicri">21.9 CNI、CSI、CRI<a class="headerlink" href="#219-cnicsicri" title="Permanent link">&para;</a></h2>
-<p>CNI 负责容器网络，影响 Pod 连通性、Service、网络策略和高性能网络接入。CSI 负责存储卷接入，影响数据集、模型权重、checkpoint 和日志持久化。CRI 负责 kubelet 与 container runtime 的接口，影响容器创建、镜像管理和运行时状态。</p>
+<h3 id="2112">21.1.2 本章上下文<a class="headerlink" href="#2112" title="Permanent link">&para;</a></h3>
+<ul>
+<li>层级定位：本章属于 <code>资源编排与作业调度层</code>，重点讨论容器、Kubernetes、GPU 调度、队列、Slurm 和多集群资源治理。</li>
+<li>前置依赖：建议先理解 第 20 章：AI Workload 的形态 中的核心对象和路径。</li>
+<li>后续关联：本章内容会继续连接到 第 22 章：GPU on Kubernetes，并在系统地图、深度标准和读者测试中被交叉引用。</li>
+<li>读完能力：读完本章后，读者应能把《容器与 Kubernetes》中的概念映射到 AI Factory 的生产路径、工程对象、观测证据和设计取舍。</li>
+</ul>
+<h3 id="2113">21.1.3 读者测试<a class="headerlink" href="#2113" title="Permanent link">&para;</a></h3>
+<ul>
+<li>机制题：读者能否解释 container runtime、image、pod、deployment 的核心机制，以及它们如何共同支撑《容器与 Kubernetes》？</li>
+<li>边界题：读者能否区分 资源编排与作业调度、GPU IaaS、Platform 层和 AI Runtime 层 的责任边界，并说明哪些问题不能简单归因到本章组件？</li>
+<li>路径题：读者能否从 workload 提交追到队列、配额、调度、容器启动、GPU 分配和拓扑证据，并指出本章对象在路径中的位置？</li>
+<li>排障题：当《容器与 Kubernetes》相关生产症状出现时，读者能否列出第一层证据、下一跳证据、可能 owner 和止血动作？</li>
+</ul>
+<h3 id="2114">21.1.4 一个真实场景<a class="headerlink" href="#2114" title="Permanent link">&para;</a></h3>
+<p>一个模型服务在开发机上用 <code>docker run</code> 可以正常看到 GPU，迁入生产 Kubernetes 后却出现三类问题。第一类是 Pod 已经 <code>Running</code>，业务日志却显示 <code>libcuda.so.1</code> 加载失败；第二类是 <code>nvidia-smi</code> 在容器内可用，但推理引擎启动后 NCCL 初始化失败；第三类是滚动升级时新副本很快 <code>Ready</code>，流量进入后 TTFT 飙升，因为模型权重仍在下载，KV Cache 还未 warmup。运维同学从 Kubernetes 事件看，只能看到 Pod、容器和探针状态；模型平台同学从服务指标看，只能看到延迟和错误；GPU 平台同学从节点看，driver 又似乎正常。</p>
+<p>这个场景的根因不是某个组件“坏了”，而是层次被混在一起。容器镜像包含用户态依赖，但 GPU driver 的内核模块和一部分 driver library 来自主机；Kubernetes 负责声明式编排，但不直接理解模型权重是否加载完成；NVIDIA Container Toolkit 负责把 GPU 设备和必要库注入容器，但不负责判断推理服务是否已经具备接流量能力；Service 负责稳定访问入口，但不负责模型路由、token 计量和 streaming 语义。任何一层被误认为“全能”，都会导致排障方向错误。</p>
+<p>生产平台要把状态拆开：<code>PodScheduled</code> 只表示调度器选出了节点；<code>ContainerCreating</code> 涉及镜像、volume、CNI、CRI 和设备注入；<code>Running</code> 只表示容器进程被启动；<code>Ready</code> 应由业务探针证明模型可服务；<code>Endpoint</code> 加入后才会接流量；AI Gateway 的 request trace 还要继续证明 queue、prefill、decode 和 token streaming 正常。类似地，训练任务 <code>Pod Running</code> 不代表训练开始，只有所有 worker 完成 rendezvous、NCCL 拓扑建立、数据读取正常、首个 step 产生有效 loss，才接近“作业开始”。</p>
+<p>因此，本章要建立一个硬边界：容器和 Kubernetes 是资源编排与作业调度层的基础能力，不是 AI Platform 的全部，也不是 GPU IaaS 的替代。GPU IaaS 交付节点、驱动、镜像基线、网络和存储资源；Kubernetes 把这些资源组织成可调度、可观测、可回滚的 workload；Platform 层在其上表达模型、租户、SLO、计费、评测和发布。第 22 章会进一步讨论 GPU device plugin、GPU Operator、MIG、time-slicing、Topology Manager 和 RDMA device；本章先讲清楚 GPU 容器运行时与 NVIDIA Container Toolkit 的底层原理。</p>
+<h2 id="212">21.2 基础模型<a class="headerlink" href="#212" title="Permanent link">&para;</a></h2>
+<h3 id="2121">21.2.1 核心概念<a class="headerlink" href="#2121" title="Permanent link">&para;</a></h3>
+<p>容器（container）不是轻量虚拟机。它本质上是一个带隔离边界的进程组：Linux namespace 隔离进程号、网络、挂载点、IPC、UTS 和用户视图；cgroup 限制 CPU、memory、pids、device 等资源；capability、seccomp、AppArmor 或 SELinux 收缩权限；rootfs 提供来自 image 的文件系统。容器复用宿主机 kernel，因此无法像 VM 那样携带自己的内核，也无法单靠镜像解决所有硬件驱动问题。</p>
+<p>镜像（image）是分层文件系统和元数据的不可变封装。对普通后端服务来说，镜像通常包含语言运行时、业务二进制和配置入口；对 AI workload 来说，镜像还包含 CUDA runtime、cuDNN、NCCL、PyTorch、TensorRT-LLM、vLLM、SGLang、tokenizer、模型服务框架和诊断工具。镜像不是“打包一下代码”，而是训练和推理 runtime 的版本化契约。生产任务必须记录 image digest，而不是只记录可漂移的 tag。</p>
+<p>OCI（Open Container Initiative）定义了镜像和运行时规范。容器运行时最终会把容器启动信息表达为一个 OCI runtime bundle，其中 <code>config.json</code> 描述进程、环境变量、mount、namespace、cgroup、capability、device 和 hooks。runc 是常见的低层 OCI runtime，它读 OCI spec，创建容器 namespace 和 cgroup，并启动用户进程。Docker、containerd、CRI-O 等上层运行时最终都要落到类似的低层运行时语义。</p>
+<p>Kubernetes 是声明式控制系统。用户提交 Pod、Deployment、Job、StatefulSet、Service 等对象，API Server 保存期望状态，controller 持续把现实状态推向期望状态，Scheduler 负责 Pod 放置，kubelet 负责节点本地执行。kubelet 不直接实现所有能力，而是通过 CRI 调 container runtime，通过 CNI 准备 Pod 网络，通过 CSI 挂载存储，通过 device plugin 体系获取扩展设备资源。理解这些接口，才能定位“Pod 起不来”究竟是控制面、调度、网络、存储、运行时还是硬件设备问题。</p>
+<p>GPU 容器的关键点是：容器内应用需要看到 GPU 设备文件、driver library、必要二进制和正确环境变量，但 GPU driver 的内核模块仍在宿主机上。NVIDIA Container Toolkit 的价值，是把“手动挂载 <code>/dev/nvidia*</code> 和一堆库文件”变成可由 Docker/containerd/runc 自动执行的标准化流程。它不是 GPU 调度器，也不是 Kubernetes device plugin；它位于容器运行时链路上，负责让已经被分配到容器的 GPU 能在容器内真正可用。</p>
+<h3 id="2122">21.2.2 系统架构<a class="headerlink" href="#2122" title="Permanent link">&para;</a></h3>
+<p>Kubernetes 的控制流从 API Server 开始，到节点上的 kubelet 结束；容器运行时的数据面从 kubelet 进入 CRI，再进入 containerd 或 CRI-O，最后由 runc 创建容器。AI Factory 在这条链路上叠加了模型、GPU、网络、存储和队列语义。一个在线模型服务至少涉及 Deployment 或上层 ModelService、Pod、Service、Gateway、Secret、ConfigMap、PVC 或对象存储挂载、GPU 资源请求、节点标签、探针、日志、metrics 和 trace；一个训练任务还会涉及 Job 或 TrainingJob、PodGroup、queue、quota、gang scheduling、checkpoint 和数据集。</p>
 <pre class="mermaid"><code>flowchart TB
-  API["Kubernetes API Server"] --&gt; Kubelet["kubelet"]
-  API --&gt; Scheduler["scheduler"]
-  Kubelet --&gt; CRI["CRI: container runtime"]
-  Kubelet --&gt; CNI["CNI: pod network"]
-  Kubelet --&gt; CSI["CSI: volumes"]
-  CRI --&gt; Container["AI container"]
-  CNI --&gt; Network["Service / RDMA / overlay or underlay"]
-  CSI --&gt; Storage["Dataset / model / checkpoint"]
-  Container --&gt; GPU["GPU devices via device plugin"]</code></pre>
-<p>AI 场景下，CNI、CSI、CRI 的选择不是底层细节。网络路径会影响 NCCL 和服务延迟，存储路径会影响数据读取和 checkpoint，runtime 兼容性会影响 GPU 是否能被容器正确使用。</p>
-<h2 id="_2">小结<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h2>
+  User["用户 / AI 平台 API"] --&gt; API["Kubernetes API Server"]
+  API --&gt; Controllers["Controllers&lt;br/&gt;Deployment / Job / StatefulSet"]
+  API --&gt; Scheduler["Scheduler&lt;br/&gt;filter / score / bind"]
+  Scheduler --&gt; Node["目标 Node"]
+  Controllers --&gt; API
+  Node --&gt; Kubelet["kubelet"]
+  Kubelet --&gt; CRI["CRI&lt;br/&gt;containerd / CRI-O"]
+  Kubelet --&gt; CNI["CNI&lt;br/&gt;Pod 网络"]
+  Kubelet --&gt; CSI["CSI&lt;br/&gt;Volume 挂载"]
+  CRI --&gt; Runtime["OCI Runtime&lt;br/&gt;runc / NVIDIA runtime"]
+  Runtime --&gt; Pod["Pod containers"]
+  CNI --&gt; Pod
+  CSI --&gt; Pod
+  Pod --&gt; App["AI workload&lt;br/&gt;inference / training / eval"]</code></pre>
+<p>控制流和数据流要分开看。控制流回答“对象如何被创建、调度、启动、重启、升级、删除”；数据流回答“请求、token、模型权重、数据集、checkpoint、日志和指标如何流动”。很多 AI 故障来自两条路径不一致：控制面认为 Pod 已经 Ready，数据面上的模型权重还在下载；调度器认为 GPU 数量满足，训练数据面上的 RDMA rail 不通；Deployment rollout 成功，Gateway streaming timeout 却导致长回答中断。只看 Kubernetes 对象状态，无法解释完整 AI 体验。</p>
+<p>GPU 容器运行时链路是本章必须掌握的一条底层路径。最早的做法是手动把 <code>/dev/nvidia0</code>、<code>/dev/nvidiactl</code>、<code>/dev/nvidia-uvm</code> 和 driver library bind mount 进容器，或者使用 <code>--privileged</code> 把过多宿主能力暴露给容器。前者难维护，后者风险高。NVIDIA 先后提供过 <code>nvidia-docker</code>、<code>nvidia-docker2</code> 和 NVIDIA Container Toolkit。当前主线是 NVIDIA Container Toolkit：通过 <code>nvidia-container-runtime</code>、runtime hook、<code>nvidia-container-cli</code> 和 <code>libnvidia-container</code> 在 OCI runtime 生命周期中完成设备和库注入。</p>
+<pre class="mermaid"><code>flowchart TB
+  Docker["docker / containerd / CRI-O"] --&gt; Spec["OCI runtime spec&lt;br/&gt;config.json"]
+  Spec --&gt; NVRuntime["nvidia-container-runtime"]
+  NVRuntime --&gt; Patch["修改 spec&lt;br/&gt;加入 NVIDIA hook"]
+  Patch --&gt; Runc["runc"]
+  Runc --&gt; NS["创建 namespace / cgroup&lt;br/&gt;尚未启动用户进程"]
+  NS --&gt; Hook["nvidia-container-runtime-hook&lt;br/&gt;prestart hook"]
+  Hook --&gt; CLI["nvidia-container-cli"]
+  CLI --&gt; Lib["libnvidia-container"]
+  Lib --&gt; Mounts["bind mount GPU devices&lt;br/&gt;driver libs / binaries"]
+  Mounts --&gt; Start["runc 启动容器进程"]
+  Start --&gt; App["CUDA / NCCL / AI app"]</code></pre>
+<p>在 Kubernetes 中，GPU 还多一层资源发现和分配。NVIDIA device plugin 向 kubelet 注册 <code>nvidia.com/gpu</code> 或 MIG 资源，Scheduler 根据 Pod resource request 选择节点，kubelet 在创建容器时把分配结果传给 CRI，NVIDIA Container Toolkit 再在 runtime 链路中注入设备和库。也就是说，device plugin 解决“哪些 GPU 分给这个 Pod”，container toolkit 解决“这些 GPU 如何出现在容器里”。把两者混为一谈，会导致排障时不知道该看 kubelet/device plugin，还是看 runtime hook/libnvidia-container。</p>
+<h2 id="213">21.3 关键技术<a class="headerlink" href="#213" title="Permanent link">&para;</a></h2>
+<h3 id="2131-container-runtime">21.3.1 container runtime<a class="headerlink" href="#2131-container-runtime" title="Permanent link">&para;</a></h3>
+<p>Container runtime 是容器从声明变成进程的执行层。Docker Engine 面向用户体验，containerd 面向容器生命周期管理，CRI-O 面向 Kubernetes CRI，runc 面向 OCI spec。Kubernetes 节点上，kubelet 不应该直接调用 Docker CLI，而是通过 CRI 调用 containerd 或 CRI-O；后者准备 sandbox、image、container、log 和 exec，再调用低层 OCI runtime 创建容器。排障时看到 <code>CreateContainerError</code>、<code>RunContainerError</code>、<code>OCI runtime create failed</code>，通常已经进入运行时链路，而不是 Kubernetes API 本身的问题。</p>
+<p>对 AI workload，runtime 的职责明显更重。它要拉取和解压大镜像，创建容器 rootfs，设置 cgroup device 规则，挂载 <code>emptyDir</code>、PVC、secret、configMap 和 hostPath，执行 OCI hook，注入 GPU、RDMA 或其他设备，设置共享内存和 IPC，并启动 Python、模型服务或训练 launcher。容器进程启动成功，只说明 runtime 走完了基本流程；CUDA、NCCL、模型加载和业务 readiness 仍要继续验证。</p>
+<p>NVIDIA Container Toolkit 介入的正是 runtime 路径。<code>nvidia-container-runtime</code> 可以被 Docker 或 containerd 配置为一个 runtime。它接收上层传入的 OCI spec，修改其中的 hook 配置，然后调用底层 runc。runc 创建容器 namespace 后、启动用户进程前，调用 <code>nvidia-container-runtime-hook</code>。hook 解析 spec 中的环境变量和设备请求，例如 <code>NVIDIA_VISIBLE_DEVICES</code>、driver capabilities、mount 需求，再调用 <code>nvidia-container-cli</code>。<code>nvidia-container-cli</code> 进一步调用 <code>libnvidia-container</code>，把宿主机上的 GPU 设备节点、driver library 和必要二进制以 bind mount 方式注入容器。</p>
+<p>这条链路解释了几个常见现象。第一，宿主机必须安装 NVIDIA driver，因为内核模块和 driver library 来自主机；容器镜像通常携带 CUDA runtime 和用户态框架，但不替代宿主机 driver。第二，<code>--privileged</code> 可以“看见 GPU”，但它绕开了最小权限原则，把过多宿主能力交给容器，不适合作为生产方案。第三，<code>nvidia-smi</code> 可用不等于 NCCL 可用，因为 NCCL 还依赖网络、拓扑、RDMA、版本和通信路径。第四，runtime hook 报错常常出现在容器创建阶段，Kubernetes 事件里可能只显示 OCI runtime 失败，需要到 containerd、kubelet 和 hook 日志里继续追。</p>
+<p>生产检查可以从四层开始：主机层看 <code>nvidia-smi</code>、driver、<code>/dev/nvidia*</code>、<code>ldconfig</code>；runtime 层看 <code>nvidia-ctk runtime configure</code> 是否写入 Docker/containerd 配置；容器层跑 <code>docker run --gpus all nvidia/cuda:&lt;tag&gt; nvidia-smi</code> 或等价 containerd smoke test；Kubernetes 层看 device plugin、Pod resource request、kubelet event 和容器内 CUDA/NCCL 测试。不要只跑一个 <code>nvidia-smi</code> 就宣布 GPU 容器链路健康。</p>
+<h3 id="2132-image">21.3.2 image<a class="headerlink" href="#2132-image" title="Permanent link">&para;</a></h3>
+<p>AI 镜像的核心矛盾是“可复现”和“可交付”。镜像越完整，复现越容易，但体积越大、分发越慢、漏洞面越大；镜像越薄，发布越快，但依赖外部环境越多。生产平台通常把镜像分为基础镜像和业务镜像：基础镜像由平台维护，包含 OS、Python、CUDA runtime、cuDNN、NCCL、PyTorch 或推理引擎基线；业务镜像在其上加入模型服务代码、训练脚本、评测逻辑和配置入口。基础镜像升级必须经过兼容性和性能回归，业务镜像升级必须能追溯到 commit、digest 和配置版本。</p>
+<p>GPU 镜像还必须理解 driver/runtime 边界。CUDA Toolkit 包含编译器、runtime library 和开发工具；NVIDIA driver 包含内核模块和 driver API library。容器内通常不安装内核 driver，宿主机 driver 通过 NVIDIA Container Toolkit 暴露给容器。CUDA runtime 与 driver 有兼容范围，但“理论兼容”不等于“本集群、本镜像、本模型可用”。因此平台要维护 driver、CUDA、NCCL、框架、推理引擎、GPU 型号和 OFED/RDMA 栈的兼容矩阵，并用真实 workload 验证。</p>
+<p>镜像内的环境变量也会影响 GPU 暴露。某些 NVIDIA CUDA 镜像历史上可能带有 <code>NVIDIA_VISIBLE_DEVICES</code> 或 capabilities 相关默认值；当节点 runtime 被配置为 NVIDIA runtime 时，即使用户没有显式传 <code>--gpus</code>，也可能因为镜像环境或 legacy 行为导致容器看到 GPU。生产平台不能假设“不写 GPU request 就没有 GPU”。在 Kubernetes 中，资源分配应以 Pod resource request 和 device plugin 分配结果为准，镜像默认环境不应绕过调度和配额。</p>
+<p>镜像分发是 AI Factory 的基础性能问题。一个包含大量 Python wheel、CUDA 组件和推理引擎的大镜像，可能在扩容时占用数分钟甚至更长时间。在线推理扩容慢，会直接影响峰值流量下的排队和 TTFT；训练任务启动慢，会增加 GPU 空闲等待。常见做法包括镜像分层优化、基础镜像预热、节点镜像缓存、跨地域镜像同步、离线镜像仓库、digest 固定、漏洞扫描和准入策略。镜像治理不是安全团队的边角工作，而是 AI Runtime 可用性的一部分。</p>
+<p>模型权重通常不应直接打进通用业务镜像。把大模型权重塞进镜像会让每次代码发布都变成巨型镜像分发，也让模型版本、tokenizer、engine 配置和服务代码耦合。更稳妥的模式是镜像承载 runtime 和服务程序，模型 artifact 由模型仓库、对象存储、并行文件系统或节点缓存加载，并用 model version、artifact digest 和 tokenizer version 记录。这样代码发布、模型切换和安全修复可以分开管理。</p>
+<h3 id="2133-pod">21.3.3 pod<a class="headerlink" href="#2133-pod" title="Permanent link">&para;</a></h3>
+<p>Pod 是 Kubernetes 的最小调度单元，不是最小容器单元。一个 Pod 内可以有多个容器，共享 network namespace、localhost、部分 volume 和生命周期。在线模型服务常用一个主容器承载 model server，再加 sidecar 做日志、代理或指标；批量推理可能用 init container 拉取模型或准备输入；训练 worker Pod 可能需要共享内存、host IPC、RDMA 设备和本地 NVMe。Pod 的设计目标不是“把所有东西塞进一个 YAML”，而是把必须共址、共享网络和共享卷的进程放在同一调度单元里。</p>
+<p>Pod 生命周期需要用 AI 语义重新解释。<code>Pending</code> 可能表示资源不足、quota 未准入、PVC 未绑定、镜像拉取未开始、GPU 拓扑不满足或节点被 taint；<code>ContainerCreating</code> 可能卡在 CNI、CSI、image unpack、OCI hook 或 device 注入；<code>Running</code> 只是容器主进程启动；<code>Ready</code> 取决于 readiness probe；<code>Terminating</code> 可能需要从 Gateway 摘流、等待 streaming 结束、保存 checkpoint 或释放模型缓存。生产平台应把这些底层状态映射成用户能理解的状态，例如“等待 A100 80GB 整机资源”“模型权重加载中”“NCCL rendezvous 失败”“等待 checkpoint flush”。</p>
+<p>Pod resource request 是调度和隔离的输入。CPU 和 memory request 决定调度预留，limit 决定约束；<code>ephemeral-storage</code> 影响临时盘；<code>nvidia.com/gpu</code> 或 MIG 资源由 device plugin 暴露；RDMA、DPU 或其他设备也可能通过 device plugin 或 CDI 暴露。不要把 GPU 容器能力仅理解成 <code>--device /dev/nvidia0</code>。在 Kubernetes 中，设备资源必须进入调度、配额和审计，否则容器虽然能看到硬件，平台却无法治理谁用了多少资源。</p>
+<p>健康检查要区分 liveness、readiness 和 startup。liveness probe 用于判断进程是否需要重启，不能因为模型加载慢就触发重启风暴；startup probe 用于保护慢启动服务，在大模型加载期间避免 liveness 误杀；readiness probe 决定是否加入 Service endpoint，必须检查模型权重、tokenizer、CUDA context、engine warmup 和关键依赖是否可用。只检查 HTTP 端口，会让未准备好的副本接收真实请求。</p>
+<p>Pod 标签是 AI Factory 的证据链。每个 Pod 至少应携带 tenant、project、workload type、model、model version、runtime、queue、cost center、experiment、owner 和 trace 相关标签。没有这些标签，节点告警无法映射到业务影响，GPU 利用率无法归因到租户，Pod 失败无法汇总到模型服务或训练任务。标签不是 dashboard 装饰，而是计费、排障、审计和容量规划的主键。</p>
+<h3 id="2134-deployment">21.3.4 deployment<a class="headerlink" href="#2134-deployment" title="Permanent link">&para;</a></h3>
+<p>Deployment 管理一组可替换副本，通过 ReplicaSet 实现滚动升级、扩缩容和回滚。它适合 AI Gateway、控制面服务、无状态 API、轻量模型服务，以及可以用副本数表达容量的在线推理服务。Deployment 的强项是声明式、简单、生态成熟；弱点是它不理解模型冷启动、KV Cache、GPU 显存、token 延迟、流量权重和模型版本关系。把大模型服务当成普通 Web Deployment，会在发布、扩容和回滚时付出代价。</p>
+<p>大模型 Deployment 最大的风险是 rollout 期间容量被高估。Kubernetes 看到新 Pod Ready 后就会把它加入 endpoint，但模型服务可能刚完成最浅层探针，还没有完成 engine warmup、prefix cache 预热或典型 prompt 测试。<code>maxUnavailable</code> 和 <code>maxSurge</code> 如果沿用普通服务默认值，可能导致升级期间可用 GPU 容量不足，老副本被提前下线，新副本虽然 Ready 却处理能力不足。关键模型应使用更保守的发布策略：容量预留、灰度流量、分批节点、长连接排空、发布前 synthetic request 和发布后指标观察。</p>
+<p>回滚也不是简单回滚 image。一次模型服务发布至少包含 image digest、model artifact、tokenizer、engine 参数、并发配置、batching 策略、LoRA adapter、prompt 模板、Gateway 路由和计量口径。Deployment 原生只理解 Pod template；模型发布系统必须记录这些版本之间的关系。否则 <code>kubectl rollout undo</code> 只能回到旧容器模板，却无法保证模型权重和路由策略一起回滚。</p>
+<p>Autoscaling 不能只看 CPU。LLM 推理的瓶颈可能是 GPU compute、HBM、KV Cache、请求队列、prefill 长度、decode 并发、输出 token 长度或 streaming 背压。HPA 基于 CPU 的默认经验往往不适用。更合理的指标包括 queue length、in-flight requests、TTFT、TPOT、tokens/s、KV Cache usage、GPU memory、engine batch occupancy 和错误率。即便使用自定义指标，也要避免瞬时扩缩容造成频繁冷启动。</p>
+<p>Deployment 的适用边界是“副本可替换”。如果副本依赖本地模型缓存、会话亲和、长生命周期 KV Cache 或专属 GPU 拓扑，发布系统就要显式处理粘性、排空、预热和缓存命中率。Deployment 仍然是底层执行工具，但 AI Factory 需要在其上建立 ModelService、InferenceService 或类似抽象，把模型服务语义补齐。</p>
+<h3 id="2135-job">21.3.5 job<a class="headerlink" href="#2135-job" title="Permanent link">&para;</a></h3>
+<p>Job 表达“运行到完成”的任务。它适合数据处理、批量推理、评测、单机微调、模型转换、索引构建和一次性管理任务。Job controller 关心 completions、parallelism、backoffLimit、activeDeadlineSeconds 和 Pod 成败。它的优点是简单清晰：容器退出码成功，Job 就可以完成；容器失败，Job 可以按策略重试。它的缺点也同样清晰：它不天然理解分布式训练的 gang scheduling、多角色 worker、checkpoint、rank、弹性恢复和作业级配额。</p>
+<p>AI 批任务要把业务完成语义放到 Job 之上。批量推理不是“所有 Pod 退出 0”就结束，还要确认每个 input shard 都有输出、输出 schema 正确、失败样本被记录、重复写入被去重、计量事件完整。评测任务不是“评测脚本退出 0”就结束，还要确认报告、指标、样本追踪、模型版本和数据版本进入 registry。微调任务不是“训练脚本退出 0”就结束，还要确认 checkpoint、adapter、评测结果、权限和模型注册状态。Kubernetes Job 只提供执行框架，业务产物必须由平台控制器校验。</p>
+<p>Job 的重试策略必须和幂等性绑定。数据处理 shard 如果输出路径按 shard id 覆盖写，失败重试相对安全；如果每次重试追加写同一个表，就可能产生重复数据。批量推理如果调用外部工具或写入业务系统，自动重试可能带来副作用。GPU Job 的失败还要区分用户错误、资源错误和平台错误：代码参数错不应无限重试，节点 Xid 或网络抖动可以迁移重跑，存储不可用应暂停而不是消耗重试次数。</p>
+<p>分布式训练通常不应直接用一组独立 Job 拼出来。64 个 worker 需要同时拿到资源、共享 rendezvous 信息、建立通信拓扑，并在失败时按作业级策略恢复。普通 Job 只能看到单 Pod 或一组 Pod 的成功失败，不提供 queue、quota、gang、PodGroup 和拓扑准入。第 23 章会讲 Volcano、Kueue、Ray、Training Operator 等作业调度能力；本章只强调边界：Job 是批式执行积木，不是完整 AI 作业系统。</p>
+<p>Job 还要注意清理和证据保留。失败 Pod 的日志、事件、节点、镜像、环境变量、退出码、GPU UUID 和输入 shard 应保留足够长时间；成功 Job 的中间 Pod 可以按 TTL 清理，但产物、指标和计量必须先落库。清理太早会让排障失去现场，清理太晚会让集群积累大量已完成对象和临时卷。生产平台应为不同任务类型设置不同 TTL 和归档策略。</p>
+<h3 id="2136-statefulset">21.3.6 statefulset<a class="headerlink" href="#2136-statefulset" title="Permanent link">&para;</a></h3>
+<p>StatefulSet 管理有稳定身份和稳定存储绑定的副本。它提供有序创建、有序删除、稳定 Pod 名称、稳定 network identity 和 PVC 绑定。向量数据库、元数据数据库、队列、缓存、对象存储网关、模型 registry 后端、某些参数服务或需要固定成员身份的系统，适合用 StatefulSet。它解决的是“副本身份和存储关系稳定”，不是“所有有状态 AI 任务都应该用 StatefulSet”。</p>
+<p>不要用 StatefulSet 逃避训练调度问题。分布式训练确实需要 rank、hostname 和 worker 身份，但更核心的是作业级准入、gang scheduling、拓扑、故障恢复、checkpoint 和弹性策略。StatefulSet 可以提供稳定 Pod 名称，却不会保证 64 个 worker 同时获得 GPU，也不会在某个 worker 失败时自动理解训练是否可恢复。把训练 worker 生硬放进 StatefulSet，可能让身份稳定了，但调度和恢复仍然不正确。</p>
+<p>StatefulSet 的关键风险在存储。每个副本通常绑定独立 PVC，PVC 的性能、可用区、挂载模式和恢复能力会决定服务稳定性。向量数据库如果 PVC 性能不足，会拖慢 RAG 检索；元数据数据库如果没有备份，会影响模型注册和发布；缓存系统如果误用持久卷，可能把可重建状态变成恢复负担。AI Factory 应区分“必须持久化的状态”和“可重建缓存”，并为二者设置不同 RPO/RTO。</p>
+<p>升级 StatefulSet 要考虑 quorum、成员变更和数据格式。数据库、向量索引和队列系统不是简单重启即可升级。滚动升级可能造成 leader 迁移、索引重建、协议版本不兼容或写入暂停。生产发布需要预检查、备份、分批升级、健康验证和回滚预案。Kubernetes 能按顺序重建 Pod，但不能替你理解上层系统的一致性协议。</p>
+<p>StatefulSet 也会降低调度灵活性。绑定本地或区域性存储后，Pod 不容易迁移到任意节点；节点故障时，恢复速度取决于存储系统和调度约束。对关键 AI 平台组件，应结合 anti-affinity、topology spread、备份、跨故障域副本和容量规划，而不是只设置 <code>replicas: 3</code>。稳定身份是基础，高可用仍需要系统级设计。</p>
+<h3 id="2137-service">21.3.7 service<a class="headerlink" href="#2137-service" title="Permanent link">&para;</a></h3>
+<p>Service 为一组 Pod 提供稳定虚拟 IP、DNS 名称和负载均衡入口。它解决 Pod IP 会变化的问题，让调用方不必跟踪每个副本。在线推理通常由 Service 暴露给 AI Gateway、Ingress、服务网格或内部客户端；训练任务的 rendezvous、参数服务或控制面组件也可能使用 Service。Service 是 Kubernetes 网络抽象，不是模型路由系统，也不是租户治理系统。</p>
+<p>LLM streaming 让 Service 的普通经验变得不够。长连接会受到 idle timeout、连接池、负载均衡、客户端取消和中间代理重试影响。请求一旦进入某个模型副本，后续 token 通常要从同一副本持续返回；如果中间层在 streaming 过程中重试，可能产生重复输出或断裂响应。Service 只提供基础负载均衡，AI Gateway 和模型服务还要处理 request id、取消、限流、fallback、token 计量和 trace。</p>
+<p>负载均衡策略会影响缓存和延迟。一个模型副本可能已经加载特定 LoRA adapter，另一个副本没有；一个副本 KV Cache 压力高，另一个副本空闲；一个副本刚启动还在 warmup，另一个副本稳定运行。Service 的默认分发并不理解这些状态。生产系统常把 Service 作为稳定 endpoint，把智能路由放在 Gateway 或模型调度层，根据模型、租户、缓存、队列和健康状态做更细选择。</p>
+<p>Service 排障要沿完整路径走：DNS 是否解析，EndpointSlice 是否包含 Ready Pod，kube-proxy 或 eBPF datapath 是否正确，NetworkPolicy 是否阻断，Ingress/Gateway timeout 是否一致，模型服务是否接受连接，streaming 是否被中断。只看 <code>kubectl get svc</code> 基本没有意义。一次“请求超时”可能发生在客户端、Gateway、Service、Pod 网络、模型队列、GPU decode 或响应发送任意一段。</p>
+<p>Service 不应承载租户策略。认证、鉴权、quota、模型路由、计量、审计和灰度属于 AI Gateway 或 Platform 层。把这些策略分散到每个 Service 或应用实例，会造成策略漂移和审计困难。Service 保持基础网络职责，上层平台集中治理 AI 请求语义，是更可维护的分层方式。</p>
+<h3 id="2138-scheduler">21.3.8 scheduler<a class="headerlink" href="#2138-scheduler" title="Permanent link">&para;</a></h3>
+<p>Kubernetes Scheduler 的默认单位是 Pod。它通过 filter 和 score 阶段选择节点，考虑资源请求、nodeSelector、node affinity、pod affinity/anti-affinity、taints/tolerations、topology spread、volume binding 和扩展插件。对普通服务，这已经足够强大；对 AI workload，它只是起点。GPU 型号、显存、MIG profile、NVLink、NUMA、PCIe、RDMA NIC、机架拓扑、镜像缓存、节点健康、队列、配额和 gang scheduling 都可能影响正确放置。</p>
+<p>调度问题要区分 Pod 级和作业级。默认 Scheduler 可以决定一个 Pod 放到哪台节点，但一个训练任务可能由多个 Pod 组成，必须同时拿到一组拓扑合适的 GPU，否则启动一半只会浪费资源。Gang scheduling 解决“要么整体准入，要么整体等待”；queue 和 quota 解决“哪个租户、哪个队列、哪个优先级可以用资源”；topology-aware scheduling 解决“这组 GPU、NIC、rack 是否适合该任务”。这些能力通常由 Volcano、Kueue、scheduler plugin、Ray、Training Operator 或外部调度系统补齐。</p>
+<p>可解释 Pending 是 AI 调度平台的重要质量标准。用户看到任务 Pending，不应该只得到一句 <code>0/200 nodes are available</code>。平台应说明是 GPU 型号不满足、整机 8 卡资源不足、MIG profile 不匹配、quota 不足、队列未准入、PVC 未绑定、节点 taint、拓扑约束、镜像缓存策略还是节点健康被隔离。GPU 稀缺时，调度解释能力直接影响用户信任和资源运营效率。</p>
+<p>Scheduler 还要与资源池和准入系统联动。节点通过第 38 章的准入测试后，才应进入可调度池；发生 Xid、ECC、NVLink、RDMA 或存储异常后，节点应降级、隔离或只允许低风险任务；维修回池后要复测。Scheduler 不能只相信节点上报的 allocatable GPU 数量。一个“有 8 张 GPU”的节点，如果 NCCL baseline 退化或某条 rail 异常，对大训练任务就是坏资源。</p>
+<p>调度结果必须可审计。平台应记录作业提交时间、队列、quota、优先级、候选节点、过滤原因、最终绑定节点、GPU UUID、拓扑、抢占和回收事件。没有审计，资源争议会变成口头解释；有审计，容量规划可以基于真实等待原因改进。Scheduler 不只是把 Pod 放出去，更是 AI Factory 资源治理的决策点。</p>
+<h3 id="2139-cnicsicri">21.3.9 CNI、CSI、CRI<a class="headerlink" href="#2139-cnicsicri" title="Permanent link">&para;</a></h3>
+<p>CRI、CNI、CSI 是 Kubernetes 把容器、网络和存储能力插件化的三条接口。CRI（Container Runtime Interface）连接 kubelet 与 container runtime，负责 sandbox、image、container、exec、log 和 stats；CNI（Container Network Interface）为 Pod 配置网络，分配 IP，接入路由、overlay、underlay、NetworkPolicy 或 eBPF datapath；CSI（Container Storage Interface）让存储系统以标准方式提供 volume provision、attach、mount、snapshot 和扩缩容。它们不是缩写表，而是排障边界。</p>
+<p>CRI 问题常表现为镜像拉取失败、容器创建失败、OCI runtime hook 失败、日志不可读、exec 失败或 GPU 设备注入异常。GPU 容器链路中，CRI 会把容器创建请求交给 containerd/CRI-O，再进入 NVIDIA runtime 和 runc。若 <code>nvidia-container-runtime-hook</code> 失败，Kubernetes 事件可能只显示 <code>OCI runtime create failed</code>；真正原因可能在 hook stderr、containerd 日志、<code>nvidia-container-cli</code> debug log 或 cgroup device 规则。CRI 排障必须能下钻到节点。</p>
+<p>CNI 对 AI workload 的影响不仅是“Pod 能不能 ping 通”。在线推理关注连接建立、长连接稳定性、Service 转发、NetworkPolicy、DNS 和 Gateway 路径；分布式训练关注 Pod-to-Pod 延迟、带宽、RDMA、RoCE/IB、hostNetwork、多网卡和 rail 选择。CNI 插件升级可能改变路径 MTU、conntrack、eBPF 程序或网络策略行为，进而影响 TTFT、TPOT、NCCL all_reduce 和 rendezvous 稳定性。网络变更必须跑 AI workload 回归，而不是只跑通用连通性测试。</p>
+<p>CSI 对训练和推理同样关键。模型权重加载、RAG 索引、数据集读取、checkpoint 写入和日志归档都经过存储路径。CSI mount 成功不代表性能足够；PVC Bound 不代表吞吐、metadata latency、并发读和写入放大满足训练要求。AI 平台应分别度量 model load time、dataset read throughput、checkpoint duration、metadata latency、mount latency 和失败率，并把这些指标关联到 workload。</p>
+<p>三条接口的 owner 往往不同：平台团队维护 runtime 基线，网络团队维护 CNI，存储团队维护 CSI，GPU 团队维护 device plugin 和 driver。但用户只看到一个 Pod 失败。因此 AI Factory 需要统一事件翻译和关联视图：从一个 Pod 能看到 CRI、CNI、CSI、device、node、image、volume 和 Gateway 状态；从一个训练任务能看到所有 worker 的接口层差异。接口插件越多，越需要清晰边界和统一证据链。</p>
+<h3 id="21310-gpu-nvidia-container-toolkit">21.3.10 GPU 容器运行时与 NVIDIA Container Toolkit<a class="headerlink" href="#21310-gpu-nvidia-container-toolkit" title="Permanent link">&para;</a></h3>
+<p>手动让 Docker 容器使用 GPU 的最小方式，是把 GPU 设备和驱动相关文件挂进去。例如显式传入 <code>/dev/nvidia0</code>、<code>/dev/nvidiactl</code>、<code>/dev/nvidia-uvm</code>，并挂载宿主机上的 NVIDIA driver library 路径。这个方式说明了 GPU 容器的本质：容器需要访问设备节点和 driver 用户态库，GPU 内核驱动仍在宿主机。它也说明了手工方式不可维护：不同驱动版本、不同 GPU、MIG、UVM、NVML、CUDA compatibility library、容器 runtime 和发行版路径都会让挂载清单变化。</p>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>-it<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--device<span class="w"> </span>/dev/nvidia0:/dev/nvidia0<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--device<span class="w"> </span>/dev/nvidiactl:/dev/nvidiactl<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--device<span class="w"> </span>/dev/nvidia-uvm:/dev/nvidia-uvm<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-v<span class="w"> </span>/usr/local/nvidia:/usr/local/nvidia<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>nvidia/cuda:12.2.0-base-ubuntu22.04<span class="w"> </span>nvidia-smi
+</code></pre></div>
+<p><code>--privileged</code> 能让容器看到更多宿主能力，但这是过宽授权，不是工程方案。特权容器可能访问宿主设备、修改内核相关状态、绕过很多隔离限制。AI 平台为了方便调试偶尔会使用 privileged，但生产模型服务和多租户训练不应依赖它。正确方向是让设备、库、capability、seccomp 和 mount 都以最小权限进入容器，并由调度和审计系统记录。</p>
+<p>生产平台需要把这些权限收敛成 <code>runtime_privilege_profile</code>，而不是让每个用户在 YAML 中自由组合 <code>privileged</code>、<code>hostPath</code>、<code>hostNetwork</code>、Linux capabilities 和设备挂载。这个 profile 描述某类 workload 允许使用哪些宿主能力、哪些必须由平台注入、哪些只允许 debug 临时豁免。AI Factory 中最危险的错误不是某个容器拿不到 GPU，而是为了让 GPU 可用而把宿主机完整暴露给用户进程。</p>
+<div class="highlight"><pre><span></span><code><span class="nt">runtime_privilege_profile</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-inference-production</span>
+<span class="w">  </span><span class="nt">allowed_namespaces</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">maaS-prod</span>
+<span class="w">  </span><span class="nt">workload_types</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">online_inference</span>
+<span class="w">  </span><span class="nt">privilege</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">privileged</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="w">    </span><span class="nt">allow_privilege_escalation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="w">    </span><span class="nt">run_as_non_root</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">seccomp_profile</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">RuntimeDefault</span>
+<span class="w">    </span><span class="nt">capabilities</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">add</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[]</span>
+<span class="w">      </span><span class="nt">drop</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">ALL</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="nt">host_access</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">host_network</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="w">    </span><span class="nt">host_pid</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="w">    </span><span class="nt">host_ipc</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">conditional_for_nccl_only</span>
+<span class="w">    </span><span class="nt">host_path</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">allowed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="w">      </span><span class="nt">exceptions</span><span class="p">:</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/dev/shm</span>
+<span class="w">          </span><span class="nt">reason</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">shared_memory_for_inference_engine</span>
+<span class="w">          </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">size_limited_emptydir_preferred</span>
+<span class="w">  </span><span class="nt">devices</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">gpu</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">allocated_by_device_plugin</span>
+<span class="w">    </span><span class="nt">rdma</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">allocated_by_rdma_device_plugin</span>
+<span class="w">    </span><span class="nt">manual_device_mount</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">denied</span>
+<span class="w">  </span><span class="nt">audit</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">require_owner</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">require_ticket_for_exception</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">emit_security_audit_event</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</code></pre></div>
+<p><code>runtime_privilege_profile</code> 应由 admission webhook 或平台控制器执行。对生产 namespace，用户不能直接提交 privileged Pod，也不能随意挂载 <code>/</code>, <code>/var/run</code>, <code>/dev</code>, <code>/sys</code>, <code>/proc</code>, container runtime socket 或宿主 driver 目录。对需要 RDMA、NCCL 或性能调试的场景，可以通过受控 profile 开放 <code>IPC_LOCK</code>、<code>SYS_NICE</code>、host IPC 或特定 device，但必须有过期时间和审计。这样平台既能支持高性能 AI workload，又不会把临时调试权限变成长期生产默认值。</p>
+<p>NVIDIA 的方案演进可以概括为三代。<code>nvidia-docker</code> 1.x 是早期包装器，用户用 <code>nvidia-docker run</code> 替代 <code>docker run</code>，由额外逻辑挂载 GPU 相关资源；它与原生 Docker 生态耦合较强，后来被淘汰。<code>nvidia-docker2</code> 引入 <code>nvidia-container-runtime</code>，用户可以通过 <code>docker run --runtime=nvidia</code> 使用增强 runtime，同时保留 <code>nvidia-docker</code> 作为兼容入口。当前主线是 NVIDIA Container Toolkit，它把 runtime、hook、CLI、library 和配置工具组合起来，支持 Docker、containerd、CRI-O、Podman 等不同 runtime 场景，并提供 <code>nvidia-ctk</code> 进行配置。</p>
+<p>NVIDIA Container Toolkit 的组件职责要记清楚。<code>libnvidia-container</code> 是底层库，负责发现宿主机 NVIDIA driver 能力，并执行设备和库文件注入。<code>nvidia-container-cli</code> 是调用该库的命令行工具，可用于 debug 和实际注入。<code>nvidia-container-runtime-hook</code> 或 <code>nvidia-container-toolkit</code> 作为 OCI hook，在容器创建后、用户进程启动前被调用。<code>nvidia-container-runtime</code> 包装低层 runc，修改 OCI spec，把 NVIDIA hook 加入生命周期。<code>nvidia-ctk</code> 是配置工具，用于写入 Docker、containerd 等 runtime 配置。</p>
+<p>安装包关系会随版本变化，但可以用职责而不是包名记忆：library/CLI 负责“怎么注入”，hook 负责“何时注入”，runtime 负责“把 hook 放进 spec”，ctk 负责“把 runtime 接到 Docker/containerd”。某些版本中 <code>nvidia-container-toolkit</code> 是 <code>nvidia-container-runtime-hook</code> 的软链接或等价入口，这是实现细节。工程上更重要的是能回答：Docker/containerd 是否使用了 NVIDIA runtime，OCI spec 是否包含 hook，hook 是否被 runc 调用，CLI 是否正确识别 GPU，libnvidia-container 是否成功 bind mount 设备和库。</p>
+<p>近年来还要理解 CDI（Container Device Interface，容器设备接口）和 NRI（Node Resource Interface，节点资源接口）带来的分叉。传统模式主要依赖环境变量和 OCI prestart hook：device plugin 把 <code>NVIDIA_VISIBLE_DEVICES</code>、device nodes 或 runtime 相关信息传给 kubelet/CRI，NVIDIA runtime hook 在容器启动前解析这些信息并注入设备。CDI 模式则把设备描述写成标准化 CDI spec，例如某个 <code>nvidia.com/gpu=GPU-xxxx</code> 对应哪些 device nodes、mount、env 和 hooks，containerd、CRI-O 或低层 runtime 根据 CDI device name 完成注入。NRI 进一步允许节点侧插件在容器生命周期中调整资源和注入信息。它们的共同目标，是减少对私有环境变量和 runtime wrapper 的依赖，让设备注入更标准、更可组合。</p>
+<p>这并不意味着 legacy hook 模式立刻消失。很多生产集群仍会同时存在 Docker <code>--gpus</code>、containerd <code>nvidia</code> runtime handler、Kubernetes device plugin 的 envvar strategy、CDI strategy、GPU Operator 管理的 Toolkit 和不同版本的容器运行时。平台文档如果只写“安装 NVIDIA Container Toolkit 即可”，读者遇到 RuntimeClass、CDI spec、device plugin strategy 或 hook 日志时就会断层。更准确的表达是：GPU 容器链路有多个实现路径，但每条路径都要回答同样的问题：设备由谁分配，设备描述由谁生成，CRI 如何传递，runtime 如何消费，容器内如何验证。</p>
+<pre class="mermaid"><code>flowchart TB
+  DP["GPU Device Plugin\n发现 / 分配 GPU"] --&gt; Strategy{"device list strategy"}
+  Strategy --&gt; Env["envvar / volume / legacy path\nNVIDIA_VISIBLE_DEVICES"]
+  Strategy --&gt; CDI["CDI spec\nvendor.com/device=GPU-uuid"]
+  Env --&gt; CRI["kubelet -&gt; CRI\ncontainerd / CRI-O"]
+  CDI --&gt; CRI
+  CRI --&gt; Handler{"runtime handler"}
+  Handler --&gt; Hook["nvidia runtime / OCI hook\nlegacy injection"]
+  Handler --&gt; Native["OCI runtime consumes CDI\nstandard device injection"]
+  Hook --&gt; Container["container\n/dev/nvidia* + driver libs"]
+  Native --&gt; Container</code></pre>
+<p>排障时必须先识别当前节点使用哪条路径。若集群使用 RuntimeClass <code>nvidia</code>，但 Pod 没写 runtimeClassName，可能落到默认 runc，导致 device plugin 分配了 GPU 但 runtime 没有执行 NVIDIA 注入。若 device plugin 使用 CDI strategy，但 containerd 或 CRI-O 没启用 CDI 支持，Pod 事件可能显示设备解析失败。若集群使用 legacy envvar strategy，镜像里残留 <code>NVIDIA_VISIBLE_DEVICES=all</code> 可能使非 GPU Pod 触发 NVIDIA hook。路径不同，日志入口也不同：legacy hook 看 <code>nvidia-container-runtime-hook</code>、<code>nvidia-container-cli</code> 和 containerd stderr；CDI 看 CDI spec 文件、CRI 传递的 device name 和 runtime CDI 解析错误；RuntimeClass 问题则看 Pod spec、RuntimeClass 对象、containerd runtime handler 和 kubelet CRI 配置。</p>
+<p>为了让这条路径可验证，平台应保存 <code>oci_runtime_injection_diff</code>。它不是要求用户读完整 OCI <code>config.json</code>，而是把 NVIDIA runtime、CDI 或 NRI 在容器启动前后改变了什么摘出来：新增了哪些 hook、device、mount、env、Linux capability、cgroup device rule，以及这些变化是否来自 device plugin 分配结果。没有 diff，<code>OCI runtime create failed</code> 只能靠节点日志猜；有 diff，SRE 可以判断失败发生在 spec patch、hook 执行、CDI 解析还是用户进程启动。</p>
+<div class="highlight"><pre><span></span><code><span class="nt">oci_runtime_injection_diff</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">diff_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ord-20260620-gpu-smoke-001</span>
+<span class="w">  </span><span class="nt">pod</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-acceptance</span>
+<span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-smoke-runtimeclass</span>
+<span class="w">    </span><span class="nt">container</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cuda</span>
+<span class="w">  </span><span class="nt">runtime_path</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">cri</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">containerd</span>
+<span class="w">    </span><span class="nt">runtime_handler</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nvidia</span>
+<span class="w">    </span><span class="nt">injection_mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cdi</span>
+<span class="w">    </span><span class="nt">device_list_strategy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cdi</span>
+<span class="w">  </span><span class="nt">before</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">hooks</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">prestart</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[]</span>
+<span class="w">    </span><span class="nt">devices</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[]</span>
+<span class="w">    </span><span class="nt">mounts</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[]</span>
+<span class="w">    </span><span class="nt">env</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">NVIDIA_VISIBLE_DEVICES</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">absent</span>
+<span class="w">  </span><span class="nt">after</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">cdi_devices</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nvidia.com/gpu=GPU-xxxx</span>
+<span class="w">    </span><span class="nt">devices</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/dev/nvidia0</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/dev/nvidiactl</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/dev/nvidia-uvm</span>
+<span class="w">    </span><span class="nt">mounts</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">source</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">host_driver_library</span>
+<span class="w">        </span><span class="nt">destination</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">container_driver_library</span>
+<span class="w">    </span><span class="nt">env</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">NVIDIA_VISIBLE_DEVICES</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">GPU-xxxx</span>
+<span class="w">      </span><span class="nt">NVIDIA_DRIVER_CAPABILITIES</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">compute,utility</span>
+<span class="w">  </span><span class="nt">verdict</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">spec_patch</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
+<span class="w">    </span><span class="nt">hook_or_cdi_resolution</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
+<span class="w">    </span><span class="nt">unexpected_extra_devices</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+</code></pre></div>
+<p>这个 diff 的关键不是记录所有实现细节，而是建立“分配事实到运行时事实”的桥。若 device plugin 分配了 1 张 GPU，而 diff 中出现 8 张设备，问题在 runtime 注入或镜像默认值；若 diff 中有 CDI device name，但容器创建失败提示无法解析 CDI，问题在 containerd/CRI-O 的 CDI 支持或 spec 文件；若 diff 没有任何 NVIDIA 相关变化，说明 RuntimeClass、runtime handler 或 device plugin strategy 没有接上。它应被第 38 章的容器 GPU runtime 准入和第 39 章的故障诊断消费。</p>
+<pre class="mermaid"><code>flowchart TB
+  Symptom["Pod Running\nbut GPU wrong / unavailable"] --&gt; Assign["gpu_assignment_record\nkubelet + device plugin"]
+  Assign --&gt; Diff["oci_runtime_injection_diff\nOCI spec / CDI / hook"]
+  Diff --&gt; Recon["gpu_device_visibility_reconciliation\ninside container facts"]
+  Recon --&gt; Verdict{"facts match?"}
+  Verdict --&gt;|yes| App["move upward\nCUDA / NCCL / app readiness"]
+  Verdict --&gt;|no| Runtime["runtime investigation\nRuntimeClass / CDI / hook / env"]
+  Runtime --&gt; Baseline["container_gpu_runtime_acceptance_matrix\nretest node pool"]
+  Baseline --&gt; Pool["resource pool state\nallocatable / limited / quarantine"]</code></pre>
+<p>这张图的价值在于明确“先对账，再归因”。容器内 <code>nvidia-smi</code> 成功只是一个观察点，不是最终结论；真正要比较的是调度分配、OCI 注入和容器内事实是否一致。若三者一致，再进入 CUDA、NCCL、模型服务或应用 readiness；若三者不一致，就应先处理 runtime 基线，而不是让业务团队继续改镜像或模型代码。</p>
+<p>Docker 使用时，典型命令是：</p>
+<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>nvidia-ctk<span class="w"> </span>runtime<span class="w"> </span>configure<span class="w"> </span>--runtime<span class="o">=</span>docker
+sudo<span class="w"> </span>systemctl<span class="w"> </span>restart<span class="w"> </span>docker
+
+docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>--gpus<span class="w"> </span>all<span class="w"> </span>nvidia/cuda:12.2.0-base-ubuntu22.04<span class="w"> </span>nvidia-smi
+docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>--gpus<span class="w"> </span><span class="s1">&#39;&quot;device=1,2&quot;&#39;</span><span class="w"> </span>nvidia/cuda:12.2.0-base-ubuntu22.04<span class="w"> </span>nvidia-smi
+docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>--runtime<span class="o">=</span>nvidia<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-e<span class="w"> </span><span class="nv">NVIDIA_VISIBLE_DEVICES</span><span class="o">=</span>all<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>nvidia/cuda:12.2.0-base-ubuntu22.04<span class="w"> </span>nvidia-smi
+</code></pre></div>
+<p>Kubernetes 使用 containerd 时，通常不是让用户在 Pod 里写 <code>--gpus</code>。Pod 通过 <code>resources.limits.nvidia.com/gpu</code> 申请 GPU，device plugin 分配设备，container runtime 按配置调用 NVIDIA 相关逻辑。节点 bootstrap 应检查 containerd runtime class、NVIDIA runtime 配置、device plugin、driver、<code>nvidia-container-cli info</code>、容器内 <code>nvidia-smi</code> 和最小 CUDA 程序。否则 Kubernetes 调度成功后，容器仍可能在 runtime 阶段失败。</p>
+<p>要特别注意 <code>NVIDIA_VISIBLE_DEVICES</code>。它可以是 <code>all</code>、<code>none</code>、具体 GPU index、UUID 或 MIG device 标识，不同 runtime 和工具版本支持细节不同。<code>NVIDIA_DRIVER_CAPABILITIES</code> 控制暴露 compute、utility、graphics、video 等能力。错误的环境变量会导致容器看到过多或过少设备；镜像内遗留默认值可能导致未显式申请 GPU 的容器也触发 NVIDIA hook。生产平台应通过调度和准入统一设置，而不是依赖用户手写环境变量。</p>
+<h2 id="214">21.4 工程落地<a class="headerlink" href="#214" title="Permanent link">&para;</a></h2>
+<h3 id="2141">21.4.1 工程实现<a class="headerlink" href="#2141" title="Permanent link">&para;</a></h3>
+<p>生产落地应从节点基线开始，而不是从业务 Pod YAML 开始。节点必须安装匹配的 NVIDIA driver，确认 GPU、MIG、NVLink、ECC、persistence mode、driver version 和 kernel module 状态；安装 NVIDIA Container Toolkit；用 <code>nvidia-ctk</code> 配置 Docker 或 containerd；部署 device plugin 或 GPU Operator；最后跑分层 smoke test。每一步都要记录版本和结果，作为节点准入和后续故障对比的证据。</p>
+<p>Docker 节点最小检查如下：</p>
+<div class="highlight"><pre><span></span><code>nvidia-smi
+nvidia-container-cli<span class="w"> </span>info
+nvidia-ctk<span class="w"> </span>runtime<span class="w"> </span>configure<span class="w"> </span>--runtime<span class="o">=</span>docker
+systemctl<span class="w"> </span>restart<span class="w"> </span>docker
+docker<span class="w"> </span>info<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span>runtime
+docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>--gpus<span class="w"> </span>all<span class="w"> </span>nvidia/cuda:12.2.0-base-ubuntu22.04<span class="w"> </span>nvidia-smi
+</code></pre></div>
+<p>containerd 节点要检查 runtime 配置是否进入 <code>/etc/containerd/config.toml</code>，并确认 kubelet 使用的 CRI endpoint 指向该 containerd。配置形式会随发行版、containerd 版本和 NVIDIA Toolkit 版本变化，平台不应手写不可审计的零散配置，而应由节点初始化或 GPU Operator 统一管理。配置后要重启 containerd，并通过 Kubernetes Pod 验证，而不只通过 Docker 验证。</p>
+<p>在 containerd 环境里，生产检查不应只 grep 一个 <code>nvidia</code> 字符串。要确认三个事实：第一，kubelet 的 CRI endpoint 指向的是这份 containerd；第二，containerd 中存在预期 runtime handler，例如 <code>nvidia</code>，且它指向 NVIDIA runtime 或支持 CDI 的 runtime；第三，Pod 是否通过默认 runtime、RuntimeClass 或 device plugin strategy 使用了这条 handler。下面的命令不是固定 runbook，而是检查方向：</p>
+<div class="highlight"><pre><span></span><code>crictl<span class="w"> </span>info<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span>runtime
+containerd<span class="w"> </span>config<span class="w"> </span>dump<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span>nvidia
+kubectl<span class="w"> </span>get<span class="w"> </span>runtimeclass
+kubectl<span class="w"> </span>describe<span class="w"> </span>pod<span class="w"> </span>&lt;pod&gt;<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span><span class="s2">&quot;runtime\\|nvidia\\|cdi&quot;</span>
+journalctl<span class="w"> </span>-u<span class="w"> </span>kubelet<span class="w"> </span>-u<span class="w"> </span>containerd<span class="w"> </span>--since<span class="w"> </span><span class="s2">&quot;30 min ago&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span><span class="s2">&quot;nvidia\\|cdi\\|oci&quot;</span>
+</code></pre></div>
+<p>如果集群使用 RuntimeClass，可以为 GPU workload 显式指定：</p>
+<div class="highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">node.k8s.io/v1</span>
+<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">RuntimeClass</span>
+<span class="nt">metadata</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nvidia</span>
+<span class="nt">handler</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nvidia</span>
+<span class="nn">---</span>
+<span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">v1</span>
+<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Pod</span>
+<span class="nt">metadata</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-smoke-runtimeclass</span>
+<span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">runtimeClassName</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nvidia</span>
+<span class="w">  </span><span class="nt">restartPolicy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Never</span>
+<span class="w">  </span><span class="nt">containers</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cuda</span>
+<span class="w">      </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nvidia/cuda:12.2.0-base-ubuntu22.04</span>
+<span class="w">      </span><span class="nt">command</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;nvidia-smi&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">      </span><span class="nt">resources</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">limits</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">nvidia.com/gpu</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+</code></pre></div>
+<p>是否必须显式 RuntimeClass，取决于集群策略。有些平台把 NVIDIA runtime 配成默认 runtime，有些平台只允许 GPU workload 使用 <code>runtimeClassName: nvidia</code>，也有平台通过 CDI 让默认 runtime 消费设备描述。关键不是哪一种绝对正确，而是策略必须一致、可审计、可准入。若一半节点用默认 NVIDIA runtime，另一半节点要求 RuntimeClass，用户会看到随机失败；若 admission 没有检查 GPU Pod 的 runtime strategy，Pod 可能被调度成功却在 CreateContainer 阶段失败。</p>
+<p>CDI 路径还需要检查 CDI spec 是否存在、device name 是否与 device plugin 分配一致、runtime 是否启用 CDI，以及容器内设备与分配记录是否一致。生产诊断报告应把 <code>device_list_strategy</code> 写出来，例如 <code>envvar</code>、<code>cdi</code> 或混合模式，并记录 CDI spec hash。这样一次容器 GPU 问题发生时，SRE 不需要先猜这台节点到底走的是 hook 注入还是 CDI 注入。</p>
+<p>一个最小 GPU Pod 可以这样验证：</p>
+<div class="highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">v1</span>
+<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Pod</span>
+<span class="nt">metadata</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-smoke</span>
+<span class="w">  </span><span class="nt">labels</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">workload.ai-factory/type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-smoke</span>
+<span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">restartPolicy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Never</span>
+<span class="w">  </span><span class="nt">containers</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cuda</span>
+<span class="w">      </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nvidia/cuda:12.2.0-base-ubuntu22.04</span>
+<span class="w">      </span><span class="nt">command</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;nvidia-smi&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">      </span><span class="nt">resources</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">limits</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">nvidia.com/gpu</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+</code></pre></div>
+<p>模型服务的 Deployment 还要补充 runtime 之外的生产语义：</p>
+<div class="highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">apps/v1</span>
+<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Deployment</span>
+<span class="nt">metadata</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">chat-model</span>
+<span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">replicas</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+<span class="w">  </span><span class="nt">strategy</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">RollingUpdate</span>
+<span class="w">    </span><span class="nt">rollingUpdate</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">maxUnavailable</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span>
+<span class="w">      </span><span class="nt">maxSurge</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="w">  </span><span class="nt">selector</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">matchLabels</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">app</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">chat-model</span>
+<span class="w">  </span><span class="nt">template</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">metadata</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">labels</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">app</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">chat-model</span>
+<span class="w">        </span><span class="nt">workload.ai-factory/type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">online-inference</span>
+<span class="w">        </span><span class="nt">model.ai-factory/name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">chat-model</span>
+<span class="w">        </span><span class="nt">tenant.ai-factory/id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">platform</span>
+<span class="w">    </span><span class="nt">spec</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">terminationGracePeriodSeconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">120</span>
+<span class="w">      </span><span class="nt">containers</span><span class="p">:</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">model-server</span>
+<span class="w">          </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">registry.example.com/inference/chat@sha256:example</span>
+<span class="w">          </span><span class="nt">ports</span><span class="p">:</span>
+<span class="w">            </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">containerPort</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8080</span>
+<span class="w">          </span><span class="nt">resources</span><span class="p">:</span>
+<span class="w">            </span><span class="nt">requests</span><span class="p">:</span>
+<span class="w">              </span><span class="nt">cpu</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;8&quot;</span>
+<span class="w">              </span><span class="nt">memory</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">64Gi</span>
+<span class="w">            </span><span class="nt">limits</span><span class="p">:</span>
+<span class="w">              </span><span class="nt">nvidia.com/gpu</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="w">              </span><span class="nt">memory</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">64Gi</span>
+<span class="w">          </span><span class="nt">startupProbe</span><span class="p">:</span>
+<span class="w">            </span><span class="nt">httpGet</span><span class="p">:</span>
+<span class="w">              </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/startup</span>
+<span class="w">              </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8080</span>
+<span class="w">            </span><span class="nt">failureThreshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">60</span>
+<span class="w">            </span><span class="nt">periodSeconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
+<span class="w">          </span><span class="nt">readinessProbe</span><span class="p">:</span>
+<span class="w">            </span><span class="nt">httpGet</span><span class="p">:</span>
+<span class="w">              </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/ready</span>
+<span class="w">              </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8080</span>
+<span class="w">            </span><span class="nt">periodSeconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5</span>
+<span class="w">          </span><span class="nt">livenessProbe</span><span class="p">:</span>
+<span class="w">            </span><span class="nt">httpGet</span><span class="p">:</span>
+<span class="w">              </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/live</span>
+<span class="w">              </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8080</span>
+<span class="w">            </span><span class="nt">periodSeconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
+</code></pre></div>
+<p>这份 YAML 仍然只是执行层示例。生产平台应由上层 ModelService 或 InferenceService 生成 Deployment、Service、HPA、Gateway route、ConfigMap、Secret、PodDisruptionBudget 和监控规则，并保留 ownerReference 与反向映射。用户看到模型服务，SRE 能下钻到 Pod；节点告警出现，平台能反查租户、模型、版本和成本中心。没有对象关联，Kubernetes 会变成一堆 YAML，而不是 AI Factory 的控制面。</p>
+<p>工程实现还应提供标准诊断脚本或诊断 Job。诊断不应只打印 <code>nvidia-smi</code>，而应按层次输出：节点 driver 和 GPU UUID、container runtime 配置、NVIDIA hook 是否可用、Pod 分配到的 GPU、容器内设备文件、CUDA library、RDMA device、NCCL 环境变量、Service endpoint 和探针结果。诊断结果应带 run id 并归档，方便后续与准入基线对比。这样用户报“Pod 起不来”或“GPU 不可用”时，平台能快速判断是镜像、调度、runtime、设备注入还是应用 readiness 问题。</p>
+<p>标准诊断 Job 的输出应包含 <code>gpu_device_visibility_reconciliation</code>。它把 Kubernetes 分配、runtime 注入和容器内枚举三类事实对齐，专门发现“能看到 GPU 但看错了 GPU”这种隐蔽问题。</p>
+<div class="highlight"><pre><span></span><code><span class="nt">gpu_device_visibility_reconciliation</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">reconciliation_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gdvr-20260620-001</span>
+<span class="w">  </span><span class="nt">pod</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-smoke-runtimeclass</span>
+<span class="w">  </span><span class="nt">assignment_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gar-20260620-0001</span>
+<span class="w">  </span><span class="nt">expected</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">gpu_uuids</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">GPU-xxxx</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="nt">mig_uuids</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[]</span>
+<span class="w">    </span><span class="nt">visible_count</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="w">    </span><span class="nt">driver_capabilities</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">compute</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">utility</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="nt">observed</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">nvidia_smi_gpu_uuids</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">GPU-xxxx</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="nt">cuda_visible_devices</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;0&quot;</span>
+<span class="w">    </span><span class="nt">dev_nodes</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/dev/nvidia0</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/dev/nvidiactl</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/dev/nvidia-uvm</span>
+<span class="w">    </span><span class="nt">nvidia_visible_devices</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">GPU-xxxx</span>
+<span class="w">  </span><span class="nt">checks</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">count_matches_assignment</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
+<span class="w">    </span><span class="nt">uuid_matches_assignment</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
+<span class="w">    </span><span class="nt">no_unassigned_gpu_visible</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
+<span class="w">    </span><span class="nt">driver_library_load</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
+<span class="w">    </span><span class="nt">cuda_minimal_kernel</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pass</span>
+<span class="w">  </span><span class="nt">failure_action</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">on_mismatch</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cordon_node_and_open_runtime_investigation</span>
+</code></pre></div>
+<p>这个对象应成为 GPU Pod admission、节点准入和事故排查的共同证据。容器里完全看不到 GPU 是硬失败；容器里看到过多 GPU 是隔离和计费失败；容器里看到的 UUID 与分配记录不同，则可能把一个租户的任务放到另一个租户的设备上。生产系统必须把这些情况区分开，不能都写成 “GPU unavailable”。</p>
+<p>容器 GPU runtime 的变更必须有 <code>container_runtime_change_record</code>。它记录一次 containerd、runc、NVIDIA Container Toolkit、GPU Operator、device plugin strategy、RuntimeClass、CDI spec 生成方式或 NRI 插件启用的变更。这个对象的核心不是“升级了哪个版本”，而是说明变更如何影响设备分配、OCI spec 注入、容器内可见性、RDMA/NCCL、准入基线和回滚路径。GPU 容器链路一旦漂移，症状可能出现在很多层：Pod <code>CreateContainerError</code>、容器看到错误 GPU、NCCL 找错接口、推理副本扩容失败、训练任务首个 collective 超时。没有变更记录，复盘只能在节点配置和日志里追历史。</p>
+<div class="highlight"><pre><span></span><code><span class="nt">container_runtime_change_record</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">change_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">crc-gpu-runtime-20260620-001</span>
+<span class="w">  </span><span class="nt">scope</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">cluster</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ai-prod-k8s</span>
+<span class="w">    </span><span class="nt">node_pools</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">h100-inference-canary</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="nt">affected_runtime_paths</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">containerd_runtime_handler</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nvidia_container_toolkit</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu_device_plugin_strategy</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cdi_spec_generation</span>
+<span class="w">  </span><span class="nt">before</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">container_runtime</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">containerd-1.7.x</span>
+<span class="w">    </span><span class="nt">runtime_handler</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nvidia</span>
+<span class="w">    </span><span class="nt">toolkit_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pinned_previous</span>
+<span class="w">    </span><span class="nt">device_list_strategy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">envvar</span>
+<span class="w">    </span><span class="nt">injection_mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">legacy_hook</span>
+<span class="w">    </span><span class="nt">nri_plugin_enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="w">  </span><span class="nt">after</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">container_runtime</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">containerd-1.7.x</span>
+<span class="w">    </span><span class="nt">runtime_handler</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">default_with_cdi</span>
+<span class="w">    </span><span class="nt">toolkit_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pinned_next</span>
+<span class="w">    </span><span class="nt">device_list_strategy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cdi</span>
+<span class="w">    </span><span class="nt">injection_mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">native_cdi</span>
+<span class="w">    </span><span class="nt">nri_plugin_enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="w">  </span><span class="nt">evidence_required</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">container_runtime_config_hash</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">runtimeclass_handler_mapping_if_used</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cdi_spec_hash</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">oci_runtime_injection_diff</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu_device_visibility_reconciliation</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">container_gpu_runtime_acceptance_matrix</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu_nic_topology_evidence_if_rdma</span>
+<span class="w">  </span><span class="nt">rollout</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">canary_nodes</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">gpu-node-001</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="nt">max_unavailable_gpu_capacity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_defined</span>
+<span class="w">    </span><span class="nt">rollback_to_previous_runtime_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">documented_and_tested</span>
+<span class="w">  </span><span class="nt">decision</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">status</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">canary_passed_or_blocked_or_rolled_back</span>
+<span class="w">    </span><span class="nt">block_reasons</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[]</span>
+</code></pre></div>
+<p>这个记录要和普通变更单区分开。普通变更单关注谁批准、何时执行；<code>container_runtime_change_record</code> 关注运行时路径是否仍然能证明“分配事实、注入事实、容器内事实一致”。从 legacy hook 迁移到 CDI，或从 RuntimeClass handler 迁移到 runtime 原生 CDI 注入时，不能只跑一个 <code>nvidia-smi</code> Pod。平台应至少验证：非 GPU Pod 不会看到 GPU，单 GPU Pod 只看到被分配 GPU，MIG Pod 不会看到整卡，多 GPU/RDMA Pod 的 GPU/NIC 拓扑仍匹配，失败时资源池会自动从 allocatable 降级为 limited 或 quarantine。</p>
+<pre class="mermaid"><code>flowchart TB
+  Change["container_runtime_change_record"] --&gt; Scope["scope\nnode pool / runtime path / strategy"]
+  Scope --&gt; Canary["canary node pool"]
+  Canary --&gt; Diff["oci_runtime_injection_diff"]
+  Canary --&gt; Recon["gpu_device_visibility_reconciliation"]
+  Canary --&gt; Matrix["container_gpu_runtime_acceptance_matrix"]
+  Matrix --&gt; Verdict{pass?}
+  Diff --&gt; Verdict
+  Recon --&gt; Verdict
+  Verdict --&gt;|pass| Rollout["expand rollout"]
+  Verdict --&gt;|fail| Quarantine["cordon / rollback / retest"]
+  Quarantine --&gt; Cost["reliability_cost_ledger"]
+  Rollout --&gt; Baseline["acceptance baseline refresh"]</code></pre>
+<p>这条闭环也解释了为什么“CDI 是新方向”不等于“可以直接全量切换”。官方 NVIDIA 文档已经把 Container Toolkit 描述为包含 runtime、hook、library/CLI 的组件栈，并且 GPU Operator 较新版本开始把 CDI 作为 Kubernetes workload 容器 GPU 注入的默认路径；同时 NRI 插件提供了不依赖 <code>nvidia</code> runtime class 的注入方式。生产平台应该跟随标准化方向，但必须以资源池为单位迁移、以准入矩阵证明、以 PRR 门禁约束，而不是把官方默认值当成自己的生产验收结论。</p>
+<p>落地时还要把准入门禁接到对象创建路径。生产 namespace 可以要求镜像 digest、资源标签、探针、owner、租户、成本中心和安全上下文齐全；GPU workload 可以要求目标节点池已经通过容器 GPU smoke test；训练任务可以要求 queue、quota、checkpoint 和失败策略完整。这些检查应由 admission webhook 或平台控制器自动执行，而不是靠评审 YAML。Kubernetes 允许用户提交很多合法对象，但 AI Factory 只应允许符合生产语义的对象进入关键资源池。</p>
+<p>一个 GPU workload 的准入链可以这样组织：</p>
+<pre class="mermaid"><code>flowchart LR
+  Submit["Pod / Job / ModelService"] --&gt; Namespace["namespace / tenant check"]
+  Namespace --&gt; Image["image digest / vulnerability gate"]
+  Image --&gt; Security["runtime_privilege_profile"]
+  Security --&gt; Resource["GPU / RDMA resource request"]
+  Resource --&gt; Labels["owner / cost / model labels"]
+  Labels --&gt; Baseline["node pool acceptance baseline"]
+  Baseline --&gt; Admit["admit"]
+  Namespace --&gt;|deny| Reject["typed rejection"]
+  Image --&gt;|deny| Reject
+  Security --&gt;|deny| Reject
+  Resource --&gt;|deny| Reject</code></pre>
+<p>准入失败要给出 typed rejection，而不是只告诉用户 “forbidden”。例如 <code>privileged_not_allowed</code>、<code>hostpath_denied</code>、<code>gpu_request_missing</code>、<code>image_digest_required</code>、<code>tenant_label_missing</code>、<code>node_pool_not_accepted</code>。这些拒绝原因既能提升用户体验，也能进入平台指标，帮助团队判断是文档问题、镜像治理问题、权限模型过严，还是用户在绕过平台。</p>
+<h3 id="2142">21.4.2 常见故障<a class="headerlink" href="#2142" title="Permanent link">&para;</a></h3>
+<p>第一类故障是 driver/runtime 不匹配。宿主机 driver 太旧，容器内 CUDA runtime 或框架需要更高能力；或者 driver 可支持 CUDA runtime，但 NCCL、PyTorch、TensorRT-LLM 与实际 GPU/OFED 组合没有通过验证。症状包括 <code>libcuda.so.1</code> 加载失败、CUDA initialization error、<code>nvidia-smi</code> 正常但框架不可用。处理方式是查宿主 driver、容器 CUDA、NCCL、框架版本和官方兼容矩阵，再跑最小 CUDA 与 NCCL 测试。</p>
+<p>第二类故障是 NVIDIA runtime 没有接入 CRI。Docker 手工测试通过，Kubernetes Pod 失败，常见原因是 Docker 配好了 NVIDIA runtime，但 kubelet 实际使用 containerd；或者 containerd 配置后未重启；或者 RuntimeClass、默认 runtime 和 device plugin 分配不一致。排障顺序应从 kubelet CRI endpoint、containerd config、runtime handler、Pod event、containerd log 到 hook stderr，而不是反复在容器里找文件。</p>
+<p>第三类故障是 OCI hook 执行失败。错误可能出现在 cgroup device rule、rootless/container permission、找不到 driver library、<code>nvidia-container-cli</code> 初始化失败、legacy image 默认行为或 hook 与 runtime 版本不兼容。Kubernetes 事件通常只显示 <code>OCI runtime create failed</code>，需要查看节点日志。生产节点应开启可控 debug 路径，例如在故障节点临时运行 <code>nvidia-container-cli --debug</code>，并归档 hook 日志。</p>
+<p>第四类故障是 debug 权限泄漏到生产。为了排查一次 NCCL 问题，团队给某个 namespace 开了 privileged、hostNetwork 或宿主 <code>/dev</code> 挂载，问题解决后没有回收；后续普通推理 Pod 也继承了过宽权限。症状不一定是即时故障，而是安全边界被长期削弱。解决方向是所有 debug profile 都必须有过期时间、审批和自动回滚，并通过 <code>security_audit_event</code> 记录影响范围。</p>
+<p>第五类故障是用户通过 hostPath 或镜像默认环境绕过设备治理。Pod 没有申请 <code>nvidia.com/gpu</code>，但因为 runtime 或镜像默认值看到了 GPU；或者用户挂载宿主 driver 目录和设备文件，绕过 device plugin、quota 和计费。生产平台应拒绝手工设备挂载，并定期扫描容器内可见设备与调度分配记录是否一致。</p>
+<p>第六类故障是 Pod Ready 过早。模型服务端口启动后 readiness 成功，但模型权重还未加载、CUDA graph 未捕获、engine 未 warmup、KV Cache 未初始化或 LoRA adapter 未挂载。表现为发布成功后首批请求大量超时。解决方案是使用 startup probe 保护慢启动，readiness 只在真实模型可服务后通过，并在发布系统中加入 synthetic request。</p>
+<p>第七类故障是 Service/Gateway 与 streaming 不匹配。Service endpoint 正常，短请求正常，长回答中断。原因可能是 Gateway idle timeout、upstream timeout、客户端取消传播、HTTP/2 连接池、负载均衡重试或应用没有处理 backpressure。排障要用同一个 request id 贯穿 Gateway、Service、Pod、模型 engine 和 token 计量事件。</p>
+<p>第八类故障是调度看见 GPU，runtime 看不见 GPU。Scheduler 只根据 allocatable 和 request 做绑定；真正设备注入发生在 kubelet/device plugin/CRI/runtime 链路。若 device plugin 上报异常、分配结果缺失、runtime hook 没执行或环境变量被镜像覆盖，就会出现节点有 GPU、Pod 也申请了 GPU、容器里却不可用。此时要同时查 <code>kubectl describe node</code>、device plugin log、Pod allocated resources、containerd log 和容器内 <code>/dev/nvidia*</code>。</p>
+<h3 id="2143">21.4.3 性能指标<a class="headerlink" href="#2143" title="Permanent link">&para;</a></h3>
+<p>容器与 Kubernetes 指标要按阶段拆分。调度阶段看 pending duration、filter reason、queue wait、bind latency；镜像阶段看 pull duration、unpack duration、cache hit、registry error；运行时阶段看 sandbox creation、container creation、OCI hook duration、device injection error；网络阶段看 CNI setup latency、DNS、Service latency、connection reset；存储阶段看 volume attach/mount、model load、checkpoint write；业务阶段看 startup、readiness、TTFT、TPOT、tokens/s 和 error rate。</p>
+<p>GPU 容器运行时需要专门指标。节点层记录 driver version、GPU count、GPU UUID、MIG mode、NVML 可用性、<code>nvidia-container-cli info</code> 结果、runtime config hash；容器创建层记录 NVIDIA hook 是否执行、耗时、失败原因、注入的 device 列表和 driver capabilities；容器内 smoke test 记录 <code>nvidia-smi</code>、CUDA sample、NCCL test 和推理引擎启动结果。只有这些指标进入资源池，节点才不是“能开机”，而是“可承载 AI workload”。</p>
+<p>发布指标要覆盖冷启动。Deployment rollout success 不是唯一指标，还要看 model download time、artifact cache hit、engine initialization、warmup request latency、readiness delay、old replica drain time、新旧副本错误率对比和流量切换阶段的 TTFT/TPOT。否则发布系统会宣布成功，用户体验却已经退化。</p>
+<p>Job 指标要覆盖业务完成。批量推理看 shard success、output completeness、duplicate writes、failed samples、tokens billed；数据处理看 input/output record count、schema validation、bad record ratio；评测看 report generated、metric completeness、sample trace；训练看 worker start skew、first step time、checkpoint duration、restart count 和有效 GPU hours。Kubernetes Job success 只是其中一项。</p>
+<p>指标还要支持故障树下钻。一次 Pod 启动慢，应能分解为调度等待、镜像拉取、volume mount、CNI、OCI hook、模型下载和业务 warmup；一次推理延迟升高，应能关联最近 Deployment rollout、Pod restart、Service endpoint 变化、GPU 容器 smoke test、节点 DCGM 异常和 Gateway timeout；一次训练 pending，应能关联 queue、quota、gang、GPU class、拓扑和 PVC。指标的价值不在数量，而在能否把症状映射到下一步行动。没有下钻路径，dashboard 只会展示更多无法解释的曲线。</p>
+<p>指标标签必须稳定。tenant、project、workload type、model、model version、image digest、node、gpu_uuid、runtime、queue、job、rank、pod、service 和 gateway route 应作为统一维度。标签漂移会让 dashboard 断裂，计费归因失真，容量规划无法复用历史数据。标签设计应像 API 一样管理版本。</p>
+<h3 id="2144">21.4.4 设计取舍<a class="headerlink" href="#2144" title="Permanent link">&para;</a></h3>
+<p>第一个取舍是 Docker 直跑与 Kubernetes 编排。Docker 直跑适合本地验证、节点 smoke test 和最小复现；Kubernetes 适合生产调度、发布、观测、多租户和自动恢复。不要用 Kubernetes 掩盖节点基线问题，也不要用 Docker 成功证明 Kubernetes 生产链路健康。两者都要保留：Docker/containerd smoke test 用于定位 runtime，Kubernetes workload test 用于验证平台链路。</p>
+<p>第二个取舍是手动挂载 GPU 与 NVIDIA Container Toolkit。手动挂载能帮助理解原理，也适合极少数 debug 场景；生产应使用 Toolkit 或厂商等价方案，因为设备、库、capability、MIG 和 runtime 差异会持续变化。<code>--privileged</code> 是故障定位工具，不是生产架构。最小权限和可审计注入，才适合多租户 AI Factory。</p>
+<p>第三个取舍是原生 Kubernetes 对象与平台 CRD。Deployment、Job、StatefulSet 和 Service 成熟稳定，但不表达模型版本、token 指标、checkpoint、gang、评测报告和计费标签。平台 CRD 能表达 AI 语义，但会增加控制器维护成本。务实做法是上层 CRD 表达模型和作业语义，底层生成原生对象，并保持 ownerReference、label 和事件可追踪。</p>
+<p>第四个取舍是默认 Scheduler 与 AI 作业调度。默认 Scheduler 适合控制面、普通服务和轻量推理；大规模训练、拓扑敏感推理、稀缺 GPU 资源池需要 queue、quota、gang、priority、preemption 和 topology-aware scheduling。不要把所有 workload 都交给一个过度复杂的调度器，也不要让关键训练任务退化成一堆独立 Pod。</p>
+<p>第五个取舍是自动化与人工门禁。Kubernetes 鼓励自动恢复和滚动升级，但 AI workload 的失败成本高。自动重启可能丢 checkpoint，自动扩容可能触发冷启动，自动回池可能让未复测节点进入生产。关键 GPU 节点、关键模型服务和大训练任务应设置准入、灰度、回滚和人工审批边界。自动化不是越多越好，而是要和 workload 风险匹配。</p>
+<h2 id="215">21.5 小结与延伸阅读<a class="headerlink" href="#215" title="Permanent link">&para;</a></h2>
+<h3 id="2151">21.5.1 小结<a class="headerlink" href="#2151" title="Permanent link">&para;</a></h3>
 <ul>
-<li>容器提供可复现运行环境，但 AI 镜像需要严格治理 CUDA、NCCL、框架和推理引擎版本。</li>
-<li>Kubernetes 提供 Pod、控制器、Service 和扩展机制，是 AI Factory 的资源编排与作业调度底座之一。</li>
-<li>Deployment 适合在线服务，Job 适合批式任务，StatefulSet 适合需要稳定身份的组件。</li>
-<li>默认 scheduler 不足以覆盖所有 AI workload，需要队列、配额、gang、GPU 和拓扑扩展。</li>
-<li>CNI、CSI、CRI 会直接影响网络、存储和容器运行时的生产质量。</li>
+<li>容器是进程级隔离和文件系统封装，不是 VM；GPU driver 的内核能力仍来自宿主机。</li>
+<li>Kubernetes 提供声明式控制、调度和扩展接口，但不直接理解模型、token、checkpoint 和业务 SLO。</li>
+<li>NVIDIA Container Toolkit 的核心链路是 <code>nvidia-container-runtime</code> 修改 OCI spec，runc 调用 NVIDIA hook，hook 通过 <code>nvidia-container-cli</code> 和 <code>libnvidia-container</code> 注入 GPU 设备和 driver library。</li>
+<li>Device plugin 解决 Kubernetes 中“GPU 分给谁”，Container Toolkit 解决“GPU 如何进入容器”，二者不能混淆。</li>
+<li>AI Factory 要把 Pod 状态翻译成 AI workload 状态，并用标签、指标、事件和准入基线把容器、Kubernetes、GPU、网络、存储和业务体验串起来。</li>
 </ul>
-<h2 id="_3">延伸阅读<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h2>
+<h3 id="2152">21.5.2 延伸阅读<a class="headerlink" href="#2152" title="Permanent link">&para;</a></h3>
 <ul>
-<li>TODO: 官方文档</li>
-<li>TODO: 经典论文</li>
-<li>TODO: 工程案例</li>
+<li><a href="https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/arch-overview.html">NVIDIA Container Toolkit: Architecture Overview</a></li>
+<li><a href="https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html">NVIDIA Container Toolkit: Installing the NVIDIA Container Toolkit</a></li>
+<li><a href="https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/latest/cdi.html">NVIDIA GPU Operator: CDI and NRI support</a></li>
+<li><a href="https://specs.opencontainers.org/runtime-spec/runtime/">Open Container Initiative Runtime Specification</a></li>
+<li><a href="https://kubernetes.io/docs/concepts/">Kubernetes Concepts</a></li>
+<li><a href="https://kubernetes.io/docs/concepts/containers/runtime-class/">Kubernetes RuntimeClass</a></li>
+<li><a href="https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/network-plugins/">Kubernetes Network Plugins</a></li>
+<li><a href="https://research.google/pubs/large-scale-cluster-management-at-google-with-borg/">Large-scale cluster management at Google with Borg</a></li>
 </ul>
 
 

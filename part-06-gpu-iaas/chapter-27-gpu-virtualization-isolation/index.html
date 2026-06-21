@@ -12,6 +12,8 @@
         <meta name="author" content="king ye">
       
       
+        <link rel="canonical" href="https://kingye.me/ai-factory-engineering/part-06-gpu-iaas/chapter-27-gpu-virtualization-isolation/">
+      
       
         <link rel="prev" href="../chapter-26-bare-metal-gpu-cloud/">
       
@@ -188,92 +190,16 @@
   
   
   
-    <li class="md-tabs__item">
-      <a href="../.." class="md-tabs__link">
-        
-  
-  
-    
-  
-  首页
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../../preface/" class="md-tabs__link">
-        
-  
-  
-    
-  
-  前言
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../../roadmap/" class="md-tabs__link">
-        
-  
-  
-    
-  
-  写作路线图
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../../glossary/" class="md-tabs__link">
-        
-  
-  
-    
-  
-  术语表
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-  
     
     
       <li class="md-tabs__item">
-        <a href="../../part-00-introduction/chapter-00-from-datacenter-to-ai-factory/" class="md-tabs__link">
+        <a href="../.." class="md-tabs__link">
           
   
   
     
   
-  Part 0：导论 —— 什么是 AI Factory
+  导论
 
         </a>
       </li>
@@ -282,6 +208,13 @@
 
       
         
+  
+  
+  
+  
+    
+    
+      
   
   
   
@@ -295,10 +228,13 @@
   
     
   
-  Part 1：Application 层 —— AI 应用如何消耗 token
+  应用与平台
 
         </a>
       </li>
+    
+  
+
     
   
 
@@ -310,22 +246,7 @@
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../part-02-platform/chapter-05-maas/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Part 2：Platform 层 —— MaaS、网关、计费与应用平台
-
-        </a>
-      </li>
-    
-  
-
       
-        
   
   
   
@@ -339,10 +260,13 @@
   
     
   
-  Part 3：Model 层 —— 模型如何被训练、后训练、评测和服务化
+  模型与运行时
 
         </a>
       </li>
+    
+  
+
     
   
 
@@ -351,47 +275,12 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../part-04-runtime/chapter-15-inference-engines/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Part 4：AI Runtime 层 —— 训练推理运行时
-
-        </a>
-      </li>
-    
-  
-
       
-        
-  
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../../part-05-orchestration/chapter-20-ai-workloads/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Part 5：资源编排与作业调度层
-
-        </a>
-      </li>
-    
-  
-
-      
-        
   
   
   
@@ -401,16 +290,19 @@
     
     
       <li class="md-tabs__item md-tabs__item--active">
-        <a href="../chapter-26-bare-metal-gpu-cloud/" class="md-tabs__link">
+        <a href="../../part-05-orchestration/chapter-20-ai-workloads/" class="md-tabs__link">
           
   
   
     
   
-  Part 6：GPU IaaS 层
+  调度与基础设施
 
         </a>
       </li>
+    
+  
+
     
   
 
@@ -422,44 +314,7 @@
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../part-07-network-storage/chapter-30-ai-networking-basics/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Part 7：网络与存储层
-
-        </a>
-      </li>
-    
-  
-
       
-        
-  
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../../part-08-physical-infrastructure/chapter-34-gpu-server/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Part 8：物理层 —— 机房、电力、制冷、硬件
-
-        </a>
-      </li>
-    
-  
-
-      
-        
   
   
   
@@ -473,10 +328,13 @@
   
     
   
-  Part 9：可靠性、观测与验收
+  运行与经济性
 
         </a>
       </li>
+    
+  
+
     
   
 
@@ -489,13 +347,13 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../part-10-economics-cases/chapter-41-token-factory/" class="md-tabs__link">
+        <a href="../../system-map/" class="md-tabs__link">
           
   
   
     
   
-  Part 10：AI Factory 经济学与产业案例
+  参考
 
         </a>
       </li>
@@ -554,15 +412,46 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../.." class="md-nav__link">
+    
+    
+      
         
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../.." class="md-nav__link ">
+              
   
   
   <span class="md-ellipsis">
     
   
-    首页
+    导论
   
 
     
@@ -570,13 +459,30 @@
   
   
 
-      </a>
-    </li>
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    导论
   
 
-    
-      
-      
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
   
   
   
@@ -601,9 +507,10 @@
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -628,36 +535,10 @@
     </li>
   
 
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../glossary/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    术语表
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -682,17 +563,17 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_1_4" >
         
           
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_1_4" id="__nav_1_4_label" tabindex="0">
             
   
   
   <span class="md-ellipsis">
     
   
-    Part 0：导论 —— 什么是 AI Factory
+    Part 0：导论
   
 
     
@@ -703,12 +584,12 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_1_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1_4">
             <span class="md-nav__icon md-icon"></span>
             
   
-    Part 0：导论 —— 什么是 AI Factory
+    Part 0：导论
   
 
           </label>
@@ -748,9 +629,77 @@
     </li>
   
 
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
     
       
       
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    应用与平台
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    应用与平台
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
   
   
   
@@ -781,17 +730,17 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2_1" >
         
           
-          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_2_1" id="__nav_2_1_label" tabindex="0">
             
   
   
   <span class="md-ellipsis">
     
   
-    Part 1：Application 层 —— AI 应用如何消耗 token
+    Part 1：Application 层
   
 
     
@@ -802,12 +751,12 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_1">
             <span class="md-nav__icon md-icon"></span>
             
   
-    Part 1：Application 层 —— AI 应用如何消耗 token
+    Part 1：Application 层
   
 
           </label>
@@ -931,9 +880,10 @@
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -964,17 +914,17 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2_2" >
         
           
-          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
             
   
   
   <span class="md-ellipsis">
     
   
-    Part 2：Platform 层 —— MaaS、网关、计费与应用平台
+    Part 2：Platform 层
   
 
     
@@ -985,12 +935,12 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_7">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2">
             <span class="md-nav__icon md-icon"></span>
             
   
-    Part 2：Platform 层 —— MaaS、网关、计费与应用平台
+    Part 2：Platform 层
   
 
           </label>
@@ -1114,9 +1064,77 @@
     </li>
   
 
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
     
       
       
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模型与运行时
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    模型与运行时
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
   
   
   
@@ -1151,17 +1169,17 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_1" >
         
           
-          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_3_1" id="__nav_3_1_label" tabindex="0">
             
   
   
   <span class="md-ellipsis">
     
   
-    Part 3：Model 层 —— 模型如何被训练、后训练、评测和服务化
+    Part 3：Model 层
   
 
     
@@ -1172,12 +1190,12 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_8">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_1">
             <span class="md-nav__icon md-icon"></span>
             
   
-    Part 3：Model 层 —— 模型如何被训练、后训练、评测和服务化
+    Part 3：Model 层
   
 
           </label>
@@ -1357,9 +1375,10 @@
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -1392,17 +1411,17 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_9" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_2" >
         
           
-          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_3_2" id="__nav_3_2_label" tabindex="0">
             
   
   
   <span class="md-ellipsis">
     
   
-    Part 4：AI Runtime 层 —— 训练推理运行时
+    Part 4：AI Runtime 层
   
 
     
@@ -1413,12 +1432,12 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_9">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_2">
             <span class="md-nav__icon md-icon"></span>
             
   
-    Part 4：AI Runtime 层 —— 训练推理运行时
+    Part 4：AI Runtime 层
   
 
           </label>
@@ -1570,9 +1589,84 @@
     </li>
   
 
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
     
       
       
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    调度与基础设施
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    调度与基础设施
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
   
   
   
@@ -1598,19 +1692,22 @@
       
       
         
+          
+          
+        
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_10" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4_1" >
         
           
-          <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_1" id="__nav_4_1_label" tabindex="">
             
   
   
@@ -1628,8 +1725,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_10">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_1">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1813,9 +1910,10 @@
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
     
@@ -1837,10 +1935,10 @@
     
     
       
-        
-        
       
-      
+        
+          
+          
         
       
     
@@ -1849,10 +1947,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2" checked>
         
           
-          <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="">
+          <label class="md-nav__link" for="__nav_4_2" id="__nav_4_2_label" tabindex="">
             
   
   
@@ -1870,8 +1968,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_11">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4_2">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1976,200 +2074,307 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#_1" class="md-nav__link">
+  <a href="#271" class="md-nav__link">
     <span class="md-ellipsis">
       
-        本章回答的问题
+        27.1 导读
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="27.1 导读">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#2711" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        27.1.1 本章回答的问题
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#_2" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2712" class="md-nav__link">
     <span class="md-ellipsis">
       
-        一个真实场景
+        27.1.2 本章上下文
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#_3" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2713" class="md-nav__link">
     <span class="md-ellipsis">
       
-        核心概念
+        27.1.3 读者测试
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#_4" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2714" class="md-nav__link">
     <span class="md-ellipsis">
       
-        系统架构
+        27.1.4 一个真实场景
       
     </span>
   </a>
   
 </li>
+        
+      </ul>
+    </nav>
+  
+</li>
       
         <li class="md-nav__item">
-  <a href="#271-vm-vs-bare-metal" class="md-nav__link">
+  <a href="#272" class="md-nav__link">
     <span class="md-ellipsis">
       
-        27.1 VM vs bare metal
+        27.2 基础模型
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="27.2 基础模型">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#2721" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        27.2.1 核心概念
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#272-pcie-passthrough" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2722" class="md-nav__link">
     <span class="md-ellipsis">
       
-        27.2 PCIe passthrough
+        27.2.2 系统架构
       
     </span>
   </a>
   
 </li>
+        
+      </ul>
+    </nav>
+  
+</li>
       
         <li class="md-nav__item">
-  <a href="#273-sr-iov" class="md-nav__link">
+  <a href="#273" class="md-nav__link">
     <span class="md-ellipsis">
       
-        27.3 SR-IOV
+        27.3 关键技术
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="27.3 关键技术">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#2731-vm-vs-bare-metal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        27.3.1 VM vs bare metal
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#274-mig" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2732-pcie-passthrough" class="md-nav__link">
     <span class="md-ellipsis">
       
-        27.4 MIG
+        27.3.2 PCIe passthrough
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#275-vgpu" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2733-sr-iov" class="md-nav__link">
     <span class="md-ellipsis">
       
-        27.5 vGPU
+        27.3.3 SR-IOV
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#276" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2734-mig" class="md-nav__link">
     <span class="md-ellipsis">
       
-        27.6 容器隔离
+        27.3.4 MIG
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#277" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2735-vgpu" class="md-nav__link">
     <span class="md-ellipsis">
       
-        27.7 安全边界
+        27.3.5 vGPU
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#278" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2736" class="md-nav__link">
     <span class="md-ellipsis">
       
-        27.8 多租户风险
+        27.3.6 容器隔离
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#_5" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2737" class="md-nav__link">
     <span class="md-ellipsis">
       
-        工程实现
+        27.3.7 安全边界
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#_6" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2738" class="md-nav__link">
     <span class="md-ellipsis">
       
-        常见故障
+        27.3.8 多租户风险
       
     </span>
   </a>
   
 </li>
+        
+      </ul>
+    </nav>
+  
+</li>
       
         <li class="md-nav__item">
-  <a href="#_7" class="md-nav__link">
+  <a href="#274" class="md-nav__link">
     <span class="md-ellipsis">
       
-        性能指标
+        27.4 工程落地
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="27.4 工程落地">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#2741" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        27.4.1 工程实现
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#_8" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2742" class="md-nav__link">
     <span class="md-ellipsis">
       
-        设计取舍
+        27.4.2 常见故障
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#_9" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2743" class="md-nav__link">
     <span class="md-ellipsis">
       
-        小结
+        27.4.3 性能指标
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#_10" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2744" class="md-nav__link">
     <span class="md-ellipsis">
       
-        延伸阅读
+        27.4.4 设计取舍
       
     </span>
   </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#275" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        27.5 小结与延伸阅读
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="27.5 小结与延伸阅读">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#2751" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        27.5.1 小结
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2752" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        27.5.2 延伸阅读
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -2244,9 +2449,10 @@
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -2268,19 +2474,22 @@
       
       
         
+          
+          
+        
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_12" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4_3" >
         
           
-          <label class="md-nav__link" for="__nav_12" id="__nav_12_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_3" id="__nav_4_3_label" tabindex="">
             
   
   
@@ -2298,8 +2507,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_12_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_12">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_3">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2427,9 +2636,10 @@
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -2449,26 +2659,29 @@
       
       
         
+          
+          
+        
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_13" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4_4" >
         
           
-          <label class="md-nav__link" for="__nav_13" id="__nav_13_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_4" id="__nav_4_4_label" tabindex="">
             
   
   
   <span class="md-ellipsis">
     
   
-    Part 8：物理层 —— 机房、电力、制冷、硬件
+    Part 8：物理层
   
 
     
@@ -2479,12 +2692,12 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_13_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_13">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_4">
             <span class="md-nav__icon md-icon"></span>
             
   
-    Part 8：物理层 —— 机房、电力、制冷、硬件
+    Part 8：物理层
   
 
           </label>
@@ -2580,9 +2793,77 @@
     </li>
   
 
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
     
       
       
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    运行与经济性
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    运行与经济性
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
   
   
   
@@ -2613,10 +2894,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_14" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_1" >
         
           
-          <label class="md-nav__link" for="__nav_14" id="__nav_14_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5_1" id="__nav_5_1_label" tabindex="0">
             
   
   
@@ -2634,8 +2915,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_14_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_14">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_1">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2763,9 +3044,10 @@
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -2796,17 +3078,17 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_15" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_2" >
         
           
-          <label class="md-nav__link" for="__nav_15" id="__nav_15_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5_2" id="__nav_5_2_label" tabindex="0">
             
   
   
   <span class="md-ellipsis">
     
   
-    Part 10：AI Factory 经济学与产业案例
+    Part 10：经济学与产业案例
   
 
     
@@ -2817,12 +3099,12 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_15_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_15">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2">
             <span class="md-nav__icon md-icon"></span>
             
   
-    Part 10：AI Factory 经济学与产业案例
+    Part 10：经济学与产业案例
   
 
           </label>
@@ -2946,6 +3228,227 @@
     </li>
   
 
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    参考
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    参考
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../system-map/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    系统地图与工程索引
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    术语表
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../style-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    写作规范
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../depth-standard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    深度标准与覆盖矩阵
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../doc-coauthoring-review/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Doc Coauthoring 审稿标准
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
     
   </ul>
 </nav>
@@ -2974,200 +3477,307 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#_1" class="md-nav__link">
+  <a href="#271" class="md-nav__link">
     <span class="md-ellipsis">
       
-        本章回答的问题
+        27.1 导读
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="27.1 导读">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#2711" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        27.1.1 本章回答的问题
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#_2" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2712" class="md-nav__link">
     <span class="md-ellipsis">
       
-        一个真实场景
+        27.1.2 本章上下文
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#_3" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2713" class="md-nav__link">
     <span class="md-ellipsis">
       
-        核心概念
+        27.1.3 读者测试
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#_4" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2714" class="md-nav__link">
     <span class="md-ellipsis">
       
-        系统架构
+        27.1.4 一个真实场景
       
     </span>
   </a>
   
 </li>
+        
+      </ul>
+    </nav>
+  
+</li>
       
         <li class="md-nav__item">
-  <a href="#271-vm-vs-bare-metal" class="md-nav__link">
+  <a href="#272" class="md-nav__link">
     <span class="md-ellipsis">
       
-        27.1 VM vs bare metal
+        27.2 基础模型
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="27.2 基础模型">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#2721" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        27.2.1 核心概念
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#272-pcie-passthrough" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2722" class="md-nav__link">
     <span class="md-ellipsis">
       
-        27.2 PCIe passthrough
+        27.2.2 系统架构
       
     </span>
   </a>
   
 </li>
+        
+      </ul>
+    </nav>
+  
+</li>
       
         <li class="md-nav__item">
-  <a href="#273-sr-iov" class="md-nav__link">
+  <a href="#273" class="md-nav__link">
     <span class="md-ellipsis">
       
-        27.3 SR-IOV
+        27.3 关键技术
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="27.3 关键技术">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#2731-vm-vs-bare-metal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        27.3.1 VM vs bare metal
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#274-mig" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2732-pcie-passthrough" class="md-nav__link">
     <span class="md-ellipsis">
       
-        27.4 MIG
+        27.3.2 PCIe passthrough
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#275-vgpu" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2733-sr-iov" class="md-nav__link">
     <span class="md-ellipsis">
       
-        27.5 vGPU
+        27.3.3 SR-IOV
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#276" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2734-mig" class="md-nav__link">
     <span class="md-ellipsis">
       
-        27.6 容器隔离
+        27.3.4 MIG
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#277" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2735-vgpu" class="md-nav__link">
     <span class="md-ellipsis">
       
-        27.7 安全边界
+        27.3.5 vGPU
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#278" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2736" class="md-nav__link">
     <span class="md-ellipsis">
       
-        27.8 多租户风险
+        27.3.6 容器隔离
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#_5" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2737" class="md-nav__link">
     <span class="md-ellipsis">
       
-        工程实现
+        27.3.7 安全边界
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#_6" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2738" class="md-nav__link">
     <span class="md-ellipsis">
       
-        常见故障
+        27.3.8 多租户风险
       
     </span>
   </a>
   
 </li>
+        
+      </ul>
+    </nav>
+  
+</li>
       
         <li class="md-nav__item">
-  <a href="#_7" class="md-nav__link">
+  <a href="#274" class="md-nav__link">
     <span class="md-ellipsis">
       
-        性能指标
+        27.4 工程落地
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="27.4 工程落地">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#2741" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        27.4.1 工程实现
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#_8" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2742" class="md-nav__link">
     <span class="md-ellipsis">
       
-        设计取舍
+        27.4.2 常见故障
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#_9" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2743" class="md-nav__link">
     <span class="md-ellipsis">
       
-        小结
+        27.4.3 性能指标
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#_10" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2744" class="md-nav__link">
     <span class="md-ellipsis">
       
-        延伸阅读
+        27.4.4 设计取舍
       
     </span>
   </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#275" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        27.5 小结与延伸阅读
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="27.5 小结与延伸阅读">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#2751" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        27.5.1 小结
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2752" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        27.5.2 延伸阅读
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -3192,64 +3802,346 @@
 
 
 <h1 id="27-gpu">第 27 章：GPU 虚拟化与隔离<a class="headerlink" href="#27-gpu" title="Permanent link">&para;</a></h1>
-<h2 id="_1">本章回答的问题<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h2>
+<h2 id="271">27.1 导读<a class="headerlink" href="#271" title="Permanent link">&para;</a></h2>
+<h3 id="2711">27.1.1 本章回答的问题<a class="headerlink" href="#2711" title="Permanent link">&para;</a></h3>
 <ul>
-<li>GPU 虚拟化与隔离 在 AI Factory 中解决什么工程问题？</li>
-<li>它和应用、平台、模型、运行时、调度或基础设施之间是什么关系？</li>
-<li>生产环境中应如何落地、观测、验收和排障？</li>
+<li>VM、bare metal、PCIe passthrough、SR-IOV、MIG、vGPU 和容器隔离分别提供什么边界？</li>
+<li>多租户 GPU 平台有哪些安全和性能风险？</li>
+<li>如何在隔离、性能、利用率和运维复杂度之间取舍？</li>
 </ul>
-<h2 id="_2">一个真实场景<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h2>
-<p>一个团队在建设 AI Factory 时，常会遇到和“GPU 虚拟化与隔离”相关的边界问题：业务侧希望更快上线，平台侧要控制成本和稳定性，基础设施侧则要保证资源可交付、可观测、可回收。本章后续会用具体场景把这些约束串起来。</p>
-<h2 id="_3">核心概念<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h2>
-<p>本章涉及的术语会按“定义、位置、输入输出、工程约束”的顺序展开。第一版先保留结构化骨架，后续扩写时补充真实配置、命令、指标和案例。</p>
-<h2 id="_4">系统架构<a class="headerlink" href="#_4" title="Permanent link">&para;</a></h2>
-<pre class="mermaid"><code>flowchart LR
-  Goal["业务目标"] --&gt; Capability["本章能力"]
-  Capability --&gt; Components["平台 / 运行时 / 基础设施组件"]
-  Components --&gt; Metrics["指标、验收与反馈"]</code></pre>
-<h2 id="271-vm-vs-bare-metal">27.1 VM vs bare metal<a class="headerlink" href="#271-vm-vs-bare-metal" title="Permanent link">&para;</a></h2>
-<p>VM vs bare metal 是本章后续扩写的关键主题。写作时需要说明它解决什么问题、位于 AI Factory 的哪一层、和上下游组件如何交互，以及在生产环境中如何配置、观测和诊断。</p>
-<h2 id="272-pcie-passthrough">27.2 PCIe passthrough<a class="headerlink" href="#272-pcie-passthrough" title="Permanent link">&para;</a></h2>
-<p>PCIe passthrough 是本章后续扩写的关键主题。写作时需要说明它解决什么问题、位于 AI Factory 的哪一层、和上下游组件如何交互，以及在生产环境中如何配置、观测和诊断。</p>
-<h2 id="273-sr-iov">27.3 SR-IOV<a class="headerlink" href="#273-sr-iov" title="Permanent link">&para;</a></h2>
-<p>SR-IOV 是本章后续扩写的关键主题。写作时需要说明它解决什么问题、位于 AI Factory 的哪一层、和上下游组件如何交互，以及在生产环境中如何配置、观测和诊断。</p>
-<h2 id="274-mig">27.4 MIG<a class="headerlink" href="#274-mig" title="Permanent link">&para;</a></h2>
-<p>MIG 是本章后续扩写的关键主题。写作时需要说明它解决什么问题、位于 AI Factory 的哪一层、和上下游组件如何交互，以及在生产环境中如何配置、观测和诊断。</p>
-<h2 id="275-vgpu">27.5 vGPU<a class="headerlink" href="#275-vgpu" title="Permanent link">&para;</a></h2>
-<p>vGPU 是本章后续扩写的关键主题。写作时需要说明它解决什么问题、位于 AI Factory 的哪一层、和上下游组件如何交互，以及在生产环境中如何配置、观测和诊断。</p>
-<h2 id="276">27.6 容器隔离<a class="headerlink" href="#276" title="Permanent link">&para;</a></h2>
-<p>容器隔离 是本章后续扩写的关键主题。写作时需要说明它解决什么问题、位于 AI Factory 的哪一层、和上下游组件如何交互，以及在生产环境中如何配置、观测和诊断。</p>
-<h2 id="277">27.7 安全边界<a class="headerlink" href="#277" title="Permanent link">&para;</a></h2>
-<p>安全边界 是本章后续扩写的关键主题。写作时需要说明它解决什么问题、位于 AI Factory 的哪一层、和上下游组件如何交互，以及在生产环境中如何配置、观测和诊断。</p>
-<h2 id="278">27.8 多租户风险<a class="headerlink" href="#278" title="Permanent link">&para;</a></h2>
-<p>多租户风险 是本章后续扩写的关键主题。写作时需要说明它解决什么问题、位于 AI Factory 的哪一层、和上下游组件如何交互，以及在生产环境中如何配置、观测和诊断。</p>
-<h2 id="_5">工程实现<a class="headerlink" href="#_5" title="Permanent link">&para;</a></h2>
-<p>后续扩写时应提供可复用的配置、命令、YAML、伪代码或操作流程。实现描述需要区分开发测试、单集群生产、多租户生产和跨集群生产等不同复杂度。</p>
-<h2 id="_6">常见故障<a class="headerlink" href="#_6" title="Permanent link">&para;</a></h2>
+<h3 id="2712">27.1.2 本章上下文<a class="headerlink" href="#2712" title="Permanent link">&para;</a></h3>
 <ul>
-<li>配置口径不一致，导致平台、运行时和基础设施团队看到的状态不同。</li>
-<li>指标缺失或标签设计不完整，导致问题只能靠日志和人工经验定位。</li>
-<li>容量、配额、拓扑或版本约束没有前置表达，导致任务在上线后暴露稳定性问题。</li>
+<li>层级定位：本章属于 <code>GPU IaaS 层</code>，重点讨论裸金属、虚拟化、GPU 资源池、镜像、驱动和初始化交付。</li>
+<li>前置依赖：建议先理解 第 26 章：裸金属 GPU 云 中的核心对象和路径。</li>
+<li>后续关联：本章内容会继续连接到 第 28 章：GPU 资源池，并在系统地图、深度标准和读者测试中被交叉引用。</li>
+<li>读完能力：读完本章后，读者应能把《GPU 虚拟化与隔离》中的概念映射到 AI Factory 的生产路径、工程对象、观测证据和设计取舍。</li>
 </ul>
-<h2 id="_7">性能指标<a class="headerlink" href="#_7" title="Permanent link">&para;</a></h2>
+<h3 id="2713">27.1.3 读者测试<a class="headerlink" href="#2713" title="Permanent link">&para;</a></h3>
 <ul>
-<li>延迟、吞吐、错误率和资源利用率。</li>
-<li>GPU、CPU、内存、网络、存储和队列等待时间。</li>
-<li>与本章主题相关的验收基线、SLO 或成本指标。</li>
+<li>机制题：读者能否解释 VM vs bare metal、PCIe passthrough、SR-IOV、MIG 的核心机制，以及它们如何共同支撑《GPU 虚拟化与隔离》？</li>
+<li>边界题：读者能否区分 GPU IaaS、资源编排、节点基线、租户隔离和物理硬件 的责任边界，并说明哪些问题不能简单归因到本章组件？</li>
+<li>路径题：读者能否从资源申请追到裸金属交付、虚拟化隔离、资源池状态、镜像驱动和节点初始化，并指出本章对象在路径中的位置？</li>
+<li>排障题：当《GPU 虚拟化与隔离》相关生产症状出现时，读者能否列出第一层证据、下一跳证据、可能 owner 和止血动作？</li>
 </ul>
-<h2 id="_8">设计取舍<a class="headerlink" href="#_8" title="Permanent link">&para;</a></h2>
-<p>设计时需要在易用性、隔离性、性能、成本和运维复杂度之间取舍。后续正文会说明不同方案适合的组织规模、 workload 类型和可靠性要求。</p>
-<h2 id="_9">小结<a class="headerlink" href="#_9" title="Permanent link">&para;</a></h2>
+<h3 id="2714">27.1.4 一个真实场景<a class="headerlink" href="#2714" title="Permanent link">&para;</a></h3>
+<p>一个平台为了提高利用率，让多个租户共享同一张 GPU。开发测试阶段效果不错：小模型推理可以并发运行，GPU 利用率明显提高，用户也不再为整卡排队。但进入生产后，问题开始出现。某个租户的任务显存占用波动，导致另一个租户的推理延迟升高；一个容器中的 GPU 进程退出不干净，影响后续任务；安全团队追问共享 GPU 是否能保证数据隔离、故障隔离和侧信道风险。</p>
+<p>另一个客户提出完全相反的要求：训练数据敏感，任务运行时间长，需要稳定 NCCL 性能，不能接受共享节点上的性能噪声，也不希望 GPU、NIC 和本地盘被其它租户共用。平台如果只提供一种交付形态，要么无法满足高隔离客户，要么牺牲大量资源利用率。最终平台把 GPU 产品分成裸金属独占、VM passthrough、MIG 实例、容器整卡和 best-effort 共享几类。</p>
+<p>这个场景说明，GPU 隔离不是一个开关，而是多层边界的组合。不同技术隔离的对象不同：裸金属隔离主机和硬件资源，VM 隔离操作系统和管理边界，PCIe passthrough 让 VM 直接使用物理设备，MIG 切分部分 GPU 硬件资源，容器隔离进程和 namespace，time-slicing 更像时间共享。把它们都叫“GPU 资源”会隐藏关键差异。</p>
+<p>AI Factory 需要把隔离模式产品化，而不是让用户猜测。一个资源等级应说明性能预期、显存边界、安全边界、故障影响、是否可抢占、是否支持生产 SLA、如何计费和如何监控。多租户 GPU 平台的成熟标志，不是能把 GPU 切得多细，而是能清楚说明每种切法的风险和承诺。</p>
+<p>因此，隔离设计首先是契约设计。平台要把“可以共享”和“适合共享”分开，把“技术上可运行”和“生产上可承诺”分开。只有资源等级、SLA、计费和故障责任一致，用户才会信任共享 GPU 产品。</p>
+<h2 id="272">27.2 基础模型<a class="headerlink" href="#272" title="Permanent link">&para;</a></h2>
+<h3 id="2721">27.2.1 核心概念<a class="headerlink" href="#2721" title="Permanent link">&para;</a></h3>
+<p>GPU 虚拟化与隔离的目标，是在多个用户或 workload 之间安全、可控地共享或分配 GPU 资源。隔离维度包括硬件隔离、主机隔离、驱动隔离、进程隔离、显存隔离、性能隔离、故障隔离、网络隔离和管理面隔离。不同技术覆盖的维度不同，不能用“支持多租户”一笔带过。</p>
+<p>裸金属独占提供最强的硬件可见性和整机隔离，但资源粒度粗；VM 提供更强的操作系统边界和云平台体验，但 GPU 透传、驱动和性能要专门设计；MIG 在支持的 GPU 上提供硬件切片，适合小模型推理和开发测试；vGPU 通过虚拟化软件提供 GPU 能力，适合特定企业虚拟化场景；容器隔离轻量，但安全边界弱于 VM 和硬件隔离。</p>
+<p>这里需要严格区分 GPU 虚拟化和 GPU 切分。虚拟化是技术手段，负责在硬件、内核、驱动、用户态 API 或容器运行时层面创建抽象、隔离和转发能力；切分是资源分配策略，负责决定一张物理 GPU 的 SM、显存、带宽、时间片或 profile 如何分给不同租户。MIG 是硬件虚拟化与空间切分的组合，time-slicing 是软件调度和时间切分，MPS 是应用层并发优化，远程 GPU API proxy 则是把资源访问扩展到网络另一端。把这些都叫“虚拟 GPU”会隐藏隔离和性能差异。</p>
+<p>虚拟化层次可以分为四类。硬件级包括 MIG、PCIe passthrough、SR-IOV 或厂商硬件分区能力，特点是隔离强、性能开销低，但 profile 和硬件限制明显。内核态方案在驱动、ioctl、mmap、调度器和上下文管理层面拦截或管理 GPU 资源，控制力强但工程风险高、升级耦合重。用户态方案通过 CUDA API 拦截、<code>LD_PRELOAD</code>、运行时 shim 或 HAMi-core 类资源控制实现配额和可见性管理，部署轻但安全边界弱。混合方案把 MIG、device plugin、容器运行时、软件配额和调度策略组合起来，是云原生 GPU 平台最常见的实际形态。</p>
+<p>还要区分资源隔离和性能隔离。一个机制可能限制显存可见范围，却不能保证稳定 latency；也可能隔离进程，却无法阻止共享 PCIe、CPU、内存、NIC 或存储带来的抖动。AI workload 对性能噪声非常敏感，尤其是在线推理和分布式训练。多租户设计必须明确哪些资源是独占的，哪些资源是共享的。</p>
+<p>隔离还与计费和 SLA 绑定。整卡独占、MIG 实例、vGPU profile、time-slicing 和容器共享不应使用同一价格和服务承诺。用户购买的不只是 GPU 算力，还包括隔离边界、性能稳定性和故障责任。GPU IaaS 层需要把这些边界转化为资源等级、调度标签、监控指标和账单口径。</p>
+<p>这也意味着隔离能力必须可验证。平台不能只在文档中声明安全边界，还要通过调度策略、准入测试、运行时检查、回收校验和审计事件证明边界被执行。多租户 GPU 的可信度来自证据，而不是来自命名。</p>
+<h3 id="2722">27.2.2 系统架构<a class="headerlink" href="#2722" title="Permanent link">&para;</a></h3>
+<p>GPU 虚拟化与隔离架构通常从资源产品层开始：平台定义 bare metal dedicated、VM passthrough、MIG shared、vGPU、container full-card、container time-slicing 等资源等级。资源等级映射到不同的节点池、驱动模式、调度策略、安全策略和计量方式。用户或上层平台申请的是资源等级，而不是无差别 GPU。</p>
+<p>底层执行路径不同。裸金属资源直接把整机交给租户或上层集群；VM passthrough 通过 hypervisor 和 IOMMU 把物理 GPU 分配给虚拟机；MIG 需要在节点上配置 GPU instance 和 compute instance，再通过 device plugin 暴露给 Kubernetes；vGPU 依赖厂商虚拟化栈和 profile；容器共享依赖 runtime、device plugin、cgroup、MPS 或 time-slicing 等机制。</p>
+<p>安全策略应覆盖管理面和数据面。管理面包括谁能创建 VM、修改 MIG profile、分配整卡、访问 BMC 或宿主机；数据面包括容器、VM、GPU 设备、网络、存储和日志。共享模式下，平台还要限制租户在同一节点上的共置关系，避免高敏感 workload 与 best-effort workload 混跑。隔离架构不能只停留在 GPU 设备层。</p>
+<p>观测和计费必须理解资源模式。整卡独占看 GPU 利用率、HBM、Xid 和节点健康；MIG 需要看 profile 使用、实例健康和碎片；time-slicing 需要看性能抖动、进程占用和公平性；VM passthrough 需要看宿主与 guest 两侧状态。没有模式感知的监控，会把不同隔离等级混成同一种资源，导致排障和账单争议。</p>
+<p>架构还要保留资源转换流程。节点可以从整卡池切到 MIG 池，也可以从共享池回到独占池，但转换前必须排空 workload、清理状态、重新配置并复验。资源模式变更本身就是高风险操作，不能像普通标签修改一样处理。</p>
+<p>因此，资源模式应进入节点生命周期状态。</p>
+<p>状态变化应同步到调度、监控和计费。</p>
+<pre class="mermaid"><code>flowchart TB
+  Tenant["租户 / workload"] --&gt; Class["GPU resource class"]
+  Class --&gt; BM["bare metal dedicated"]
+  Class --&gt; VM["VM + PCIe passthrough"]
+  Class --&gt; MIG["MIG instance"]
+  Class --&gt; VGPU["vGPU profile"]
+  Class --&gt; Container["container full-card / shared"]
+  Class --&gt; Remote["remote GPU access"]
+  BM --&gt; Policy["SLA / 安全 / 计费"]
+  VM --&gt; Policy
+  MIG --&gt; Policy
+  VGPU --&gt; Policy
+  Container --&gt; Policy
+  Remote --&gt; Policy
+  Policy --&gt; Monitor["监控 / 审计 / 成本"]</code></pre>
+<p>远程 GPU 访问是另一类资源池化架构。它可以通过本地 API proxy 拦截 CUDA/OpenCL 调用并转发到远端 GPU，也可以在本地模拟虚拟设备，由驱动或代理把命令、内存和状态同步到远端，还可以由上层分布式框架把任务拆分到远端 GPU。它的价值是突破单机 GPU 数量、提高集中资源利用和支持跨地域/跨池调用；代价是网络延迟、带宽、错误传播、状态一致性、安全审计和调试复杂度。对低延迟在线推理和强同步训练，远程 GPU 必须谨慎验证；对批处理、离线推理和弹性开发环境，远程访问可能有较好利用率收益。</p>
+<h2 id="273">27.3 关键技术<a class="headerlink" href="#273" title="Permanent link">&para;</a></h2>
+<h3 id="2731-vm-vs-bare-metal">27.3.1 VM vs bare metal<a class="headerlink" href="#2731-vm-vs-bare-metal" title="Permanent link">&para;</a></h3>
+<p>Bare metal 提供最高的硬件可见性和性能可预测性。用户或平台可以直接看到 GPU、NIC、NUMA、NVLink、PCIe 和本地 NVMe，适合大规模训练、高性能推理和需要整机独占的场景。它减少了虚拟化层影响，排障路径更短，但租户隔离粒度较粗，资源交付也更接近“整机”而不是弹性 VM。</p>
+<p>VM 提供更强的操作系统边界和云平台体验。租户可以获得独立 guest OS、镜像、磁盘、安全策略和生命周期管理，平台可以复用成熟 IaaS 能力。对企业客户来说，VM 边界往往更容易纳入安全和合规模型。问题在于 GPU 不是普通虚拟设备，性能和功能取决于 passthrough、vGPU 或其它虚拟化方式。</p>
+<p>在高性能训练中，VM 的主要挑战是拓扑、网络和抖动。即使 GPU passthrough 提供接近裸金属的设备访问，VM 仍可能引入 CPU、内存、I/O、中断、网络和宿主管理层面的差异。多节点训练还要考虑 RDMA、NUMA、GPU 与 NIC 亲和性、时间同步和故障恢复。没有真实 workload 验证，不能假设 VM 与裸金属等价。</p>
+<p>设计上，可以把 bare metal 和 VM 作为不同产品等级。裸金属服务高性能、强拓扑和长训练；VM 服务多租户、隔离、标准云体验和中小规模推理；二者共享镜像、身份、成本和观测体系。AI Factory 的目标不是证明某一种模式绝对优越，而是给不同 workload 明确边界和承诺。</p>
+<p>选择 VM 还是裸金属，还要看组织运维能力。VM 平台需要成熟的 hypervisor、镜像、安全和网络体系；裸金属平台需要成熟的 BMC、PXE、准入和维修体系。技术选型不能只比较性能，还要比较团队能否长期运营这种交付形态。</p>
+<p>运营能力不足时，理论优势会变成生产风险。</p>
+<h3 id="2732-pcie-passthrough">27.3.2 PCIe passthrough<a class="headerlink" href="#2732-pcie-passthrough" title="Permanent link">&para;</a></h3>
+<p>PCIe passthrough 把物理 GPU 直接透传给虚拟机，guest OS 内部能看到接近真实的 GPU 设备。它通常依赖 IOMMU 和 hypervisor 的设备绑定能力。相比软件模拟的 GPU，passthrough 性能更接近裸金属，也能让 VM 使用标准 NVIDIA Driver 和 CUDA 生态，是 GPU VM 常见的高性能方案。</p>
+<p>Passthrough 的隔离边界主要来自 VM 和 IOMMU。GPU 被分配给某个 VM 后，通常不能同时分配给另一个 VM，资源粒度是整卡或整组设备。这带来较强隔离和较好性能，但降低了弹性共享能力。对于长时间推理服务或企业租户，passthrough 是可接受的；对于大量小任务，整卡粒度可能导致利用率不足。</p>
+<p>工程复杂度在设备生命周期。平台需要管理 GPU 与宿主驱动绑定、guest 驱动安装、IOMMU group、NUMA 亲和、设备热插拔、VM 重启和故障恢复。GPU 出现 Xid 或驱动异常时，可能需要重启 VM，严重时还需要重置设备或宿主机。资源回收不能只删除 VM，还要确认 GPU 状态恢复健康。</p>
+<p>Passthrough 还要处理网络和存储设备。训练 VM 如果需要 RDMA，NIC passthrough 或 SR-IOV 也要与 GPU 拓扑匹配。GPU 与 NIC 在宿主上的拓扑如果被虚拟化层隐藏，NCCL 性能可能不稳定。因此，GPU passthrough 不是单独透传一张卡，而是围绕 GPU、NIC、NUMA 和软件栈的一组交付设计。</p>
+<p>另外，passthrough 的调度粒度较粗。整卡绑定给 VM 后，平台很难像容器那样快速切分和回收。它更适合生命周期较长、隔离要求较高的租户，而不是大量短任务。容量规划时要把这种粒度损耗计入成本。</p>
+<p>否则账面利用率会高估真实可售资源。</p>
+<p>这一点在小租户较多时尤其明显。</p>
+<p>调度系统应把整卡绑定视为长期占用。</p>
+<h3 id="2733-sr-iov">27.3.3 SR-IOV<a class="headerlink" href="#2733-sr-iov" title="Permanent link">&para;</a></h3>
+<p>SR-IOV 允许一个物理 PCIe 设备暴露多个虚拟功能，让不同 VM 或容器直接使用部分设备能力。在 AI Factory 中，SR-IOV 更常见于高性能 NIC、DPU 或存储网络，而不是所有 GPU 场景。它可以降低虚拟化网络开销，提升 VM 或容器访问 RDMA/RoCE 网络的性能。</p>
+<p>使用 SR-IOV 时，平台需要管理 PF、VF、驱动、设备分配、NUMA 亲和、网络策略、租户隔离和回收。VF 数量、带宽、队列、VLAN、MAC、trust mode、RDMA 能力都需要明确。对训练任务而言，NIC VF 与 GPU 的拓扑关系会影响通信性能。如果 VF 分配与 GPU 不在同一 NUMA 或链路路径不合理，性能可能明显下降。</p>
+<p>SR-IOV 的风险在于管理复杂度和隔离假设。设备直通提高性能，但也扩大了设备驱动和固件的安全边界。平台需要跟踪厂商驱动、固件、内核和容器网络插件的兼容性。某些网络功能在 VF 上不可用或表现不同，不能假设它与物理功能完全等价。生产前必须用真实 AI 通信 workload 验证。</p>
+<p>SR-IOV 还会影响运维流程。宿主升级内核或驱动、修改 PF 配置、调整交换机策略，都可能影响租户 VF。回收 VM 或 Pod 后，也要确认 VF 状态恢复，避免地址、队列或权限残留。对 AI Factory 来说，SR-IOV 是性能工具，同时也是资源池和安全策略的一部分。</p>
+<p>在 Kubernetes 场景中，SR-IOV 还要与 CNI、device plugin、NUMA policy 和 Topology Manager 协作。只把 VF 暴露给容器并不够，容器还要拿到正确网络、权限和拓扑关系。网络设备隔离与 GPU 调度必须一起看。</p>
+<p>这类配置应通过准入测试验证。</p>
+<p>验证应覆盖容器内 RDMA 访问和带宽。</p>
+<p>否则训练问题会被误判为框架问题。</p>
+<p>责任边界会变模糊。</p>
+<h3 id="2734-mig">27.3.4 MIG<a class="headerlink" href="#2734-mig" title="Permanent link">&para;</a></h3>
+<p>MIG 是 Multi-Instance GPU，在支持该能力的 GPU 上把一张物理 GPU 切分为多个硬件隔离实例。每个实例拥有独立的部分计算资源、显存切片和隔离边界。MIG 适合小模型推理、开发测试、轻量微调和多租户低风险任务，可以在不分配整卡的情况下提供比 time-slicing 更清晰的资源形态。</p>
+<p>MIG 的优势是硬件级切片和较明确的 profile。平台可以把不同 profile 暴露为不同资源，例如较小实例用于 embedding 或小模型推理，较大实例用于中等模型服务。相比进程共享，MIG 更容易计量和调度，也更容易解释显存边界。对资源利用率要求高的推理平台，MIG 是重要工具。</p>
+<p>MIG 的限制同样明显。Profile 不是任意切分，资源形态有限；重配置可能需要排空节点或影响已有 workload；某些训练或推理框架对 MIG 的支持需要验证；MIG 实例之间仍共享部分节点级资源，例如 CPU、NIC、存储和电源。MIG 解决的是 GPU 内部切片，不等于完整多租户隔离。</p>
+<p>工程上，平台要管理 MIG profile 规划、节点标签、device plugin 暴露、调度规则、监控指标、计费口径和重配置流程。若 profile 设计不当，会产生碎片：大量小实例空闲，但没有足够大实例承载任务。MIG 的核心不是“能切分”，而是切分策略要匹配模型形态和业务需求。</p>
+<p>MIG 还需要发布策略。在线推理节点重配 profile 可能影响正在运行的模型，因此 profile 变更应像节点维护一样处理：先 drain、迁移流量、重配、验收，再重新入池。把 MIG 当作即时弹性切分，会低估它对生产服务的影响。</p>
+<p>Profile 变更也应记录版本和原因。</p>
+<p>这样才能追溯性能变化。</p>
+<p>MIG 管理要理解 GPU Instance 和 Compute Instance 两级概念。平台通常先把物理 GPU 切成 GPU Instance，再在其中创建 Compute Instance 并通过 device plugin 暴露给 Kubernetes。profile 是预定义形态，不是任意小数资源；重配置前必须 drain 运行中任务，重配置后要复验可见性、DCGM 指标映射、MIG UUID、容器内 <code>nvidia-smi -L</code> 和目标模型 smoke test。MIG 能提供 GPU 内部资源边界，但不自动隔离 CPU、NIC、本地盘、日志和对象存储凭据。</p>
+<h3 id="2735-vgpu">27.3.5 vGPU<a class="headerlink" href="#2735-vgpu" title="Permanent link">&para;</a></h3>
+<p>vGPU 通过虚拟化软件向 VM 提供 GPU 能力，常见于虚拟桌面、图形工作站、企业虚拟化和某些轻量推理场景。它的功能、性能、许可、profile 和监控能力取决于厂商实现。相比 passthrough，vGPU 可以提供更细的 VM 资源粒度和更云化的管理体验，但也引入额外软件栈和许可管理。</p>
+<p>对大模型训练，vGPU 通常不是首选。训练需要高带宽通信、稳定拓扑和低抖动，多层虚拟化可能带来性能和排障复杂度。对企业私有化交付、隔离开发环境、图形推理或低强度推理服务，vGPU 可能有管理优势。是否采用 vGPU，应由真实 workload 验证决定，而不是由产品名称决定。</p>
+<p>vGPU 的工程关注点包括 profile 选择、license server、guest driver、host driver、hypervisor 兼容、监控指标和故障恢复。Profile 定义了显存、算力或并发能力，直接影响计费和 SLA。若平台不能准确展示 vGPU profile 的能力和限制，用户会把它误认为整卡或 MIG 等价资源，导致性能争议。</p>
+<p>安全上，vGPU 的边界依赖虚拟化栈和厂商实现。平台要关注驱动漏洞、profile 隔离、租户共置策略和管理面权限。vGPU 适合被包装成明确等级的 IaaS 产品，而不是与裸金属或 passthrough 混用同一资源名。命名清楚，是降低误解的第一步。</p>
+<p>vGPU 还要纳入供应和许可治理。license server 不可用、profile 授权不足或版本不匹配，都可能让 VM 无法获得 GPU 能力。对生产平台来说，这些管理组件也是可用性依赖，必须监控并纳入容量规划。</p>
+<p>否则故障会表现为资源充足但实例不可用。</p>
+<p>这类故障应在控制面明确暴露。</p>
+<p>用户不应自行排查许可链路。</p>
+<p>平台必须兜底。</p>
+<h3 id="2736">27.3.6 容器隔离<a class="headerlink" href="#2736" title="Permanent link">&para;</a></h3>
+<p>容器隔离依赖 Linux namespace、cgroup、container runtime、device injection 和 Kubernetes 调度。Pod 可以请求整卡、MIG 实例，或通过 time-slicing、MPS 等方式共享 GPU。容器模式启动快、生态好、与云原生平台结合紧密，是模型服务、微调、评测和批量任务的常见交付方式。</p>
+<p>容器隔离的边界弱于 VM。容器共享宿主内核和驱动，GPU 设备文件通过 runtime 注入，显存、进程、驱动 API 和节点资源的隔离依赖具体配置。整卡独占容器比共享容器更可预测；time-slicing 或 MPS 可以提高利用率，但性能抖动、故障传播和计量精度都要仔细处理。不能把容器边界等同于强租户边界。</p>
+<p>生产多租户场景需要额外策略。平台应通过节点池、namespace、runtime class、Pod Security、NetworkPolicy、image policy、quota、taint/toleration 和审计限制租户行为。高敏感租户不应与不可信 workload 共享同一节点或同一 GPU。共享 GPU 适合低风险、可重试、可接受抖动的任务，不适合所有生产 SLA。</p>
+<p>容器资源回收也是常见风险。GPU 进程残留、显存未释放、MIG 配置未恢复、临时文件和 IPC 资源残留，都可能影响下一个任务。平台要在 Pod 结束后验证 GPU 状态，必要时清理进程或重置设备。容器交付轻量，但生产级隔离需要完整的资源生命周期管理。</p>
+<p>容器共享还需要明确不适合的场景。高敏感数据、强合规租户、长时间预训练和严格低抖动推理，不应默认进入弱隔离共享池。共享池的价值在于服务合适 workload，而不是把所有任务都压进最高利用率模式。</p>
+<p>共享资源也要有退出机制。</p>
+<p>租户升级到更高等级时，迁移路径应清晰。</p>
+<p>否则试用资源会被误用为生产资源。</p>
+<p>用户态 GPU 虚拟化通常就落在容器隔离附近。CUDA API 拦截、动态库 shim、<code>LD_PRELOAD</code>、容器环境变量和 device plugin 策略可以限制可见设备、统计显存、拒绝超配调用或实现按进程配额。这类方案适合开发测试、低风险推理和资源利用率优化，但它不能替代硬件隔离：应用可以绕过部分用户态路径，驱动和内核仍是共享的，低层错误也可能影响同机邻居。平台应把它归为 best-effort 或受限生产等级，并在资源名、SLA 和计费中说明。</p>
+<p>MPS 和 CUDA Streams 也要放在正确位置。CUDA Streams 是单进程或多流并发工具，用来组织 kernel 和拷贝重叠；MPS 让多个进程更高效地共享 GPU 执行资源，减少上下文切换并提高并发利用。它们是应用层并发和调度优化，不是强安全多租户边界。把 MPS 当成隔离机制，会在显存、故障、性能噪声和计费上产生错误承诺。</p>
+<h3 id="2737">27.3.7 安全边界<a class="headerlink" href="#2737" title="Permanent link">&para;</a></h3>
+<p>安全边界要回答四类问题：一个租户能否读取另一个租户的数据，能否影响另一个租户的性能，能否通过驱动或设备攻击宿主，能否接触管理面或其它租户资源。不同交付模式的答案不同。裸金属独占在租户间硬件隔离强，但整机交付需要严格回收；VM 边界强于容器；MIG 边界强于普通共享；time-slicing 更多是调度共享，不是强安全边界。</p>
+<p>数据安全不仅在 GPU 内部。训练数据、模型权重、checkpoint、日志、临时文件、对象存储凭据、容器镜像和网络流量都可能跨租户暴露。即使 GPU 切分安全，节点本地盘、共享缓存、日志系统或调试接口也可能泄露信息。AI Factory 的隔离设计必须覆盖数据路径，而不是只关注 GPU 设备。</p>
+<p>性能隔离也是安全和 SLA 的一部分。一个租户通过高负载 kernel、异常显存占用或 I/O 打满共享依赖，可能影响其它租户服务。在线推理尤其敏感，延迟抖动会直接影响用户体验。平台需要定义共置规则、资源上限、优先级、限流和隔离池，避免不兼容 workload 混放。</p>
+<p>管理面安全要求更高。谁能修改 MIG profile，谁能给 VM 透传 GPU，谁能访问宿主机，谁能查看 DCGM 指标或容器日志，都必须被审计。GPU 管理权限通常等价于高权限基础设施操作。多租户平台应使用最小权限、强审计和变更审批，不能让普通租户直接操作底层设备配置。</p>
+<p>管理面权限应落成 <code>bmc_driver_access_policy</code>。BMC、IPMI/Redfish、宿主 root、driver reload、kernel module、MIG profile、GPU reset、VF/SR-IOV 配置和资源池状态覆盖，都能改变租户边界或破坏运行中 workload。它们不应和普通 Kubernetes namespace 权限混在一起，而应由 IaaS/SRE 安全域管理，并要求审批、TTL、命令审计和事后复核。</p>
+<div class="highlight"><pre><span></span><code><span class="nt">bmc_driver_access_policy</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">policy_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bda-prod-gpu-20260619</span>
+<span class="w">  </span><span class="nt">protected_operations</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bmc_power_cycle</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu_reset</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">driver_reload</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mig_profile_change</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sriov_vf_reconfigure</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">resource_state_override</span>
+<span class="w">  </span><span class="nt">allowed_roles</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-iaas-sre</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">hardware-oncall</span>
+<span class="w">  </span><span class="nt">require_change_or_incident</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">normal_change</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">emergency_break_glass</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">controls</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">ttl</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">policy_defined_short</span>
+<span class="w">    </span><span class="nt">session_recording</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
+<span class="w">    </span><span class="nt">command_audit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
+<span class="w">    </span><span class="nt">affected_tenant_review</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required</span>
+<span class="w">  </span><span class="nt">post_conditions</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">clean_to_reuse_required</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">acceptance_baseline_recheck</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">required_if_driver_or_mig_changed</span>
+</code></pre></div>
+<p>这个策略的核心是把“能操作机器”与“能承诺租户边界”绑定起来。一次 BMC 重启可能中断多个租户，一次 MIG 重配可能改变资源形态，一次 driver reload 可能让准入基线失效。没有 <code>bmc_driver_access_policy</code>，管理面操作会绕过 MaaS、调度、计费和审计，最终在事故中无法解释影响面。</p>
+<p>安全边界还要包含租户退出。资源释放后，本地数据、缓存、日志、临时凭据和模型权重必须清理。共享资源最大的风险之一，是上一个租户的残留被下一个租户看到或影响。回收验证是隔离的一部分，不是运维附属动作。</p>
+<p>隔离能力应写成 <code>gpu_isolation_matrix</code>，而不是用“强隔离”“弱隔离”这种模糊描述。矩阵要同时覆盖 kernel、driver、GPU/HBM、local NVMe、NIC/RDMA、观测可见性、故障传播、性能噪声和回收要求。下面是工程口径示例，具体承诺要以硬件、驱动、虚拟化栈和平台实现为准。</p>
+<table>
+<thead>
+<tr>
+<th>模式</th>
+<th>Kernel 边界</th>
+<th>GPU/HBM 边界</th>
+<th>NIC/RDMA 边界</th>
+<th>本地盘/缓存</th>
+<th>性能噪声</th>
+<th>适合场景</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>裸金属独占</td>
+<td>整机租户控制</td>
+<td>整卡/整机独占</td>
+<td>可独占或专属 rail</td>
+<td>必须擦除</td>
+<td>最低</td>
+<td>高敏训练、最大性能</td>
+</tr>
+<tr>
+<td>VM + PCIe passthrough</td>
+<td>VM guest 隔离</td>
+<td>整卡透传</td>
+<td>VF 或 passthrough</td>
+<td>虚拟盘/本地盘需清理</td>
+<td>低到中</td>
+<td>企业隔离推理、专属环境</td>
+</tr>
+<tr>
+<td>MIG</td>
+<td>宿主 kernel 共享</td>
+<td>GPU 硬件切片</td>
+<td>节点 NIC 仍共享</td>
+<td>节点缓存仍共享</td>
+<td>中</td>
+<td>小模型推理、多租户中等隔离</td>
+</tr>
+<tr>
+<td>vGPU</td>
+<td>VM guest 隔离</td>
+<td>取决于 profile 和厂商实现</td>
+<td>取决于虚拟化网络</td>
+<td>虚拟盘/缓存需治理</td>
+<td>中</td>
+<td>企业虚拟化、开发环境</td>
+</tr>
+<tr>
+<td>容器整卡</td>
+<td>宿主 kernel 共享</td>
+<td>整卡分配但宿主驱动共享</td>
+<td>容器网络/设备共享</td>
+<td>hostPath/local cache 需限制</td>
+<td>中</td>
+<td>生产容器推理、微调</td>
+</tr>
+<tr>
+<td>time-slicing</td>
+<td>宿主 kernel 共享</td>
+<td>同卡时间共享</td>
+<td>节点 NIC 共享</td>
+<td>共享风险最高</td>
+<td>高</td>
+<td>best-effort、开发测试</td>
+</tr>
+</tbody>
+</table>
+<p>矩阵的重点不是给出绝对安全结论，而是防止错误承诺。MIG 能切分 GPU 内部资源，但不能替代节点级数据隔离；容器整卡能避免同卡竞争，但仍共享宿主 kernel 和 driver；VM passthrough 有更强 OS 边界，但设备回收和驱动状态仍要验证。平台应把矩阵绑定到资源等级、SLA、计费和准入规则中，让用户知道自己购买的是哪种边界。</p>
+<h3 id="2738">27.3.8 多租户风险<a class="headerlink" href="#2738" title="Permanent link">&para;</a></h3>
+<p>多租户风险首先是性能噪声。共享 GPU、CPU、内存、NIC、存储和镜像仓库都可能引入抖动。某个租户的 batch job 可能影响另一个租户的在线推理，某个容器的大量日志可能冲击节点磁盘，某个数据加载任务可能打满网络。GPU 多租户不是只切 GPU，还要管理节点和外部依赖。</p>
+<p>第二类风险是故障传播。共享节点上的驱动异常、GPU Xid、MIG 重配置、容器 runtime 故障、宿主内核问题，都可能影响多个租户。隔离越弱，故障影响面越大。平台需要把资源等级与故障域对应起来：独占资源承诺更小故障域，共享资源承诺更低价格但更弱 SLA。否则用户会用生产预期购买 best-effort 资源。</p>
+<p>第三类风险是计量和账单争议。整卡独占容易按 GPU 小时计量，MIG 可以按 profile 计量，time-slicing 和 MPS 的真实占用更难衡量。若计量不能反映资源边界，用户会质疑价格和公平性。成本系统必须知道资源模式、共享比例、保留容量和实际使用，不能把所有 GPU 使用合并成同一个账单项。</p>
+<p>第四类风险是合规和信任。某些行业或企业客户不能接受与其它租户共享宿主、GPU 或本地盘，即使技术上可以降低风险。平台应把合规要求转化为资源策略，例如专属节点池、专属集群、VM 独占或裸金属交付。多租户平台的目标不是让所有人共享，而是让共享和独占都有明确边界。</p>
+<p>第五类风险是变更影响面扩大。共享节点上的驱动升级、MIG 重配、runtime 变更或安全策略调整，可能同时影响多个租户。资源越共享，变更越需要灰度和回滚。多租户平台必须把变更管理视为隔离策略的一部分。</p>
+<p>第六类风险是侧信道和残留信息。GPU 共享环境中，攻击者可能通过时序、缓存行为、内存访问模式、功耗或共享资源争用推断邻居 workload 特征。硬件隔离、缓存/显存边界、任务共置策略、访问模式扰动、敏感租户独占、回收清理和审计，都属于防护手段。高敏租户不应依赖弱隔离共享池解决这类问题；平台应把数据等级映射到资源等级，而不是让用户自己判断风险。</p>
+<h2 id="274">27.4 工程落地<a class="headerlink" href="#274" title="Permanent link">&para;</a></h2>
+<h3 id="2741">27.4.1 工程实现<a class="headerlink" href="#2741" title="Permanent link">&para;</a></h3>
+<p>工程实现应从资源等级定义开始。每个等级明确隔离边界、适用 workload、调度策略、监控指标、计费口径和 SLA。资源等级示例：</p>
+<div class="highlight"><pre><span></span><code><span class="nt">resource_classes</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-baremetal-dedicated</span>
+<span class="w">    </span><span class="nt">isolation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">host</span>
+<span class="w">    </span><span class="nt">workload</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">training-production</span>
+<span class="w">    </span><span class="nt">sharing</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">none</span>
+<span class="w">    </span><span class="nt">sla</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">high</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-vm-passthrough</span>
+<span class="w">    </span><span class="nt">isolation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vm-and-device</span>
+<span class="w">    </span><span class="nt">workload</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enterprise-inference</span>
+<span class="w">    </span><span class="nt">sharing</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">full-gpu-per-vm</span>
+<span class="w">    </span><span class="nt">sla</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">medium-high</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-mig-shared</span>
+<span class="w">    </span><span class="nt">isolation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">hardware-slice</span>
+<span class="w">    </span><span class="nt">workload</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">small-inference</span>
+<span class="w">    </span><span class="nt">sharing</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mig-profile</span>
+<span class="w">    </span><span class="nt">sla</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">medium</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-container-shared</span>
+<span class="w">    </span><span class="nt">isolation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">process</span>
+<span class="w">    </span><span class="nt">workload</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dev-test</span>
+<span class="w">    </span><span class="nt">sharing</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">best-effort</span>
+<span class="w">    </span><span class="nt">sla</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">best-effort</span>
+</code></pre></div>
+<p>调度系统应使用这些资源等级，而不是让用户直接拼装底层参数。裸金属等级进入独占节点池，VM passthrough 进入虚拟化资源池，MIG 等级由 device plugin 暴露 profile，容器共享等级使用明确的节点池和租户策略。资源等级还应映射到价格、quota 和告警。</p>
+<p>实现还要包括回收流程。VM 删除后检查 GPU reset，MIG 实例释放后确认 profile 状态，容器退出后清理 GPU 进程和临时文件，裸金属归还后擦除本地盘和凭据。多租户隔离的薄弱点经常在回收阶段，而不是分配阶段。资源复用前必须确认上一个租户的状态已清理。</p>
+<p><code>clean_to_reuse_record</code> 是资源从一个租户回到可分配池之前的证据对象。它不保证硬件不存在任何理论残留风险，但它能证明平台执行了约定清理和复验步骤。对于裸金属和高敏租户，它应包含本地盘擦除、BMC 访问回收、镜像重装和准入复测；对于容器和 MIG，它应包含进程、显存、MIG profile、临时卷、缓存、凭据和观测标签清理。</p>
+<pre class="mermaid"><code>stateDiagram-v2
+  [*] --&gt; Allocated
+  Allocated --&gt; Released: workload finished / lease ended
+  Released --&gt; Draining: stop traffic / checkpoint / terminate
+  Draining --&gt; Cleaning: kill residual process / revoke secret / wipe cache
+  Cleaning --&gt; Resetting: GPU reset / MIG restore / node reboot if needed
+  Resetting --&gt; Retesting: container GPU / NCCL / storage smoke test
+  Retesting --&gt; Allocatable: clean_to_reuse_record passed
+  Retesting --&gt; Quarantine: failed verification
+  Quarantine --&gt; Maintenance: investigation / repair
+  Maintenance --&gt; Retesting</code></pre>
+<div class="highlight"><pre><span></span><code><span class="nt">clean_to_reuse_record</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">record_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ctr-20260619-0001</span>
+<span class="w">  </span><span class="nt">resource</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">node</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-node-001</span>
+<span class="w">    </span><span class="nt">gpu_uuid</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">GPU-xxxx</span>
+<span class="w">    </span><span class="nt">mig_uuid</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">none</span>
+<span class="w">    </span><span class="nt">resource_class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpu-container-full-card</span>
+<span class="w">  </span><span class="nt">previous_allocation</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">tenant_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enterprise-a</span>
+<span class="w">    </span><span class="nt">workload_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pod/model-af-chat-large-7d8f9</span>
+<span class="w">    </span><span class="nt">assignment_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gar-20260619-0001</span>
+<span class="w">  </span><span class="nt">cleanup_checks</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">gpu_processes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">none_detected</span>
+<span class="w">    </span><span class="nt">gpu_memory_state</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">reset_or_verified</span>
+<span class="w">    </span><span class="nt">mig_profile</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">restored_to_pool_baseline</span>
+<span class="w">    </span><span class="nt">local_nvme_paths</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">wiped_or_policy_not_required</span>
+<span class="w">    </span><span class="nt">model_cache</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">evicted_if_cross_tenant</span>
+<span class="w">    </span><span class="nt">secrets_and_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">revoked_or_unmounted</span>
+<span class="w">    </span><span class="nt">rdma_vf_state</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">released</span>
+<span class="w">    </span><span class="nt">runtime_hooks</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">healthy</span>
+<span class="w">  </span><span class="nt">retest</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">nvidia_smi</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed</span>
+<span class="w">    </span><span class="nt">cuda_smoke</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed</span>
+<span class="w">    </span><span class="nt">nccl_or_rdma_smoke</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed_if_required</span>
+<span class="w">    </span><span class="nt">dcgm_health</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">passed</span>
+<span class="w">  </span><span class="nt">result</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">state</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">allocatable</span>
+<span class="w">    </span><span class="nt">approved_by</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">automated_policy</span>
+<span class="w">    </span><span class="nt">audit_event</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">security-audit-20260619-0001</span>
+</code></pre></div>
+<p>回收复验必须进入资源池状态机。没有通过 <code>clean_to_reuse_record</code> 的资源，不能从 reclaim 直接回到 allocatable。这样做会牺牲一部分周转速度，但能显著降低跨租户残留、性能漂移和账单争议。对高敏资源池，清理步骤更严格；对 best-effort 共享池，可以简化但不能完全省略。</p>
+<p>最后，要把隔离模式写入观测标签和审计事件。每个 workload 使用哪种 GPU class，是否共享节点，是否发生抢占，是否有 Xid、显存争抢或性能抖动，都应可查询。只有这样，平台才能在故障、账单和安全审计时给出证据。</p>
+<p>工程实现还应提供准入规则。高敏感项目只能选择独占或 VM 等级，生产在线服务默认禁止 best-effort 共享，开发测试可以使用容器共享。把规则前置到提交阶段，比事故后解释资源等级更有效。准入规则应和租户标签、数据等级、SLA 和资源等级联动。</p>
+<p>对于共享等级，还应实现定期复验。平台可以周期性检查残留进程、MIG profile、device plugin 状态、驱动健康和租户共置规则。共享资源状态变化更频繁，复验能提前发现漂移。</p>
+<p>复验失败的节点应自动隔离。</p>
+<p>隔离原因要展示给平台和租户。</p>
+<h3 id="2742">27.4.2 常见故障<a class="headerlink" href="#2742" title="Permanent link">&para;</a></h3>
+<p>第一类故障是承诺错配。平台把共享 GPU 当成独占资源宣传，用户把 best-effort 资源用于生产 SLA，结果出现性能抖动后难以界定责任。解决方向是产品等级清晰，资源名、文档、价格和监控都要表达隔离边界。不要用一个“GPU”概念覆盖所有交付形态。</p>
+<p>第二类故障是 profile 碎片。MIG 或 vGPU profile 规划不合理，导致小实例很多、大实例不足，或者重配置频繁影响在线任务。Profile 设计应基于真实模型形态、显存需求和流量分布，并定期用使用数据调整。切分越细，不一定利用率越高；过细切分可能降低可调度性。</p>
+<p>第三类故障是资源回收不彻底。容器退出后 GPU 进程残留，VM 释放后设备状态异常，MIG 重配置后监控标签未更新，本地磁盘或缓存中残留数据。回收故障会造成安全风险和下一个任务失败。资源生命周期必须包含分配、使用、释放、清理和复验。</p>
+<p>第四类故障是安全策略只看计算层。GPU 切片做了隔离，但对象存储凭据、模型权重、日志、监控指标或本地缓存仍可跨租户访问。AI workload 的数据路径复杂，隔离设计要覆盖镜像、数据、checkpoint、日志、网络和管理面。只隔离 GPU 设备是不够的。</p>
+<p>第五类故障是观测口径错误。平台只显示整卡 GPU 利用率，无法解释 MIG 实例、vGPU profile 或 time-slicing 任务的真实表现。用户看到延迟抖动，平台只能回答“GPU 利用率不高”。模式感知指标缺失，会让共享资源难以运营。</p>
+<p>第六类故障是回收验证缺失。资源释放后没有检查数据、进程和设备状态，导致下一个租户遇到残留影响。共享越细，回收验证越不能省。</p>
+<h3 id="2743">27.4.3 性能指标<a class="headerlink" href="#2743" title="Permanent link">&para;</a></h3>
+<p>资源利用指标包括各资源等级的利用率、排队时间、碎片率、分配失败原因和闲置容量。裸金属看节点和整卡利用，MIG 看 profile 使用分布和重配置次数，vGPU 看 profile 分配和 license 使用，容器共享看并发、显存占用和时间片公平性。不同资源等级必须分开统计，否则平均值会掩盖问题。</p>
+<p>性能隔离指标包括 p95/p99 latency、tokens/s、GPU utilization、HBM 使用、显存 OOM、kernel 排队、共享任务干扰、抢占次数和性能抖动。对于在线推理，要特别关注共享模式下 TTFT 和 TPOT 是否稳定；对于训练，要关注 step time 和 rank skew。隔离等级越弱，越需要更细粒度的噪声观测。</p>
+<p>安全和故障指标包括越权访问拒绝、策略违规、GPU Xid、驱动重置、MIG 错误、残留进程、回收失败、节点隔离次数和租户共置违规。它们用于验证隔离承诺是否被执行。若共享资源频繁触发故障隔离，平台应重新评估是否过度共享或 workload 分级错误。</p>
+<p>计费指标包括整卡小时、MIG profile 小时、vGPU profile 小时、共享 GPU 使用量、保留容量、实际使用和浪费量。计费口径应与资源等级一致。没有清晰计量，成本优化和客户账单都会失真。多租户 GPU 平台的经济性，依赖资源模式感知的指标体系。</p>
+<p>指标还应支持租户维度和节点维度双视角。租户视角回答自己买到的资源是否稳定，节点视角回答哪些共享组合产生干扰。只有两者结合，平台才能判断是某个租户异常，还是某种资源等级设计不合理。</p>
+<p>指标也应进入容量规划。</p>
+<p>长期噪声数据可以反推资源等级是否需要调整。</p>
+<p>这比只看平均利用率更接近真实体验。</p>
+<h3 id="2744">27.4.4 设计取舍<a class="headerlink" href="#2744" title="Permanent link">&para;</a></h3>
+<p>第一个取舍是性能与隔离。裸金属和 passthrough 性能更可预测，隔离边界更清晰，但资源粒度粗；MIG 和共享容器提高利用率，却需要接受 profile 限制、共享依赖和更复杂排障。平台应把高价值训练和生产推理放在强隔离资源上，把开发测试、轻量推理和可重试任务放在共享资源上。</p>
+<p>第二个取舍是利用率与可恢复性。共享越细，理论利用率越高，但故障影响面、回收复杂度和计量难度也提高。整卡独占看似浪费，但对长时间训练可能更经济，因为它减少性能抖动和重跑风险。AI Factory 不能只看瞬时 GPU 利用率，还要看失败成本和 SLA 风险。</p>
+<p>第三个取舍是平台统一与资源等级多样化。单一资源模型简单，用户容易理解，但会隐藏重要差异；多等级资源更准确，但需要更好的产品、文档、调度和计费。成熟平台通常提供有限数量的清晰等级，而不是无限组合。等级越少，越容易运营；等级越明确，越少产生误解。</p>
+<p>第四个取舍是安全合规与成本。高敏感场景可能要求专属节点、专属集群或裸金属独占，成本更高但责任清晰；低风险任务可以共享资源，成本更低但承诺更弱。平台不应把合规要求当作例外手工处理，而应转化为调度策略和资源产品。这样安全边界才能规模化执行。</p>
+<p>第五个取舍是自动化与人工审批。共享和切分资源需要自动化才能提高利用率，但高风险模式变更、租户共置例外和合规资源释放可能需要审批。好的平台把常规路径自动化，把高风险例外显式化。这样既不阻塞日常使用，也不让安全边界被随意绕过。</p>
+<p>技术选型可以用一个简单矩阵约束决策。高敏训练、长周期预训练和强同步大任务优先裸金属或整卡独占，只有在验证充分时才使用 MIG；企业隔离推理可考虑 VM passthrough 或专属容器整卡；小模型推理、embedding 和开发测试可以使用 MIG；Notebook、教学、低优评测和可重试批量任务可以使用 time-slicing 或用户态配额；远程 GPU 更适合批处理、离线推理和弹性开发，不应默认承载低延迟强 SLA。矩阵背后的原则是：隔离和确定性不足时，不能靠低价格掩盖风险。</p>
+<h2 id="275">27.5 小结与延伸阅读<a class="headerlink" href="#275" title="Permanent link">&para;</a></h2>
+<h3 id="2751">27.5.1 小结<a class="headerlink" href="#2751" title="Permanent link">&para;</a></h3>
 <ul>
-<li>本章把主题放回 AI Factory 的端到端链路中理解。</li>
-<li>后续扩写会补充真实工程场景、架构图、配置示例和排障方法。</li>
-<li>判断方案优劣时，应同时看功能、性能、可观测性、验收和成本。</li>
+<li>GPU 隔离是硬件、虚拟化、容器、调度、网络、存储和策略共同作用的结果。</li>
+<li>Bare metal、VM passthrough、MIG、vGPU 和容器共享不是等价资源，应对应不同产品等级。</li>
+<li>多租户风险包括性能噪声、故障传播、数据泄露、计量争议和合规不匹配。</li>
+<li>资源等级必须绑定 SLA、监控、计费、回收和审计，不能只绑定调度标签。</li>
+<li>共享 GPU 能提高利用率，但必须用真实 workload 验证隔离、性能和恢复能力。</li>
 </ul>
-<h2 id="_10">延伸阅读<a class="headerlink" href="#_10" title="Permanent link">&para;</a></h2>
+<h3 id="2752">27.5.2 延伸阅读<a class="headerlink" href="#2752" title="Permanent link">&para;</a></h3>
 <ul>
-<li>TODO: 官方文档</li>
-<li>TODO: 经典论文</li>
-<li>TODO: 工程案例</li>
+<li><a href="https://docs.nvidia.com/datacenter/tesla/mig-user-guide/">NVIDIA Multi-Instance GPU User Guide</a></li>
+<li><a href="https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/latest/gpu-operator-mig.html">NVIDIA GPU Operator with MIG</a></li>
+<li><a href="https://docs.nvidia.com/vgpu/">NVIDIA vGPU documentation</a></li>
+<li><a href="https://github.com/NVIDIA/k8s-device-plugin#shared-access-to-gpus">NVIDIA k8s-device-plugin: shared access to GPUs</a></li>
 </ul>
 
 

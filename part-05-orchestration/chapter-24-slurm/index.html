@@ -12,6 +12,8 @@
         <meta name="author" content="king ye">
       
       
+        <link rel="canonical" href="https://kingye.me/ai-factory-engineering/part-05-orchestration/chapter-24-slurm/">
+      
       
         <link rel="prev" href="../chapter-23-ai-job-scheduling/">
       
@@ -188,92 +190,16 @@
   
   
   
-    <li class="md-tabs__item">
-      <a href="../.." class="md-tabs__link">
-        
-  
-  
-    
-  
-  首页
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../../preface/" class="md-tabs__link">
-        
-  
-  
-    
-  
-  前言
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../../roadmap/" class="md-tabs__link">
-        
-  
-  
-    
-  
-  写作路线图
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../../glossary/" class="md-tabs__link">
-        
-  
-  
-    
-  
-  术语表
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-  
     
     
       <li class="md-tabs__item">
-        <a href="../../part-00-introduction/chapter-00-from-datacenter-to-ai-factory/" class="md-tabs__link">
+        <a href="../.." class="md-tabs__link">
           
   
   
     
   
-  Part 0：导论 —— 什么是 AI Factory
+  导论
 
         </a>
       </li>
@@ -282,6 +208,13 @@
 
       
         
+  
+  
+  
+  
+    
+    
+      
   
   
   
@@ -295,10 +228,13 @@
   
     
   
-  Part 1：Application 层 —— AI 应用如何消耗 token
+  应用与平台
 
         </a>
       </li>
+    
+  
+
     
   
 
@@ -310,22 +246,7 @@
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../part-02-platform/chapter-05-maas/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Part 2：Platform 层 —— MaaS、网关、计费与应用平台
-
-        </a>
-      </li>
-    
-  
-
       
-        
   
   
   
@@ -339,10 +260,13 @@
   
     
   
-  Part 3：Model 层 —— 模型如何被训练、后训练、评测和服务化
+  模型与运行时
 
         </a>
       </li>
+    
+  
+
     
   
 
@@ -351,25 +275,12 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../part-04-runtime/chapter-15-inference-engines/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Part 4：AI Runtime 层 —— 训练推理运行时
-
-        </a>
-      </li>
-    
-  
-
       
-        
   
   
   
@@ -385,10 +296,13 @@
   
     
   
-  Part 5：资源编排与作业调度层
+  调度与基础设施
 
         </a>
       </li>
+    
+  
+
     
   
 
@@ -400,66 +314,7 @@
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../part-06-gpu-iaas/chapter-26-bare-metal-gpu-cloud/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Part 6：GPU IaaS 层
-
-        </a>
-      </li>
-    
-  
-
       
-        
-  
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../../part-07-network-storage/chapter-30-ai-networking-basics/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Part 7：网络与存储层
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../../part-08-physical-infrastructure/chapter-34-gpu-server/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Part 8：物理层 —— 机房、电力、制冷、硬件
-
-        </a>
-      </li>
-    
-  
-
-      
-        
   
   
   
@@ -473,10 +328,13 @@
   
     
   
-  Part 9：可靠性、观测与验收
+  运行与经济性
 
         </a>
       </li>
+    
+  
+
     
   
 
@@ -489,13 +347,13 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../part-10-economics-cases/chapter-41-token-factory/" class="md-tabs__link">
+        <a href="../../system-map/" class="md-tabs__link">
           
   
   
     
   
-  Part 10：AI Factory 经济学与产业案例
+  参考
 
         </a>
       </li>
@@ -554,15 +412,46 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../.." class="md-nav__link">
+    
+    
+      
         
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../.." class="md-nav__link ">
+              
   
   
   <span class="md-ellipsis">
     
   
-    首页
+    导论
   
 
     
@@ -570,13 +459,30 @@
   
   
 
-      </a>
-    </li>
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    导论
   
 
-    
-      
-      
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
   
   
   
@@ -601,9 +507,10 @@
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -628,36 +535,10 @@
     </li>
   
 
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../glossary/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    术语表
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -682,17 +563,17 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_1_4" >
         
           
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_1_4" id="__nav_1_4_label" tabindex="0">
             
   
   
   <span class="md-ellipsis">
     
   
-    Part 0：导论 —— 什么是 AI Factory
+    Part 0：导论
   
 
     
@@ -703,12 +584,12 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_1_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1_4">
             <span class="md-nav__icon md-icon"></span>
             
   
-    Part 0：导论 —— 什么是 AI Factory
+    Part 0：导论
   
 
           </label>
@@ -748,9 +629,77 @@
     </li>
   
 
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
     
       
       
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    应用与平台
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    应用与平台
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
   
   
   
@@ -781,17 +730,17 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2_1" >
         
           
-          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_2_1" id="__nav_2_1_label" tabindex="0">
             
   
   
   <span class="md-ellipsis">
     
   
-    Part 1：Application 层 —— AI 应用如何消耗 token
+    Part 1：Application 层
   
 
     
@@ -802,12 +751,12 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_1">
             <span class="md-nav__icon md-icon"></span>
             
   
-    Part 1：Application 层 —— AI 应用如何消耗 token
+    Part 1：Application 层
   
 
           </label>
@@ -931,9 +880,10 @@
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -964,17 +914,17 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2_2" >
         
           
-          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
             
   
   
   <span class="md-ellipsis">
     
   
-    Part 2：Platform 层 —— MaaS、网关、计费与应用平台
+    Part 2：Platform 层
   
 
     
@@ -985,12 +935,12 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_7">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2">
             <span class="md-nav__icon md-icon"></span>
             
   
-    Part 2：Platform 层 —— MaaS、网关、计费与应用平台
+    Part 2：Platform 层
   
 
           </label>
@@ -1114,9 +1064,77 @@
     </li>
   
 
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
     
       
       
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模型与运行时
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    模型与运行时
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
   
   
   
@@ -1151,17 +1169,17 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_1" >
         
           
-          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_3_1" id="__nav_3_1_label" tabindex="0">
             
   
   
   <span class="md-ellipsis">
     
   
-    Part 3：Model 层 —— 模型如何被训练、后训练、评测和服务化
+    Part 3：Model 层
   
 
     
@@ -1172,12 +1190,12 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_8">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_1">
             <span class="md-nav__icon md-icon"></span>
             
   
-    Part 3：Model 层 —— 模型如何被训练、后训练、评测和服务化
+    Part 3：Model 层
   
 
           </label>
@@ -1357,9 +1375,10 @@
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -1392,17 +1411,17 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_9" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_2" >
         
           
-          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_3_2" id="__nav_3_2_label" tabindex="0">
             
   
   
   <span class="md-ellipsis">
     
   
-    Part 4：AI Runtime 层 —— 训练推理运行时
+    Part 4：AI Runtime 层
   
 
     
@@ -1413,12 +1432,12 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_9">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_2">
             <span class="md-nav__icon md-icon"></span>
             
   
-    Part 4：AI Runtime 层 —— 训练推理运行时
+    Part 4：AI Runtime 层
   
 
           </label>
@@ -1570,6 +1589,14 @@
     </li>
   
 
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
     
       
       
@@ -1581,10 +1608,6 @@
   
     
     
-      
-        
-      
-        
       
         
       
@@ -1610,10 +1633,81 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
         
           
-          <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="">
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    调度与基础设施
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    调度与基础设施
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4_1" id="__nav_4_1_label" tabindex="">
             
   
   
@@ -1631,8 +1725,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_10">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_1_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4_1">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1821,211 +1915,318 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#_1" class="md-nav__link">
+  <a href="#241" class="md-nav__link">
     <span class="md-ellipsis">
       
-        本章回答的问题
+        24.1 导读
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="24.1 导读">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#2411" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        24.1.1 本章回答的问题
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#_2" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2412" class="md-nav__link">
     <span class="md-ellipsis">
       
-        一个真实场景
+        24.1.2 本章上下文
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#_3" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2413" class="md-nav__link">
     <span class="md-ellipsis">
       
-        核心概念
+        24.1.3 读者测试
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#_4" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2414" class="md-nav__link">
     <span class="md-ellipsis">
       
-        系统架构
+        24.1.4 一个真实场景
       
     </span>
   </a>
   
 </li>
+        
+      </ul>
+    </nav>
+  
+</li>
       
         <li class="md-nav__item">
-  <a href="#241-slurm" class="md-nav__link">
+  <a href="#242" class="md-nav__link">
     <span class="md-ellipsis">
       
-        24.1 Slurm 架构
+        24.2 基础模型
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="24.2 基础模型">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#2421" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        24.2.1 核心概念
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#242-partition" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2422" class="md-nav__link">
     <span class="md-ellipsis">
       
-        24.2 partition
+        24.2.2 系统架构
       
     </span>
   </a>
   
 </li>
+        
+      </ul>
+    </nav>
+  
+</li>
       
         <li class="md-nav__item">
-  <a href="#243-node" class="md-nav__link">
+  <a href="#243" class="md-nav__link">
     <span class="md-ellipsis">
       
-        24.3 node
+        24.3 关键技术
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="24.3 关键技术">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#2431-slurm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        24.3.1 Slurm 架构
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#244-job" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2432-partition" class="md-nav__link">
     <span class="md-ellipsis">
       
-        24.4 job
+        24.3.2 partition
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#245-step" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2433-node" class="md-nav__link">
     <span class="md-ellipsis">
       
-        24.5 step
+        24.3.3 node
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#246-sbatch-srun" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2434-job" class="md-nav__link">
     <span class="md-ellipsis">
       
-        24.6 sbatch 与 srun
+        24.3.4 job
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#247-gpu" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2435-step" class="md-nav__link">
     <span class="md-ellipsis">
       
-        24.7 GPU 资源
+        24.3.5 step
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#248-topology-aware-scheduling" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2436-sbatch-srun" class="md-nav__link">
     <span class="md-ellipsis">
       
-        24.8 topology-aware scheduling
+        24.3.6 sbatch 与 srun
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#249-slurm-vs-kubernetes" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2437-gpu" class="md-nav__link">
     <span class="md-ellipsis">
       
-        24.9 Slurm vs Kubernetes
+        24.3.7 GPU 资源
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#_5" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2438-topology-aware-scheduling" class="md-nav__link">
     <span class="md-ellipsis">
       
-        工程实现
+        24.3.8 topology-aware scheduling
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#_6" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2439-slurm-vs-kubernetes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        常见故障
+        24.3.9 Slurm vs Kubernetes
       
     </span>
   </a>
   
 </li>
+        
+      </ul>
+    </nav>
+  
+</li>
       
         <li class="md-nav__item">
-  <a href="#_7" class="md-nav__link">
+  <a href="#244" class="md-nav__link">
     <span class="md-ellipsis">
       
-        性能指标
+        24.4 工程落地
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="24.4 工程落地">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#2441" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        24.4.1 工程实现
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#_8" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2442" class="md-nav__link">
     <span class="md-ellipsis">
       
-        设计取舍
+        24.4.2 常见故障
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#_9" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2443" class="md-nav__link">
     <span class="md-ellipsis">
       
-        小结
+        24.4.3 性能指标
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#_10" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2444" class="md-nav__link">
     <span class="md-ellipsis">
       
-        延伸阅读
+        24.4.4 设计取舍
       
     </span>
   </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#245" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        24.5 小结与延伸阅读
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="24.5 小结与延伸阅读">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#2451" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        24.5.1 小结
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2452" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        24.5.2 延伸阅读
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -2072,9 +2273,10 @@
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -2096,19 +2298,22 @@
       
       
         
+          
+          
+        
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_11" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4_2" >
         
           
-          <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_2" id="__nav_4_2_label" tabindex="">
             
   
   
@@ -2126,8 +2331,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_11">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2255,9 +2460,10 @@
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -2279,19 +2485,22 @@
       
       
         
+          
+          
+        
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_12" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4_3" >
         
           
-          <label class="md-nav__link" for="__nav_12" id="__nav_12_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_3" id="__nav_4_3_label" tabindex="">
             
   
   
@@ -2309,8 +2518,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_12_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_12">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_3">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2438,9 +2647,10 @@
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -2460,26 +2670,29 @@
       
       
         
+          
+          
+        
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_13" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4_4" >
         
           
-          <label class="md-nav__link" for="__nav_13" id="__nav_13_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_4" id="__nav_4_4_label" tabindex="">
             
   
   
   <span class="md-ellipsis">
     
   
-    Part 8：物理层 —— 机房、电力、制冷、硬件
+    Part 8：物理层
   
 
     
@@ -2490,12 +2703,12 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_13_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_13">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_4">
             <span class="md-nav__icon md-icon"></span>
             
   
-    Part 8：物理层 —— 机房、电力、制冷、硬件
+    Part 8：物理层
   
 
           </label>
@@ -2591,9 +2804,77 @@
     </li>
   
 
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
     
       
       
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    运行与经济性
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    运行与经济性
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
   
   
   
@@ -2624,10 +2905,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_14" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_1" >
         
           
-          <label class="md-nav__link" for="__nav_14" id="__nav_14_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5_1" id="__nav_5_1_label" tabindex="0">
             
   
   
@@ -2645,8 +2926,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_14_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_14">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_1">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2774,9 +3055,10 @@
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -2807,17 +3089,17 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_15" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_2" >
         
           
-          <label class="md-nav__link" for="__nav_15" id="__nav_15_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5_2" id="__nav_5_2_label" tabindex="0">
             
   
   
   <span class="md-ellipsis">
     
   
-    Part 10：AI Factory 经济学与产业案例
+    Part 10：经济学与产业案例
   
 
     
@@ -2828,12 +3110,12 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_15_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_15">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2">
             <span class="md-nav__icon md-icon"></span>
             
   
-    Part 10：AI Factory 经济学与产业案例
+    Part 10：经济学与产业案例
   
 
           </label>
@@ -2957,6 +3239,227 @@
     </li>
   
 
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    参考
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    参考
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../system-map/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    系统地图与工程索引
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    术语表
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../style-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    写作规范
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../depth-standard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    深度标准与覆盖矩阵
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../doc-coauthoring-review/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Doc Coauthoring 审稿标准
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
     
   </ul>
 </nav>
@@ -2985,211 +3488,318 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#_1" class="md-nav__link">
+  <a href="#241" class="md-nav__link">
     <span class="md-ellipsis">
       
-        本章回答的问题
+        24.1 导读
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="24.1 导读">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#2411" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        24.1.1 本章回答的问题
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#_2" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2412" class="md-nav__link">
     <span class="md-ellipsis">
       
-        一个真实场景
+        24.1.2 本章上下文
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#_3" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2413" class="md-nav__link">
     <span class="md-ellipsis">
       
-        核心概念
+        24.1.3 读者测试
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#_4" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2414" class="md-nav__link">
     <span class="md-ellipsis">
       
-        系统架构
+        24.1.4 一个真实场景
       
     </span>
   </a>
   
 </li>
+        
+      </ul>
+    </nav>
+  
+</li>
       
         <li class="md-nav__item">
-  <a href="#241-slurm" class="md-nav__link">
+  <a href="#242" class="md-nav__link">
     <span class="md-ellipsis">
       
-        24.1 Slurm 架构
+        24.2 基础模型
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="24.2 基础模型">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#2421" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        24.2.1 核心概念
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#242-partition" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2422" class="md-nav__link">
     <span class="md-ellipsis">
       
-        24.2 partition
+        24.2.2 系统架构
       
     </span>
   </a>
   
 </li>
+        
+      </ul>
+    </nav>
+  
+</li>
       
         <li class="md-nav__item">
-  <a href="#243-node" class="md-nav__link">
+  <a href="#243" class="md-nav__link">
     <span class="md-ellipsis">
       
-        24.3 node
+        24.3 关键技术
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="24.3 关键技术">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#2431-slurm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        24.3.1 Slurm 架构
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#244-job" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2432-partition" class="md-nav__link">
     <span class="md-ellipsis">
       
-        24.4 job
+        24.3.2 partition
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#245-step" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2433-node" class="md-nav__link">
     <span class="md-ellipsis">
       
-        24.5 step
+        24.3.3 node
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#246-sbatch-srun" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2434-job" class="md-nav__link">
     <span class="md-ellipsis">
       
-        24.6 sbatch 与 srun
+        24.3.4 job
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#247-gpu" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2435-step" class="md-nav__link">
     <span class="md-ellipsis">
       
-        24.7 GPU 资源
+        24.3.5 step
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#248-topology-aware-scheduling" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2436-sbatch-srun" class="md-nav__link">
     <span class="md-ellipsis">
       
-        24.8 topology-aware scheduling
+        24.3.6 sbatch 与 srun
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#249-slurm-vs-kubernetes" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2437-gpu" class="md-nav__link">
     <span class="md-ellipsis">
       
-        24.9 Slurm vs Kubernetes
+        24.3.7 GPU 资源
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#_5" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2438-topology-aware-scheduling" class="md-nav__link">
     <span class="md-ellipsis">
       
-        工程实现
+        24.3.8 topology-aware scheduling
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#_6" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2439-slurm-vs-kubernetes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        常见故障
+        24.3.9 Slurm vs Kubernetes
       
     </span>
   </a>
   
 </li>
+        
+      </ul>
+    </nav>
+  
+</li>
       
         <li class="md-nav__item">
-  <a href="#_7" class="md-nav__link">
+  <a href="#244" class="md-nav__link">
     <span class="md-ellipsis">
       
-        性能指标
+        24.4 工程落地
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="24.4 工程落地">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#2441" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        24.4.1 工程实现
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#_8" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2442" class="md-nav__link">
     <span class="md-ellipsis">
       
-        设计取舍
+        24.4.2 常见故障
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#_9" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2443" class="md-nav__link">
     <span class="md-ellipsis">
       
-        小结
+        24.4.3 性能指标
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#_10" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2444" class="md-nav__link">
     <span class="md-ellipsis">
       
-        延伸阅读
+        24.4.4 设计取舍
       
     </span>
   </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#245" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        24.5 小结与延伸阅读
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="24.5 小结与延伸阅读">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#2451" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        24.5.1 小结
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2452" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        24.5.2 延伸阅读
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -3214,66 +3824,235 @@
 
 
 <h1 id="24-slurm-hpc">第 24 章：Slurm 与 HPC 调度<a class="headerlink" href="#24-slurm-hpc" title="Permanent link">&para;</a></h1>
-<h2 id="_1">本章回答的问题<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h2>
+<h2 id="241">24.1 导读<a class="headerlink" href="#241" title="Permanent link">&para;</a></h2>
+<h3 id="2411">24.1.1 本章回答的问题<a class="headerlink" href="#2411" title="Permanent link">&para;</a></h3>
 <ul>
-<li>Slurm 与 HPC 调度 在 AI Factory 中解决什么工程问题？</li>
-<li>它和应用、平台、模型、运行时、调度或基础设施之间是什么关系？</li>
-<li>生产环境中应如何落地、观测、验收和排障？</li>
+<li>Slurm 为什么在大模型训练集群中仍然重要？</li>
+<li>partition、node、job、step、sbatch、srun 和 GPU 资源如何组织训练任务？</li>
+<li>Slurm 与 Kubernetes 在 AI Factory 中如何分工？</li>
 </ul>
-<h2 id="_2">一个真实场景<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h2>
-<p>一个团队在建设 AI Factory 时，常会遇到和“Slurm 与 HPC 调度”相关的边界问题：业务侧希望更快上线，平台侧要控制成本和稳定性，基础设施侧则要保证资源可交付、可观测、可回收。本章后续会用具体场景把这些约束串起来。</p>
-<h2 id="_3">核心概念<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h2>
-<p>本章涉及的术语会按“定义、位置、输入输出、工程约束”的顺序展开。第一版先保留结构化骨架，后续扩写时补充真实配置、命令、指标和案例。</p>
-<h2 id="_4">系统架构<a class="headerlink" href="#_4" title="Permanent link">&para;</a></h2>
+<h3 id="2412">24.1.2 本章上下文<a class="headerlink" href="#2412" title="Permanent link">&para;</a></h3>
+<ul>
+<li>层级定位：本章属于 <code>资源编排与作业调度层</code>，重点讨论容器、Kubernetes、GPU 调度、队列、Slurm 和多集群资源治理。</li>
+<li>前置依赖：建议先理解 第 23 章：AI 作业队列与调度 中的核心对象和路径。</li>
+<li>后续关联：本章内容会继续连接到 第 25 章：多集群与混部，并在系统地图、深度标准和读者测试中被交叉引用。</li>
+<li>读完能力：读完本章后，读者应能把《Slurm 与 HPC 调度》中的概念映射到 AI Factory 的生产路径、工程对象、观测证据和设计取舍。</li>
+</ul>
+<h3 id="2413">24.1.3 读者测试<a class="headerlink" href="#2413" title="Permanent link">&para;</a></h3>
+<ul>
+<li>机制题：读者能否解释 Slurm 架构、partition、node、job 的核心机制，以及它们如何共同支撑《Slurm 与 HPC 调度》？</li>
+<li>边界题：读者能否区分 资源编排与作业调度、GPU IaaS、Platform 层和 AI Runtime 层 的责任边界，并说明哪些问题不能简单归因到本章组件？</li>
+<li>路径题：读者能否从 workload 提交追到队列、配额、调度、容器启动、GPU 分配和拓扑证据，并指出本章对象在路径中的位置？</li>
+<li>排障题：当《Slurm 与 HPC 调度》相关生产症状出现时，读者能否列出第一层证据、下一跳证据、可能 owner 和止血动作？</li>
+</ul>
+<h3 id="2414">24.1.4 一个真实场景<a class="headerlink" href="#2414" title="Permanent link">&para;</a></h3>
+<p>一个研究团队长期使用 Slurm 提交多节点训练，熟悉 <code>sbatch</code>、<code>srun</code>、partition、节点独占和交互式调试。平台团队希望统一到 Kubernetes，迁移后发现研究人员依赖的节点约束、MPI/NCCL 启动方式、作业日志、拓扑控制和账户 fairshare 很难直接复制。与此同时，在线推理、MaaS 控制面和 API Gateway 又明显更适合 Kubernetes 的服务化模型。</p>
+<p>最终，平台没有强行二选一，而是采用分工：大规模预训练、研究训练和强 HPC 风格作业继续运行在 Slurm；在线推理、平台控制面、微调产品化入口和模型服务运行在 Kubernetes；数据平台、模型注册、镜像仓库、身份系统、观测和成本系统把二者连接起来。这样既保留研究训练效率，也让模型产物能进入服务化链路。</p>
+<p>这个场景说明，Slurm 和 Kubernetes 不是简单替代关系。二者来自不同历史背景，擅长不同问题。Slurm 以批式作业、节点、队列和 HPC 网络为核心；Kubernetes 以声明式 API、服务、控制器和容器生态为核心。AI Factory 应按 workload 选择工具，而不是按组织口号统一所有系统。</p>
+<p>真正困难的不是同时存在两套系统，而是两套系统缺少共同治理。若 Slurm 的账户、节点、日志、模型产物和成本与 Kubernetes 平台断裂，组织就会得到两个孤岛；若为了统一强行丢掉 Slurm 的 HPC 能力，大规模训练效率又会下降。AI Factory 的目标是分工清晰、事实统一，而不是形式统一。</p>
+<p>评估这类平台时，要看训练成果能否顺利流向后续环节。一个 Slurm 作业训练出 checkpoint 后，是否能自动触发评测，是否能注册模型，是否能被 Kubernetes 推理服务加载，是否能计算训练成本，这些问题比“用了哪个调度器”更关键。</p>
+<h2 id="242">24.2 基础模型<a class="headerlink" href="#242" title="Permanent link">&para;</a></h2>
+<h3 id="2421">24.2.1 核心概念<a class="headerlink" href="#2421" title="Permanent link">&para;</a></h3>
+<p>Slurm 是 HPC 领域广泛使用的作业调度系统，以 job、node、partition、step、account 和 fairshare 为核心。用户提交作业，Slurm 根据资源、队列、优先级、账户和拓扑选择节点并启动任务。大规模训练与 HPC workload 很相似：批式提交、长时间运行、强通信、资源独占、多节点同步、依赖高速网络和 checkpoint。</p>
+<p>在 AI Factory 中，Slurm 属于资源编排与作业调度层，而不是传统 IaaS 或 AI PaaS。它管理的是作业如何使用 GPU 节点，不负责模型 API、AI Gateway、租户计费产品化入口，也不负责裸金属交付。它向上服务训练团队和研究工作流，向下依赖 GPU IaaS、网络、存储和节点健康。</p>
+<p>Slurm 的优势是批式作业语义成熟、命令行体验稳定、HPC 生态丰富、拓扑和账户能力完善。挑战是服务化、多租户产品入口、云原生控制器和在线流量治理不是它的主场。因此，讨论 Slurm 的重点不是“是否过时”，而是它在 AI Factory 中如何与 Kubernetes 和平台层分工协作。</p>
+<p>还要理解 Slurm 的用户模型。很多研究团队把作业脚本视为实验的一部分，命令行调试、环境模块、交互节点和日志文件是日常工作方式。平台如果忽视这种工作流，迁移阻力会很大。好的平台不是把研究者从 Slurm 强行拉走，而是让 Slurm 作业自然接入模型、数据、评测和成本系统。</p>
+<p>这也意味着 Slurm 治理不能只靠 UI。命令行、脚本模板、模块环境、容器入口和平台 API 都要使用同一套元数据规范。用户可以选择入口，但不能绕过审计、成本和产物规则。灵活入口和统一治理可以同时存在。</p>
+<p>因此，判断 Slurm 是否适合某个 AI Factory，不应只看它能否分配 GPU，而要看它能否把训练作业纳入统一事实源。作业、账户、节点、产物和成本若能被平台理解，Slurm 就是训练系统的一部分；若只能在命令行里自成闭环，它就会逐渐变成难以治理的资源孤岛。</p>
+<h3 id="2422">24.2.2 系统架构<a class="headerlink" href="#2422" title="Permanent link">&para;</a></h3>
+<p>Slurm 架构通常包括 slurmctld、slurmd、slurmdbd、命令行工具和计算节点。slurmctld 是控制器，维护集群状态、队列和调度决策；slurmd 运行在每个计算节点上，负责启动和管理作业步骤；slurmdbd 记录账户、历史和资源使用；用户通过 <code>sbatch</code>、<code>srun</code>、<code>squeue</code>、<code>sacct</code> 等命令提交、启动、查询和审计作业。</p>
+<p>在 AI 训练中，Slurm 还要与数据、网络、存储和运行时结合。作业脚本加载模块或容器，设置 NCCL、CUDA、RDMA 环境变量，读取数据集，启动多进程训练，周期性写 checkpoint。节点健康、GPU 状态、网络拓扑和存储性能都会影响作业结果。Slurm 负责资源和执行控制，但训练正确性依赖完整运行环境。</p>
+<p>架构集成的关键，是把 Slurm 作业状态接入 AI Factory 的统一平台。模型产物应进入 model registry，日志和指标应进入观测系统，账户和 GPU 小时应进入成本系统，节点健康应与 GPU 资源池同步。Slurm 可以保留研究者熟悉的入口，但不能成为孤岛。否则训练产物难以进入 MaaS、评测和模型服务。</p>
+<p>这要求在架构中建立映射关系：Slurm account 映射到租户，job id 映射到实验，partition 映射到资源池，node 映射到资产和健康状态，checkpoint 映射到模型产物。没有这些映射，Slurm 仍能运行训练，却无法支撑 AI Factory 的商业化和平台化运营。</p>
+<p>架构还要处理数据路径。Slurm 作业常直接访问并行文件系统或对象存储，Kubernetes 服务可能通过不同挂载或网关访问同一模型产物。若路径、权限和生命周期不统一，模型从训练到服务化会卡在文件系统边界。数据和产物规范是跨调度系统集成的基础。</p>
+<p>控制面集成还要避免反向耦合。Slurm 不必理解 MaaS 的全部业务语义，Kubernetes 也不必直接接管 Slurm 的调度循环；更稳妥的做法是在二者之间建立事件、元数据和产物接口。这样可以保留 Slurm 的调度稳定性，同时让平台获得足够的可观测和治理信息。</p>
 <pre class="mermaid"><code>flowchart LR
-  Goal["业务目标"] --&gt; Capability["本章能力"]
-  Capability --&gt; Components["平台 / 运行时 / 基础设施组件"]
-  Components --&gt; Metrics["指标、验收与反馈"]</code></pre>
-<h2 id="241-slurm">24.1 Slurm 架构<a class="headerlink" href="#241-slurm" title="Permanent link">&para;</a></h2>
-<p>Slurm 架构 是本章后续扩写的关键主题。写作时需要说明它解决什么问题、位于 AI Factory 的哪一层、和上下游组件如何交互，以及在生产环境中如何配置、观测和诊断。</p>
-<h2 id="242-partition">24.2 partition<a class="headerlink" href="#242-partition" title="Permanent link">&para;</a></h2>
-<p>partition 是本章后续扩写的关键主题。写作时需要说明它解决什么问题、位于 AI Factory 的哪一层、和上下游组件如何交互，以及在生产环境中如何配置、观测和诊断。</p>
-<h2 id="243-node">24.3 node<a class="headerlink" href="#243-node" title="Permanent link">&para;</a></h2>
-<p>node 是本章后续扩写的关键主题。写作时需要说明它解决什么问题、位于 AI Factory 的哪一层、和上下游组件如何交互，以及在生产环境中如何配置、观测和诊断。</p>
-<h2 id="244-job">24.4 job<a class="headerlink" href="#244-job" title="Permanent link">&para;</a></h2>
-<p>job 是本章后续扩写的关键主题。写作时需要说明它解决什么问题、位于 AI Factory 的哪一层、和上下游组件如何交互，以及在生产环境中如何配置、观测和诊断。</p>
-<h2 id="245-step">24.5 step<a class="headerlink" href="#245-step" title="Permanent link">&para;</a></h2>
-<p>step 是本章后续扩写的关键主题。写作时需要说明它解决什么问题、位于 AI Factory 的哪一层、和上下游组件如何交互，以及在生产环境中如何配置、观测和诊断。</p>
-<h2 id="246-sbatch-srun">24.6 sbatch 与 srun<a class="headerlink" href="#246-sbatch-srun" title="Permanent link">&para;</a></h2>
-<p>sbatch 与 srun 是本章后续扩写的关键主题。写作时需要说明它解决什么问题、位于 AI Factory 的哪一层、和上下游组件如何交互，以及在生产环境中如何配置、观测和诊断。</p>
-<h2 id="247-gpu">24.7 GPU 资源<a class="headerlink" href="#247-gpu" title="Permanent link">&para;</a></h2>
-<p>GPU 资源 是本章后续扩写的关键主题。写作时需要说明它解决什么问题、位于 AI Factory 的哪一层、和上下游组件如何交互，以及在生产环境中如何配置、观测和诊断。</p>
-<h2 id="248-topology-aware-scheduling">24.8 topology-aware scheduling<a class="headerlink" href="#248-topology-aware-scheduling" title="Permanent link">&para;</a></h2>
-<p>topology-aware scheduling 是本章后续扩写的关键主题。写作时需要说明它解决什么问题、位于 AI Factory 的哪一层、和上下游组件如何交互，以及在生产环境中如何配置、观测和诊断。</p>
-<h2 id="249-slurm-vs-kubernetes">24.9 Slurm vs Kubernetes<a class="headerlink" href="#249-slurm-vs-kubernetes" title="Permanent link">&para;</a></h2>
-<p>Slurm vs Kubernetes 是本章后续扩写的关键主题。写作时需要说明它解决什么问题、位于 AI Factory 的哪一层、和上下游组件如何交互，以及在生产环境中如何配置、观测和诊断。</p>
-<h2 id="_5">工程实现<a class="headerlink" href="#_5" title="Permanent link">&para;</a></h2>
-<p>后续扩写时应提供可复用的配置、命令、YAML、伪代码或操作流程。实现描述需要区分开发测试、单集群生产、多租户生产和跨集群生产等不同复杂度。</p>
-<h2 id="_6">常见故障<a class="headerlink" href="#_6" title="Permanent link">&para;</a></h2>
+  User["用户 / 训练脚本"] --&gt; Submit["sbatch / srun"]
+  Submit --&gt; Controller["slurmctld"]
+  Controller --&gt; Queue["partition / priority / fairshare"]
+  Queue --&gt; Nodes["compute nodes"]
+  Nodes --&gt; Step["job steps"]
+  Nodes --&gt; GPU["GPU / RDMA"]
+  Controller --&gt; Accounting["slurmdbd / accounting"]
+  Step --&gt; Registry["model registry / artifacts"]
+  Step --&gt; Metrics["logs / metrics / checkpoint"]</code></pre>
+<h2 id="243">24.3 关键技术<a class="headerlink" href="#243" title="Permanent link">&para;</a></h2>
+<h3 id="2431-slurm">24.3.1 Slurm 架构<a class="headerlink" href="#2431-slurm" title="Permanent link">&para;</a></h3>
+<p>Slurm 的核心是控制器和节点代理。slurmctld 负责维护资源状态、接受作业、执行调度、处理节点状态变化；slurmd 运行在计算节点，负责启动 job step、管理进程和汇报状态；slurmdbd 负责账户和历史记录。用户通过命令行工具与系统交互，形成稳定的 HPC 工作流。</p>
+<p>这种架构适合长时间批式作业。训练团队可以用 <code>sbatch</code> 提交脚本，用 <code>srun</code> 启动分布式进程，用 <code>squeue</code> 查看排队，用 <code>sacct</code> 追踪历史。相比 Kubernetes 的多层对象，Slurm 对研究者更直接。大模型训练中，很多团队仍然重视这种可控、可调试、贴近节点的体验。</p>
+<p>工程上，Slurm 架构要关注高可用、状态一致性和外部系统集成。slurmctld 是关键控制面，故障会影响调度；slurmdbd 数据影响成本和审计；节点状态要与硬件健康同步。AI Factory 中，Slurm 不应只由研究团队自己维护，而应纳入平台运维、监控、告警和变更流程。HPC 调度也需要 SRE 化。</p>
+<p>Slurm 控制面的变更也要谨慎。升级 Slurm、修改调度参数、调整 accounting 或改变节点配置，都可能影响大量训练作业。平台应提供测试 partition 或灰度节点，先验证典型训练脚本、NCCL、checkpoint 和 accounting，再扩大范围。HPC 系统同样需要变更管理。</p>
+<p>Slurm 架构还要考虑 HA 和灾备。控制器故障、数据库不可用或共享配置错误，可能让整个训练集群无法提交或查询作业。AI Factory 应为 Slurm 控制面建立备份、监控和恢复演练，而不是只关注计算节点。</p>
+<p>此外，配置管理必须可追踪。<code>slurm.conf</code>、GRES 配置、节点特性、账户规则和调度参数的变更，都应进入版本管理和审计流程。很多“训练突然变慢”并不是模型代码变化，而是某个调度或节点配置改变。把 Slurm 配置当作生产代码管理，是降低隐性风险的基础。</p>
+<h3 id="2432-partition">24.3.2 partition<a class="headerlink" href="#2432-partition" title="Permanent link">&para;</a></h3>
+<p>Partition 是 Slurm 中的资源分区，定义一组节点和调度策略。AI 集群可以按 GPU 型号、网络拓扑、业务用途、优先级、环境或租户划分 partition，例如 <code>pretrain-h100</code>、<code>debug</code>、<code>eval</code>、<code>low-priority</code>。Partition 决定作业可以进入哪些资源池，也决定等待和优先级规则。</p>
+<p>Partition 设计会直接影响利用率和用户体验。过多 partition 可以提供强隔离，但容易造成碎片：某个 partition 空闲，另一个 partition 排队。过少 partition 简单，但难以区分生产训练、调试任务和低优先级实验。AI Factory 需要根据 workload 和硬件能力设计 partition，而不是简单按团队划分。</p>
+<p>工程上，partition 应有清晰说明：适用 workload、GPU 类型、网络能力、最大作业规模、时间限制、抢占策略、账户规则和维护窗口。用户提交作业时，应知道为什么选择某个 partition。平台也应监控 partition 利用率、等待时间和失败原因，定期调整。Partition 是资源策略，不是静态目录。</p>
+<p>Partition 还应与业务 SLA 关联。预训练 partition 可以强调拓扑和长时间稳定，debug partition 可以强调快速启动和短时限，低优先级 partition 可以允许抢占。不同 partition 的规则应写入文档和系统提示。用户选择 partition 时，选择的是资源服务等级。</p>
+<p>Partition 还应支持回填策略。短作业可以利用大作业等待期间的空隙，提高利用率；但回填不能影响已承诺的大作业启动窗口。如何设置时间限制和回填规则，会直接影响用户体验。没有时间限制的作业会让调度器难以优化。</p>
+<p>在多租户环境中，partition 还承担沟通边界的作用。平台可以把“生产训练”“调试”“评测”“低优先级”做成不同入口，让用户在提交前理解规则。清晰的 partition 策略比事后人工协调更可靠，也能减少团队之间因为排队和抢占产生的摩擦。</p>
+<h3 id="2433-node">24.3.3 node<a class="headerlink" href="#2433-node" title="Permanent link">&para;</a></h3>
+<p>Node 是 Slurm 管理的计算节点。AI 节点通常包含多张 GPU、CPU、内存、本地 NVMe、RDMA NIC、BMC 和复杂的拓扑。Slurm 需要知道节点可用性、资源数量、GPU GRES、特性标签、状态和健康。节点状态包括 idle、alloc、mix、down、drain、fail 等，直接决定作业能否调度。</p>
+<p>节点状态管理是 Slurm 集群运维的核心。发现 GPU Xid、ECC 趋势、NVLink error、RDMA 链路异常、磁盘故障或驱动问题时，应把节点 drain 或标记不可用，避免新任务进入。对于长训练任务，坏节点代价很高。节点看似可调度，不代表适合训练；准入测试和健康检查结果必须反馈给 Slurm。</p>
+<p>工程上，节点信息应与资产系统、监控系统和维修流程同步。节点维修后不能直接回到 idle，而要重新跑 GPU、NCCL、存储和网络测试。节点特性也要准确，例如 GPU 型号、NVLink 域、rack、rail、driver baseline。若 Slurm 的节点视图与真实硬件状态不一致，调度决策就会失真。Node 是 Slurm 与 GPU IaaS 的接缝。</p>
+<p>节点 drain 原因要结构化。<code>drain</code> 只说明节点不可调度，不说明是 GPU Xid、ECC、RDMA、磁盘、维护还是软件栈问题。结构化原因能帮助用户理解等待，也能帮助平台统计故障热点。节点状态管理越细，长训练作业越少踩到坏资源。</p>
+<p>节点还要有恢复流程。drain 后谁负责维修，修好后跑哪些验收，何时回到 idle，都应有状态机。手工把节点从 drain 改回 idle，而不做 GPU/NCCL/RDMA 验收，会把隐患重新交给训练任务。</p>
+<p>节点标签也不能只描述硬件型号。训练系统需要知道节点属于哪个故障域、连接到哪组交换机、使用哪条软件基线、最近一次验收结果是什么。调度器看到的是节点，平台运营看到的是资产生命周期。二者如果脱节，节点问题会在训练作业中反复暴露。</p>
+<h3 id="2434-job">24.3.4 job<a class="headerlink" href="#2434-job" title="Permanent link">&para;</a></h3>
+<p>Job 是用户提交的资源申请和执行单元。它包含资源需求、命令、时间限制、partition、账户、输出路径、环境和约束。训练任务通常以 job 形式申请多个节点和 GPU，然后在 job 中启动多进程训练。Job 是 Slurm 调度、审计和计费的基本对象。</p>
+<p>Job 的资源声明要尽量明确。节点数、每节点 GPU 数、总任务数、时间限制、partition、约束、账户和输出路径都会影响排队和运行。如果声明过宽，作业可能长期等待；声明过窄，训练可能 OOM 或性能差；时间限制过短，作业可能被杀；时间限制过长，又会影响调度回填。资源声明是用户与调度器之间的契约。</p>
+<p>工程上，平台可以提供标准 job 模板，封装 NCCL、CUDA、日志、checkpoint、环境加载和故障收集。用户仍然保留训练脚本自由，但关键运行时参数由模板治理。Job 元数据也应进入模型平台：模型名、数据集、镜像或环境、commit、checkpoint、实验编号和成本标签。否则 Slurm job 完成后，产物很难被后续系统理解。</p>
+<p>Job 还要有生命周期状态。提交、排队、分配、运行、失败、取消、超时、完成、产物上传和模型注册应能串起来。Slurm 原生状态是基础，AI Factory 需要在其上增加模型和数据语义。这样训练团队和平台团队才能围绕同一 job 讨论。</p>
+<p>Job 失败也要分类。用户脚本错误、环境错误、节点故障、网络故障、存储故障、超时和抢占的处理方式不同。若所有失败都只是 FAILED，平台无法做趋势分析，也无法判断是用户需要修改脚本，还是基础设施需要维护。</p>
+<p>因此，生产训练不应只保存退出码。作业应记录关键输入、代码版本、数据版本、镜像或模块、资源申请和失败阶段。这样同一个 job 才能被复现、比较和归因。对 AI Factory 来说，job 既是调度对象，也是实验记录和成本对象。</p>
+<h3 id="2435-step">24.3.5 step<a class="headerlink" href="#2435-step" title="Permanent link">&para;</a></h3>
+<p>Step 是 job 内部的执行阶段。一个 job 可以包含多个 step，例如环境准备、数据检查、NCCL 自检、训练、评测、checkpoint 转换和产物上传。<code>srun</code> 常用于在已分配资源中启动并行 step。Step 让一个 job 内部的多阶段执行可以被 Slurm 管理和记录。</p>
+<p>Step 级别信息对排障非常重要。训练失败时，平台需要知道失败发生在环境初始化、数据读取、NCCL 建连、forward/backward、checkpoint 还是评测。只看 job failed 太粗。Step 能帮助把长训练任务拆成可诊断阶段，也便于统计不同阶段耗时和失败原因。</p>
+<p>工程上，应在模板中规范 step 命名和日志路径。例如 <code>precheck</code>、<code>prepare-data</code>、<code>train</code>、<code>evaluate</code>、<code>upload-artifacts</code>。每个 step 产生结构化日志和指标，并与 job id、实验 id 关联。这样 Slurm 的执行阶段可以映射到 AI Factory 的训练生命周期。Step 不是细枝末节，而是长作业可观测性的关键粒度。</p>
+<p>Step 还可以作为失败恢复边界。若 precheck 失败，不应消耗长时间训练资源；若 evaluation 失败，不一定需要重跑训练；若 upload-artifacts 失败，可以保留 checkpoint 后重试上传。把作业拆成清晰 step，有助于减少无效重跑。长训练任务的成本决定了这种粒度很有价值。</p>
+<p>Step 粒度也能帮助优化模板。若大量作业在 precheck 失败，说明准入前检查不足；若训练 step 正常但 upload 频繁失败，说明产物系统或权限有问题。把失败聚合到 step，比只统计 job 失败更有指导意义。</p>
+<p>在大作业中，step 还可以承载保护性检查。正式训练前先用少量 batch 检查数据、通信和 checkpoint 写入，可以避免占用数百张 GPU 后才发现路径或权限错误。Step 的价值不只是记录阶段，更是把昂贵错误尽早暴露。</p>
+<h3 id="2436-sbatch-srun">24.3.6 sbatch 与 srun<a class="headerlink" href="#2436-sbatch-srun" title="Permanent link">&para;</a></h3>
+<p><code>sbatch</code> 用于提交批处理脚本，作业进入队列后由 Slurm 调度运行。<code>srun</code> 用于在分配的资源上启动并行任务，也可用于交互式调试。大模型训练常见模式是用 <code>sbatch</code> 提交作业脚本，在脚本中用 <code>srun</code> 启动每节点多个训练进程，让框架根据环境变量初始化分布式通信。</p>
+<p><code>sbatch</code> 和 <code>srun</code> 的优势是直接、可脚本化、符合研究工作流。研究人员可以快速调整参数、查看日志、进入交互节点调试。相比复杂平台 UI，这种方式对底层系统透明。但透明也带来风险：每个人手写 NCCL 环境、日志路径和 checkpoint 规则，容易形成不可复现的脚本碎片。</p>
+<p>工程上，平台应提供受控模板，而不是禁止命令行。模板可以封装账户、partition、资源声明、环境模块、容器启动、NCCL 参数、日志、checkpoint 和产物上传。用户只填模型、数据和训练参数。这样既保留 Slurm 的灵活性，也把生产关键路径标准化。命令行体验和平台治理并不冲突。</p>
+<p>模板还应支持本地调试和生产提交的一致性。研究者可以在小 partition 用相同模板调试，再扩大到大规模训练。若调试脚本和生产脚本完全不同，问题会在放大后暴露。<code>sbatch</code> 和 <code>srun</code> 的价值，在于让这种逐步放大过程足够直接。</p>
+<p>模板要避免过度封装。研究者仍需要能看到最终命令、环境变量和节点列表，才能定位性能问题。好的模板是可读、可覆盖、可审计的，而不是隐藏所有细节的黑盒。透明性是 Slurm 工作流的重要优势。</p>
+<p>同时，模板要有版本。一次训练使用哪个模板版本、哪些默认参数、哪些参数被用户覆盖，都应进入日志和实验元数据。否则同一份训练脚本在不同时间运行，可能因为模板变化得到不同结果。可复现性来自代码，也来自提交入口。</p>
+<h3 id="2437-gpu">24.3.7 GPU 资源<a class="headerlink" href="#2437-gpu" title="Permanent link">&para;</a></h3>
+<p>Slurm 通常通过 GRES 等机制管理 GPU 资源。作业可以申请每节点 GPU 数、特定 GPU 类型或特定节点特性。AI 场景还需要考虑 MIG、GPU 独占、拓扑、健康状态、driver baseline、RDMA 和本地 NVMe。GPU 不只是计数资源，而是带有能力、拓扑和状态的稀缺资源。</p>
+<p>GPU 资源管理必须与节点健康联动。Slurm 看到 GRES 可用，不代表 GPU 适合训练。GPU Xid、ECC、NVLink error、降频、RDMA 异常、驱动漂移都应影响节点或 GPU 是否可调度。否则坏卡进入训练任务，会造成长时间失败和昂贵重跑。准入测试结果应能反馈给 Slurm，例如 drain 节点或调整特性标签。</p>
+<p>工程上，GPU 资源还要与成本和租户绑定。Slurm accounting 可以记录 GPU 时间，但 AI Factory 还需要知道使用的是哪类 GPU、哪个项目、哪个模型、是否产生有效 checkpoint 或模型产物。单纯 GPU 小时不足以解释训练效率。GPU 资源管理应连接资产、调度、健康、观测和成本。</p>
+<p>GPU 资源还应支持独占和共享策略。大规模训练通常需要节点或 GPU 独占，调试任务可能只需要短时资源。Slurm partition、GRES 和约束可以表达这些差异，但平台要把规则说清楚。否则用户会用过大的资源申请来规避不确定性，反而降低整体利用率。</p>
+<p>GPU GRES 配置还要和实际设备一致。MIG、整卡、故障 GPU 和维护 GPU 的资源形态不同，Slurm 配置如果不更新，就会错误调度。资源配置应由自动发现或准入系统生成，而不是长期手工维护。</p>
+<p>GPU 资源还要避免“数量正确、能力错误”。同样是 8 张 GPU，是否在同一 NVLink 域，是否连接健康 RDMA，是否有足够本地 NVMe，都会改变训练结果。Slurm 的资源表达应尽量把这些能力显式化，减少用户用节点黑名单和经验规则绕路。</p>
+<h3 id="2438-topology-aware-scheduling">24.3.8 topology-aware scheduling<a class="headerlink" href="#2438-topology-aware-scheduling" title="Permanent link">&para;</a></h3>
+<p>Topology-aware scheduling 让调度器考虑节点之间网络、机架、rail、交换机路径，以及节点内 GPU 拓扑。大规模训练对通信路径敏感，随机放置可能导致 NCCL 性能波动。Slurm 在 HPC 场景中长期处理拓扑和节点约束，因此在大规模 AI 训练中仍然有价值。</p>
+<p>拓扑调度需要真实拓扑数据。节点属于哪个 rack、哪个 leaf、哪个 rail，GPU 与 NIC 的关系如何，哪些节点共享故障域，这些信息都要进入调度视图。若拓扑数据不准，调度器的“拓扑感知”只是形式。拓扑还会随维护和扩容变化，因此需要持续更新，而不是一次性配置。</p>
+<p>工程上，拓扑策略要与作业规模匹配。小规模调试任务不必占用最优拓扑，大规模预训练则应优先获得连续、高带宽、健康的节点集合。平台可以为不同 partition 设置不同拓扑策略。指标包括 NCCL 带宽、rank skew、跨机架通信比例和拓扑约束失败次数。拓扑调度的目标是让训练性能可预测，而不是追求静态最优图。</p>
+<p>拓扑策略还要与维护计划协调。某个 rack 进入维护，相关拓扑域能力下降，调度器和用户都应知道。否则作业可能等待一个暂时不可用的理想拓扑，或被调度到性能较差的替代路径。拓扑感知不是一次性配置，而是持续运营数据。</p>
+<p>拓扑调度还要服务成本。为了极致性能保留最优节点集合可能提高训练吞吐，但也可能让其它任务等待；放宽拓扑约束提高利用率，却可能降低训练效率。平台应让用户或队列明确性能优先还是等待时间优先。不同策略适合不同训练阶段。</p>
+<p>因此，拓扑策略最好可解释。用户应能看到作业为什么等待，是缺少连续节点、缺少同 rail 节点，还是被高优先级队列占用。可解释的等待比黑盒排队更容易被接受，也便于平台判断是否需要扩容或调整队列规则。</p>
+<h3 id="2439-slurm-vs-kubernetes">24.3.9 Slurm vs Kubernetes<a class="headerlink" href="#2439-slurm-vs-kubernetes" title="Permanent link">&para;</a></h3>
+<p>Slurm 擅长批式 HPC 作业、研究训练、节点独占、命令行工作流、账户 fairshare 和拓扑调度。Kubernetes 擅长服务化、声明式控制器、在线服务、云原生生态、多租户 API 和平台组件。二者的优势不同，来自历史目标不同。把 Slurm 说成“旧”，或把 Kubernetes 说成“一定更现代”，都过于粗糙。</p>
+<p>AI Factory 中，一种常见分工是：Slurm 管大规模预训练、研究集群和需要强 HPC 语义的任务；Kubernetes 管 MaaS、推理服务、微调平台、评测服务、AI Gateway 和控制面。Ray、Kubeflow、Argo、Kueue、Volcano 等工具可以在 Kubernetes 侧补充批式语义，但不一定完全替代 Slurm。选择要看 workload、团队习惯和运维能力。</p>
+<p>分工的关键是统一治理。身份、数据权限、镜像、模型注册、日志、指标、成本和安全策略不能各做一套。Slurm job 训练出的模型要能进入 Kubernetes 模型服务；Kubernetes 平台的评测结果要能关联 Slurm 训练任务。二者可以共享平台层能力，而不必共享同一个调度器。共存不是妥协，而是按问题选择工具。</p>
+<p>边界设计还要考虑用户入口。研究者可以继续从 Slurm CLI 进入，平台用户可以从 Web 或 API 提交训练任务，二者最终都应产生统一实验记录。入口可以不同，元数据和产物规范应一致。这样组织可以同时支持专家工作流和产品化工作流。</p>
+<p>Kubernetes 与 Slurm 的关系也可以随时间演进。某些训练任务可能逐步迁到 Kubernetes 批调度，某些超大规模预训练仍留在 Slurm。平台应允许混合阶段长期存在，而不是把迁移看作一次性项目。稳定运行比形式统一更重要。</p>
+<p>最终取舍要落到证据。若 Kubernetes 侧能提供相同的启动可靠性、拓扑控制、调试体验和性能稳定性，迁移就有依据；若 Slurm 侧能接入统一模型和成本系统，保留也有依据。工具选择应服务训练产出，而不是服务架构叙事。</p>
+<h2 id="244">24.4 工程落地<a class="headerlink" href="#244" title="Permanent link">&para;</a></h2>
+<h3 id="2441">24.4.1 工程实现<a class="headerlink" href="#2441" title="Permanent link">&para;</a></h3>
+<p>Slurm 作业模板应把资源、环境、日志、checkpoint 和诊断标准化。用户可以继续使用 <code>sbatch</code> 提交训练，但平台模板应注入账户、partition、节点数、GPU 数、NCCL 环境、数据路径、checkpoint 路径、实验 id 和故障收集脚本。模板的目标不是限制研究，而是让生产训练可复现、可观测、可恢复。</p>
+<p>示例模板如下：</p>
+<div class="highlight"><pre><span></span><code><span class="ch">#!/bin/bash</span>
+<span class="c1">#SBATCH --job-name=pretrain</span>
+<span class="c1">#SBATCH --partition=training</span>
+<span class="c1">#SBATCH --nodes=8</span>
+<span class="c1">#SBATCH --gres=gpu:8</span>
+<span class="c1">#SBATCH --time=72:00:00</span>
+<span class="c1">#SBATCH --output=logs/%x-%j.out</span>
+
+<span class="nb">export</span><span class="w"> </span><span class="nv">EXPERIMENT_ID</span><span class="o">=</span><span class="si">${</span><span class="nv">SLURM_JOB_ID</span><span class="si">}</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CHECKPOINT_DIR</span><span class="o">=</span>/checkpoints/<span class="si">${</span><span class="nv">EXPERIMENT_ID</span><span class="si">}</span>
+srun<span class="w"> </span>--ntasks-per-node<span class="o">=</span><span class="m">8</span><span class="w"> </span>bash<span class="w"> </span>train.sh
+</code></pre></div>
+<p>生产模板还应包含 precheck step，验证 GPU、driver、NCCL、RDMA、数据路径和 checkpoint 目录。训练结束后，应上传指标、产物和模型注册信息。平台可以把 Slurm job id、实验 id、模型版本和成本标签绑定。这样 Slurm 作业不只是命令行任务，而是 AI Factory 训练生命周期的一部分。</p>
+<p>工程实现还应提供 Slurm 到平台的同步器。它读取 job、step、node、accounting 和日志信息，写入统一观测和成本系统。同步器不需要改变用户使用 Slurm 的方式，却能让平台看到训练资源消耗和产物状态。这个集成往往比替换 Slurm 更实际。</p>
+<p>同步器应产出结构化事件，而不是只做批量日志导入。事件至少覆盖 job submitted、allocated、step started、first effective step、checkpoint committed、failed、completed、artifact registered。这样 Slurm 作业可以和 Kubernetes 训练作业进入同一条模型生命周期。</p>
+<div class="highlight"><pre><span></span><code><span class="nt">slurm_platform_event</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">event_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">checkpoint_committed</span>
+<span class="w">  </span><span class="nt">slurm_job_id</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;123456&quot;</span>
+<span class="w">  </span><span class="nt">slurm_step_id</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;123456.3&quot;</span>
+<span class="w">  </span><span class="nt">experiment_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">exp-20260619-001</span>
+<span class="w">  </span><span class="nt">tenant</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">foundation-model-team</span>
+<span class="w">  </span><span class="nt">nodes</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">gpu-node-001</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">gpu-node-002</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="nt">checkpoint_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ckpt-step-120000</span>
+<span class="w">  </span><span class="nt">runtime</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">framework_runtime_matrix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">frm-h100-train-20260620</span>
+<span class="w">    </span><span class="nt">parallelism_plan_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ppr-llm-20260620-001</span>
+<span class="w">    </span><span class="nt">rank_topology_contract</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rtc-llm-20260620-001</span>
+<span class="w">    </span><span class="nt">nccl_env_contract</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nec-h100-rdma-20260620</span>
+<span class="w">  </span><span class="nt">topology</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">placement_commit_record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pcr-exp-20260619-001</span>
+<span class="w">    </span><span class="nt">rank_mapping</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rank-mapping-exp-20260619-001</span>
+<span class="w">  </span><span class="nt">resource_accounting</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">allocated_gpu_hours</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
+<span class="w">    </span><span class="nt">effective_training_gpu_hours</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
+<span class="w">  </span><span class="nt">artifact</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">registry_candidate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</code></pre></div>
+<p>Slurm account、partition 和 job id 还应映射到平台租户、资源池和实验。映射关系不能靠手工表格长期维护，应进入身份和资源管理系统。否则 Slurm accounting 与平台成本系统会长期漂移，同一训练成本在不同报表中出现不同归属。</p>
+<p>Slurm 集成尤其要避免“作业脚本自带宇宙”。用户可以继续用 <code>sbatch</code> 和 <code>srun</code>，但生产模板应在提交时生成或引用 <code>parallelism_plan_record</code>，在分配节点后生成 <code>placement_commit_record</code> 和 <code>rank_mapping</code>，在启动前校验 <code>nccl_env_contract</code>。如果这些对象只存在于 Kubernetes 路径，Slurm 训练会形成事实盲区：训练产物进入模型注册时，平台不知道它使用了什么并行拓扑、是否接受了放置降级、NCCL 环境是否经过准入。保留 Slurm 的前提，是把它接入同一证据模型。</p>
+<p>跨 Slurm 和 Kubernetes 的训练平台还需要 <code>training_accounting_reconciliation</code>。Slurm、Kubernetes、队列系统、GPU 资源池和成本仓库都会记录资源使用，但它们的时间边界和状态语义不同。Slurm 可能按 job allocation 计时，Kubernetes 可能按 Pod 生命周期计时，训练框架按 first effective step 计时，成本系统按资源池窗口分摊。对账对象的目标，是把这些口径差异显式化。</p>
+<div class="highlight"><pre><span></span><code><span class="nt">training_accounting_reconciliation</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">reconciliation_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">acct-20260620-001</span>
+<span class="w">  </span><span class="nt">workload</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">experiment_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">exp-20260619-001</span>
+<span class="w">    </span><span class="nt">scheduler</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">slurm</span>
+<span class="w">    </span><span class="nt">slurm_job_id</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;123456&quot;</span>
+<span class="w">    </span><span class="nt">platform_training_job</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">train-20260619-001</span>
+<span class="w">  </span><span class="nt">identity_mapping</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">slurm_account</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">foundation</span>
+<span class="w">    </span><span class="nt">tenant</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">foundation-model-team</span>
+<span class="w">    </span><span class="nt">project</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">base-model-v4</span>
+<span class="w">    </span><span class="nt">cost_center</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ai-research</span>
+<span class="w">  </span><span class="nt">resource_mapping</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">partition</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pretrain-h100</span>
+<span class="w">    </span><span class="nt">resource_pool</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">training-prod-h100</span>
+<span class="w">    </span><span class="nt">nodes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
+<span class="w">    </span><span class="nt">gpu_flavor</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">h100</span>
+<span class="w">  </span><span class="nt">usage</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">slurm_allocated_gpu_hours</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
+<span class="w">    </span><span class="nt">platform_allocated_gpu_hours</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
+<span class="w">    </span><span class="nt">effective_training_gpu_hours</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">measured</span>
+<span class="w">    </span><span class="nt">wasted_gpu_hours</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">calculated</span>
+<span class="w">  </span><span class="nt">artifacts</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">checkpoint_manifests</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded</span>
+<span class="w">    </span><span class="nt">model_registry_versions</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">recorded_if_any</span>
+<span class="w">  </span><span class="nt">diff</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">status</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">matched_or_explained</span>
+<span class="w">    </span><span class="nt">explanation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">accounting_window_or_failed_step_or_sync_delay</span>
+</code></pre></div>
+<p>这个对象能解决双平台最常见的争议：Slurm 说某账户用了 10 万 GPU 小时，平台成本报表显示另一个数，模型团队说有效训练只有 7 万 GPU 小时。三者都可能正确，只是口径不同。对账不是为了消灭差异，而是让差异可解释、可重算、可审计。只有完成这一步，Slurm 才能真正进入 AI Factory 的 Token Factory 和训练 ROI 视角。</p>
+<p>同步器还应处理失败和延迟。Slurm accounting 可能滞后，日志上传可能失败，模型注册可能需要重试。平台应把同步状态展示出来，避免用户以为训练完成就代表所有产物都已进入平台。工程实现的重点是闭环，而不是单向采集。</p>
+<p>提交入口还应加入前置校验。平台可以在 <code>sbatch</code> 包装器或 Web/API 入口中检查账户权限、partition 合法性、数据路径、镜像版本、checkpoint 目录和预计资源。能在提交前发现的问题，不应等到作业排队数小时后才失败。前置校验越充分，调度系统越少承受无效作业。</p>
+<p>生产环境还需要定义取消和恢复流程。用户取消、管理员抢占、节点故障和时间限制触发的终止，应写出不同事件并驱动不同后续动作。可恢复的训练应自动保留最近 checkpoint，不可恢复的失败应明确标记，避免成本系统把无效重跑误认为正常消耗。</p>
+<h3 id="2442">24.4.2 常见故障<a class="headerlink" href="#2442" title="Permanent link">&para;</a></h3>
+<p>第一类故障是节点状态不准确。节点实际存在 GPU、网络或磁盘问题，但 Slurm 仍认为可调度，训练任务进入后失败。第二类故障是资源声明不合理。用户申请过宽导致长期排队，申请过窄导致 OOM 或性能差。第三类故障是作业脚本碎片化，每个团队自己设置 NCCL、日志和 checkpoint，失败后难以复现。</p>
+<p>第四类故障是拓扑约束缺失。作业拿到足够节点，但跨机架、跨 rail 或包含慢节点，训练性能远低于预期。第五类故障是 Slurm 与 Kubernetes 各自维护资产和成本状态，导致同一 GPU 在不同系统中口径不一致。第六类故障是产物断裂：Slurm 训练完成，但模型没有进入 registry，评测和服务化无法自动衔接。</p>
+<p>排障时，应先确认 job、partition、node、step 和环境。查看作业在哪个 partition，分配了哪些节点，哪些 step 失败，节点是否 drain，GPU 和网络指标是否异常，checkpoint 是否写入。Slurm 提供了清晰的作业视角，但 AI Factory 还需要把这些信息与模型、数据、镜像和成本关联起来。</p>
+<p>常见故障还包括账户和权限问题。作业排队不是因为没有 GPU，而是账户没有对应 partition 权限，或者数据路径没有访问权限。平台应把这些原因在提交阶段暴露，而不是让作业进入队列后失败。权限与调度同样影响用户体验。</p>
+<p>还有一类故障是双平台口径冲突。Slurm 显示节点可用，资产系统显示维护；Slurm accounting 显示某账户用量，成本系统按另一个租户归集。解决方向是统一身份和资产映射，并定期对账。否则多调度系统会放大管理偏差。</p>
+<p>排障原则是先收敛事实源。先确认作业 id、节点列表、step、账户、镜像或模块、数据路径和时间线，再判断责任边界。没有统一事实时，训练团队、平台团队和硬件团队会各自看到局部真相，问题解决时间会被沟通成本吞掉。</p>
+<p>第七类故障是 Slurm 作业完成但平台生命周期未完成。训练脚本退出 0，checkpoint 留在并行文件系统，但评测没有触发、模型没有注册、成本没有归集、产物权限没有设置。对用户来说训练完成，对 AI Factory 来说模型还不可用。解决方向是把 artifact registration 和 evaluation trigger 作为 job 后置事件，而不是靠人工搬运。</p>
+<h3 id="2443">24.4.3 性能指标<a class="headerlink" href="#2443" title="Permanent link">&para;</a></h3>
+<p>Slurm 层指标包括队列等待时间、作业准入时间、job 成功率、失败率、运行时长、取消原因、partition 利用率、节点利用率、fairshare 和账户用量。它们回答调度是否公平、资源是否高效、用户是否能获得可预期窗口。仅看 GPU 利用率不够，因为作业可能长时间排队或反复失败。</p>
+<p>训练层指标包括 step time、tokens/s、samples/s、NCCL 时间、rank skew、checkpoint 时间、数据读取时间和恢复时间。节点层指标包括 GPU utilization、HBM、Xid、ECC、NVLink、RDMA、温度、功耗和本地 NVMe。Slurm 指标与训练指标结合，才能解释“为什么这个 job 慢”：是排队慢、节点慢、网络慢、存储慢，还是模型配置变化。</p>
+<p>运营指标包括 partition 等待分布、资源碎片、drain 原因、平均修复时间、作业重跑成本、账户使用趋势和产物注册成功率。AI Factory 需要用这些指标决定是否调整 partition、增加节点、修改模板、隔离故障域或优化数据路径。Slurm 指标不只是 HPC 管理数据，也是 AI 训练经济性的输入。</p>
+<p>指标还应支持跨 Kubernetes 对比。训练产物进入推理后，平台应能看到训练成本、评测成本和推理收益之间的关系。Slurm 只记录训练侧资源，AI Factory 要把它放入完整模型生命周期。这样才能讨论训练 ROI，而不是只讨论 GPU 利用率。</p>
+<p>指标也应反馈给用户。研究者需要知道自己的作业排队、运行和失败原因，团队负责人需要看到账户消耗和产物产出，平台负责人需要看到资源池效率。不同角色看不同视图，但底层数据应一致。</p>
+<p>指标还要形成改进闭环。若某个 partition 长期排队，应分析是资源不足、时间限制过宽还是拓扑约束过紧；若某类 step 频繁失败，应改模板或准入检查；若某组节点反复进入 drain，应进入硬件或网络维修流程。指标不能只展示，必须能驱动动作。</p>
+<p>跨 Slurm 和 Kubernetes 的指标应统一训练链路口径。至少应统一 queue wait、allocated GPU hours、effective GPU hours、checkpoint success、artifact registration、evaluation pass 和 model serving readiness。这样才能比较两条调度路径的真实效率，而不是只比较调度器自身指标。</p>
+<h3 id="2444">24.4.4 设计取舍<a class="headerlink" href="#2444" title="Permanent link">&para;</a></h3>
+<p>第一个取舍是统一 Kubernetes 与保留 Slurm。统一 Kubernetes 可以减少平台类型和运维表面，但可能牺牲 HPC 工作流、命令行体验和拓扑调度成熟度。保留 Slurm 能服务研究和预训练，但会增加双平台治理成本。选择不应基于偏好，而应基于 workload 特征和团队能力。</p>
+<p>第二个取舍是灵活脚本与标准模板。完全自由脚本适合研究探索，但难以复现和治理；严格模板提高稳定性，但可能限制实验速度。可行做法是分层：资源声明、环境、日志、checkpoint 和产物上传标准化，模型代码和训练参数保持灵活。这样既不破坏研究效率，也能满足生产要求。</p>
+<p>第三个取舍是独立集群与统一平台。Slurm 集群可以独立运转，但模型、数据、观测和成本如果不统一，就会形成孤岛。统一平台接入会增加集成成本，但能让训练产物进入评测、注册和服务链路。AI Factory 应接受多调度系统共存，但不能接受多套事实源长期割裂。</p>
+<p>第四个取舍是迁移与演进。把所有 Slurm 任务迁到 Kubernetes 可能需要重写脚本、改变调试习惯和重新验证性能；保留 Slurm 则需要双平台治理。更务实的路径是先统一元数据、镜像、数据和产物，再逐步评估哪些 workload 适合迁移。迁移应由证据驱动，而不是由平台偏好驱动。</p>
+<p>第五个取舍是专家效率与平台自助。Slurm 对专家友好，Web/API 平台对普通用户友好。AI Factory 可以同时支持二者：专家通过 Slurm 快速迭代，平台通过模板和 API 提供标准化训练。关键是产物、指标和成本最终汇入同一系统。入口多样不等于治理分裂。</p>
+<h2 id="245">24.5 小结与延伸阅读<a class="headerlink" href="#245" title="Permanent link">&para;</a></h2>
+<h3 id="2451">24.5.1 小结<a class="headerlink" href="#2451" title="Permanent link">&para;</a></h3>
 <ul>
-<li>配置口径不一致，导致平台、运行时和基础设施团队看到的状态不同。</li>
-<li>指标缺失或标签设计不完整，导致问题只能靠日志和人工经验定位。</li>
-<li>容量、配额、拓扑或版本约束没有前置表达，导致任务在上线后暴露稳定性问题。</li>
+<li>Slurm 在大规模训练和 HPC-style job 中仍然有重要价值。</li>
+<li>Partition、node、job 和 step 是理解 Slurm 作业模型的核心。</li>
+<li><code>sbatch</code> 和 <code>srun</code> 提供稳定命令行工作流，但生产环境需要模板治理。</li>
+<li>Slurm 与 Kubernetes 可以分工协作，关键是统一身份、数据、模型、观测和成本。</li>
+<li>拓扑、节点健康和产物注册决定 Slurm 能否融入 AI Factory。</li>
 </ul>
-<h2 id="_7">性能指标<a class="headerlink" href="#_7" title="Permanent link">&para;</a></h2>
+<h3 id="2452">24.5.2 延伸阅读<a class="headerlink" href="#2452" title="Permanent link">&para;</a></h3>
 <ul>
-<li>延迟、吞吐、错误率和资源利用率。</li>
-<li>GPU、CPU、内存、网络、存储和队列等待时间。</li>
-<li>与本章主题相关的验收基线、SLO 或成本指标。</li>
-</ul>
-<h2 id="_8">设计取舍<a class="headerlink" href="#_8" title="Permanent link">&para;</a></h2>
-<p>设计时需要在易用性、隔离性、性能、成本和运维复杂度之间取舍。后续正文会说明不同方案适合的组织规模、 workload 类型和可靠性要求。</p>
-<h2 id="_9">小结<a class="headerlink" href="#_9" title="Permanent link">&para;</a></h2>
-<ul>
-<li>本章把主题放回 AI Factory 的端到端链路中理解。</li>
-<li>后续扩写会补充真实工程场景、架构图、配置示例和排障方法。</li>
-<li>判断方案优劣时，应同时看功能、性能、可观测性、验收和成本。</li>
-</ul>
-<h2 id="_10">延伸阅读<a class="headerlink" href="#_10" title="Permanent link">&para;</a></h2>
-<ul>
-<li>TODO: 官方文档</li>
-<li>TODO: 经典论文</li>
-<li>TODO: 工程案例</li>
+<li><a href="https://slurm.schedmd.com/documentation.html">Slurm documentation</a></li>
+<li><a href="https://slurm.schedmd.com/gres.html">Slurm GRES documentation</a></li>
+<li><a href="https://docs.nersc.gov/systems/perlmutter/architecture/">NERSC Perlmutter architecture</a></li>
 </ul>
 
 

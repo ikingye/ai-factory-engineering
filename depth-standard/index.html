@@ -1,0 +1,5353 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="AI Factory 工程：从应用到 GPU 基础设施">
+      
+      
+        <meta name="author" content="king ye">
+      
+      
+        <link rel="canonical" href="https://kingye.me/ai-factory-engineering/depth-standard/">
+      
+      
+        <link rel="prev" href="../style-guide/">
+      
+      
+        <link rel="next" href="../doc-coauthoring-review/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>深度标准与覆盖矩阵 - AI Factory Engineering</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href=".." title="AI Factory Engineering" class="md-header__button md-logo" aria-label="AI Factory Engineering" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            AI Factory Engineering
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              深度标准与覆盖矩阵
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="搜索" placeholder="搜索" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="查找">
+        
+        <button type="reset" class="md-search__icon md-icon" title="清空当前内容" aria-label="清空当前内容" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            正在初始化搜索引擎
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/ikingye/ai-factory-engineering" title="前往仓库" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ai-factory-engineering
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="标签" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href=".." class="md-tabs__link">
+          
+  
+  
+    
+  
+  导论
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../part-01-applications/chapter-01-chat-request/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  应用与平台
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../part-03-models/chapter-09-llm-basics/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  模型与运行时
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../part-05-orchestration/chapter-20-ai-workloads/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  调度与基础设施
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../part-09-reliability-observability/chapter-37-ai-factory-observability/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  运行与经济性
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../system-map/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  参考
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="AI Factory Engineering" class="md-nav__button md-logo" aria-label="AI Factory Engineering" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    AI Factory Engineering
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/ikingye/ai-factory-engineering" title="前往仓库" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ai-factory-engineering
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href=".." class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    导论
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    导论
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../preface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    前言
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roadmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    写作路线图
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_1_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_1_4" id="__nav_1_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 0：导论
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_1_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 0：导论
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part-00-introduction/chapter-00-from-datacenter-to-ai-factory/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第 0 章：从 Data Center 到 AI Factory
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    应用与平台
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    应用与平台
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_1" id="__nav_2_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 1：Application 层
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 1：Application 层
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part-01-applications/chapter-01-chat-request/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第 1 章：从一个 Chat 请求开始
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part-01-applications/chapter-02-rag/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第 2 章：RAG 应用
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part-01-applications/chapter-03-agent/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第 3 章：Agent 应用
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part-01-applications/chapter-04-industry-applications/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第 4 章：行业应用
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 2：Platform 层
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 2：Platform 层
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part-02-platform/chapter-05-maas/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第 5 章：MaaS 平台
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part-02-platform/chapter-06-ai-gateway/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第 6 章：AI Gateway
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part-02-platform/chapter-07-metering-billing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第 7 章：计量与计费
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part-02-platform/chapter-08-platform-observability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第 8 章：AI 平台可观测性
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    模型与运行时
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    模型与运行时
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_1" id="__nav_3_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 3：Model 层
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 3：Model 层
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part-03-models/chapter-09-llm-basics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第 9 章：大模型基础
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part-03-models/chapter-10-pretraining/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第 10 章：预训练
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part-03-models/chapter-11-post-training/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第 11 章：后训练
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part-03-models/chapter-12-fine-tuning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第 12 章：微调与模型定制
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part-03-models/chapter-13-model-evaluation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第 13 章：模型评测
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part-03-models/chapter-14-model-serving/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第 14 章：模型服务
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_2" id="__nav_3_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 4：AI Runtime 层
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 4：AI Runtime 层
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part-04-runtime/chapter-15-inference-engines/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第 15 章：推理引擎
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part-04-runtime/chapter-16-training-frameworks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第 16 章：训练框架
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part-04-runtime/chapter-17-distributed-parallelism/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第 17 章：分布式并行
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part-04-runtime/chapter-18-collective-communication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第 18 章：通信原语
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part-04-runtime/chapter-19-gpu-software-stack/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第 19 章：CUDA、驱动与 GPU 软件栈
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    调度与基础设施
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    调度与基础设施
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_1" id="__nav_4_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 5：资源编排与作业调度层
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 5：资源编排与作业调度层
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part-05-orchestration/chapter-20-ai-workloads/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第 20 章：AI Workload 的形态
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part-05-orchestration/chapter-21-containers-kubernetes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第 21 章：容器与 Kubernetes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part-05-orchestration/chapter-22-gpu-on-kubernetes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第 22 章：GPU on Kubernetes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part-05-orchestration/chapter-23-ai-job-scheduling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第 23 章：AI 作业队列与调度
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part-05-orchestration/chapter-24-slurm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第 24 章：Slurm 与 HPC 调度
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part-05-orchestration/chapter-25-multi-cluster/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第 25 章：多集群与混部
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_2" id="__nav_4_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 6：GPU IaaS 层
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 6：GPU IaaS 层
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part-06-gpu-iaas/chapter-26-bare-metal-gpu-cloud/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第 26 章：裸金属 GPU 云
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part-06-gpu-iaas/chapter-27-gpu-virtualization-isolation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第 27 章：GPU 虚拟化与隔离
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part-06-gpu-iaas/chapter-28-gpu-resource-pool/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第 28 章：GPU 资源池
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part-06-gpu-iaas/chapter-29-image-driver-bootstrap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第 29 章：镜像、驱动与初始化
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_3" id="__nav_4_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 7：网络与存储层
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 7：网络与存储层
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part-07-network-storage/chapter-30-ai-networking-basics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第 30 章：AI 网络基础
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part-07-network-storage/chapter-31-scale-up-networking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第 31 章：Scale-up 网络
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part-07-network-storage/chapter-32-scale-out-networking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第 32 章：Scale-out 网络
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part-07-network-storage/chapter-33-ai-storage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第 33 章：AI 存储系统
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_4" id="__nav_4_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 8：物理层
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 8：物理层
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part-08-physical-infrastructure/chapter-34-gpu-server/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第 34 章：GPU 服务器
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part-08-physical-infrastructure/chapter-35-gpu-architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第 35 章：GPU 芯片与系统架构
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part-08-physical-infrastructure/chapter-36-ai-datacenter-engineering/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第 36 章：AI 数据中心工程
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    运行与经济性
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    运行与经济性
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_1" id="__nav_5_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 9：可靠性、观测与验收
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 9：可靠性、观测与验收
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part-09-reliability-observability/chapter-37-ai-factory-observability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第 37 章：AI Factory 可观测性
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part-09-reliability-observability/chapter-38-acceptance-testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第 38 章：准入测试与验收
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part-09-reliability-observability/chapter-39-troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第 39 章：故障诊断
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part-09-reliability-observability/chapter-40-sre-operations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第 40 章：SRE 与运维体系
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_2" id="__nav_5_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 10：经济学与产业案例
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 10：经济学与产业案例
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part-10-economics-cases/chapter-41-token-factory/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第 41 章：Token Factory 视角
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part-10-economics-cases/chapter-42-business-models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第 42 章：AI Factory 商业模式
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part-10-economics-cases/chapter-43-case-studies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第 43 章：案例研究
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part-10-economics-cases/chapter-44-building-ai-factory/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第 44 章：从 0 到 1 建设 AI Factory
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    参考
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    参考
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../system-map/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    系统地图与工程索引
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    术语表
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../style-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    写作规范
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    深度标准与覆盖矩阵
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    深度标准与覆盖矩阵
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. 深度标准
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. 读者测试问题集
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. 图表标准
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-gpu" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. GPU 容器运行时知识覆盖矩阵
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. 推理请求链路覆盖矩阵
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. 多模态与媒体链路覆盖矩阵
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. 安全、身份与租户边界覆盖矩阵
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. 训练任务链路覆盖矩阵
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. 网络通信链路覆盖矩阵
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-gpu" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. GPU 虚拟化与资源管理链路覆盖矩阵
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. 存储数据链路覆盖矩阵
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. 可靠性与运维链路覆盖矩阵
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. 物理设施与能源链路覆盖矩阵
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#14" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14. 安全与多租户链路覆盖矩阵
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#15" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        15. 模型评测与质量闭环覆盖矩阵
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#16" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        16. 行业案例与建设方法链路覆盖矩阵
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#17" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17. 全书循环更新策略
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../doc-coauthoring-review/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Doc Coauthoring 审稿标准
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. 深度标准
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. 读者测试问题集
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. 图表标准
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-gpu" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. GPU 容器运行时知识覆盖矩阵
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. 推理请求链路覆盖矩阵
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. 多模态与媒体链路覆盖矩阵
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. 安全、身份与租户边界覆盖矩阵
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. 训练任务链路覆盖矩阵
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. 网络通信链路覆盖矩阵
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-gpu" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. GPU 虚拟化与资源管理链路覆盖矩阵
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. 存储数据链路覆盖矩阵
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. 可靠性与运维链路覆盖矩阵
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. 物理设施与能源链路覆盖矩阵
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#14" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14. 安全与多租户链路覆盖矩阵
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#15" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        15. 模型评测与质量闭环覆盖矩阵
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#16" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        16. 行业案例与建设方法链路覆盖矩阵
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#17" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17. 全书循环更新策略
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="_1">深度标准与覆盖矩阵<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h1>
+<p>本书的目标是让读者系统掌握 AI Factory 的工程技术，而不是只获得术语概览。读者读完本书后，应该能理解一个 AI Factory 从应用入口到 GPU、网络、存储、机房和经济性之间的关键链路，并能在真实生产问题中定位责任边界、设计排障路径、制定验收标准。</p>
+<h2 id="1">1. 深度标准<a class="headerlink" href="#1" title="Permanent link">&para;</a></h2>
+<p>一章达到生产级深度，至少应满足以下标准：</p>
+<ul>
+<li>读者有效：章节写完后，要能通过 <code>doc-coauthoring</code> 式读者测试。也就是用没有上下文的新读者问题检验：读者是否能解释机制、边界、路径、落地动作和故障诊断，而不是只记住术语。</li>
+<li>机制说清：不仅说明“是什么”，还要说明组件在控制流、数据流、生命周期中的位置。</li>
+<li>边界说清：说明它不负责什么，和相邻层如何交互，避免把平台、调度、IaaS、runtime 混在一起。</li>
+<li>路径说清：至少给出一条请求、任务、设备、数据或故障穿过系统的完整路径。</li>
+<li>证据说清：涉及产品能力、规范、接口、版本兼容时，优先引用官方文档、标准或公开论文。</li>
+<li>工程说清：给出真实配置、命令、YAML、状态机、排障步骤或验收流程，而不是停留在概念解释。</li>
+<li>故障说清：列出常见失败模式、症状、定位入口、责任团队和修复方向。</li>
+<li>指标说清：说明观测指标的口径、用途、标签维度、阈值或基线来源。</li>
+<li>取舍说清：说明多种方案适合哪些场景，以及选择错误会带来什么后果。</li>
+<li>图表说清：图要表达架构、流程、状态或依赖关系，不能只做装饰。</li>
+<li>跨章闭环：一个复杂主题可以分布在多个章节，但必须能在全书范围内覆盖核心知识点。</li>
+<li>结构说清：每章使用 <code>H2 大组 + H3 小节</code> 的图书式层级。H2 固定为导读、基础模型、关键技术、工程落地、小结与延伸阅读；H3 使用 <code>章号.组号.小节号</code> 连续编号，包括上下文、读者测试、场景、概念、架构、主题技术节、工程实现、故障、指标、取舍、小结和延伸阅读。这样目录不会被二十多个同级条目淹没，正文引用、交叉审校和长期扩写仍使用稳定坐标。</li>
+</ul>
+<h2 id="2">2. 读者测试问题集<a class="headerlink" href="#2" title="Permanent link">&para;</a></h2>
+<p>每次深度化一章或一条主题链路后，至少用以下问题类型做自测：</p>
+<ul>
+<li>机制题：这个组件到底在控制面、数据面或运行时路径上做了什么？</li>
+<li>边界题：它不负责什么？相邻组件失败时为什么不能归因到它？</li>
+<li>路径题：一个请求、Pod、训练任务、checkpoint、GPU 设备或账单事件如何穿过系统？</li>
+<li>排障题：出现典型症状时，第一层证据在哪里，下一跳证据是什么？</li>
+<li>验收题：上线、扩容、升级或节点回池前，哪些基线必须通过？</li>
+<li>经济题：这个机制如何影响 tokens/s、GPU hours、cost per token、SLA 或机会成本？</li>
+<li>取舍题：为什么不是所有场景都选择同一种实现？</li>
+<li>证据题：哪些结论需要官方文档、标准、论文或可公开验证案例支撑？</li>
+</ul>
+<p>如果一章无法回答这些问题，不能因为字数多就视为完成。应继续补机制图、状态机、配置样例、故障树、指标口径、验收矩阵或跨章节索引。</p>
+<p>全书统一审稿流程见 <a href="../doc-coauthoring-review/">Doc Coauthoring 审稿标准</a>。后续每章必须包含 <code>读者测试</code> 模块，并通过 <code>python3 tools/audit_doc_coauthoring.py</code>。</p>
+<h2 id="3">3. 图表标准<a class="headerlink" href="#3" title="Permanent link">&para;</a></h2>
+<p>图表应优先覆盖以下类型：</p>
+<ul>
+<li>分层架构图：说明系统边界和责任归属。</li>
+<li>生命周期图：说明对象从提交、调度、启动、运行、失败到回收的状态变化。</li>
+<li>数据路径图：说明 token、checkpoint、模型权重、训练数据或监控事件如何流动。</li>
+<li>控制路径图：说明 API、controller、scheduler、runtime、operator 如何协同。</li>
+<li>故障树图：说明一个症状如何分解到可能根因。</li>
+<li>验收流水线图：说明准入、基线、异常检测和资源池状态如何闭环。</li>
+</ul>
+<h2 id="4-gpu">4. GPU 容器运行时知识覆盖矩阵<a class="headerlink" href="#4-gpu" title="Permanent link">&para;</a></h2>
+<p>GPU 容器运行时不是单章孤立知识点，而是一条跨越主机驱动、容器运行时、Kubernetes 设备分配、准入验收、故障诊断和成本归因的生产链路。本书将这条链路拆分到相关章节中，读者读完后应能独立解释 GPU 如何从宿主机能力变成容器内可用设备，以及这条路径如何被调度、审计、验收和排障。</p>
+<table>
+<thead>
+<tr>
+<th>知识点</th>
+<th>主要章节</th>
+<th>覆盖要求</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>容器不是 VM，依赖 namespace、cgroup、rootfs 和 OCI runtime</td>
+<td>第 21 章</td>
+<td>解释容器隔离边界、OCI spec、runc 生命周期</td>
+</tr>
+<tr>
+<td>手动挂载 <code>/dev/nvidia*</code>、driver library 与 <code>--privileged</code> 的区别</td>
+<td>第 21 章</td>
+<td>说明原理、风险、为什么生产不应依赖 privileged</td>
+</tr>
+<tr>
+<td><code>nvidia-docker</code>、<code>nvidia-docker2</code>、NVIDIA Container Toolkit 演进</td>
+<td>第 21 章</td>
+<td>解释演进原因、兼容性和当前推荐路径</td>
+</tr>
+<tr>
+<td><code>nvidia-container-runtime</code> 修改 OCI spec</td>
+<td>第 21 章</td>
+<td>讲清 runtime wrapper 位置和职责</td>
+</tr>
+<tr>
+<td><code>nvidia-container-runtime-hook</code> 作为 OCI prestart hook</td>
+<td>第 21 章</td>
+<td>讲清 hook 调用时机和失败表现</td>
+</tr>
+<tr>
+<td><code>nvidia-container-cli</code> 与 <code>libnvidia-container</code> 注入设备和库</td>
+<td>第 21 章</td>
+<td>讲清 bind mount、环境变量、capabilities 和 debug 入口</td>
+</tr>
+<tr>
+<td><code>oci_runtime_injection_diff</code></td>
+<td>第 21 章、第 38 章、第 39 章</td>
+<td>说明 NVIDIA runtime、CDI 或 NRI 对 OCI spec 的实际改动如何被审计和排障</td>
+</tr>
+<tr>
+<td><code>gpu_device_visibility_reconciliation</code></td>
+<td>第 21 章、第 22 章、第 38 章、第 39 章</td>
+<td>说明 kubelet/device plugin 分配结果、runtime 注入结果和容器内可见 GPU 如何对账</td>
+</tr>
+<tr>
+<td><code>NVIDIA_VISIBLE_DEVICES</code>、<code>NVIDIA_DRIVER_CAPABILITIES</code></td>
+<td>第 21 章、第 22 章</td>
+<td>解释语义、风险、与 Kubernetes request 的关系</td>
+</tr>
+<tr>
+<td>Docker、containerd、CRI-O 与 Kubernetes CRI</td>
+<td>第 21 章</td>
+<td>说明 kubelet 到 CRI 到 OCI runtime 的链路</td>
+</tr>
+<tr>
+<td>CDI / NRI 与 legacy hook 模式</td>
+<td>第 19 章、第 21 章、第 22 章</td>
+<td>说明 Container Device Interface、Node Resource Interface、RuntimeClass、device list strategy 和验收差异</td>
+</tr>
+<tr>
+<td>Kubernetes device plugin 和 GPU 资源分配</td>
+<td>第 22 章</td>
+<td>区分“分配 GPU”和“容器内可访问 GPU”</td>
+</tr>
+<tr>
+<td><code>gpu_resource_claim_contract</code></td>
+<td>第 22、23、38、44 章</td>
+<td>说明 extended resource 或 DRA 的 DeviceClass/ResourceClaim 如何与 GPU class、entitlement、runtime、可见性对账和计费口径绑定</td>
+</tr>
+<tr>
+<td><code>resource_claim_admission_record</code></td>
+<td>第 23、38、39、44 章</td>
+<td>说明 ResourceClaim 或 GPU request 在 queue、quota、DeviceClass、MIG、拓扑、runtime baseline 和成本预算上的准入判断</td>
+</tr>
+<tr>
+<td><code>resource_claim_acceptance_matrix</code></td>
+<td>第 38、44 章</td>
+<td>说明 extended resource 与 DRA 两种模式下 DeviceClass、ResourceClaim、ResourceSlice、device plugin、CDI、MIG、可见性和计量标签如何验收</td>
+</tr>
+<tr>
+<td><code>resource_claim_fault_tree_execution</code></td>
+<td>第 39、44 章</td>
+<td>说明 claim pending、错误 GPU class、MIG 越界、拓扑等待和计量标签断链如何执行故障树</td>
+</tr>
+<tr>
+<td><code>resource_claim_incident_cost_record</code></td>
+<td>第 41、44 章</td>
+<td>说明资源声明事故如何把 pending 容量缺口、错误 class、MIG 边界风险、拓扑等待、fallback 和 billing hold 写入经济账本</td>
+</tr>
+<tr>
+<td><code>resource_claim_prr_drill</code></td>
+<td>第 44 章</td>
+<td>说明 extended resource 迁移到 DRA、DeviceClass 调整、MIG profile 和 GPU class 映射变更上线前如何演练 claim、分配、可见性、计量和成本</td>
+</tr>
+<tr>
+<td>GPU Operator 管理 driver、Toolkit、device plugin、DCGM</td>
+<td>第 19 章、第 22 章</td>
+<td>说明管理边界、冲突和升级策略</td>
+</tr>
+<tr>
+<td>driver、CUDA、NCCL、OFED、Toolkit 兼容矩阵</td>
+<td>第 19 章、第 29 章</td>
+<td>说明主机/容器边界、版本矩阵和漂移控制</td>
+</tr>
+<tr>
+<td>GPU 容器准入与 smoke test</td>
+<td>第 29 章、第 38 章</td>
+<td>说明节点入池前如何验证容器内 GPU、NCCL、RDMA</td>
+</tr>
+<tr>
+<td>容器内 GPU 与 RDMA/NIC 协同</td>
+<td>第 22 章、第 32 章、第 38 章</td>
+<td>说明 device、NIC、NUMA、RDMA、NCCL 的完整路径</td>
+</tr>
+<tr>
+<td><code>gpu_nic_topology_evidence</code></td>
+<td>第 22 章、第 38 章、第 39 章</td>
+<td>说明多卡和 RDMA 任务中 GPU、NUMA、NIC、rail、NCCL interface 和 switch port 如何绑定成运行事实</td>
+</tr>
+<tr>
+<td><code>container_runtime_change_record</code></td>
+<td>第 21、22、38、40、41、44 章</td>
+<td>说明 containerd/runc/Toolkit/CDI/NRI/device plugin strategy 变更如何触发复测、PRR 和成本归因</td>
+</tr>
+<tr>
+<td><code>container_runtime_change_acceptance</code></td>
+<td>第 38、44 章</td>
+<td>说明 runtime 变更后如何验证 host/runtime/Kubernetes、CDI、RuntimeClass、可见性对账、DCGM 标签和 RDMA 拓扑</td>
+</tr>
+<tr>
+<td><code>gpu_operator_upgrade_evidence</code></td>
+<td>第 22、44 章</td>
+<td>说明 GPU Operator 升级如何证明 Toolkit、device plugin、DCGM exporter、MIG/Runtime 策略和观测 schema 没有破坏生产路径</td>
+</tr>
+<tr>
+<td><code>container_gpu_runtime_fault_tree_execution</code></td>
+<td>第 39、44 章</td>
+<td>说明 CreateContainerError、CDI 解析失败、可见性错配、MIG/整卡错配和容器 RDMA 问题如何执行故障树</td>
+</tr>
+<tr>
+<td><code>container_runtime_incident_cost_record</code></td>
+<td>第 41、44 章</td>
+<td>说明容器 runtime 事故如何把失败扩容、可见性错配、拓扑错配、回滚复测和观测断链写入可靠性成本</td>
+</tr>
+<tr>
+<td><code>container_runtime_prr_change_drill</code></td>
+<td>第 44 章</td>
+<td>说明 Toolkit/CDI/NRI/RuntimeClass/device plugin 变更上线前如何演练非 GPU Pod、单 GPU、MIG、多卡 RDMA、故障树、回滚和成本账本</td>
+</tr>
+</tbody>
+</table>
+<h2 id="5">5. 推理请求链路覆盖矩阵<a class="headerlink" href="#5" title="Permanent link">&para;</a></h2>
+<p>推理请求链路的目标是让读者能从一个用户 Chat 请求一路追到 Gateway、模型服务、推理引擎、GPU/HBM、streaming、计量和经济模型。当前覆盖如下：</p>
+<table>
+<thead>
+<tr>
+<th>知识点</th>
+<th>主要章节</th>
+<th>覆盖要求</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Chat API、message、prompt、context 的边界</td>
+<td>第 1 章</td>
+<td>说明应用输入如何变成模型 prompt 和 tokenized context</td>
+</tr>
+<tr>
+<td>input/output token 与 prefill/decode 的资源差异</td>
+<td>第 1 章、第 15 章、第 41 章</td>
+<td>说明 token 对 TTFT、TPOT、KV Cache 和成本的影响</td>
+</tr>
+<tr>
+<td>streaming 生命周期、取消和部分输出计量</td>
+<td>第 1 章、第 6 章、第 14 章</td>
+<td>说明 generated token、delivered token、close reason 和 drain</td>
+</tr>
+<tr>
+<td>Gateway admission chain</td>
+<td>第 6 章</td>
+<td>说明 identity、capability、budget、policy、route、commit 的顺序</td>
+</tr>
+<tr>
+<td>可路由健康与 endpoint picker 思想</td>
+<td>第 6 章、第 14 章</td>
+<td>说明 queue、KV pressure、TTFT/TPOT 和 endpoint 状态如何影响路由</td>
+</tr>
+<tr>
+<td>append-only metering event</td>
+<td>第 6 章、第 41 章</td>
+<td>说明 request_admitted、first_token、usage_delta、request_closed 的账实关系</td>
+</tr>
+<tr>
+<td>OpenTelemetry / GenAI telemetry 语义</td>
+<td>第 8 章</td>
+<td>说明通用语义与 AI Factory 自定义标签如何组合</td>
+</tr>
+<tr>
+<td>模型服务 endpoint/replica 生命周期</td>
+<td>第 14 章</td>
+<td>说明 warming、ready、canary、stable、draining、rollback 状态</td>
+</tr>
+<tr>
+<td>serving release 组合版本</td>
+<td>第 14 章</td>
+<td>绑定 weights、tokenizer、chat template、runtime、engine config 和 rollback</td>
+</tr>
+<tr>
+<td><code>serving_release_bundle</code></td>
+<td>第 14、37、39、41、44 章</td>
+<td>说明 serving release 如何绑定 provenance、distribution、quality contract、route contract、runtime gate、usage schema、rollback 和成本对象，成为最小可审计发布单元</td>
+</tr>
+<tr>
+<td><code>serving_route_release_contract</code></td>
+<td>第 6、14、37、39、44 章</td>
+<td>说明 Gateway route、canary、fallback 和 rollback 如何引用具体 release bundle，并验证 capability、usage schema、数据边界和质量门禁兼容</td>
+</tr>
+<tr>
+<td>推理引擎 admission model</td>
+<td>第 15 章</td>
+<td>说明 input tokens、max output、KV block、deadline 和 queue class</td>
+</tr>
+<tr>
+<td>continuous batching 与 KV Cache 状态流</td>
+<td>第 15 章</td>
+<td>说明 waiting、prefill、active decode、release、usage 的阶段</td>
+</tr>
+<tr>
+<td><code>engine_request_state_ledger</code></td>
+<td>第 15、39、41、44 章</td>
+<td>说明单个推理请求从 admission、prefill、decode、streaming 到 usage close 的状态、KV 和计量对账</td>
+</tr>
+<tr>
+<td>benchmark matrix</td>
+<td>第 15 章</td>
+<td>覆盖短输入短输出、长输入短输出、短输入长输出和生产混合负载</td>
+</tr>
+<tr>
+<td><code>endpoint_admission_decision</code></td>
+<td>第 6、37、39、44 章</td>
+<td>说明 Gateway 如何按 request shape、SLO、budget、engine health 和 canary 状态做请求级接入、拒绝、shed、fallback 或路由，并可回放</td>
+</tr>
+<tr>
+<td><code>engine_admission_health</code></td>
+<td>第 6、14、15、37、39 章</td>
+<td>说明 Gateway 和 Model Serving 如何基于 queue、KV pressure、active sequence、deadline miss 做可路由健康判断</td>
+</tr>
+<tr>
+<td><code>kv_block_ledger</code></td>
+<td>第 1、14、15、37、39、41 章</td>
+<td>说明 KV block 分配、释放、碎片、租户归属、prefix cache 和取消泄漏如何进入容量与成本</td>
+</tr>
+<tr>
+<td><code>prefix_cache_accounting_record</code></td>
+<td>第 1、7、15、37、41 章</td>
+<td>说明 input token 不因 cache 命中扣减，cache read 才代表节省，cache write 是未来复用投资，高写低读意味着 cache pollution 风险</td>
+</tr>
+<tr>
+<td><code>kv_block_leak_forensic_record</code></td>
+<td>第 1、14、37、39、41、44 章</td>
+<td>说明请求取消、超时、断连、worker restart 或 PD 失败后，KV block 是否泄漏、由谁持有、影响多少 admission 和成本</td>
+</tr>
+<tr>
+<td><code>engine_canary_record</code></td>
+<td>第 14、15、37、39 章</td>
+<td>说明 engine/runtime 变更如何同时验证协议、质量、延迟、KV、token drift 和成本</td>
+</tr>
+<tr>
+<td><code>engine_canary_guardrail_action</code></td>
+<td>第 14、15、37、39、41、44 章</td>
+<td>说明 canary 护栏触发后如何冻结、降权、关闭 runtime feature、回滚并保留证据</td>
+</tr>
+<tr>
+<td><code>speculative_decoding_report</code></td>
+<td>第 15、41 章</td>
+<td>说明 draft/target 模型、接受率、验证开销、质量漂移和真实 cost/token 收益</td>
+</tr>
+<tr>
+<td><code>speculative_decoding_regression_record</code></td>
+<td>第 15、37、39、41、44 章</td>
+<td>说明 speculative decoding 上线后如何按 workload slice 记录格式、质量、长度、接受率和成本回归，并限制启用范围</td>
+</tr>
+<tr>
+<td><code>pd_disaggregation_contract</code></td>
+<td>第 14、15、37、39 章</td>
+<td>说明 prefill/decode 分离的 KV 传输、容量比例、失败语义、观测和回滚边界</td>
+</tr>
+<tr>
+<td><code>pd_transfer_evidence</code></td>
+<td>第 14、37、39、41、44 章</td>
+<td>说明 PD 分离中一次或一段 KV transfer 的时延、完整性、租户隔离、重试和瓶颈归因</td>
+</tr>
+<tr>
+<td><code>inference_runtime_diagnostic_bundle</code></td>
+<td>第 37、39 章</td>
+<td>说明 TTFT/TPOT/streaming gap 事故如何自动冻结 Gateway、Serving、Runtime、KV、canary 和 PD 证据</td>
+</tr>
+<tr>
+<td><code>inference_runtime_cost_ledger</code></td>
+<td>第 41 章</td>
+<td>说明 speculative decoding、PD 分离、KV block、取消浪费和质量成本如何共同决定成功回答成本</td>
+</tr>
+<tr>
+<td><code>inference_runtime_fault_tree_execution</code></td>
+<td>第 39、44 章</td>
+<td>说明推理 runtime 故障树如何记录 admission、prefill、decode、KV、PD、canary、streaming 和 metering 分支判断</td>
+</tr>
+<tr>
+<td><code>inference_runtime_incident_cost_record</code></td>
+<td>第 41、44 章</td>
+<td>说明推理 runtime 事故如何把未交付 token、取消浪费、KV 泄漏、PD retry、canary rollback 和账单修正写入经济账本</td>
+</tr>
+<tr>
+<td><code>serving_release_evidence_bundle</code></td>
+<td>第 37、39、41、44 章</td>
+<td>说明发布、fallback、回滚、cache 或 usage schema 事故时如何冻结 release bundle、route contract、quality contract、cache、runtime、metering 和 rollback 证据</td>
+</tr>
+<tr>
+<td><code>serving_release_fault_tree_execution</code></td>
+<td>第 39、44 章</td>
+<td>说明回滚未恢复、fallback 质量下降、发布后账单漂移或旧产物误用时如何拆分 bundle、route、cache、runtime、rollback 和 metering 分支</td>
+</tr>
+<tr>
+<td><code>serving_release_cost_record</code></td>
+<td>第 41、44 章</td>
+<td>说明发布组合事故如何把低质量 token、不兼容 fallback、半回滚、cache rewarm、usage replay、billing hold 和客户 credit 写入经济账本</td>
+</tr>
+<tr>
+<td><code>serving_release_prr_drill</code></td>
+<td>第 44 章</td>
+<td>说明高 SLA endpoint 上线前如何演练 release bundle、Gateway route/fallback、cache、rollback、usage schema、故障树和成本账本</td>
+</tr>
+<tr>
+<td>Token Factory ledger</td>
+<td>第 41 章</td>
+<td>说明 token ledger、resource ledger、阶段成本和毛利约束指标</td>
+</tr>
+</tbody>
+</table>
+<h2 id="6">6. 多模态与媒体链路覆盖矩阵<a class="headerlink" href="#6" title="Permanent link">&para;</a></h2>
+<p>多模态链路的目标是让读者能从一次文件、图片、音频或视频请求，一路追到应用画像、媒体上传、对象存储、预处理、派生产物、模型服务、质量门禁、计量、成本、删除和 PRR 演练。当前覆盖如下：</p>
+<table>
+<thead>
+<tr>
+<th>知识点</th>
+<th>主要章节</th>
+<th>覆盖要求</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>multimodal_workload_profile</code></td>
+<td>第 4、20、44 章</td>
+<td>说明媒体类型、页数/帧数/音频时长、预处理链路、人工复核、保留策略和计量单位如何进入应用画像</td>
+</tr>
+<tr>
+<td><code>media_processing_workload</code></td>
+<td>第 20 章</td>
+<td>说明 OCR、ASR、抽帧、layout、embedding 等阶段如何被调度、重试、计量和隔离</td>
+</tr>
+<tr>
+<td><code>media_artifact_manifest</code></td>
+<td>第 33、37、41、44 章</td>
+<td>说明原始媒体、页面图、OCR/ASR、layout、embedding、权限、保留和派生产物如何形成可追溯事实源</td>
+</tr>
+<tr>
+<td><code>media_processing_pipeline_record</code></td>
+<td>第 33、37、41、44 章</td>
+<td>说明上传、扫描、解码、渲染、OCR/ASR、layout、embedding 的阶段、runtime、耗时、失败和资源消耗</td>
+</tr>
+<tr>
+<td><code>multimodal_serving_contract</code></td>
+<td>第 14、37、44 章</td>
+<td>说明多模态 serving 如何绑定 processor、encoder、tile/frame 策略、source region、media manifest、输出引用和 usage 口径</td>
+</tr>
+<tr>
+<td><code>multimodal_quality_gate_execution</code></td>
+<td>第 13、14、37、44 章</td>
+<td>说明 OCR/ASR fidelity、表格抽取、视觉 grounding、source region citation、隐私脱敏和人工复核如何成为发布门禁</td>
+</tr>
+<tr>
+<td><code>multimodal_evidence_bundle</code></td>
+<td>第 37、44 章</td>
+<td>说明多模态事故如何冻结 manifest、pipeline record、serving contract、quality gate、metering event 和 retention/delete 证据</td>
+</tr>
+<tr>
+<td><code>multimodal_metering_event</code></td>
+<td>第 41、44 章</td>
+<td>说明 text token、OCR token、页、tile、音频秒、视频帧、预处理 CPU/GPU 秒、模型 GPU 秒和存储天数如何计量</td>
+</tr>
+<tr>
+<td><code>multimodal_cost_ledger</code></td>
+<td>第 41、44 章</td>
+<td>说明上传扫描、OCR/ASR、layout/抽帧、encoder、LLM 推理、派生产物存储、失败重试和人工复核如何进入单位经济</td>
+</tr>
+<tr>
+<td><code>multimodal_prr_drill</code></td>
+<td>第 44 章</td>
+<td>说明文件损坏、超限、OCR 低置信、表格回归、引用坐标错配、删除派生产物和部分失败计量如何在上线前演练</td>
+</tr>
+</tbody>
+</table>
+<h2 id="7">7. 安全、身份与租户边界覆盖矩阵<a class="headerlink" href="#7" title="Permanent link">&para;</a></h2>
+<p>安全多租户链路的目标是让读者能从一次请求或一次事故追到身份、租户边界、数据边界、策略决策、provider 外联、trace 脱敏、secret、审计、账单争议和安全成本。当前覆盖如下：</p>
+<table>
+<thead>
+<tr>
+<th>知识点</th>
+<th>主要章节</th>
+<th>覆盖要求</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>tenant_boundary</code></td>
+<td>第 5、6、44 章</td>
+<td>说明租户在身份、模型、数据、资源、日志和账单中的边界如何被 Gateway、RAG、Agent、存储、观测和计费共同消费</td>
+</tr>
+<tr>
+<td><code>tenant_isolation_evidence</code></td>
+<td>第 5、37、44 章</td>
+<td>说明多租户隔离不是声明，而是 identity、目录、策略、资源池、缓存、trace、存储和计量的抽样证据</td>
+</tr>
+<tr>
+<td><code>credential_lifecycle</code> / <code>api_key_audit_event</code></td>
+<td>第 5、40、44 章</td>
+<td>说明 API Key、服务账户和短期凭据如何创建、轮换、禁用、审计和进入事故取证</td>
+</tr>
+<tr>
+<td><code>policy_decision_record</code></td>
+<td>第 6、37、40、44 章</td>
+<td>说明 Gateway 的 allow、deny、route、fallback、budget、data boundary 和 safety 决策如何回放</td>
+</tr>
+<tr>
+<td><code>egress_provider_decision</code></td>
+<td>第 6、37、41、44 章</td>
+<td>说明请求是否允许发往第三方 provider、跨区域 endpoint 或私有 provider，以及 provider 合同和数据边界如何约束 fallback</td>
+</tr>
+<tr>
+<td><code>denial_of_wallet_admission_guard</code></td>
+<td>第 6、37、41、44 章</td>
+<td>说明合法 API 请求如何通过 credential risk、request shape、spend velocity 和 business intent 信号识别经济型攻击或误用</td>
+</tr>
+<tr>
+<td><code>prompt_trace_redaction_record</code></td>
+<td>第 8、37、44 章</td>
+<td>说明 prompt、response、RAG chunk、tool arguments 在 trace、日志和导出中如何脱敏、引用化、设 TTL 和审计</td>
+</tr>
+<tr>
+<td><code>secret_boundary_evidence</code></td>
+<td>第 33、37、41、44 章</td>
+<td>说明 KMS、provider credential、registry token、签名 key、STS token 和 break-glass token 如何被扫描、挂载、轮换和审计</td>
+</tr>
+<tr>
+<td><code>security_evidence_bundle</code></td>
+<td>第 37、40、41、44 章</td>
+<td>说明 key 泄露、provider 越权、trace 泄露和安全成本事故如何冻结跨系统证据</td>
+</tr>
+<tr>
+<td><code>security_policy_fault_tree_execution</code></td>
+<td>第 39、44 章</td>
+<td>说明安全与经济型事故如何按 credential、Gateway policy、provider egress、spend velocity、trace/export 分支执行故障树</td>
+</tr>
+<tr>
+<td><code>denial_of_wallet_incident_record</code></td>
+<td>第 39、40、41、44 章</td>
+<td>说明 stolen key、长上下文攻击、Agent 循环、昂贵 provider 路由如何造成经济型事故并进入止血和账单处理</td>
+</tr>
+<tr>
+<td><code>billing_dispute_replay</code></td>
+<td>第 7、41、44 章</td>
+<td>说明账单争议如何从 invoice 回放到 metering event、policy decision、served model、价格版本、hold 和修正</td>
+</tr>
+<tr>
+<td><code>denial_of_wallet_billing_replay</code></td>
+<td>第 7、41 章</td>
+<td>说明合法凭据下的异常成本如何按客户 key 泄露、平台策略缺口、产品免费额度缺口或未知窗口拆分责任和账单动作</td>
+</tr>
+<tr>
+<td><code>security_cost_ledger</code> / <code>abuse_cost_ledger</code></td>
+<td>第 41 章</td>
+<td>说明隔离、密钥、脱敏、审计、security incident、denial-of-wallet 和争议处理如何进入 secure cost/token</td>
+</tr>
+<tr>
+<td><code>security_prr_abuse_drill</code></td>
+<td>第 44 章</td>
+<td>说明公共入口、外部 provider、免费试用和 Agent 平台上线前如何演练 key 泄露、provider 外联阻断、billing hold 和滥用成本闭环</td>
+</tr>
+</tbody>
+</table>
+<h2 id="8">8. 训练任务链路覆盖矩阵<a class="headerlink" href="#8" title="Permanent link">&para;</a></h2>
+<p>训练任务链路的目标是让读者能从一次训练提交一路追到队列、quota、gang、拓扑放置、NCCL、checkpoint、评测、模型注册和训练 ROI。当前覆盖如下：</p>
+<table>
+<thead>
+<tr>
+<th>知识点</th>
+<th>主要章节</th>
+<th>覆盖要求</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TrainingJob</code> 生产对象</td>
+<td>第 10 章</td>
+<td>说明数据、模型、运行时、并行、调度和恢复语义</td>
+</tr>
+<tr>
+<td>训练状态机</td>
+<td>第 10 章</td>
+<td>覆盖 submitted、admitted、preflight、rendezvous、running、checkpointing、recovering</td>
+</tr>
+<tr>
+<td><code>launcher_contract</code></td>
+<td>第 16 章、第 10 章、第 41 章</td>
+<td>说明 torchrun/DeepSpeed/Megatron/Slurm/Ray 等 launcher 如何把 placement、rank、env、checkpoint/log path 和失败语义变成可审计契约</td>
+</tr>
+<tr>
+<td><code>rendezvous_evidence</code></td>
+<td>第 10 章、第 16 章、第 41 章</td>
+<td>说明所有 rank 是否在同一 world size、endpoint、NCCL/env contract 和拓扑契约下完成 process group 初始化</td>
+</tr>
+<tr>
+<td><code>first_effective_step_record</code></td>
+<td>第 10 章、第 37 章、第 41 章</td>
+<td>说明训练何时真正完成首个数据读取、forward/backward、collective、optimizer step 和指标上报，作为 effective GPU hours 起点</td>
+</tr>
+<tr>
+<td>checkpoint manifest</td>
+<td>第 10 章</td>
+<td>说明 sharded checkpoint、optimizer/scheduler/rng/data loader state 和恢复校验</td>
+</tr>
+<tr>
+<td><code>framework_runtime_matrix</code></td>
+<td>第 16、23、38、44 章</td>
+<td>说明框架、CUDA/NCCL/driver、launcher、checkpoint 和指标能力如何作为训练 runtime 准入矩阵</td>
+</tr>
+<tr>
+<td><code>training_runtime_spec</code></td>
+<td>第 16、37、39 章</td>
+<td>说明单个训练任务实际引用的 runtime 矩阵、镜像、精度、分布式策略、checkpoint 和观测配置</td>
+</tr>
+<tr>
+<td><code>parallelism_plan_record</code></td>
+<td>第 17、23、37、39、41、44 章</td>
+<td>说明并行维度为什么适合模型、batch、拓扑、checkpoint 和训练目标</td>
+</tr>
+<tr>
+<td><code>rank_topology_contract</code></td>
+<td>第 17、23、37、39、44 章</td>
+<td>说明哪些 rank 拓扑约束是 hard constraint，哪些可降级，以及违反后的调度动作</td>
+</tr>
+<tr>
+<td>并行策略与 rank mapping</td>
+<td>第 17 章</td>
+<td>说明 rank 到 GPU/NIC/rack/rail/group 的映射和一致性校验</td>
+</tr>
+<tr>
+<td><code>placement_commit_record</code></td>
+<td>第 17、23、37、39、41 章</td>
+<td>说明并行放置意图、实际放置、降级原因、rank mapping 和性能影响</td>
+</tr>
+<tr>
+<td>并行模板 scorecard</td>
+<td>第 17 章</td>
+<td>说明扩展效率、通信、显存、稳定性和可恢复性基线</td>
+</tr>
+<tr>
+<td><code>nccl_env_contract</code></td>
+<td>第 18、23、37、39、44 章</td>
+<td>说明 NCCL 版本、接口、RDMA 设备、拓扑文件、timeout 和 debug 策略如何被平台约束</td>
+</tr>
+<tr>
+<td><code>collective_trace_record</code></td>
+<td>第 18、37、39、41、44 章</td>
+<td>说明真实训练窗口中 collective op、rank group、耗时、等待关系和 critical path 暴露情况</td>
+</tr>
+<tr>
+<td><code>communication_critical_path_record</code></td>
+<td>第 18、37、39、41 章</td>
+<td>说明哪些通信等待真正暴露在训练 step 关键路径上，并如何折算 GPU idle</td>
+</tr>
+<tr>
+<td><code>communication_regression_record</code></td>
+<td>第 18、32、37、38、39、44 章</td>
+<td>说明 NCCL、OFED、fabric、runtime 或调度标签变更后，代表性训练是否回归</td>
+</tr>
+<tr>
+<td><code>checkpoint_overlap_evidence</code></td>
+<td>第 18、37、38、39、41、44 章</td>
+<td>说明 checkpoint 写入是否与 collective、存储和数据路径叠加并造成周期性 step spike</td>
+</tr>
+<tr>
+<td>communication diagnostic bundle</td>
+<td>第 18 章</td>
+<td>说明异常 op、rank、节点、NIC、端口、NCCL 环境和 telemetry 的证据包</td>
+</tr>
+<tr>
+<td>通信基线库</td>
+<td>第 18 章、第 38 章</td>
+<td>说明 NCCL baseline 与真实训练退化对比</td>
+</tr>
+<tr>
+<td>job admission event / pending reason</td>
+<td>第 23 章</td>
+<td>说明 quota、gang、topology、image、data、checkpoint 和 node baseline 检查</td>
+</tr>
+<tr>
+<td><code>training_lifecycle_event</code></td>
+<td>第 23、37、41 章</td>
+<td>说明 submitted、admitted、placement committed、gang、rendezvous、first effective step、checkpoint、recovering 的阶段事实</td>
+</tr>
+<tr>
+<td><code>queue_fairness_ledger</code></td>
+<td>第 23、41 章</td>
+<td>说明 guaranteed、borrowed、lent、preempted、starved 和 effective GPU hours 如何支撑公平运营</td>
+</tr>
+<tr>
+<td>checkpoint-aware preemption / <code>preemption_record</code></td>
+<td>第 23、41 章</td>
+<td>说明训练抢占点、通知、保存状态、恢复结果和浪费 GPU 小时</td>
+</tr>
+<tr>
+<td>Slurm 平台同步事件 / <code>training_accounting_reconciliation</code></td>
+<td>第 24、41 章</td>
+<td>说明 Slurm job/step/accounting 与 experiment、checkpoint、registry、平台成本的统一事件和对账</td>
+</tr>
+<tr>
+<td>TrainingJob smoke test</td>
+<td>第 38 章</td>
+<td>说明 gang、rank mapping、NCCL rendezvous、first effective step 和 checkpoint manifest 验收</td>
+</tr>
+<tr>
+<td><code>training_communication_acceptance_matrix</code></td>
+<td>第 38、44 章</td>
+<td>说明 framework/runtime、parallelism、rank topology、NCCL、fabric、collective trace 和 checkpoint overlap 的组合验收</td>
+</tr>
+<tr>
+<td><code>training_lifecycle_telemetry_event</code></td>
+<td>第 37 章</td>
+<td>说明训练生命周期、拓扑、checkpoint 和 GPU 小时口径如何进入观测事实层</td>
+</tr>
+<tr>
+<td><code>training_debug_bundle</code></td>
+<td>第 37、39、44 章</td>
+<td>说明训练事故如何冻结 runtime、并行、调度、通信、checkpoint、数据和成本影响证据</td>
+</tr>
+<tr>
+<td><code>training_fault_tree_execution</code></td>
+<td>第 39、44 章</td>
+<td>说明训练事故故障树如何记录分支判断、证据引用、排除项、置信度、动作和证据缺口</td>
+</tr>
+<tr>
+<td><code>training_incident_record</code></td>
+<td>第 39、41 章</td>
+<td>说明训练事故如何回指 admission、placement、rank mapping、checkpoint、资源健康和 ROI 损失</td>
+</tr>
+<tr>
+<td><code>training_incident_cost_record</code></td>
+<td>第 41、44 章</td>
+<td>说明训练事故如何把 GPU 小时、checkpoint 回退、队列机会成本、工程响应和模型发布延迟写入 ROI 与 PRR</td>
+</tr>
+<tr>
+<td>training ROI ledger</td>
+<td>第 41 章</td>
+<td>说明 allocated/effective/wasted GPU hours、调度等待、放置降级、抢占、checkpoint、评测、上线收益和成本变化</td>
+</tr>
+</tbody>
+</table>
+<h2 id="9">9. 网络通信链路覆盖矩阵<a class="headerlink" href="#9" title="Permanent link">&para;</a></h2>
+<p>网络通信链路的目标是让读者能从训练或推理的性能症状一路追到 GPU 拓扑、NIC、rail、leaf/spine、RDMA/NCCL、telemetry、准入基线和调度动作。当前覆盖如下：</p>
+<table>
+<thead>
+<tr>
+<th>知识点</th>
+<th>主要章节</th>
+<th>覆盖要求</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>network_path_evidence</code></td>
+<td>第 30 章</td>
+<td>说明 job/request 到 placement、GPU、NIC、rail、switch port、baseline 和动作的证据链</td>
+</tr>
+<tr>
+<td>east-west / north-south 分流</td>
+<td>第 30 章</td>
+<td>说明训练通信、推理入口、存储路径和管理流量的边界</td>
+</tr>
+<tr>
+<td><code>ai_network_traffic_model</code></td>
+<td>第 30、32、38 章</td>
+<td>说明 collective、incast、OBS、小消息、存储突发、推理入口和 streaming 流量应使用不同验收指标</td>
+</tr>
+<tr>
+<td>scale-up topology contract</td>
+<td>第 31 章</td>
+<td>说明 PCIe/NVLink 带宽方向、NVLink/NVSwitch 代际演进、GPU-to-GPU bandwidth、拓扑碎片和资源等级</td>
+</tr>
+<tr>
+<td>GPU-to-NIC / NUMA 亲和</td>
+<td>第 31 章、第 32 章</td>
+<td>说明节点内拓扑如何影响 RDMA、NCCL 和调度</td>
+</tr>
+<tr>
+<td><code>gpu_nic_affinity_report</code></td>
+<td>第 31 章</td>
+<td>说明 GPU、NUMA、NIC、rail、container device 和 NCCL interface 选择如何对齐</td>
+</tr>
+<tr>
+<td><code>fabric_baseline</code></td>
+<td>第 32 章、第 38 章</td>
+<td>说明 fabric、rail、版本、测试项、失效条件和可调度能力</td>
+</tr>
+<tr>
+<td><code>rdma_transport_profile</code></td>
+<td>第 32、38、44 章</td>
+<td>说明 IB、RoCEv1/v2、iWARP、UEC/UET 类新型传输在封装、拥塞控制、重传、乱序和生产成熟度上的差异</td>
+</tr>
+<tr>
+<td><code>nic_dpu_architecture_decision</code></td>
+<td>第 32、34、44 章</td>
+<td>说明 RNIC、SuperNIC、DPU、on-path/off-path 和可编程性的选择不能只看带宽，还要看隔离、遥测、成本和运维复杂度</td>
+</tr>
+<tr>
+<td>多 rail 放置与诊断</td>
+<td>第 32 章</td>
+<td>说明 rank、NIC、rail、leaf group 和 rail balance 的一致性</td>
+</tr>
+<tr>
+<td><code>rail_balance_report</code></td>
+<td>第 32 章、第 37 章</td>
+<td>说明设计 rail、实际接口、端口利用、rank 流量和失衡动作</td>
+</tr>
+<tr>
+<td><code>fabric_change_record</code></td>
+<td>第 32 章、第 38 章</td>
+<td>说明交换机、NIC、OFED、CNI、NCCL、PFC/ECN 和调度标签变更如何触发回归</td>
+</tr>
+<tr>
+<td><code>fabric_change_regression_gate</code></td>
+<td>第 32、38、44 章</td>
+<td>说明 fabric 变更如何从配置变更推进到可恢复调度能力，覆盖配置、路径、workload、调度和回滚证据</td>
+</tr>
+<tr>
+<td><code>fabric_change_acceptance_matrix</code></td>
+<td>第 38、44 章</td>
+<td>说明 host/container/Kubernetes RDMA、NCCL、rail、PFC/ECN/QoS、checkpoint+NCCL 和 scheduler state 如何组合验收</td>
+</tr>
+<tr>
+<td>RDMA in container</td>
+<td>第 22 章、第 32 章、第 38 章</td>
+<td>说明宿主机 RDMA 正常不等于容器内 RDMA 可用</td>
+</tr>
+<tr>
+<td><code>network_diagnostic_bundle</code></td>
+<td>第 32 章、第 39 章</td>
+<td>说明 rank mapping、NCCL env、RDMA counters、switch ports、baseline 和 verdict</td>
+</tr>
+<tr>
+<td><code>congestion_event_record</code></td>
+<td>第 30、37、39 章</td>
+<td>说明 ECN/PFC、队列、水位、流量类别、job 影响和止血动作如何串联</td>
+</tr>
+<tr>
+<td>network telemetry 到业务影响</td>
+<td>第 37 章</td>
+<td>说明端口事件如何映射到 job、model、tenant、baseline drift 和 owner</td>
+</tr>
+<tr>
+<td>fabric acceptance matrix</td>
+<td>第 38 章</td>
+<td>说明 same rack、cross rack、cross rail、host/container/Kubernetes 的验收矩阵</td>
+</tr>
+<tr>
+<td>NCCL hang 网络故障树</td>
+<td>第 39 章</td>
+<td>说明 rank 退出、GPU/NVLink、RDMA/fabric、container/runtime、collective mismatch 的排查顺序</td>
+</tr>
+<tr>
+<td><code>congestion_fault_tree_execution</code></td>
+<td>第 39、44 章</td>
+<td>说明拥塞、rail 失衡、PFC/ECN/QoS、RDMA/NIC、NCCL runtime、checkpoint overlap、混部流量和观测缺口如何执行故障树</td>
+</tr>
+<tr>
+<td><code>network_cost_ledger</code></td>
+<td>第 41 章</td>
+<td>说明网络退化、拥塞、错误放置和 checkpoint 叠加如何转化为 GPU idle 与 token 成本</td>
+</tr>
+<tr>
+<td><code>network_incident_cost_record</code></td>
+<td>第 41、44 章</td>
+<td>说明一次 fabric 事故或变更回归如何把通信等待、重启、降级容量、checkpoint 回退、fallback 和复测成本写入经济账本</td>
+</tr>
+<tr>
+<td><code>fabric_change_prr_drill</code></td>
+<td>第 44 章</td>
+<td>说明 fabric 变更上线前如何演练 baseline 失效、调度降级、拥塞故障树、回滚复测和成本账本</td>
+</tr>
+</tbody>
+</table>
+<h2 id="10-gpu">10. GPU 虚拟化与资源管理链路覆盖矩阵<a class="headerlink" href="#10-gpu" title="Permanent link">&para;</a></h2>
+<p>GPU 虚拟化与资源管理链路的目标是让读者能从“提高利用率”“多租户隔离”“资源切分”“远程 GPU”“显存超分”这类需求，一路追到资源等级、隔离边界、调度策略、准入验收、计费和事故成本。当前覆盖如下：</p>
+<table>
+<thead>
+<tr>
+<th>知识点</th>
+<th>主要章节</th>
+<th>覆盖要求</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>虚拟化与切分的区别</td>
+<td>第 27 章</td>
+<td>说明虚拟化是抽象和隔离技术，切分是 SM、显存、带宽、时间片和 profile 的资源策略</td>
+</tr>
+<tr>
+<td>硬件级 GPU 虚拟化</td>
+<td>第 27、35 章</td>
+<td>说明 MIG、PCIe passthrough、SR-IOV、硬件隔离和固定 profile 的能力与限制</td>
+</tr>
+<tr>
+<td>内核态 GPU 虚拟化</td>
+<td>第 27 章</td>
+<td>说明 driver/ioctl/mmap、vGPU manager、scheduler、context manager、memory manager 的控制力和升级风险</td>
+</tr>
+<tr>
+<td>用户态 GPU 虚拟化</td>
+<td>第 22、27 章</td>
+<td>说明 CUDA API 拦截、<code>LD_PRELOAD</code>、HAMi-core 类配额和容器共享的便利性与弱安全边界</td>
+</tr>
+<tr>
+<td>MPS / CUDA Streams</td>
+<td>第 22、27 章</td>
+<td>说明它们是并发优化，不是强多租户隔离</td>
+</tr>
+<tr>
+<td><code>gpu_slicing_policy</code></td>
+<td>第 22、27、28、44 章</td>
+<td>说明 MIG、time-slicing、MPS、vGPU、用户态配额和整卡之间的允许场景、profile、drain、共置和计费规则</td>
+</tr>
+<tr>
+<td><code>gpu_memory_overcommit_policy</code></td>
+<td>第 27、28、38、44 章</td>
+<td>说明显存超分、按需分页、CPU tiering、压缩、OOM 降级、QoS 禁止场景和所需观测指标</td>
+</tr>
+<tr>
+<td><code>remote_gpu_access_contract</code></td>
+<td>第 27、28、41、44 章</td>
+<td>说明远程 GPU API proxy、虚拟设备或远端加速服务的网络、认证、失败语义和计费边界</td>
+</tr>
+<tr>
+<td><code>gpu_resource_roi_record</code></td>
+<td>第 28、41、44 章</td>
+<td>说明虚拟化、切分、远程调用和显存超分的收益必须扣除研发、运维、事故、SLA、质量和安全成本</td>
+</tr>
+<tr>
+<td><code>gpu_isolation_matrix</code></td>
+<td>第 22、27 章</td>
+<td>说明整卡、MIG、time-slicing、vGPU、passthrough、容器共享和裸金属独占的隔离边界不能混用</td>
+</tr>
+</tbody>
+</table>
+<h2 id="11">11. 存储数据链路覆盖矩阵<a class="headerlink" href="#11" title="Permanent link">&para;</a></h2>
+<p>存储数据链路的目标是让读者能从 GPU idle、checkpoint 慢、模型冷启动或成本异常一路追到 dataset、checkpoint、model artifact、cache、manifest、storage backend、telemetry、准入基线和经济影响。当前覆盖如下：</p>
+<table>
+<thead>
+<tr>
+<th>知识点</th>
+<th>主要章节</th>
+<th>覆盖要求</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>dataset_manifest</code></td>
+<td>第 10 章、第 20 章、第 33 章</td>
+<td>说明数据来源、处理版本、shard、checksum、统计、权限和缓存策略</td>
+</tr>
+<tr>
+<td><code>dataset_lineage_record</code></td>
+<td>第 10 章、第 33 章、第 38 章、第 44 章</td>
+<td>说明训练数据从原始来源、清洗、去重、安全过滤、tokenization、sharding、删除请求到 manifest 的可追溯链路</td>
+</tr>
+<tr>
+<td><code>workload_storage_intent</code></td>
+<td>第 20、33、37 章</td>
+<td>说明训练、推理、评测和数据处理如何声明 dataset、checkpoint、artifact、cache 和观测需求</td>
+</tr>
+<tr>
+<td><code>checkpoint_commit_record</code></td>
+<td>第 10 章、第 33 章、第 41 章</td>
+<td>说明分片写入、校验、manifest commit、latest valid、恢复候选和 GPU idle 成本</td>
+</tr>
+<tr>
+<td><code>checkpoint_restore_drill</code></td>
+<td>第 10 章、第 38 章、第 39 章、第 41 章、第 44 章</td>
+<td>说明 checkpoint 不是存在即可用，必须用真实镜像、并行配置、reader 版本和短窗口训练验证可恢复性</td>
+</tr>
+<tr>
+<td><code>checkpoint_restore_acceptance_matrix</code></td>
+<td>第 38 章、第 44 章</td>
+<td>说明 restore drill 如何在目标资源池、真实镜像、reader、world size、并行配置、KMS 权限和 first effective step 下作为准入门禁</td>
+</tr>
+<tr>
+<td><code>model_artifact_provenance</code></td>
+<td>第 14 章、第 33 章、第 38 章、第 39 章、第 41 章、第 44 章</td>
+<td>说明模型产物从 checkpoint、adapter、tokenizer、template、转换工具、评测门禁到签名发布的来源证明</td>
+</tr>
+<tr>
+<td><code>model_artifact_distribution</code></td>
+<td>第 14 章、第 33 章</td>
+<td>说明权重、tokenizer、template、digest、缓存预热和 readiness 的关系</td>
+</tr>
+<tr>
+<td><code>cache_residency</code></td>
+<td>第 14 章、第 33 章、第 41 章</td>
+<td>说明本地 NVMe、rack cache、权重 cache 与调度、冷启动和成本归因的关系</td>
+</tr>
+<tr>
+<td><code>cache_invalidation_record</code></td>
+<td>第 14 章、第 33 章、第 38 章、第 39 章、第 41 章、第 44 章</td>
+<td>说明权重、tokenizer、template、RAG 索引和数据缓存撤销后如何阻止调度复用旧缓存，并如何重新预热</td>
+</tr>
+<tr>
+<td><code>supply_chain_release_contract</code></td>
+<td>第 33、38、44 章</td>
+<td>说明 dataset lineage、checkpoint restore、artifact provenance、cache、storage boundary、route contract 和 usage schema 如何绑定为模型上线资格契约</td>
+</tr>
+<tr>
+<td><code>supply_chain_invalidation_evidence</code></td>
+<td>第 33、41、44 章</td>
+<td>说明 artifact、tokenizer、RAG index 或数据撤销后，registry、调度、autoscaler、running replica、local NVMe 和 rack cache 是否真正失效</td>
+</tr>
+<tr>
+<td><code>supply_chain_invalidation_evidence_bundle</code></td>
+<td>第 37、39、41、44 章</td>
+<td>说明撤销事件在 control plane、data plane、runtime plane 和 accounting plane 的证据如何冻结并计算完整性</td>
+</tr>
+<tr>
+<td><code>storage_security_boundary</code></td>
+<td>第 33 章、第 37 章、第 38 章、第 41 章、第 44 章</td>
+<td>说明训练数据、checkpoint、模型权重、adapter、prompt log、trace 和导出路径的命名空间、权限、加密、审计和删除边界</td>
+</tr>
+<tr>
+<td><code>data_path_evidence</code> / <code>storage_evidence</code></td>
+<td>第 33 章、第 37 章、第 39 章、第 41 章</td>
+<td>说明 workload 到 path、manifest、client、cache、backend、telemetry 和 impact 的证据链</td>
+</tr>
+<tr>
+<td><code>storage_acceptance_matrix</code> / <code>storage_composite_regression_gate</code></td>
+<td>第 38 章</td>
+<td>说明 dataset read、checkpoint write/restore、model load、cache miss 以及 NCCL+checkpoint+artifact 并发门禁</td>
+</tr>
+<tr>
+<td><code>supply_chain_acceptance_matrix</code></td>
+<td>第 38 章、第 44 章</td>
+<td>说明 dataset lineage、checkpoint restore、artifact provenance、cache invalidation 和 storage security boundary 如何成为生产资源和模型上线门禁</td>
+</tr>
+<tr>
+<td><code>supply_chain_release_contract_acceptance</code></td>
+<td>第 38 章、第 44 章</td>
+<td>说明 release contract 是否能被解析、重放、撤销、拒绝越界访问并触发 billing replay</td>
+</tr>
+<tr>
+<td><code>supply_chain_fault_tree_execution</code></td>
+<td>第 39、44 章</td>
+<td>说明供应链事故如何按 lineage、restore、provenance、cache/distribution、RAG index 和 accounting 分支执行故障树</td>
+</tr>
+<tr>
+<td><code>supply_chain_incident_cost_record</code></td>
+<td>第 41、44 章</td>
+<td>说明供应链撤销、旧缓存误用、tokenizer 口径修正、RAG index 重建、cache rewarm、账单冻结和客户 credit 如何进入经济账本</td>
+</tr>
+<tr>
+<td><code>supply_chain_revoke_economics</code></td>
+<td>第 41、44 章</td>
+<td>说明撤销执行成本和旧对象继续服务成本如何拆分，并如何形成 cache、billing、runtime digest 采样和 PRR 投资信号</td>
+</tr>
+<tr>
+<td><code>supply_chain_contract_prr_drill</code></td>
+<td>第 44 章</td>
+<td>说明高价值模型上线前如何以 release contract 为入口演练 artifact 召回、tokenizer mismatch、stale cache、RAG ACL drift、故障树和经济账本</td>
+</tr>
+<tr>
+<td>存储故障树</td>
+<td>第 39 章</td>
+<td>说明 GPU idle、checkpoint slow、model load slow 如何定位到 dataset/checkpoint/artifact/cache，并要求 workload impact 证据</td>
+</tr>
+<tr>
+<td><code>storage_cost_ledger</code></td>
+<td>第 41 章</td>
+<td>说明 dataset read、checkpoint、artifact retention、cache miss、local NVMe 保留和 storage-induced GPU idle 的成本归因</td>
+</tr>
+</tbody>
+</table>
+<h2 id="12">12. 可靠性与运维链路覆盖矩阵<a class="headerlink" href="#12" title="Permanent link">&para;</a></h2>
+<p>可靠性链路的目标是让读者能从 SLO 违约、训练失败、GPU degraded、变更回归或机房故障一路追到 health state、maintenance window、acceptance baseline、fault domain、incident、error budget、change safety 和经济损失。当前覆盖如下：</p>
+<table>
+<thead>
+<tr>
+<th>知识点</th>
+<th>主要章节</th>
+<th>覆盖要求</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>resource_health_record</code></td>
+<td>第 28 章、第 37 章</td>
+<td>说明 GPU/node/fabric/storage 健康信号如何转成资源池状态和调度动作</td>
+</tr>
+<tr>
+<td><code>maintenance_window</code></td>
+<td>第 28 章、第 40 章</td>
+<td>说明计划维护、drain、复测、回滚、容量影响和用户沟通</td>
+</tr>
+<tr>
+<td><code>change_safety_case</code></td>
+<td>第 29 章、第 40 章</td>
+<td>说明 driver、kernel、NCCL、OFED、runtime、模型服务变更如何绑定验证、灰度、停止条件和回滚</td>
+</tr>
+<tr>
+<td><code>fault_domain_map</code></td>
+<td>第 36 章、第 39 章</td>
+<td>说明 rack、power、cooling、rail、fabric、storage、batch 与 workload 影响面</td>
+</tr>
+<tr>
+<td><code>reliability_evidence</code> / <code>reliability_evidence_bundle</code></td>
+<td>第 37 章、第 39 章</td>
+<td>说明 SLO symptom 到 request/job、resource health、baseline、change、fault domain、action 和现场冻结的证据链</td>
+</tr>
+<tr>
+<td><code>acceptance_baseline</code> invalidation / <code>baseline_invalidation_record</code></td>
+<td>第 28、29、38、40、44 章</td>
+<td>说明变更和维护如何使基线失效，如何降级资源池，如何触发影响范围复测，并如何进入 SRE/PRR 门禁</td>
+</tr>
+<tr>
+<td><code>incident_record</code></td>
+<td>第 39 章、第 40 章</td>
+<td>说明事故时间线、影响面、止血动作、根因证据、成本影响和行动项</td>
+</tr>
+<tr>
+<td><code>slo_budget_ledger</code> / <code>reliability_cost_ledger</code></td>
+<td>第 40 章、第 41 章</td>
+<td>说明 error budget、reliability cost、wasted GPU hours、赔付、容量延迟和毛利之间的关系</td>
+</tr>
+</tbody>
+</table>
+<h2 id="13">13. 物理设施与能源链路覆盖矩阵<a class="headerlink" href="#13" title="Permanent link">&para;</a></h2>
+<p>物理设施链路的目标是让读者能从 tokens/W、GPU 降频、机柜降额、液冷告警或扩容不达预期一路追到 GPU server、compute tray、power shelf、rack、cooling domain、capacity unit、acceptance baseline、调度能力和经济影响。当前覆盖如下：</p>
+<table>
+<thead>
+<tr>
+<th>知识点</th>
+<th>主要章节</th>
+<th>覆盖要求</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>gpu_server_profile</code></td>
+<td>第 34 章、第 28 章</td>
+<td>说明 CPU/GPU/HBM/PCIe/NVLink/NIC/NVMe/BMC/power/cooling 如何组成可调度服务器画像</td>
+</tr>
+<tr>
+<td><code>heterogeneous_gpu_pool_profile</code></td>
+<td>第 28 章、第 35 章、第 44 章</td>
+<td>说明多代 GPU、HBM、互联、runtime baseline、准入状态、entitlement 和 workload tier 如何形成可调度异构资源池画像</td>
+</tr>
+<tr>
+<td><code>gpu_capability_scorecard</code></td>
+<td>第 35 章、第 41 章</td>
+<td>说明芯片能力、runtime 验证、模型适配、能效和生产成熟度的评分口径</td>
+</tr>
+<tr>
+<td><code>gpu_generation_spec_record</code></td>
+<td>第 35、38、44 章</td>
+<td>说明 NVIDIA GPU 代际、官方规格来源、SKU/形态、HBM、互联、功耗、精度能力和本地验收口径如何记录</td>
+</tr>
+<tr>
+<td><code>gpu_interconnect_profile</code></td>
+<td>第 31、34、35、38 章</td>
+<td>说明 PCIe、NVLink/NVSwitch、NVLink-C2C、HGX/DGX/NVL72 等互联层级、带宽方向、代际演进和可调度 GPU 域</td>
+</tr>
+<tr>
+<td><code>numa_topology_evidence</code></td>
+<td>第 22、34、38、39 章</td>
+<td>说明 CPU socket、内存通道、PCIe root、GPU、NIC、NVMe、中断绑定和容器 CPU 绑定如何作为运行证据</td>
+</tr>
+<tr>
+<td><code>gpu_generation_readiness_gate</code></td>
+<td>第 35 章、第 44 章</td>
+<td>说明新 GPU 或新系统形态进入生产前需要硬件、runtime、质量、能效、回滚和热验证门禁</td>
+</tr>
+<tr>
+<td><code>model_hardware_fit_record</code></td>
+<td>第 35 章、第 38 章、第 44 章</td>
+<td>说明模型 artifact、精度、context、engine、SLO、HBM、互联和 runtime 如何匹配或拒绝某个 GPU class</td>
+</tr>
+<tr>
+<td><code>gpu_generation_route_decision</code></td>
+<td>第 35 章、第 41 章、第 44 章</td>
+<td>说明 Gateway/Serving 如何按模型硬件匹配、entitlement、健康、质量、SLO、成本和 fallback 选择 GPU class，并保留可回放决策</td>
+</tr>
+<tr>
+<td><code>heterogeneous_pool_acceptance_matrix</code></td>
+<td>第 38 章、第 44 章</td>
+<td>说明 GPU class × workload slice 的准入矩阵如何输出 pass、limited、canary 或 block，并写回资源池和路由策略</td>
+</tr>
+<tr>
+<td><code>heterogeneous_gpu_cost_scorecard</code></td>
+<td>第 41 章、第 44 章</td>
+<td>说明不同 GPU class 在同一 workload slice 上的 tokens/s、tokens/W、cost/token、cost per successful answer、质量、SLO 和回滚成本如何比较</td>
+</tr>
+<tr>
+<td><code>heterogeneous_gpu_prr_drill</code></td>
+<td>第 44 章</td>
+<td>说明异构 GPU 或新代际上线前如何演练 canary 失败、fallback、标签降级、路由回放、质量门禁和成本账本更新</td>
+</tr>
+<tr>
+<td><code>power_thermal_envelope</code></td>
+<td>第 34 章、第 36 章、第 38 章</td>
+<td>说明功耗、温度、液冷、降额、满载验收和调度限制</td>
+</tr>
+<tr>
+<td><code>capacity_derating_record</code></td>
+<td>第 34 章、第 36 章、第 38 章、第 40 章、第 41 章、第 44 章</td>
+<td>说明 power/cooling/thermal 风险如何把 allocatable capacity 临时降为 limited，并触发复测和成本归因</td>
+</tr>
+<tr>
+<td><code>cooling_degradation_record</code></td>
+<td>第 36 章、第 40 章、第 41 章、第 44 章</td>
+<td>说明 cooling domain 退化、液冷/风冷信号、GPU 降频、workload 影响和恢复复测</td>
+</tr>
+<tr>
+<td><code>rack_capacity_unit</code></td>
+<td>第 36 章、第 28 章、第 40 章</td>
+<td>说明 rack/power/cooling/fabric/storage 如何构成可承诺产能单元</td>
+</tr>
+<tr>
+<td><code>physical_acceptance_matrix</code></td>
+<td>第 38 章</td>
+<td>说明 power、cooling、cabling、BMC、full-load、thermal soak 和 workload 的准入矩阵</td>
+</tr>
+<tr>
+<td><code>capacity_activation_record</code></td>
+<td>第 36 章、第 40 章、第 41 章</td>
+<td>说明 planned、installed、bootstrapped、accepted、allocatable、workload-fit、limited 到 retired 的交付状态流转和投产延迟成本</td>
+</tr>
+<tr>
+<td><code>workload_fit_capacity_gate</code></td>
+<td>第 36、40、44 章</td>
+<td>说明不同 workload slice 如何基于 power、cooling、fabric、storage、runtime、SRE 和成本证据决定是否可承诺</td>
+</tr>
+<tr>
+<td><code>facility_capacity_evidence_bundle</code></td>
+<td>第 37、41、44 章</td>
+<td>说明 tokens/W 下降、rack 降额、液冷告警或产能下降时如何冻结设施、容量、调度和业务影响证据</td>
+</tr>
+<tr>
+<td><code>physical_capacity_activation_matrix</code></td>
+<td>第 38、44 章</td>
+<td>说明资源从 installed 到 workload-fit 的投产验收、降额回放、恢复复测和调度状态同步</td>
+</tr>
+<tr>
+<td><code>capacity_commitment_guard</code></td>
+<td>第 40、44 章</td>
+<td>说明容量承诺、训练排期和销售承诺必须消费 workload-fit capacity、降额、冷却退化和能效证据</td>
+</tr>
+<tr>
+<td><code>capacity_activation_cost_record</code></td>
+<td>第 41、44 章</td>
+<td>说明已采购/上架但未形成 workload-fit capacity 的资本闲置、折旧、延迟收入、排期滑移和复测成本</td>
+</tr>
+<tr>
+<td><code>capacity_activation_prr_drill</code></td>
+<td>第 44 章</td>
+<td>说明投产前如何演练 PDU/冷却/降额/调度标签/销售承诺/成本账本闭环</td>
+</tr>
+<tr>
+<td><code>energy_ledger</code></td>
+<td>第 36 章、第 41 章</td>
+<td>说明 GPU power、rack power、PUE、tokens/W、joules/token 和 power/cooling-induced waste 的经济归因</td>
+</tr>
+</tbody>
+</table>
+<h2 id="14">14. 安全与多租户链路覆盖矩阵<a class="headerlink" href="#14" title="Permanent link">&para;</a></h2>
+<p>安全与多租户链路的目标是让读者能从一次 API Key 泄露、越权模型调用、跨租户数据风险、GPU 共享隔离争议、runtime privilege 误配或账单归属异常，一路追到 tenant boundary、credential lifecycle、policy decision、runtime privilege、GPU isolation、resource pool、audit event 和成本隔离。当前覆盖如下：</p>
+<table>
+<thead>
+<tr>
+<th>知识点</th>
+<th>主要章节</th>
+<th>覆盖要求</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>tenant_boundary</code></td>
+<td>第 5 章、第 6 章、第 27 章</td>
+<td>说明租户在身份、项目、模型、数据、资源池、网络、存储、观测和账单中的边界</td>
+</tr>
+<tr>
+<td><code>credential_lifecycle</code> / <code>api_key_audit_event</code></td>
+<td>第 5 章、第 6 章、第 37 章</td>
+<td>说明 API Key、service account、短期 token 的创建、轮换、禁用、异常检测和审计</td>
+</tr>
+<tr>
+<td><code>policy_decision_record</code></td>
+<td>第 6 章、第 40 章</td>
+<td>说明 Gateway 策略如何记录 allow/deny/route/fallback、规则版本、输入事实和可回放决策</td>
+</tr>
+<tr>
+<td><code>tenant_cost_isolation</code></td>
+<td>第 7 章、第 41 章</td>
+<td>说明共享池、专属池、免费额度、失败成本、reservation 和账单争议如何归属到租户</td>
+</tr>
+<tr>
+<td><code>runtime_privilege_profile</code></td>
+<td>第 21 章、第 22 章</td>
+<td>说明 container privilege、hostPath、capability、seccomp、device 注入、RDMA device 和 debug 豁免</td>
+</tr>
+<tr>
+<td><code>gpu_isolation_matrix</code></td>
+<td>第 22 章、第 27 章</td>
+<td>说明整卡、MIG、time-slicing、vGPU、PCIe passthrough 和容器共享的隔离边界</td>
+</tr>
+<tr>
+<td><code>data_boundary_policy</code></td>
+<td>第 5 章、第 6 章、第 37 章</td>
+<td>说明 prompt、response、RAG 文档、模型权重、日志、trace、cache 和导出数据的边界</td>
+</tr>
+<tr>
+<td><code>rag_agent_admission_context</code></td>
+<td>第 6 章、第 5 章</td>
+<td>说明 Gateway 如何把入口身份、用户代理、数据边界、检索范围、工具范围和任务预算传给 RAG/Agent 下游</td>
+</tr>
+<tr>
+<td><code>rag_index_release_contract</code></td>
+<td>第 2、6、37、39、44 章</td>
+<td>说明 RAG 索引如何绑定文档 lineage、embedding、chunking、rerank、ACL snapshot、context 模板、引用 schema、质量门禁和路由资格</td>
+</tr>
+<tr>
+<td><code>retrieval_acl_invalidation_event</code></td>
+<td>第 2、6、37、39、41、44 章</td>
+<td>说明 ACL、删除、数据边界或索引变化如何失效旧索引、rerank cache、context cache、评测样本和账单窗口</td>
+</tr>
+<tr>
+<td><code>retrieval_permission_decision</code></td>
+<td>第 2 章、第 5 章、第 6 章、第 37 章</td>
+<td>说明 RAG 检索时哪些文档/chunk 在当前租户、用户、ACL、数据边界和缓存策略下被允许或拒绝</td>
+</tr>
+<tr>
+<td><code>rag_context_replay_bundle</code></td>
+<td>第 2、37、39、41、44 章</td>
+<td>说明一次 RAG 失败如何冻结 admission、权限、索引、召回、rerank、context、引用和 serving release，用于稳定复现</td>
+</tr>
+<tr>
+<td><code>tool_side_effect_policy</code></td>
+<td>第 3 章、第 5 章、第 40 章、第 44 章</td>
+<td>说明 Agent 工具是否只读、是否有副作用、是否幂等、是否需要确认、是否允许重试和如何回滚</td>
+</tr>
+<tr>
+<td><code>agent_tool_policy_contract</code></td>
+<td>第 3、6、37、39、41、44 章</td>
+<td>说明 Agent release 如何绑定工具 schema、副作用策略、sandbox、credential、确认、幂等、budget、memory 和观测要求</td>
+</tr>
+<tr>
+<td><code>agent_tool_execution_record</code></td>
+<td>第 3 章、第 37 章、第 40 章、第 41 章</td>
+<td>说明一次工具调用的模型意图、策略决策、参数校验、执行环境、副作用、输出摘要、成本和回滚引用</td>
+</tr>
+<tr>
+<td><code>agent_trajectory_replay_bundle</code></td>
+<td>第 3、37、39、41、44 章</td>
+<td>说明 Agent 失败或高风险 run 如何在禁用外部副作用的环境中重放目标、状态、工具、observation、策略和预算</td>
+</tr>
+<tr>
+<td><code>tool_security_incident_record</code></td>
+<td>第 40 章、第 37 章</td>
+<td>说明 RAG 越权、Agent 工具越权、敏感数据暴露或高风险工具异常如何冻结证据、止血、评估影响和更新门禁</td>
+</tr>
+<tr>
+<td><code>bmc_driver_access_policy</code></td>
+<td>第 27 章、第 28 章</td>
+<td>说明 BMC、driver、kernel、MIG 配置、节点维护和资源池状态变更的特权边界</td>
+</tr>
+<tr>
+<td><code>security_audit_event</code></td>
+<td>第 28 章、第 37 章、第 40 章</td>
+<td>说明租户、操作者、策略、资源、时间线、证据和影响面如何进入不可变审计事件</td>
+</tr>
+</tbody>
+</table>
+<h2 id="15">15. 模型评测与质量闭环覆盖矩阵<a class="headerlink" href="#15" title="Permanent link">&para;</a></h2>
+<p>模型评测与质量闭环的目标是让读者能从一次模型上线、RAG 答案退化、Agent 工具失败、用户投诉、质量回归或灰度争议，一路追到 eval dataset、quality gate、online experiment、feedback event、regression case、serving release、routing policy、SRE decision 和 Token Factory 质量经济账本。当前覆盖如下：</p>
+<table>
+<thead>
+<tr>
+<th>知识点</th>
+<th>主要章节</th>
+<th>覆盖要求</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>eval_dataset_manifest</code></td>
+<td>第 13 章、第 2 章、第 3 章</td>
+<td>说明评测数据来源、任务切片、证据、权限、版本、盲测和污染控制</td>
+</tr>
+<tr>
+<td><code>eval_slice_contract</code></td>
+<td>第 13 章、第 37 章、第 40 章、第 44 章</td>
+<td>说明每个业务任务切片为什么存在、最低覆盖要求、硬门禁、owner、业务指标和失败后阻断的发布或路由动作</td>
+</tr>
+<tr>
+<td><code>eval_dataset_lineage_record</code></td>
+<td>第 13 章、第 44 章</td>
+<td>说明评测数据集版本实际如何生成、脱敏、标注、去重、切片、排除训练污染，并解释分数变化来自模型还是评测口径</td>
+</tr>
+<tr>
+<td><code>golden_set_governance_record</code></td>
+<td>第 13 章、第 37 章、第 40 章、第 44 章</td>
+<td>说明 golden regression、blind holdout、访问控制、训练排除、overlap scan、样本过期和 judge drift 如何治理，防止门禁样本污染</td>
+</tr>
+<tr>
+<td><code>eval_contamination_invalidation_record</code></td>
+<td>第 13 章、第 37 章、第 40 章、第 41 章、第 44 章</td>
+<td>说明评测集、golden set 或 holdout 被污染、过期或与训练数据重叠时，如何失效门禁证据、重跑 gate 并阻断高价值发布</td>
+</tr>
+<tr>
+<td><code>judge_drift_calibration_record</code></td>
+<td>第 13 章、第 37 章、第 40 章、第 41 章、第 44 章</td>
+<td>说明 judge model、rubric 或 parser 升级后如何用人工 anchor 和历史输出校准漂移、重标阈值并决定 gate 是否重跑</td>
+</tr>
+<tr>
+<td><code>quality_gate_record</code></td>
+<td>第 13 章、第 14 章、第 40 章</td>
+<td>说明模型、prompt、RAG、工具、runtime、成本和安全指标如何组成上线门禁</td>
+</tr>
+<tr>
+<td><code>quality_gate_execution</code></td>
+<td>第 13 章、第 6 章、第 14 章、第 40 章、第 44 章</td>
+<td>说明某次门禁执行的输入、环境、数据 lineage、judge/rubric、结果、豁免和发布动作，避免只保存静态 pass/fail</td>
+</tr>
+<tr>
+<td><code>quality_gate_freshness_contract</code></td>
+<td>第 13、37、39、41、44 章</td>
+<td>说明一次 gate execution 在 dataset、judge、rubric、serving contract、route 和 feedback pipeline 依赖不变时才可复用，哪些变化会降级或失效</td>
+</tr>
+<tr>
+<td><code>quality_evidence_dependency_graph</code></td>
+<td>第 13、37、39、44 章</td>
+<td>说明数据、judge、gate、serving contract、experiment、routing scorecard 和 PRR 的依赖关系如何查询影响面并传播失效</td>
+</tr>
+<tr>
+<td><code>quality_evidence_invalidation_event</code></td>
+<td>第 37、39、41、44 章</td>
+<td>说明质量证据失效如何作为控制面事件冻结实验、阻断放量、重跑 gate、降级路由证据并打开成本记录</td>
+</tr>
+<tr>
+<td><code>online_experiment_record</code></td>
+<td>第 6 章、第 13 章、第 14 章</td>
+<td>说明 A/B、canary、流量切分、护栏指标、统计窗口、回滚和影响范围</td>
+</tr>
+<tr>
+<td><code>online_experiment_guardrail</code></td>
+<td>第 13 章、第 37 章、第 40 章、第 44 章</td>
+<td>说明线上实验的随机化单元、会话粘性、排除范围、停止规则、自动冻结、证据包和回滚要求</td>
+</tr>
+<tr>
+<td><code>quality_feedback_event</code></td>
+<td>第 1 章、第 2 章、第 3 章、第 37 章</td>
+<td>说明用户反馈、人工接管、引用错误、工具失败和投诉如何进入质量事实层</td>
+</tr>
+<tr>
+<td><code>quality_feedback_intake_pipeline</code></td>
+<td>第 13 章、第 37 章、第 40 章、第 41 章、第 44 章</td>
+<td>说明线上反馈如何经过关联、脱敏、triage、replay、人工评审和回归样本治理，避免噪声和不可复现样本污染门禁</td>
+</tr>
+<tr>
+<td><code>human_feedback_evidence</code></td>
+<td>第 13 章、第 37 章、第 40 章、第 41 章、第 44 章</td>
+<td>说明用户点踩、CRM、人工接管、专家评审和标注如何绑定 trace、task slice、rubric、experiment、regression 和质量成本</td>
+</tr>
+<tr>
+<td><code>rag_context_snapshot</code></td>
+<td>第 2 章、第 13 章、第 37 章</td>
+<td>说明 RAG 最终进入 prompt 的证据、引用、token 预算、截断原因、冲突处理和无答案策略如何被冻结</td>
+</tr>
+<tr>
+<td><code>rag_quality_regression_record</code></td>
+<td>第 2 章、第 13 章、第 37 章</td>
+<td>说明 RAG 线上反馈如何绑定权限决策、context 快照、索引版本、失败层级、owner 和复测门禁</td>
+</tr>
+<tr>
+<td><code>quality_regression_record</code></td>
+<td>第 13 章、第 37 章、第 40 章</td>
+<td>说明线上事故和评测失败如何沉淀为回归样本、owner、修复策略和复测状态</td>
+</tr>
+<tr>
+<td><code>agent_budget_ledger</code></td>
+<td>第 3 章、第 6 章、第 37 章、第 41 章</td>
+<td>说明 Agent run 的模型调用、工具调用、token、沙箱、外部 API、人工接管和预算控制动作如何计量</td>
+</tr>
+<tr>
+<td><code>rag_agent_evidence_bundle</code></td>
+<td>第 37 章、第 40 章、第 41 章</td>
+<td>说明 RAG/Agent 事故时如何冻结权限、上下文、工具执行、预算、安全审计和成本证据</td>
+</tr>
+<tr>
+<td><code>rag_agent_fault_tree_execution</code></td>
+<td>第 39、44 章</td>
+<td>说明 RAG/Agent 事故如何按 Gateway admission、检索权限、context、工具策略、工具 runtime、预算循环和经济影响执行故障树</td>
+</tr>
+<tr>
+<td><code>rag_agent_incident_cost_record</code></td>
+<td>第 41、44 章</td>
+<td>说明 RAG/Agent 事故如何把低质量 token、额外 context、rerank/embedding replay、失败 run、工具成本、外部 API、人工接管、客户 credit 和修复成本写入账本</td>
+</tr>
+<tr>
+<td><code>agent_tool_policy_prr_drill</code></td>
+<td>第 44 章</td>
+<td>说明上线前如何演练工具 schema 漂移、高风险确认、幂等重放、外部 API 失败、预算上限、ACL 失效、context replay、故障树和成本账本</td>
+</tr>
+<tr>
+<td><code>serving_quality_contract</code></td>
+<td>第 14 章、第 15 章</td>
+<td>说明 serving release 中 weights、tokenizer、template、engine、参数和质量门禁的绑定关系</td>
+</tr>
+<tr>
+<td><code>serving_release_bundle</code></td>
+<td>第 14 章、第 37 章、第 39 章、第 41 章、第 44 章</td>
+<td>说明模型发布组合如何把产物、route、fallback、runtime、usage、cache、rollback 和成本证据打成最小生产单元</td>
+</tr>
+<tr>
+<td><code>serving_route_release_contract</code></td>
+<td>第 6 章、第 14 章、第 39 章、第 44 章</td>
+<td>说明 Gateway 的 primary、canary、fallback 和 rollback 目标必须引用兼容 release bundle，而不是只引用 endpoint 名称</td>
+</tr>
+<tr>
+<td><code>serving_rollback_record</code></td>
+<td>第 14 章、第 40 章、第 44 章</td>
+<td>说明一次质量或 runtime 回滚到底回滚了权重、tokenizer、template、engine、Gateway 路由还是配置，并保留事故证据</td>
+</tr>
+<tr>
+<td><code>serving_rollback_drill</code></td>
+<td>第 14 章、第 37 章、第 40 章、第 41 章、第 44 章</td>
+<td>说明高 SLA endpoint 是否预先演练过权重、tokenizer、template、runtime、Gateway route、cache、drain、计量和质量探针的完整回滚</td>
+</tr>
+<tr>
+<td><code>serving_release_evidence_bundle</code></td>
+<td>第 37 章、第 39 章、第 41 章</td>
+<td>说明发布事故时如何冻结 release bundle、route contract、cache、runtime、metering、rollback 和质量证据</td>
+</tr>
+<tr>
+<td><code>serving_release_fault_tree_execution</code></td>
+<td>第 39 章、第 44 章</td>
+<td>说明发布后质量/协议/计费/回滚异常如何按 bundle、route、cache、runtime、rollback 和 billing 分支执行故障树</td>
+</tr>
+<tr>
+<td><code>serving_release_cost_record</code></td>
+<td>第 41 章、第 44 章</td>
+<td>说明发布事故如何把 fallback 质量损失、半回滚延长事故、cache rewarm、usage replay、billing hold 和客户 credit 计入毛利</td>
+</tr>
+<tr>
+<td><code>serving_release_prr_drill</code></td>
+<td>第 44 章</td>
+<td>说明 release bundle、Gateway route/fallback、rollback、cache、metering 和成本账本上线前如何演练</td>
+</tr>
+<tr>
+<td><code>routing_quality_scorecard</code></td>
+<td>第 6 章、第 13 章</td>
+<td>说明 Gateway 如何把质量、安全、成本、延迟和能力用于模型路由，而不是只看健康</td>
+</tr>
+<tr>
+<td><code>routing_quality_decision_record</code></td>
+<td>第 6 章、第 37 章、第 41 章</td>
+<td>说明某个请求或流量切片为什么选择、拒绝或 fallback 到某个模型，并能回放质量、SLO、成本、能力和数据边界依据</td>
+</tr>
+<tr>
+<td><code>quality_evidence_bundle</code></td>
+<td>第 37 章、第 40 章、第 41 章</td>
+<td>说明质量事故时如何冻结反馈、人工评审、路由、serving contract、gate execution、slice contract、golden governance、实验护栏、回滚和成本证据</td>
+</tr>
+<tr>
+<td><code>quality_evidence_validity</code></td>
+<td>第 37、41、44 章</td>
+<td>说明 quality evidence bundle 引用的 gate、污染记录、judge 校准和反馈 pipeline 是否仍可作为 PRR 与放量证据</td>
+</tr>
+<tr>
+<td><code>quality_fault_tree_execution</code></td>
+<td>第 39、44 章</td>
+<td>说明质量事故如何按证据有效性、serving 组合、路由/实验、RAG/Agent、模型行为和经济影响执行故障树</td>
+</tr>
+<tr>
+<td><code>quality_incident_cost_record</code></td>
+<td>第 41、44 章</td>
+<td>说明一次质量事故或质量证据失效如何把低质量 token、人工接管、重试、信用、gate rerun、judge calibration、阻断和避免损失写入经济账本</td>
+</tr>
+<tr>
+<td><code>quality_cost_ledger</code></td>
+<td>第 41 章</td>
+<td>说明低质量 token、人工接管、退款、重试、投诉、评测成本、切片维护、golden set 治理、人工反馈、实验伤害、路由决策和回滚演练如何影响毛利</td>
+</tr>
+<tr>
+<td><code>quality_gate_freshness_prr_drill</code></td>
+<td>第 44 章</td>
+<td>说明上线前如何演练 gate 依赖变更、证据失效传播、实验冻结、路由降级、故障树和成本账本</td>
+</tr>
+<tr>
+<td><code>rag_agent_cost_attribution</code></td>
+<td>第 41 章</td>
+<td>说明 RAG embedding/search/rerank/context 与 Agent model/tool/sandbox/external API 成本如何归因到每成功答案或任务</td>
+</tr>
+</tbody>
+</table>
+<h2 id="16">16. 行业案例与建设方法链路覆盖矩阵<a class="headerlink" href="#16" title="Permanent link">&para;</a></h2>
+<p>行业案例与建设方法链路的目标是让读者能从一个行业应用想法、商业模式、客户交付承诺或“买 GPU 建平台”的项目，一路追到 workload profile、business model profile、案例证据包、建设计划、架构决策记录、生产就绪评审、验收到上线流水线和 Token Factory/SRE 后果。当前覆盖如下：</p>
+<table>
+<thead>
+<tr>
+<th>知识点</th>
+<th>主要章节</th>
+<th>覆盖要求</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>workload_profile</code></td>
+<td>第 4 章、第 44 章</td>
+<td>说明应用交互、上下文、SLO、数据边界、工具副作用、成本口径和资源池如何变成平台输入</td>
+</tr>
+<tr>
+<td><code>application_readiness_review</code></td>
+<td>第 4 章、第 13 章、第 40 章</td>
+<td>说明行业应用进入生产前如何检查权限、评测、灰度、观测、成本、人工接管和退出条件</td>
+</tr>
+<tr>
+<td><code>customer_onboarding_evidence</code></td>
+<td>第 4 章、第 5 章、第 44 章</td>
+<td>说明客户或关键租户上线前如何证明 tenant、项目、API Key、模型访问、预算、SLA、支持入口和数据边界已经准备好</td>
+</tr>
+<tr>
+<td><code>business_model_profile</code></td>
+<td>第 42 章、第 41 章</td>
+<td>说明价值单位、计量事件、客户承诺、成本账本、SLO/SLA、支持模型和退出责任如何结构化</td>
+</tr>
+<tr>
+<td><code>commercial_readiness_matrix</code></td>
+<td>第 42 章、第 44 章</td>
+<td>说明 MaaS、算力租赁、私有化、推理服务和 Agent 平台上线前必须具备的商业工程能力</td>
+</tr>
+<tr>
+<td><code>sla_credit_model</code> / <code>sla_operation_record</code> / <code>sla_credit_replay</code></td>
+<td>第 5 章、第 7 章、第 40 章、第 41 章、第 44 章</td>
+<td>说明 SLA 如何从 SLI/SLO/SLA 边界、排除项、incident 证据、credit 计算和 invoice 动作形成可回放赔付链路</td>
+</tr>
+<tr>
+<td><code>private_deployment_acceptance_record</code></td>
+<td>第 42 章、第 44 章</td>
+<td>说明私有化交付如何验收离线包、版本矩阵、GPU runtime、RAG ACL、计量导出、升级回滚、诊断包和责任矩阵</td>
+</tr>
+<tr>
+<td><code>release_train_record</code></td>
+<td>第 29 章、第 40 章、第 44 章</td>
+<td>说明 OS、driver、OFED、container runtime、Toolkit、device plugin、base image 和验收脚本如何作为发布列车进入灰度、回滚和基线失效</td>
+</tr>
+<tr>
+<td><code>lts_support_policy</code></td>
+<td>第 29 章、第 42 章、第 44 章</td>
+<td>说明长期支持 baseline、EOL、backport、升级路径和客户通知如何约束版本分叉</td>
+</tr>
+<tr>
+<td><code>support_ticket_taxonomy</code></td>
+<td>第 40 章、第 42 章、第 44 章</td>
+<td>说明 incident、request、problem、change、billing dispute 和 security case 如何决定 owner、时钟、证据和升级路径</td>
+</tr>
+<tr>
+<td><code>diagnostic_bundle_sla</code></td>
+<td>第 37 章、第 40 章、第 42 章、第 44 章</td>
+<td>说明客户支持场景下诊断包的采集时限、脱敏、导出边界、客户同意和留存审计</td>
+</tr>
+<tr>
+<td><code>offline_release_bundle_manifest</code></td>
+<td>第 29 章、第 33 章、第 42 章、第 44 章</td>
+<td>说明私有化或受限出网环境中 release train 如何被封装成可签名、可导入、可回滚、可验收的离线交付包</td>
+</tr>
+<tr>
+<td><code>offline_import_record</code></td>
+<td>第 33 章、第 37 章、第 42 章、第 44 章</td>
+<td>说明客户现场实际导入了哪些镜像、模型 artifact、RAG index、chart、配置和 migration，并如何与离线包 digest 对账</td>
+</tr>
+<tr>
+<td><code>offline_upgrade_rehearsal</code></td>
+<td>第 33 章、第 42 章、第 44 章</td>
+<td>说明私有化或离线环境升级前如何演练镜像导入、artifact/cache、数据迁移、runtime smoke、回滚和诊断导出</td>
+</tr>
+<tr>
+<td><code>private_delivery_diagnostic_export</code></td>
+<td>第 37 章、第 42 章、第 44 章</td>
+<td>说明不远程登录、不导出生产数据时，私有化事故如何导出脱敏的运行 digest、导入记录、runtime、cache 和 migration 证据</td>
+</tr>
+<tr>
+<td><code>field_patch_governance</code></td>
+<td>第 40 章、第 42 章、第 44 章</td>
+<td>说明现场紧急补丁的适用条件、签名 delta、客户审批、过期时间、合回 release train 和支持成本归因</td>
+</tr>
+<tr>
+<td><code>field_patch_execution_record</code></td>
+<td>第 40 章、第 41 章、第 44 章</td>
+<td>说明现场补丁实际应用到哪些镜像、chart、配置、cache 和服务，如何验证、回滚、过期并合回 release train</td>
+</tr>
+<tr>
+<td><code>private_delivery_lifecycle_contract</code></td>
+<td>第 42 章、第 44 章</td>
+<td>说明私有化客户从验收、支持、升级、补丁、EOL 到退出的长期产品责任</td>
+</tr>
+<tr>
+<td><code>private_delivery_incident_cost_record</code></td>
+<td>第 41 章、第 44 章</td>
+<td>说明私有化升级失败、现场补丁回归或客户环境漂移如何产生支持、离线包重打、迁移回滚、cache 预热、credit 和 P&amp;L 成本</td>
+</tr>
+<tr>
+<td><code>private_delivery_prr_upgrade_drill</code></td>
+<td>第 44 章</td>
+<td>说明私有化上线前如何演练离线包导入、digest 错配拒绝、artifact 回滚、RAG ACL 迁移、现场补丁和脱敏诊断导出</td>
+</tr>
+<tr>
+<td><code>commercial_pnl_ledger</code></td>
+<td>第 41 章、第 42 章、第 44 章</td>
+<td>说明 revenue、折扣、free quota、SLA credit、support cost、private delivery cost、reserved capacity 和各类成本账本如何形成商业 P&amp;L</td>
+</tr>
+<tr>
+<td><code>case_study_evidence_pack</code></td>
+<td>第 43 章</td>
+<td>说明公开事实、推断、假设、证据可信度、能力缺口、不可复用条件和可复用经验如何分层记录</td>
+</tr>
+<tr>
+<td><code>ai_factory_maturity_assessment</code></td>
+<td>第 43 章、第 44 章</td>
+<td>说明不同 AI Factory 类型如何按目标层、生产层、运营层和经济层做成熟度诊断</td>
+</tr>
+<tr>
+<td><code>ai_factory_build_plan</code></td>
+<td>第 44 章</td>
+<td>说明阶段、进入条件、退出条件、owner、证据、风险、停止条件和下一阶段投资如何绑定</td>
+</tr>
+<tr>
+<td><code>architecture_decision_record</code></td>
+<td>第 44 章</td>
+<td>说明 GPU、网络、存储、调度、推理引擎和商业模式选择如何记录背景、备选方案、取舍、回滚和复审触发器</td>
+</tr>
+<tr>
+<td><code>launch_risk_register</code></td>
+<td>第 44 章</td>
+<td>说明商业化上线和关键客户上线前如何记录剩余风险、owner、证据缺口、缓解措施、停止条件和关闭条件</td>
+</tr>
+<tr>
+<td><code>production_readiness_review</code></td>
+<td>第 44 章、第 38 章、第 40 章、第 41 章</td>
+<td>说明从资源准入、基线有效性、模型质量、SLO、计量、安全、runbook、成本到发布回滚的上线门禁</td>
+</tr>
+<tr>
+<td><code>acceptance_to_launch_record</code></td>
+<td>第 38 章、第 44 章</td>
+<td>说明资源、模型、服务和应用如何从 accepted、staging、canary、production 到 rollback/scale 的证据流</td>
+</tr>
+</tbody>
+</table>
+<h2 id="17">17. 全书循环更新策略<a class="headerlink" href="#17" title="Permanent link">&para;</a></h2>
+<p>全书更新按“主题链路”推进，而不是按章节孤立推进。每轮选择一条关键链路，补齐机制、图、配置、故障、指标和验收。</p>
+<p>优先链路：</p>
+<ul>
+<li>GPU 容器链路：driver、CUDA、NVIDIA Container Toolkit、CRI、Kubernetes、device plugin、准入。</li>
+<li>推理请求链路：Gateway、认证、路由、prefill、decode、KV Cache、streaming、计量、成本。</li>
+<li>训练任务链路：提交、队列、quota、gang、GPU 拓扑、NCCL、checkpoint、评测、注册。</li>
+<li>网络通信链路：NVLink/NVSwitch、IB/RoCE、RDMA、NCCL、telemetry、故障树。</li>
+<li>存储数据链路：dataset、object storage、parallel file system、local NVMe、cache、checkpoint。</li>
+<li>可靠性链路：DCGM、Xid、ECC、NCCL hang、network error、SLO、incident、准入基线。</li>
+<li>经济性链路：tokens/s、tokens/W、cost per token、revenue per token、GPU 利用率和毛利。</li>
+</ul>
+<p>每轮完成后必须：</p>
+<ul>
+<li>更新对应章节正文。</li>
+<li>补充或修正 Mermaid 图。</li>
+<li>补齐延伸阅读来源。</li>
+<li>运行 <code>python3 tools/audit_consistency.py</code>，检查核心术语、分层口径、公开 URL、旧结构规则和重复长段落。</li>
+<li>运行 <code>mkdocs build --strict</code>。</li>
+<li>检查是否产生死链、占位、乱码或语义重复。</li>
+<li>更新 <code>docs/codex-handoff.md</code>。</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.tabs", "navigation.sections", "navigation.expand", "navigation.indexes", "toc.follow", "search.suggest", "search.highlight", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "\u5df2\u590d\u5236", "clipboard.copy": "\u590d\u5236", "search.result.more.one": "\u5728\u8be5\u9875\u4e0a\u8fd8\u6709 1 \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.more.other": "\u5728\u8be5\u9875\u4e0a\u8fd8\u6709 # \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.none": "\u6ca1\u6709\u627e\u5230\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.one": "\u627e\u5230 1 \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.other": "# \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.placeholder": "\u952e\u5165\u4ee5\u5f00\u59cb\u641c\u7d22", "search.result.term.missing": "\u7f3a\u5c11", "select.version": "\u9009\u62e9\u5f53\u524d\u7248\u672c"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
