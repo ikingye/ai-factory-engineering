@@ -1,5 +1,5 @@
 flowchart LR
-  Framework["训练框架"] --> Ops["collective / P2P ops"]
+  Framework["训练框架"] --> Ops["AllReduce / AllGather / AllToAll / P2P"]
   Ops --> NCCL["NCCL runtime"]
   NCCL --> Intra["NVLink / NVSwitch / PCIe"]
   NCCL --> Inter["IB / RoCE / RDMA"]

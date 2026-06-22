@@ -51,7 +51,7 @@
   <rect x="332.0" y="390.0" width="403.0" height="710.0" rx="16.0" fill="none" stroke="#dbe5f1" stroke-width="1.4" stroke-dasharray="6 5"/>
   <text x="350.0" y="414.0" class="section">资源与基础设施</text>
   <rect x="518.5" y="106.0" width="717.5" height="1136.0" rx="16.0" fill="none" stroke="#dbe5f1" stroke-width="1.4" stroke-dasharray="6 5"/>
-  <text x="536.5" y="130.0" class="section">证据与治理</text>
+  <text x="536.5" y="130.0" class="section">证据、SRE 与治理</text>
   <path d="M 265.5,224.0 L 265.5,230.0 L 539.5,230.0 L 539.5,296.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
   <path d="M 265.5,224.0 L 265.5,248.0 L 965.5,248.0 L 965.5,296.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
   <path d="M 498.5,224.0 L 498.5,230.0 L 812.0,230.0 L 812.0,580.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
@@ -87,7 +87,7 @@
   <text x="265.5" y="211.0" text-anchor="middle" class="node-sub">应用如何消耗能力</text>
   <rect x="394.5" y="154.0" width="208.0" height="70.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
   <text x="498.5" y="189.0" text-anchor="middle" class="node-title">business_model_profile</text>
-  <text x="498.5" y="211.0" text-anchor="middle" class="node-sub">能力如何商业化或结算</text>
+  <text x="498.5" y="211.0" text-anchor="middle" class="node-sub">商业模式与结算</text>
   <rect x="648.5" y="154.0" width="201.0" height="70.0" rx="10.0" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.8"/>
   <text x="749.0" y="189.0" text-anchor="middle" class="node-title">ai_factory_build_plan</text>
   <text x="749.0" y="211.0" text-anchor="middle" class="node-sub">建设阶段与停止条件</text>
@@ -120,7 +120,7 @@
   <text x="516.0" y="637.0" text-anchor="middle" class="node-sub">Kubernetes / Slurm / Kueue / Volcano</text>
   <rect x="715.0" y="580.0" width="194.0" height="70.0" rx="10.0" fill="#f0fdfa" stroke="#99f6e4" stroke-width="1.8"/>
   <text x="812.0" y="615.0" text-anchor="middle" class="node-title">Token Factory ledger</text>
-  <text x="812.0" y="637.0" text-anchor="middle" class="node-sub">成本与价值</text>
+  <text x="812.0" y="637.0" text-anchor="middle" class="node-sub">经济账本 / 成本与价值</text>
   <rect x="356.0" y="722.0" width="313.0" height="70.0" rx="10.0" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.8"/>
   <text x="512.5" y="757.0" text-anchor="middle" class="node-title">GPU Resource Pool</text>
   <text x="512.5" y="779.0" text-anchor="middle" class="node-sub">health / quota / topology / isolation</text>

@@ -1770,10 +1770,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#1836-nccl" class="md-nav__link">
+  <a href="#1836-alltoall" class="md-nav__link">
     <span class="md-ellipsis">
       
-        18.3.6 NCCL
+        18.3.6 AllToAll
       
     </span>
   </a>
@@ -1781,10 +1781,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#1837-nvlink-ibroce" class="md-nav__link">
+  <a href="#1837-nccl" class="md-nav__link">
     <span class="md-ellipsis">
       
-        18.3.7 NVLink 与 IB/RoCE
+        18.3.7 NCCL
       
     </span>
   </a>
@@ -1792,10 +1792,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#1838" class="md-nav__link">
+  <a href="#1838-nvlink-ibroce" class="md-nav__link">
     <span class="md-ellipsis">
       
-        18.3.8 通信瓶颈分析
+        18.3.8 NVLink 与 IB/RoCE
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1839" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        18.3.9 通信瓶颈分析
       
     </span>
   </a>
@@ -3638,10 +3649,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#1836-nccl" class="md-nav__link">
+  <a href="#1836-alltoall" class="md-nav__link">
     <span class="md-ellipsis">
       
-        18.3.6 NCCL
+        18.3.6 AllToAll
       
     </span>
   </a>
@@ -3649,10 +3660,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#1837-nvlink-ibroce" class="md-nav__link">
+  <a href="#1837-nccl" class="md-nav__link">
     <span class="md-ellipsis">
       
-        18.3.7 NVLink 与 IB/RoCE
+        18.3.7 NCCL
       
     </span>
   </a>
@@ -3660,10 +3671,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#1838" class="md-nav__link">
+  <a href="#1838-nvlink-ibroce" class="md-nav__link">
     <span class="md-ellipsis">
       
-        18.3.8 通信瓶颈分析
+        18.3.8 NVLink 与 IB/RoCE
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1839" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        18.3.9 通信瓶颈分析
       
     </span>
   </a>
@@ -3799,7 +3821,7 @@
 <h2 id="181">18.1 导读<a class="headerlink" href="#181" title="Permanent link">&para;</a></h2>
 <h3 id="1811">18.1.1 本章回答的问题<a class="headerlink" href="#1811" title="Permanent link">&para;</a></h3>
 <ul>
-<li>AllReduce、AllGather、ReduceScatter、Broadcast 和 P2P 分别解决什么通信问题？</li>
+<li>AllReduce、AllGather、ReduceScatter、Broadcast、AllToAll 和 P2P 分别解决什么通信问题？</li>
 <li>NCCL 如何把训练框架的通信请求映射到 GPU、NVLink 和 IB/RoCE？</li>
 <li>通信瓶颈如何观察、定位和优化？</li>
 </ul>
@@ -3812,7 +3834,7 @@
 </ul>
 <h3 id="1813">18.1.3 读者测试<a class="headerlink" href="#1813" title="Permanent link">&para;</a></h3>
 <ul>
-<li>机制题：读者能否解释 AllReduce、AllGather、ReduceScatter、Broadcast 的核心机制，以及它们如何共同支撑《通信原语》？</li>
+<li>机制题：读者能否解释 AllReduce、AllGather、ReduceScatter、Broadcast、AllToAll 的核心机制，以及它们如何共同支撑《通信原语》？</li>
 <li>边界题：读者能否区分 框架、引擎、CUDA/NCCL、container runtime、driver 和硬件拓扑 的责任边界，并说明哪些问题不能简单归因到本章组件？</li>
 <li>路径题：读者能否从框架调用追到推理/训练 runtime、CUDA、NCCL、通信、GPU/HBM 和版本矩阵，并指出本章对象在路径中的位置？</li>
 <li>排障题：当《通信原语》相关生产症状出现时，读者能否列出第一层证据、下一跳证据、可能 owner 和止血动作？</li>
@@ -3820,12 +3842,12 @@
 <h3 id="1814">18.1.4 一个真实场景<a class="headerlink" href="#1814" title="Permanent link">&para;</a></h3>
 <p>一个 128 卡训练任务在前几天运行稳定，某天开始 step time 周期性升高。模型代码、数据版本和训练参数都没有变化，GPU utilization 也不是一直低，而是呈现“计算一段、等待一段”的锯齿形。应用团队先怀疑 PyTorch 版本和数据加载，平台团队检查 DataLoader 后没有发现异常。进一步打开框架 profiler 和 NCCL 日志，发现 AllReduce 带宽在部分 step 明显下降，关联到的 rank 都经过同一组交换机端口。</p>
 <p>网络 telemetry 显示，这些端口的错误计数和重传增加。对应用层来说，症状是训练变慢；对 Runtime 层来说，是 collective communication 无法稳定完成；对基础设施层来说，是链路质量下降或拥塞控制异常。这个场景说明，通信原语不是分布式训练的底层细节，而是连接模型框架、GPU 拓扑和网络健康的关键路径。没有通信视角，训练性能问题很容易被误判。</p>
-<p>本章的重点不是记住每个原语的定义，而是理解它们在训练系统中搬运什么数据、何时发生、消耗哪类链路、产生什么临时内存，以及如何被观测。AllReduce、AllGather、ReduceScatter、Broadcast 和 P2P 的语义不同，故障表现也不同。把通信原语讲清楚，才能把“训练慢”拆成可诊断的问题。</p>
+<p>本章的重点不是记住每个原语的定义，而是理解它们在训练系统中搬运什么数据、何时发生、消耗哪类链路、产生什么临时内存，以及如何被观测。AllReduce、AllGather、ReduceScatter、Broadcast、AllToAll 和 P2P 的语义不同，故障表现也不同。把通信原语讲清楚，才能把“训练慢”拆成可诊断的问题。</p>
 <p>更重要的是，通信问题通常跨团队边界。模型团队看到 loss 和 step time，Runtime 团队看到 profiler，平台团队看到 Pod 和 rank，网络团队看到端口和链路。若没有共同语言，各方会用自己的指标解释同一个现象。通信原语正是这套共同语言：它把训练框架中的一次等待，翻译成具体的数据交换、参与 rank、网络路径和可能的故障域。</p>
 <p>所以，本章会把每个原语都放回工程现场：它什么时候出现，慢了会怎样，错了如何定位。</p>
 <h2 id="182">18.2 基础模型<a class="headerlink" href="#182" title="Permanent link">&para;</a></h2>
 <h3 id="1821">18.2.1 核心概念<a class="headerlink" href="#1821" title="Permanent link">&para;</a></h3>
-<p>通信原语是分布式程序中常见的数据交换模式。训练框架用它们同步梯度、聚合参数、分发状态、移动 activation、传递 Pipeline micro-batch 或 dispatch MoE token。Collective communication 指多个 rank 共同参与的通信，例如 AllReduce、AllGather、ReduceScatter 和 Broadcast；P2P 则是 rank 之间点对点发送和接收。二者共同构成分布式训练的数据通路。</p>
+<p>通信原语是分布式程序中常见的数据交换模式。训练框架用它们同步梯度、聚合参数、分发状态、移动 activation、传递 Pipeline micro-batch 或 dispatch MoE token。Collective communication 指多个 rank 共同参与的通信，例如 AllReduce、AllGather、ReduceScatter、Broadcast 和 AllToAll；P2P 则是 rank 之间点对点发送和接收。二者共同构成分布式训练的数据通路。</p>
 <p>NCCL 是 NVIDIA GPU 生态中常用的集合通信库，它负责在多 GPU、多节点、多网络路径中执行这些通信。训练框架表达“我要对这些 rank 做 AllReduce”，NCCL 根据拓扑、算法、协议和环境变量选择具体路径。底层可能走 NVLink、NVSwitch、PCIe、InfiniBand、RoCE 或主机网络。上层看到的是一个通信 op，底层实际涉及 GPU、NIC、交换机、驱动、容器权限和网络配置。</p>
 <p>理解通信原语能帮助工程师区分计算瓶颈和通信瓶颈。GPU utilization 低不一定是模型小，也可能是 rank 在等待通信；HBM OOM 不一定是参数太多，也可能是 AllGather 临时 buffer；NCCL hang 不一定是 NCCL bug，也可能是某个 rank 没有进入同一个 collective。通信原语是分布式训练的系统语言，掌握它才能进行可靠排障。</p>
 <p>还要理解同步语义。大多数 collective 要求参与 rank 以一致顺序进入通信，否则就可能等待或挂起。分布式训练中，一个 rank 的异常分支、一个数据 shard 的特殊样本、一次未处理的 OOM，都可能让其他 rank 看起来像 NCCL hang。很多通信故障的根源并不在网络，而在多 rank 控制流不一致。</p>
@@ -3919,8 +3941,14 @@
 <p>同时记录对应的 stage 或 expert 关系。</p>
 <p>这能把通信阻塞映射回模型结构。</p>
 <p>诊断才可行动。</p>
-<h3 id="1836-nccl">18.3.6 NCCL<a class="headerlink" href="#1836-nccl" title="Permanent link">&para;</a></h3>
-<p>NCCL 是 GPU 集合通信的核心运行时之一，提供 AllReduce、AllGather、ReduceScatter、Broadcast 和 P2P 等能力。它会根据拓扑和配置选择算法、协议和网络接口。NCCL 的行为受 CUDA、driver、NCCL 版本、容器设备注入、RDMA 栈、网卡选择、DNS/主机名、环境变量和防火墙等因素影响。很多 NCCL 问题并不是库本身错误，而是运行环境不一致。</p>
+<h3 id="1836-alltoall">18.3.6 AllToAll<a class="headerlink" href="#1836-alltoall" title="Permanent link">&para;</a></h3>
+<p>AllToAll 表示每个 rank 都向其它 rank 发送自己负责的一部分数据，并从其它 rank 接收对应分片。它和 AllGather 不同：AllGather 让每个 rank 得到完整集合，AllToAll 则是全局重分布。Expert Parallel/MoE 是最典型场景，router 先按 token 选择 expert，然后通过 AllToAll 把 token dispatch 到持有对应 expert 的 rank，计算完成后再通过反向 AllToAll 或 All-to-All combine 把输出恢复到原顺序。</p>
+<p>AllToAll 的难点在于流量不均衡。Data Parallel 的 AllReduce 通常通信量更稳定，AllToAll 则会受到 token 分布、top-k、capacity factor、expert placement 和负载均衡损失影响。某些 expert 过热时，相关 rank、rail 或 rack 会成为热点；某些 rank 接收 token 过多时，既会增加通信时间，也会增加 expert 计算排队。平均带宽正常，不代表 AllToAll 没有尾部问题。</p>
+<p>排查 AllToAll 要同时看路由和网络。第一层证据不是只看 NCCL 带宽，而是看每个 expert 的 token count、drop/overflow、dispatch/combine 时间、rank pair 流量矩阵、慢 rank 和负载均衡 loss。若热点集中在某组 expert，优先检查 gating、capacity 和 expert placement；若热点集中在某个 rack 或 rail，优先检查拓扑放置和网络路径。AllToAll 把模型路由策略和 scale-out fabric 紧密绑在一起，不能只交给网络团队处理。</p>
+<p>AllToAll 还会影响并行维度放置。EP 可以跨节点扩展 expert 数，但跨节点 AllToAll 会把 token 重分布放到关键路径上；若模型同时使用 TP、PP、DP 和 EP，AllToAll 的并行组应尽量与高带宽域、rack 边界和 expert 热点分布匹配。平台应把 AllToAll 画像写入 <code>collective_trace_record</code>，并在调度侧保存 expert group、rank mapping 和 network path evidence。</p>
+<p>从生产角度看，AllToAll 不是“MoE 的一个通信细节”，而是 MoE 能否稳定服务的核心风险面。它决定 token 是否能按时到达 expert，决定负载均衡损失是否会变成尾延迟，也决定网络成本是否随 expert 数量失控。没有 AllToAll 观测，EP/MoE 的性能问题很容易被误判为模型质量、GPU 算力或普通网络抖动。</p>
+<h3 id="1837-nccl">18.3.7 NCCL<a class="headerlink" href="#1837-nccl" title="Permanent link">&para;</a></h3>
+<p>NCCL 是 GPU 集合通信的核心运行时之一，提供 AllReduce、AllGather、ReduceScatter、Broadcast、AllToAll 和 P2P 等能力。它会根据拓扑和配置选择算法、协议和网络接口。NCCL 的行为受 CUDA、driver、NCCL 版本、容器设备注入、RDMA 栈、网卡选择、DNS/主机名、环境变量和防火墙等因素影响。很多 NCCL 问题并不是库本身错误，而是运行环境不一致。</p>
 <p>生产平台要把 NCCL 配置作为运行时基线管理。NCCL 版本、关键环境变量、网络接口选择、拓扑文件、debug 级别、timeout 策略都应可追溯。容器内看不到 RDMA 设备、选择了错误网卡、节点间主机名解析异常、RoCE 配置不完整，都可能表现为 NCCL 初始化失败、性能下降或 hang。排障时不能只让用户贴一段错误日志，而要自动收集环境和拓扑上下文。</p>
 <p>更严格的做法是生成 <code>nccl_env_contract</code>。它定义一类训练模板允许哪些 NCCL 环境变量、接口选择、RDMA 设备、timeout、debug 和拓扑文件。用户可以覆盖部分参数，但覆盖必须进入审计，并触发对应回归。这个 contract 能防止“某个脚本临时加了 <code>NCCL_SOCKET_IFNAME</code>，后来所有任务都走错接口”这种隐性事故。</p>
 <pre><code class="language-yaml">nccl_env_contract:
@@ -3960,7 +3988,7 @@
 <p>通信库升级应按基础设施变更处理。</p>
 <p>它影响的是整条训练数据通路。</p>
 <p>升级前后必须保留可对比基线。</p>
-<h3 id="1837-nvlink-ibroce">18.3.7 NVLink 与 IB/RoCE<a class="headerlink" href="#1837-nvlink-ibroce" title="Permanent link">&para;</a></h3>
+<h3 id="1838-nvlink-ibroce">18.3.8 NVLink 与 IB/RoCE<a class="headerlink" href="#1838-nvlink-ibroce" title="Permanent link">&para;</a></h3>
 <p>NVLink 和 NVSwitch 主要支撑节点内或 scale-up 域内 GPU 间高速通信，适合 Tensor Parallel、部分 Pipeline stage 和高频 activation/parameter exchange。InfiniBand 和 RoCE 主要支撑跨节点 scale-out 通信，适合 Data Parallel、跨节点 Pipeline、分布式 checkpoint 和更大规模训练。二者不是互相替代，而是服务不同距离和通信模式。</p>
 <p>并行策略应尽量让高频、低延迟通信贴近 NVLink/NVSwitch，把可扩展、可重叠或低频通信放到跨节点网络。若 Tensor Parallel group 跨节点，性能会更依赖 RDMA；若 Data Parallel 全部局限在少数节点，可能影响资源利用和故障域分布。平台调度需要理解这些差异，否则硬件拓扑优势无法转化为训练吞吐。</p>
 <p>RoCE 对以太网配置要求高，例如 PFC、ECN、MTU、队列、拥塞控制和交换机缓冲；InfiniBand 通常提供更完整的 HPC fabric 能力，但也需要 subnet manager、链路健康和拓扑管理。无论使用哪种网络，端口错误、链路降速、拥塞和不对称路径都会影响 NCCL。AI Factory 的网络验收不能只看 ping 或普通 TCP 带宽，必须验证 GPU 到 GPU 的真实通信路径。</p>
@@ -3971,16 +3999,16 @@
 <p>靠近高频通信组的带宽最有价值。</p>
 <p>远端带宽无法弥补错误放置。</p>
 <p>拓扑意识是通信效率的前提。</p>
-<h3 id="1838">18.3.8 通信瓶颈分析<a class="headerlink" href="#1838" title="Permanent link">&para;</a></h3>
+<h3 id="1839">18.3.9 通信瓶颈分析<a class="headerlink" href="#1839" title="Permanent link">&para;</a></h3>
 <p>通信瓶颈分析应从 step timeline 开始。先把一次训练 step 拆成 data loading、forward、backward、communication、optimizer 和 checkpoint，再判断通信是否进入关键路径。若通信与计算充分重叠，即使通信耗时不短，也未必影响 step time；若通信暴露在关键路径上，哪怕单次 op 不大，也会拖慢整体。没有时间线，就容易把相关性误判为因果。</p>
-<p>第二步是定位具体 op 和 rank group。AllReduce 慢、AllGather OOM、ReduceScatter 与 optimizer 不重叠、Broadcast 初始化慢、P2P 顺序错误，对应的排查路径不同。还要看慢是否集中在某些 rank、节点、NIC、交换机端口或机架。如果慢 rank 与特定物理路径重合，更可能是基础设施问题；如果所有 rank 都慢，更可能是策略、规模或全局网络拥塞。</p>
+<p>第二步是定位具体 op 和 rank group。AllReduce 慢、AllGather OOM、ReduceScatter 与 optimizer 不重叠、Broadcast 初始化慢、AllToAll 负载倾斜、P2P 顺序错误，对应的排查路径不同。还要看慢是否集中在某些 rank、节点、NIC、交换机端口或机架。如果慢 rank 与特定物理路径重合，更可能是基础设施问题；如果所有 rank 都慢，更可能是策略、规模或全局网络拥塞。</p>
 <p>第三步是用基线验证假设。可以运行 NCCL tests、检查网络 telemetry、查看 DCGM、对比历史任务、改变 placement 或降低并行度。每次实验只改变一个变量，才能判断根因。通信优化的常见方向包括拓扑感知调度、调整并行策略、增大或减小 bucket、改进 overlap、修复网络配置、隔离异常节点。目标不是让某个 benchmark 更好看，而是让真实训练稳定、可重复、可解释。</p>
 <p>瓶颈分析还要避免平均值陷阱。平均 step time、平均带宽和平均 GPU utilization 都可能掩盖尾部 rank。同步训练中，最慢 rank 决定全局节奏；在线推理中，尾部延迟决定用户体验。通信 dashboard 应默认展示分位数、最大值和 rank skew，而不是只给平均值。排障时先找到“谁在等谁”，再讨论优化策略。</p>
 <p>如果找不到等待关系，就说明 trace 还不够完整。</p>
 <p>完整 trace 应覆盖计算、通信和调度放置。</p>
 <p>三者缺一，定位都会失真。</p>
 <p>通信瓶颈分析本质上是跨层关联。</p>
-<p><img alt="图：18.3.8 通信瓶颈分析" src="../../assets/diagrams/part-04-runtime-chapter-18-collective-communication-03.svg" /></p>
+<p><img alt="图：18.3.9 通信瓶颈分析" src="../../assets/diagrams/part-04-runtime-chapter-18-collective-communication-03.svg" /></p>
 <h2 id="184">18.4 工程落地<a class="headerlink" href="#184" title="Permanent link">&para;</a></h2>
 <h3 id="1841">18.4.1 工程实现<a class="headerlink" href="#1841" title="Permanent link">&para;</a></h3>
 <p>工程实现应让训练任务自动记录通信环境。至少包括 backend、NCCL 版本、CUDA/driver 版本、关键 NCCL 环境变量、网络接口、RDMA 设备、rank 到 GPU/NIC 映射、并行组、collective metrics 和 debug 日志策略。没有这些信息，通信故障复盘会依赖人工记忆。平台应把它们写入作业元数据和运行报告。</p>
@@ -4127,7 +4155,7 @@
 <p>复盘结论要回写到模板和准入规则。</p>
 <p>第七类故障是诊断窗口丢失。训练任务 hang 后被用户直接 kill，容器日志、NCCL debug、端口计数增量和 rank 状态全部消失，只剩一个失败退出码。平台应提供“保留现场”动作：暂停任务、冻结节点事件、采集诊断包、再决定重启或释放资源。昂贵训练任务不能把证据管理交给临时人工命令。</p>
 <h3 id="1843">18.4.3 性能指标<a class="headerlink" href="#1843" title="Permanent link">&para;</a></h3>
-<p>通信指标要覆盖 op、rank、拓扑和业务四个层面。Op 层面包括 AllReduce、AllGather、ReduceScatter、Broadcast、P2P 的耗时、传输量和有效带宽；rank 层面包括慢 rank、等待时间、超时和错误；拓扑层面包括节点内带宽、跨节点带宽、端口错误、拥塞、重传和链路状态；业务层面包括通信占 step time 的比例、tokens/s、扩展效率和失败率。</p>
+<p>通信指标要覆盖 op、rank、拓扑和业务四个层面。Op 层面包括 AllReduce、AllGather、ReduceScatter、Broadcast、AllToAll、P2P 的耗时、传输量和有效带宽；rank 层面包括慢 rank、等待时间、超时和错误；拓扑层面包括节点内带宽、跨节点带宽、端口错误、拥塞、重传和链路状态；业务层面包括通信占 step time 的比例、tokens/s、扩展效率和失败率。</p>
 <p>不同指标回答不同问题。有效带宽低说明通信路径或算法可能有问题；rank skew 高说明某些 rank 拖慢整体；AllGather 期间 HBM 峰值高说明临时 buffer 可能引发 OOM；通信占比上升说明扩容收益正在下降。指标不能只在任务失败后收集，必须持续采样并保留历史基线。否则训练变慢时无法判断是网络退化、框架升级、模型变化还是调度放置变化。</p>
 <p>指标口径也要固定。NCCL test 带宽、真实训练 op 带宽、端口物理带宽不是同一个概念；单节点 bandwidth 和跨节点 bandwidth 不能混用；平均耗时会掩盖尾部 rank。对外报告通信能力时，应标明 GPU 数、节点数、消息大小、拓扑范围、并行策略和测试工具。没有上下文的带宽数字不能指导工程决策。</p>
 <p>通信指标还应和成本关联。更强网络、更低 oversubscription 和更复杂拓扑都会提高建设成本。平台需要知道通信瓶颈影响了多少 tokens/s、多少训练时长和多少 GPU 空转，才能判断是否值得投资。没有这层经济视角，通信优化容易停留在局部技术指标，而不能支撑 AI Factory 的容量决策。</p>
@@ -4171,7 +4199,7 @@
 <h3 id="1851">18.5.1 小结<a class="headerlink" href="#1851" title="Permanent link">&para;</a></h3>
 <ul>
 <li>Communication primitives 是分布式训练的关键路径，不是底层附属细节。</li>
-<li>AllReduce、AllGather、ReduceScatter、Broadcast 和 P2P 的语义、内存压力和故障模式不同。</li>
+<li>AllReduce、AllGather、ReduceScatter、Broadcast、AllToAll 和 P2P 的语义、内存压力和故障模式不同。</li>
 <li>NCCL 问题通常跨越框架、容器、驱动、RDMA 和网络拓扑。</li>
 <li>通信排障需要把 step、op、rank、GPU、NIC、交换机和历史基线关联起来。</li>
 </ul>
