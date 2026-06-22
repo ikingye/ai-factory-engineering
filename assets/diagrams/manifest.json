@@ -5,12 +5,12 @@
     "index": 1,
     "kind": "flowchart",
     "direction": "TB",
-    "nodes": 8,
-    "edges": 7,
+    "nodes": 10,
+    "edges": 10,
     "svg": "assets/diagrams/index-01.svg",
     "png": "assets/diagrams/index-01.png",
     "source_mmd": "assets/diagrams/sources/index-01.mmd",
-    "hash": "fa76b9854bbe885e",
+    "hash": "16ffd13892391299",
     "title": "2. 一张图理解 AI Factory"
   },
   {

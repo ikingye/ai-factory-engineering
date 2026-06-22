@@ -326,7 +326,7 @@
   
     
   
-  运行与经济性
+  生产闭环
 
         </a>
       </li>
@@ -2840,7 +2840,7 @@
   <span class="md-ellipsis">
     
   
-    运行与经济性
+    生产闭环
   
 
     
@@ -2856,7 +2856,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    运行与经济性
+    生产闭环
   
 
           </label>
@@ -3088,7 +3088,7 @@
   <span class="md-ellipsis">
     
   
-    Part 10：经济学与产业案例
+    Part 10：商业化、案例与建设
   
 
     
@@ -3104,7 +3104,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Part 10：经济学与产业案例
+    Part 10：商业化、案例与建设
   
 
           </label>
@@ -3873,7 +3873,7 @@
 <p>但 Token Factory 不是 AI Factory 的同义词。训练、评测、数据治理、模型注册、准入测试、故障诊断、SRE 和容量规划并不总是直接产生可售 token，却决定未来 token 的质量、成本和可靠性。只追求 token 产量，容易牺牲安全、质量和长期能力；只讨论 AI Factory 而不讨论 token 经济性，又容易建成成本不可控的平台。因此本书把 Token Factory 作为经济视角，而不是完整技术分层。</p>
 <p>一个健康的 Token Factory 指标体系至少要有边界条件。首先，token 必须是合格产出：通过质量、安全和合规约束的 token 才有商业意义。其次，token 指标必须按模型、租户、场景和上下文长度分组，否则不同 workload 混在一起会误导决策。最后，成本必须包含 GPU、能耗、网络、存储、平台运维、失败重试和保留容量。只有这样，tokens/s 才不是虚高吞吐，tokens/W 才不是孤立能效，cost per token 才不是低估成本，revenue per token 才能真正支撑扩容、优化和定价。</p>
 <h3 id="035-ai-factory">0.3.5 AI Factory 的分层模型<a class="headerlink" href="#035-ai-factory" title="Permanent link">&para;</a></h3>
-<p>本书采用从上到下的分层模型：Application、Platform、Model、AI Runtime、资源编排与作业调度、GPU IaaS、网络与存储、物理基础设施。这是八个主体层次，外加可靠性、可观测性、准入验收、故障诊断、安全、成本和 Token Factory 经济性等横切能力。这里不把层数当作教条，真正重要的是每一层的责任边界、上下游依赖和可验证产物。</p>
+<p>本书采用从上到下的分层模型：Application、Platform、Model、AI Runtime、资源编排与作业调度、GPU IaaS、网络与存储、物理基础设施。这是八个主体层次。可靠性、可观测性、准入验收、故障诊断、SRE、成本和 Token Factory 经济性不是额外一层，而是把系统带回生产闭环的横切能力：先证明资源和服务可信，再把运行结果转化为容量、成本、商业模式和建设路线。这里不把层数当作教条，真正重要的是每一层的责任边界、上下游依赖和可验证产物。</p>
 <p>Application 层定义用户交互方式，例如 Chat、RAG、Agent、办公、编程和行业应用。Platform 层提供 MaaS、API Gateway、租户、配额、观测和计费。Model 层管理预训练、后训练、微调、评测和服务化。Runtime 层把模型执行映射到 CUDA、NCCL、RDMA、推理引擎和训练框架。资源编排层处理容器、Kubernetes、Slurm、Volcano、Kueue、Ray、GPU 调度和拓扑。GPU IaaS 交付裸金属、虚拟化、驱动、镜像和资源池。网络存储与物理层提供通信、数据、电力、制冷和硬件基础。</p>
 <p>这个模型的工程用途，是帮助团队判断一个问题应该在哪里解决。例如模型路由、API Key 和计费不应下沉到 GPU IaaS；裸金属驱动、BMC 和 PXE 不应放到 MaaS；Kubernetes、Slurm 和 GPU 调度不应被笼统说成 PaaS，因为它们负责资源编排与作业调度。分层清晰，才能避免平台团队、基础设施团队和模型团队在故障与需求面前互相推诿。</p>
 <p>分层模型还可以帮助制定建设顺序。早期团队不一定要一次性建设所有层的完整能力，但必须知道哪些能力缺失会成为下一阶段瓶颈。只有 Chat 应用时，可以先做 MaaS、网关、推理服务和基础观测；要做微调时，就必须补数据权限、作业队列、模型 registry 和评测；要做大规模训练时，NCCL、RDMA、checkpoint、准入和拓扑调度就变成硬门槛；要商业化时，计量、账单、SLA 和成本模型不能再后补。层次不是静态分类，而是路线图。</p>
@@ -3897,7 +3897,7 @@
 <h3 id="039">0.3.9 本书阅读路径<a class="headerlink" href="#039" title="Permanent link">&para;</a></h3>
 <p>如果你从应用或平台进入，建议先读 Part 1 和 Part 2，理解 Chat、RAG、Agent、MaaS、AI Gateway、计量计费和平台可观测性。这样能先建立“请求如何变成 token”的视角，再向下理解模型服务、推理引擎、GPU 和成本。应用团队尤其应关注上下文长度、streaming、工具调用和 token 放大，因为这些设计会直接传导到基础设施。</p>
 <p>如果你负责模型、训练或推理运行时，建议从 Part 3 和 Part 4 进入，重点理解 Transformer、预训练、后训练、微调、评测、模型服务、推理引擎、训练框架、分布式并行和 NCCL 通信。读这部分时不要只看算法概念，要持续追问它们如何影响 HBM、KV Cache、通信、checkpoint、batching 和 GPU 利用率。</p>
-<p>如果你负责 GPU 集群、平台建设或 SRE，可以从 Part 5、Part 6、Part 7、Part 8 和 Part 9 开始，建立 workload、Kubernetes、Slurm、GPU IaaS、网络存储、物理机房、准入验收和故障诊断框架。若你负责技术战略、商业化或容量预算，应重点阅读第 0 章、第 41 章和第 44 章，把系统能力、建设路线和 Token Factory 经济性放在同一个闭环里。</p>
+<p>如果你负责 GPU 集群、平台建设或 SRE，可以从 Part 5、Part 6、Part 7、Part 8 和 Part 9 开始，建立 workload、Kubernetes、Slurm、GPU IaaS、网络存储、物理机房、准入验收和故障诊断框架。若你负责技术战略、商业化或容量预算，应重点阅读第 0 章、第 37-44 章，把可靠性证据、建设路线、商业模式和 Token Factory 经济性放在同一个生产闭环里。</p>
 <p>更实际的读法是带着问题读。如果你的问题是“为什么 GPU 空闲但任务启动不了”，先读第 20-25 章；如果问题是“为什么 NCCL all_reduce 卡住”，先读第 18、30、32、38、39 章；如果问题是“为什么推理成本降不下来”，先读第 1、7、15、37、41 章；如果问题是“从 0 到 1 怎么建”，先读第 0、20-22、26、30、33、38、40、44 章。AI Factory 是系统工程，阅读也应按问题路径穿透，而不是只按目录顺序线性阅读。</p>
 <p>阅读过程中建议维护自己的问题索引。每读完一章，不只记录概念定义，还要记录它能解释哪些故障、哪些指标和哪些设计取舍。比如 KV Cache 不只是模型概念，还连接 HBM、并发、长上下文和成本；gang scheduling 不只是调度术语，还连接训练启动、GPU 浪费和队列公平；准入测试不只是运维流程，还连接采购验收、故障隔离和容量可信度。这样读，才能把本书从知识清单转化为工程判断框架。</p>
 <h2 id="04">0.4 工程落地<a class="headerlink" href="#04" title="Permanent link">&para;</a></h2>
