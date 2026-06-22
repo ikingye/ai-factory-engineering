@@ -89,7 +89,7 @@ REQUIRED_SNIPPETS = {
     ],
     "docs/part-00-introduction/chapter-00-from-datacenter-to-ai-factory.md": [
         "### 0.3.5 AI Factory 的分层模型",
-        "这是八个主体层次，外加可靠性、可观测性、准入验收、故障诊断、安全、成本和 Token Factory 经济性等横切能力",
+        "这是八个主体层次。可靠性、可观测性、准入验收、故障诊断、SRE、成本和 Token Factory 经济性不是额外一层，而是把系统带回生产闭环的横切能力",
     ],
 }
 

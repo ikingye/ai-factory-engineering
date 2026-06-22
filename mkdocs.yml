@@ -90,13 +90,13 @@ nav:
           - 第 34 章：GPU 服务器: part-08-physical-infrastructure/chapter-34-gpu-server.md
           - 第 35 章：GPU 芯片与系统架构: part-08-physical-infrastructure/chapter-35-gpu-architecture.md
           - 第 36 章：AI 数据中心工程: part-08-physical-infrastructure/chapter-36-ai-datacenter-engineering.md
-  - 运行与经济性:
+  - 生产闭环:
       - Part 9：可靠性、观测与验收:
           - 第 37 章：AI Factory 可观测性: part-09-reliability-observability/chapter-37-ai-factory-observability.md
           - 第 38 章：准入测试与验收: part-09-reliability-observability/chapter-38-acceptance-testing.md
           - 第 39 章：故障诊断: part-09-reliability-observability/chapter-39-troubleshooting.md
           - 第 40 章：SRE 与运维体系: part-09-reliability-observability/chapter-40-sre-operations.md
-      - Part 10：经济学与产业案例:
+      - Part 10：商业化、案例与建设:
           - 第 41 章：Token Factory 视角: part-10-economics-cases/chapter-41-token-factory.md
           - 第 42 章：AI Factory 商业模式: part-10-economics-cases/chapter-42-business-models.md
           - 第 43 章：案例研究: part-10-economics-cases/chapter-43-case-studies.md

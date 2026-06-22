@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1437 600" width="1437" height="600">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1909 600" width="1909" height="600">
   <defs>
     <marker id="arrowA" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
       <polygon points="0 0, 10 3.5, 0 7" fill="#7c3aed"/>
@@ -41,9 +41,9 @@
     .footnote { font-size: 12px; font-weight: 500; fill: #94a3b8; }
     </style>
   </defs>
-  <rect width="1437.0" height="600.0" fill="#ffffff"/>
-  <text x="718.5" y="56" text-anchor="middle" class="title">2. 一张图理解 AI Factory</text>
-  <text x="718.5" y="82" text-anchor="middle" class="subtitle">index.md:15</text>
+  <rect width="1909.0" height="600.0" fill="#ffffff"/>
+  <text x="954.5" y="56" text-anchor="middle" class="title">2. 一张图理解 AI Factory</text>
+  <text x="954.5" y="82" text-anchor="middle" class="subtitle">index.md:15</text>
   <rect x="42.0" y="118.0" width="409.0" height="372.0" rx="16.0" fill="#f8fafc" stroke="#dbe5f1" stroke-width="1.4" stroke-dasharray="7 5"/>
   <text x="60.0" y="142.0" class="section">阶段 1</text>
   <text x="60.0" y="162.0" class="section-sub">Application 层 -&gt; Model 层</text>
@@ -53,6 +53,9 @@
   <rect x="961.0" y="118.0" width="434.0" height="372.0" rx="16.0" fill="#f8fafc" stroke="#dbe5f1" stroke-width="1.4" stroke-dasharray="7 5"/>
   <text x="979.0" y="142.0" class="section">阶段 3</text>
   <text x="979.0" y="162.0" class="section-sub">网络与存储层 -&gt; 物理基础设施层</text>
+  <rect x="1433.0" y="118.0" width="434.0" height="372.0" rx="16.0" fill="#ffffff" stroke="#dbe5f1" stroke-width="1.4" stroke-dasharray="7 5"/>
+  <text x="1451.0" y="142.0" class="section">阶段 4</text>
+  <text x="1451.0" y="162.0" class="section-sub">可靠性与验收 -&gt; 商业化与建设</text>
   <path d="M 246.5,242.0 L 246.5,270.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
   <path d="M 246.5,340.0 L 246.5,368.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
   <path d="M 354.0,403.0 L 374.4,403.0 L 546.6,207.0 L 567.0,207.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
@@ -60,6 +63,9 @@
   <path d="M 706.0,340.0 L 706.0,368.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
   <path d="M 834.5,403.0 L 854.9,403.0 L 967.6,256.0 L 988.0,256.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
   <path d="M 1178.0,291.0 L 1178.0,319.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 1355.5,354.0 L 1375.9,354.0 L 1439.6,256.0 L 1460.0,256.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 1650.0,291.0 L 1650.0,319.0" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
+  <path d="M 1650.0,389.0 L 1650.0,408.0 L 246.5,408.0 L 246.5,340.0" fill="none" stroke="#ef4444" stroke-width="2.4" marker-end="url(#arrowG)"/>
   <rect x="132.0" y="172.0" width="229.0" height="70.0" rx="10.0" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.8"/>
   <text x="246.5" y="207.0" text-anchor="middle" class="node-title">Application 层</text>
   <text x="246.5" y="229.0" text-anchor="middle" class="node-sub">Chat / Agent / RAG / 行业应用</text>
@@ -84,7 +90,15 @@
   <rect x="1000.5" y="319.0" width="355.0" height="70.0" rx="10.0" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.8"/>
   <text x="1178.0" y="354.0" text-anchor="middle" class="node-title">物理基础设施层</text>
   <text x="1178.0" y="376.0" text-anchor="middle" class="node-sub">机房 / 电力 / 制冷 / GPU / NIC / Switch / Storage</text>
+  <rect x="1460.0" y="221.0" width="380.0" height="70.0" rx="10.0" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.8"/>
+  <text x="1650.0" y="256.0" text-anchor="middle" class="node-title">可靠性与验收</text>
+  <text x="1650.0" y="278.0" text-anchor="middle" class="node-sub">Observability / Acceptance / Troubleshooting / SRE</text>
+  <rect x="1469.0" y="319.0" width="362.0" height="70.0" rx="10.0" fill="#faf5ff" stroke="#e9d5ff" stroke-width="1.8"/>
+  <text x="1650.0" y="354.0" text-anchor="middle" class="node-title">商业化与建设</text>
+  <text x="1650.0" y="376.0" text-anchor="middle" class="node-sub">Token Factory / Business / Case / Build Plan</text>
   <line x1="42.0" y1="562.0" x2="72.0" y2="562.0" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrowA)"/>
   <text x="82.0" y="566.0" class="legend">主路径 / 阶段推进</text>
-  <text x="1157.0" y="584.0" class="footnote">Rendered with fireworks-tech-graph</text>
+  <line x1="42.0" y1="584.0" x2="72.0" y2="584.0" stroke="#ef4444" stroke-width="2.4" marker-end="url(#arrowG)"/>
+  <text x="82.0" y="588.0" class="legend">反馈 / 回退</text>
+  <text x="1629.0" y="584.0" class="footnote">Rendered with fireworks-tech-graph</text>
 </svg>

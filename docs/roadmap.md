@@ -22,17 +22,17 @@
 
 当前状态：第 20-33 章已进入主题链路循环更新阶段。GPU 容器运行时、GPU on Kubernetes、资源声明、GPU 资源池、网络通信和存储数据链路已经开始形成跨章节闭环，后续继续按故障树、验收矩阵和成本账本补强。
 
-## 5. Phase 5：物理基础设施、可靠性、验收
+## 5. Phase 5：物理基础设施与生产保障
 
 扩写 GPU 服务器、GPU 芯片与系统架构、AI 数据中心工程、AI Factory 可观测性、准入测试、故障诊断和 SRE 运维体系。重点沉淀验收基线、故障树和运行手册。
 
 当前状态：第 34-40 章已进入主题链路循环更新阶段。GPU 硬件、互联、物理设施、准入基线、故障诊断、DCGM、NCCL、RDMA 和 SRE runbook 正在被连接成可执行运维体系。
 
-## 6. Phase 6：经济性与案例
+## 6. Phase 6：商业化、案例与建设
 
-扩写 Token Factory 经济模型、AI Factory 商业模式、产业案例和从 0 到 1 建设路径。重点把 tokens/s、tokens/W、cost per token、revenue per token 与业务模型连接起来。
+扩写 Token Factory 经济模型、AI Factory 商业模式、产业案例和从 0 到 1 建设路径。重点把 tokens/s、tokens/W、cost per token、revenue per token、生产门禁和业务模型连接起来。
 
-当前状态：第 41-44 章已进入主题链路循环更新阶段。后续继续把 tokens/s、tokens/W、cost per token、GPU 利用率、可靠性成本和商业模型做成更可计算的经济性框架。
+当前状态：第 41-44 章已进入主题链路循环更新阶段。后续继续把 tokens/s、tokens/W、cost per token、GPU 利用率、可靠性成本、商业模型和建设门禁做成更可计算的生产闭环。
 
 ## 7. Phase 7：审校、图表、索引和发布
 

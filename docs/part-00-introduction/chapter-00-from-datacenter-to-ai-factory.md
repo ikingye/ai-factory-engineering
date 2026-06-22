@@ -110,7 +110,7 @@ Token Factory 是观察 AI Factory 在线推理产出的经济性视角。对 Ma
 
 ### 0.3.5 AI Factory 的分层模型
 
-本书采用从上到下的分层模型：Application、Platform、Model、AI Runtime、资源编排与作业调度、GPU IaaS、网络与存储、物理基础设施。这是八个主体层次，外加可靠性、可观测性、准入验收、故障诊断、安全、成本和 Token Factory 经济性等横切能力。这里不把层数当作教条，真正重要的是每一层的责任边界、上下游依赖和可验证产物。
+本书采用从上到下的分层模型：Application、Platform、Model、AI Runtime、资源编排与作业调度、GPU IaaS、网络与存储、物理基础设施。这是八个主体层次。可靠性、可观测性、准入验收、故障诊断、SRE、成本和 Token Factory 经济性不是额外一层，而是把系统带回生产闭环的横切能力：先证明资源和服务可信，再把运行结果转化为容量、成本、商业模式和建设路线。这里不把层数当作教条，真正重要的是每一层的责任边界、上下游依赖和可验证产物。
 
 Application 层定义用户交互方式，例如 Chat、RAG、Agent、办公、编程和行业应用。Platform 层提供 MaaS、API Gateway、租户、配额、观测和计费。Model 层管理预训练、后训练、微调、评测和服务化。Runtime 层把模型执行映射到 CUDA、NCCL、RDMA、推理引擎和训练框架。资源编排层处理容器、Kubernetes、Slurm、Volcano、Kueue、Ray、GPU 调度和拓扑。GPU IaaS 交付裸金属、虚拟化、驱动、镜像和资源池。网络存储与物理层提供通信、数据、电力、制冷和硬件基础。
 
@@ -162,7 +162,7 @@ AI Factory 的难点在于局部正确不等于整体可用。模型可以在单
 
 如果你负责模型、训练或推理运行时，建议从 Part 3 和 Part 4 进入，重点理解 Transformer、预训练、后训练、微调、评测、模型服务、推理引擎、训练框架、分布式并行和 NCCL 通信。读这部分时不要只看算法概念，要持续追问它们如何影响 HBM、KV Cache、通信、checkpoint、batching 和 GPU 利用率。
 
-如果你负责 GPU 集群、平台建设或 SRE，可以从 Part 5、Part 6、Part 7、Part 8 和 Part 9 开始，建立 workload、Kubernetes、Slurm、GPU IaaS、网络存储、物理机房、准入验收和故障诊断框架。若你负责技术战略、商业化或容量预算，应重点阅读第 0 章、第 41 章和第 44 章，把系统能力、建设路线和 Token Factory 经济性放在同一个闭环里。
+如果你负责 GPU 集群、平台建设或 SRE，可以从 Part 5、Part 6、Part 7、Part 8 和 Part 9 开始，建立 workload、Kubernetes、Slurm、GPU IaaS、网络存储、物理机房、准入验收和故障诊断框架。若你负责技术战略、商业化或容量预算，应重点阅读第 0 章、第 37-44 章，把可靠性证据、建设路线、商业模式和 Token Factory 经济性放在同一个生产闭环里。
 
 更实际的读法是带着问题读。如果你的问题是“为什么 GPU 空闲但任务启动不了”，先读第 20-25 章；如果问题是“为什么 NCCL all_reduce 卡住”，先读第 18、30、32、38、39 章；如果问题是“为什么推理成本降不下来”，先读第 1、7、15、37、41 章；如果问题是“从 0 到 1 怎么建”，先读第 0、20-22、26、30、33、38、40、44 章。AI Factory 是系统工程，阅读也应按问题路径穿透，而不是只按目录顺序线性阅读。
 
