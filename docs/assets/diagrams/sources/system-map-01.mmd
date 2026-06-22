@@ -1,7 +1,7 @@
 flowchart TB
   subgraph Demand["目标与需求"]
     WP["workload_profile\n应用如何消耗能力"]
-    BMP["business_model_profile\n能力如何商业化或结算"]
+    BMP["business_model_profile\n商业模式与结算"]
     COE["customer_onboarding_evidence\n客户接入证据"]
     BP["ai_factory_build_plan\n建设阶段与停止条件"]
   end
@@ -20,12 +20,12 @@ flowchart TB
     Physical["Physical\nrack / power / cooling / server"]
   end
 
-  subgraph Evidence["证据与治理"]
+  subgraph Evidence["证据、SRE 与治理"]
     Baseline["acceptance_baseline\n准入与验收"]
     Quality["quality_evidence_bundle\n质量证据包"]
     Telemetry["telemetry_event\n观测事实"]
     Incident["incident_record\n故障复盘"]
-    Ledger["Token Factory ledger\n成本与价值"]
+    Ledger["Token Factory ledger\n经济账本 / 成本与价值"]
     PNL["commercial_pnl_ledger\n商业 P&L"]
     Risk["launch_risk_register\n上线风险登记"]
     PRR["production_readiness_review\n上线门禁"]
